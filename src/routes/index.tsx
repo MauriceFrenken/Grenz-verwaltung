@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DashboardPage } from "@/features/dashboard";
+import { DashboardTeaser } from "@/features/teaser";
 import { seitenGuard } from "@/lib/permissions";
 
 export const Route = createFileRoute("/")({
@@ -10,5 +10,5 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Kennzahlen, offene Aufgaben und Fristen aus allen Automatisierungen." },
     ],
   }),
-  component: DashboardPage,
+  component: DashboardTeaser,
 });

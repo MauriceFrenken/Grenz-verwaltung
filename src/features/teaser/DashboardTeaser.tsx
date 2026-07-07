@@ -1,16 +1,15 @@
 import { KpiCard } from "@/components/shared/KpiCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { EntwicklungOverlay } from "@/components/shared/EntwicklungOverlay";
 import { ContentSection, PageWrapper } from "@/components/layout/PageWrapper";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "lucide-react";
+import { TeaserShell } from "./TeaserShell";
 
-export function DashboardPage() {
+export function DashboardTeaser() {
   return (
-    <EntwicklungOverlay>
-    <>
+    <TeaserShell>
       <PageHeader
         titel="Übersicht"
         aktionen={
@@ -60,7 +59,6 @@ export function DashboardPage() {
           </ContentSection>
         </div>
       </PageWrapper>
-    </>
-    </EntwicklungOverlay>
+    </TeaserShell>
   );
 }

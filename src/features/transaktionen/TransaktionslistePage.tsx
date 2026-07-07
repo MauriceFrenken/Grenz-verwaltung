@@ -1,5 +1,4 @@
 import { PageHeader } from "@/components/shared/PageHeader";
-import { EntwicklungOverlay } from "@/components/shared/EntwicklungOverlay";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -22,7 +21,6 @@ const spalten: Column<Transaktion>[] = [
 export function TransaktionslistePage() {
   const { data, isLoading, isEmpty } = useApi(() => transaktionenApi.listTransaktionen(), []);
   return (
-    <EntwicklungOverlay>
     <>
       <PageHeader titel="Transaktionsliste" />
       <PageWrapper>
@@ -35,6 +33,5 @@ export function TransaktionslistePage() {
         />
       </PageWrapper>
     </>
-    </EntwicklungOverlay>
   );
 }

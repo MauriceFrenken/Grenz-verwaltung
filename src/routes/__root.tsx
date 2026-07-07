@@ -14,7 +14,6 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../components/auth/AuthProvider";
-import { OutlookConnectionProvider } from "../features/dokumente/outlook/OutlookConnectionProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { Toaster } from "../components/ui/sonner";
 import { useAuth } from "../hooks/useAuth";
@@ -163,7 +162,7 @@ function AuthGate({ children }: { children: ReactNode }) {
     return children;
   }
 
-  return <AppShell><OutlookConnectionProvider>{children}</OutlookConnectionProvider></AppShell>;
+  return <AppShell>{children}</AppShell>;
 }
 
 function RootComponent() {

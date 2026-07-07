@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ObjektDetailPage } from "@/features/verwaltung/ObjektDetailPage";
+import { ObjektDetailTeaser } from "@/features/teaser";
 import { seitenGuard } from "@/lib/permissions";
 
 export const Route = createFileRoute("/verwaltung/objekte/$id")({
@@ -9,5 +9,5 @@ export const Route = createFileRoute("/verwaltung/objekte/$id")({
 
 function RouteComponent() {
   const { id } = Route.useParams();
-  return <ObjektDetailPage id={id} />;
+  return <ObjektDetailTeaser id={id} />;
 }

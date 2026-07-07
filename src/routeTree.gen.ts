@@ -38,9 +38,6 @@ import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.a
 import { Route as DokumentePruefordnerRouteImport } from './routes/dokumente.pruefordner'
 import { Route as DokumenteAblageRouteImport } from './routes/dokumente.ablage'
 import { Route as VerwaltungObjekteIdRouteImport } from './routes/verwaltung.objekte.$id'
-import { Route as IntegrationsOutlookCallbackRouteImport } from './routes/integrations.outlook.callback'
-import { Route as IntegrationenOutlookCallbackRouteImport } from './routes/integrationen.outlook.callback'
-import { Route as DokumenteOutlookCallbackRouteImport } from './routes/dokumente.outlook.callback'
 
 const VerwaltungRoute = VerwaltungRouteImport.update({
   id: '/verwaltung',
@@ -190,24 +187,6 @@ const VerwaltungObjekteIdRoute = VerwaltungObjekteIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => VerwaltungObjekteRoute,
 } as any)
-const IntegrationsOutlookCallbackRoute =
-  IntegrationsOutlookCallbackRouteImport.update({
-    id: '/integrations/outlook/callback',
-    path: '/integrations/outlook/callback',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const IntegrationenOutlookCallbackRoute =
-  IntegrationenOutlookCallbackRouteImport.update({
-    id: '/integrationen/outlook/callback',
-    path: '/integrationen/outlook/callback',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const DokumenteOutlookCallbackRoute =
-  DokumenteOutlookCallbackRouteImport.update({
-    id: '/outlook/callback',
-    path: '/outlook/callback',
-    getParentRoute: () => DokumenteRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -238,9 +217,6 @@ export interface FileRoutesByFullPath {
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/transaktionen/': typeof TransaktionenIndexRoute
   '/verwaltung/': typeof VerwaltungIndexRoute
-  '/dokumente/outlook/callback': typeof DokumenteOutlookCallbackRoute
-  '/integrationen/outlook/callback': typeof IntegrationenOutlookCallbackRoute
-  '/integrations/outlook/callback': typeof IntegrationsOutlookCallbackRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
 }
 export interface FileRoutesByTo {
@@ -268,9 +244,6 @@ export interface FileRoutesByTo {
   '/einstellungen': typeof EinstellungenIndexRoute
   '/transaktionen': typeof TransaktionenIndexRoute
   '/verwaltung': typeof VerwaltungIndexRoute
-  '/dokumente/outlook/callback': typeof DokumenteOutlookCallbackRoute
-  '/integrationen/outlook/callback': typeof IntegrationenOutlookCallbackRoute
-  '/integrations/outlook/callback': typeof IntegrationsOutlookCallbackRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
 }
 export interface FileRoutesById {
@@ -303,9 +276,6 @@ export interface FileRoutesById {
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/transaktionen/': typeof TransaktionenIndexRoute
   '/verwaltung/': typeof VerwaltungIndexRoute
-  '/dokumente/outlook/callback': typeof DokumenteOutlookCallbackRoute
-  '/integrationen/outlook/callback': typeof IntegrationenOutlookCallbackRoute
-  '/integrations/outlook/callback': typeof IntegrationsOutlookCallbackRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
 }
 export interface FileRouteTypes {
@@ -339,9 +309,6 @@ export interface FileRouteTypes {
     | '/einstellungen/'
     | '/transaktionen/'
     | '/verwaltung/'
-    | '/dokumente/outlook/callback'
-    | '/integrationen/outlook/callback'
-    | '/integrations/outlook/callback'
     | '/verwaltung/objekte/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -369,9 +336,6 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/transaktionen'
     | '/verwaltung'
-    | '/dokumente/outlook/callback'
-    | '/integrationen/outlook/callback'
-    | '/integrations/outlook/callback'
     | '/verwaltung/objekte/$id'
   id:
     | '__root__'
@@ -403,9 +367,6 @@ export interface FileRouteTypes {
     | '/einstellungen/'
     | '/transaktionen/'
     | '/verwaltung/'
-    | '/dokumente/outlook/callback'
-    | '/integrationen/outlook/callback'
-    | '/integrations/outlook/callback'
     | '/verwaltung/objekte/$id'
   fileRoutesById: FileRoutesById
 }
@@ -419,8 +380,6 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TransaktionenRoute: typeof TransaktionenRouteWithChildren
   VerwaltungRoute: typeof VerwaltungRouteWithChildren
-  IntegrationenOutlookCallbackRoute: typeof IntegrationenOutlookCallbackRoute
-  IntegrationsOutlookCallbackRoute: typeof IntegrationsOutlookCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -628,27 +587,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerwaltungObjekteIdRouteImport
       parentRoute: typeof VerwaltungObjekteRoute
     }
-    '/integrations/outlook/callback': {
-      id: '/integrations/outlook/callback'
-      path: '/integrations/outlook/callback'
-      fullPath: '/integrations/outlook/callback'
-      preLoaderRoute: typeof IntegrationsOutlookCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/integrationen/outlook/callback': {
-      id: '/integrationen/outlook/callback'
-      path: '/integrationen/outlook/callback'
-      fullPath: '/integrationen/outlook/callback'
-      preLoaderRoute: typeof IntegrationenOutlookCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dokumente/outlook/callback': {
-      id: '/dokumente/outlook/callback'
-      path: '/outlook/callback'
-      fullPath: '/dokumente/outlook/callback'
-      preLoaderRoute: typeof DokumenteOutlookCallbackRouteImport
-      parentRoute: typeof DokumenteRoute
-    }
   }
 }
 
@@ -656,14 +594,12 @@ interface DokumenteRouteChildren {
   DokumenteAblageRoute: typeof DokumenteAblageRoute
   DokumentePruefordnerRoute: typeof DokumentePruefordnerRoute
   DokumenteIndexRoute: typeof DokumenteIndexRoute
-  DokumenteOutlookCallbackRoute: typeof DokumenteOutlookCallbackRoute
 }
 
 const DokumenteRouteChildren: DokumenteRouteChildren = {
   DokumenteAblageRoute: DokumenteAblageRoute,
   DokumentePruefordnerRoute: DokumentePruefordnerRoute,
   DokumenteIndexRoute: DokumenteIndexRoute,
-  DokumenteOutlookCallbackRoute: DokumenteOutlookCallbackRoute,
 }
 
 const DokumenteRouteWithChildren = DokumenteRoute._addFileChildren(
@@ -753,8 +689,6 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TransaktionenRoute: TransaktionenRouteWithChildren,
   VerwaltungRoute: VerwaltungRouteWithChildren,
-  IntegrationenOutlookCallbackRoute: IntegrationenOutlookCallbackRoute,
-  IntegrationsOutlookCallbackRoute: IntegrationsOutlookCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

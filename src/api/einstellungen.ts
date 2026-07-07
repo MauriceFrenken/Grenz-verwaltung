@@ -14,7 +14,6 @@ import type {
   BenutzerUpdateInput,
   Mandant,
   MandantZuweisung,
-  Integration,
   Paginated,
   Rolle,
   RolleName,
@@ -119,15 +118,6 @@ export const einstellungenApi = {
   async deleteMandant(id: string): Promise<void> {
     const { error } = await supabase.from("mandanten").delete().eq("id", id);
     if (error) throw error;
-  },
-  async listIntegrationen(): Promise<Integration[]> {
-    return [];
-  },
-  async verbindeIntegration(_id: Integration["id"]): Promise<void> {
-    throw new NotImplementedError("einstellungen.verbindeIntegration");
-  },
-  async trenneIntegration(_id: Integration["id"]): Promise<void> {
-    throw new NotImplementedError("einstellungen.trenneIntegration");
   },
   async listRollen(): Promise<RollenDefinition[]> {
     const { data, error } = await supabase

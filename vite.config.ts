@@ -6,12 +6,10 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-import { emailAiDevPlugin } from "./vite-plugin-email-ai-dev";
 import { exposeAiDevPlugin } from "./vite-plugin-expose-ai-dev";
-import { microsoftOAuthDevPlugin } from "./vite-plugin-microsoft-oauth-dev";
 
 export default defineConfig({
-  plugins: [microsoftOAuthDevPlugin(), emailAiDevPlugin(), exposeAiDevPlugin()],
+  plugins: [exposeAiDevPlugin()],
   vite: {
     server: {
       port: 8080,
