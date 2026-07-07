@@ -1,0 +1,209 @@
+import { useState } from "react";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { PageWrapper } from "@/components/layout/PageWrapper";
+import { DataTable, type Column } from "@/components/shared/DataTable";
+import { LoeschenDialog } from "@/components/shared/LoeschenDialog";
+import { PermissionGate } from "@/components/auth/PermissionGate";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
+import { useApi } from "@/hooks/useApi";
+import { useAuth, usePermissions } from "@/hooks/useAuth";
+import { useAktionGuard } from "@/hooks/useAktionGuard";
+import { einstellungenApi } from "@/api/einstellungen";
+import { mandantIdsAusBenutzer } from "@/lib/auth";
+import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
+import { primaereRolle } from "@/lib/permissions";
+import { ROLLEN } from "@/lib/constants";
+import { usePermissionsStore } from "@/store/permissions";
+import type { Benutzer, Mandant } from "@/types";
+import { BenutzerForm } from "./BenutzerForm";
+
+function mandantSpalte(b: Benutzer, mandanten: Mandant[]) {
+  const zugriff = mandantIdsAusBenutzer(b);
+  if (zugriff === "*") {
+    return <span className="text-text-muted">Alle</span>;
+  }
+  const namen = zugriff
+    .map((id) => mandanten.find((m) => m.id === id)?.kuerzel ?? id)
+    .join(", ");
+  return <span className="text-text-muted">{namen || "–"}</span>;
+}
+
+function spaltenFuerMandanten(mandanten: Mandant[]): Column<Benutzer>[] {
+  return [
+    {
+      key: "name",
+      header: "Name",
+      render: (b) => <span className="font-medium text-heading">{b.name}</span>,
+    },
+    { key: "email", header: "E-Mail", render: (b) => b.email },
+    {
+      key: "stellenbezeichnung",
+      header: "Stelle",
+      render: (b) =>
+        b.stellenbezeichnung ? (
+          b.stellenbezeichnung
+        ) : (
+          <span className="text-text-subtle">–</span>
+        ),
+    },
+    {
+      key: "initialen",
+      header: "Initialen",
+      render: (b) => <span className="label-caps text-text-muted">{b.initialen}</span>,
+    },
+    {
+      key: "rolle",
+      header: "Rolle",
+      render: (b) => {
+        const rolle = b.rollen[0]?.rolle;
+        if (!rolle) return <span className="text-text-subtle">–</span>;
+        return (
+          <span className="text-text-muted">{ROLLEN[rolle]?.bezeichnung ?? rolle}</span>
+        );
+      },
+    },
+    {
+      key: "mandanten",
+      header: "Mandanten",
+      render: (b) => mandantSpalte(b, mandanten),
+    },
+  ];
+}
+
+export function BenutzerPage() {
+  const { benutzer: angemeldeterBenutzer } = useAuth();
+  const { darfAktion, darfBenutzerVerwalten, istOpAdmin } = usePermissions();
+  const { erlaubtOderHinweis } = useAktionGuard();
+  const rangMap = usePermissionsStore((s) => s.rangMap);
+  const [dialogOffen, setDialogOffen] = useState(false);
+  const [bearbeiten, setBearbeiten] = useState<Benutzer | null>(null);
+  const [loeschenOffen, setLoeschenOffen] = useState(false);
+  const [loeschenLaeuft, setLoeschenLaeuft] = useState(false);
+  const { data, isLoading, isEmpty, reload } = useApi(() => einstellungenApi.listBenutzer(), []);
+  const mandanten = useApi(() => einstellungenApi.listMandanten(), []);
+  const spalten = spaltenFuerMandanten(mandanten.data?.items ?? []);
+
+  const kannBenutzerBearbeiten = (b: Benutzer): boolean => {
+    if (istOpAdmin()) return true;
+    if (!darfAktion("aktion.einstellungen.benutzer.bearbeiten")) return false;
+    const zielRolle = primaereRolle(b.rollen, rangMap());
+    if (!zielRolle) return false;
+    return darfBenutzerVerwalten(zielRolle);
+  };
+
+  const schliesseBearbeitung = () => {
+    setBearbeiten(null);
+    setLoeschenOffen(false);
+  };
+
+  const loeschen = async () => {
+    if (!bearbeiten) return;
+    if (!istOpAdmin() && !erlaubtOderHinweis("aktion.einstellungen.benutzer.loeschen")) return;
+    if (bearbeiten.id === angemeldeterBenutzer?.id) {
+      toast.error("Sie können Ihr eigenes Konto nicht löschen");
+      return;
+    }
+    setLoeschenLaeuft(true);
+    try {
+      await einstellungenApi.deleteBenutzer(bearbeiten.id);
+      toast.success("Benutzer gelöscht");
+      schliesseBearbeitung();
+      reload();
+    } catch (err) {
+      toast.error(apiFehlermeldung(err));
+    } finally {
+      setLoeschenLaeuft(false);
+    }
+  };
+
+  return (
+    <>
+      <PageHeader
+        titel="Benutzer"
+        aktionen={
+          <PermissionGate berechtigung="aktion.einstellungen.benutzer.einladen">
+            <Dialog open={dialogOffen} onOpenChange={setDialogOffen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-heading">
+                  <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
+                  Neuer Benutzer
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Benutzer einladen</DialogTitle>
+                </DialogHeader>
+                {dialogOffen ? (
+                  <BenutzerForm
+                    onDone={() => {
+                      setDialogOffen(false);
+                      reload();
+                    }}
+                  />
+                ) : null}
+              </DialogContent>
+            </Dialog>
+          </PermissionGate>
+        }
+      />
+      <PageWrapper>
+        <DataTable
+          spalten={spalten}
+          zeilen={data?.items ?? []}
+          isLoading={isLoading}
+          isEmpty={isEmpty}
+          rowKey={(b) => b.id}
+          onRowClick={
+            istOpAdmin() || darfAktion("aktion.einstellungen.benutzer.bearbeiten")
+              ? (b) => {
+                  if (kannBenutzerBearbeiten(b)) setBearbeiten(b);
+                }
+              : undefined
+          }
+        />
+      </PageWrapper>
+
+      <Dialog open={bearbeiten !== null} onOpenChange={(open) => !open && schliesseBearbeitung()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Benutzer bearbeiten</DialogTitle>
+          </DialogHeader>
+          {bearbeiten ? (
+            <BenutzerForm
+              key={bearbeiten.id}
+              benutzer={bearbeiten}
+              onDone={() => {
+                schliesseBearbeitung();
+                reload();
+              }}
+              onLoeschenAnfragen={
+                bearbeiten.id !== angemeldeterBenutzer?.id &&
+                (istOpAdmin() ||
+                  (darfAktion("aktion.einstellungen.benutzer.loeschen") &&
+                    darfBenutzerVerwalten(primaereRolle(bearbeiten.rollen, rangMap()) ?? "")))
+                  ? () => setLoeschenOffen(true)
+                  : undefined
+              }
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <LoeschenDialog
+        offen={loeschenOffen}
+        onOpenChange={setLoeschenOffen}
+        titel="Benutzer löschen"
+        beschreibung={
+          bearbeiten
+            ? `Möchten Sie „${bearbeiten.name}" (${bearbeiten.email}) wirklich löschen?`
+            : ""
+        }
+        onLoeschen={loeschen}
+        isLoading={loeschenLaeuft}
+      />
+    </>
+  );
+}
