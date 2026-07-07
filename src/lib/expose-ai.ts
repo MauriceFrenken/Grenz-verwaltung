@@ -20,15 +20,43 @@ export type AnalyzeExposeRequest = {
   modelContext: string;
 };
 
+export type ExposeFeldGruppe = "immobilie" | "transaktion";
+export type ExposeFeldTyp = "zahl" | "text" | "auswahl";
+
 export const EXPOSE_FELD_DEFINITIONEN = [
-  { id: "objektadresse", label: "Objektadresse" },
-  { id: "kaufpreis", label: "Kaufpreis" },
-  { id: "wohnNutzflaeche", label: "Wohn-/Nutzfläche" },
-  { id: "anzahlEinheiten", label: "Anzahl Einheiten" },
-  { id: "baujahr", label: "Baujahr" },
-  { id: "faktorRendite", label: "Faktor/Rendite" },
-  { id: "maklerKontakt", label: "Makler/Kontakt" },
+  { id: "baujahr", label: "Baujahr", gruppe: "immobilie" as const, typ: "zahl" as const },
+  { id: "heizungsart", label: "Heizungsart", gruppe: "immobilie" as const, typ: "text" as const },
+  { id: "energieausweis", label: "Energieausweis", gruppe: "immobilie" as const, typ: "auswahl" as const },
+  { id: "anzahlWohnungen", label: "Anzahl Wohnungen", gruppe: "immobilie" as const, typ: "zahl" as const },
+  { id: "mietflaecheGesamt", label: "Mietfläche gesamt", gruppe: "immobilie" as const, typ: "zahl" as const },
+  { id: "wohnflaeche", label: "Wohnfläche", gruppe: "immobilie" as const, typ: "zahl" as const },
+  { id: "gewerbeflaeche", label: "Gewerbefläche", gruppe: "immobilie" as const, typ: "zahl" as const },
+  { id: "anzahlStellplaetze", label: "Anzahl Stellplätze", gruppe: "immobilie" as const, typ: "zahl" as const },
+  { id: "makler", label: "Makler", gruppe: "transaktion" as const, typ: "text" as const },
+  {
+    id: "jahresnettokaltmiete",
+    label: "Jahresnettokaltmiete",
+    gruppe: "transaktion" as const,
+    typ: "zahl" as const,
+  },
+  { id: "objektzustand", label: "Objektzustand", gruppe: "transaktion" as const, typ: "auswahl" as const },
 ] as const;
+
+/** Felder, die beim Anlegen gesetzt werden — nicht per KI extrahiert. */
+export const EXPOSE_SYSTEM_FELDER = [
+  { id: "status", label: "Status", gruppe: "transaktion" as const, wert: "Auf dem Markt" },
+  {
+    id: "minAufDemMarktSeit",
+    label: "Min. auf dem Markt seit",
+    gruppe: "transaktion" as const,
+    autoDatum: true as const,
+  },
+] as const;
+
+export const EXPOSE_FELD_GRUPPEN: { id: ExposeFeldGruppe; label: string }[] = [
+  { id: "immobilie", label: "Real Estate" },
+  { id: "transaktion", label: "Transaktionsdatensatz" },
+];
 
 export type ExposeFeldId = (typeof EXPOSE_FELD_DEFINITIONEN)[number]["id"];
 
@@ -38,6 +66,31 @@ export type ExposeFelder = Record<ExposeFeldId, ExposeFeldQuelle>;
 
 export type AnalyzeExposeResponse = {
   fields: ExposeFelder;
+};
+
+const FELD_ANWEISUNGEN: Record<ExposeFeldId, string> = {
+  baujahr:
+    "Baujahr / Jahr der Errichtung als vierstellige Jahreszahl (z. B. „1972“). Nur die Zahl in value — kein Text.",
+  heizungsart:
+    "Heizungsart als Freitext (z. B. „Gas-Etagenheizungen“, „Öl-Zentralheizung“, „Fernwärme“). Nur die Art, keine Kontaktdaten.",
+  energieausweis:
+    "Energieeffizienzklasse des Energieausweises — nur die Klasse in value (z. B. „A+“, „A“, „B“, „C“, „D“, „E“, „F“, „G“, „H“). Keine Zusatzinfos.",
+  anzahlWohnungen:
+    "Anzahl Wohnungen / Wohneinheiten (z. B. „6 WE“). Nur die Zahl in value — keine Einheit, kein „WE“.",
+  mietflaecheGesamt:
+    "Gesamte vermietbare / Mietfläche in Quadratmetern. Nur die Zahl in value — kein m², qm oder Quadratmeter.",
+  wohnflaeche:
+    "Wohnfläche in Quadratmetern. Nur die Zahl in value — kein m², qm oder Quadratmeter.",
+  gewerbeflaeche:
+    "Gewerbefläche in Quadratmetern. Nur die Zahl in value — kein m², qm oder Quadratmeter. null wenn nicht angegeben.",
+  anzahlStellplaetze:
+    "Anzahl Stellplätze / Parkplätze / Garagen. Nur die Zahl in value — keine Einheit.",
+  makler:
+    "Maklerfirma / Immobilienmakler (z. B. „Engel & Völkers“, „JLL“). Nur Firmenname — keine Telefonnummern oder E-Mails.",
+  jahresnettokaltmiete:
+    "Jahresnettokaltmiete / Jahreskaltmiete / Ist-Miete p.a. Nur die Zahl in value — kein €, EUR oder Währung. Bei Monatsmiete: Jahreswert berechnen (× 12).",
+  objektzustand:
+    "Objektzustand als Buchstabe A, B, C oder D — nur wenn im Exposé explizit als Zustandsklasse (A–D) erkennbar. Bei Unsicherheit: value null, konfidenz niedrig.",
 };
 
 function getOpenAiKey(): string | null {
@@ -55,6 +108,14 @@ function feldSchema(): string {
 }
 
 function buildPrompt(): string {
+  const feldListe = EXPOSE_FELD_DEFINITIONEN.map(
+    (d) => `- ${d.id}: ${FELD_ANWEISUNGEN[d.id]}`,
+  ).join("\n");
+
+  const jsonFelder = EXPOSE_FELD_DEFINITIONEN.map(
+    (d) => `    "${d.id}": {\n${feldSchema()}\n    }`,
+  ).join(",\n");
+
   return [
     "Du bist ein Assistent für deutsche Immobilien-Exposés (FRENKEN Verwaltung).",
     "Extrahiere strukturierte Felder aus dem bereitgestellten PDF-Text.",
@@ -66,43 +127,18 @@ function buildPrompt(): string {
     "- page: Dateiseite (1-basiert), passend zum Marker <<<PAGE n>>> im Text — nicht die gedruckte Seitennummer.",
     "- Bei Unsicherheit: value null, verbatimQuote null, page null, konfidenz niedrig (< 0.5).",
     "",
+    "=== ZAHLEN-FORMAT ===",
+    "- Alle Felder vom Typ „Zahl“: value enthält ausschließlich Ziffern (ggf. Dezimalpunkt).",
+    "- Keine Währung (€, EUR, USD), keine Flächeneinheit (m², qm), keine Prozentzeichen, keine Tausendertrennzeichen.",
+    "- Beispiele: „1.250.000 €“ → value „1250000“, „450 m²“ → value „450“, „6 WE“ → value „6“.",
+    "",
     "Felder:",
-    "- objektadresse: Adresse der angebotenen Immobilie (Straße, PLZ, Ort des Objekts).",
-    "  Nur wenn explizit als Objekt-/Immobilien-/Lageadresse erkennbar (z. B. „Objektadresse“, „Lage“, „Standort“, „Property location“).",
-    "  NICHT verwenden: Makler-/Firmen-/Büroadresse, Impressum, Kontaktblock, Verkäufer-Standort, Briefkopf-Footer.",
-    "  Wenn nur eine Firmenadresse im Dokument steht, aber keine Objektadresse → value null.",
-    "- kaufpreis: Kaufpreis / Angebotspreis (z. B. „1.250.000 €“ oder „1,25 Mio. €“).",
-    "- wohnNutzflaeche: Wohn- und/oder Nutzfläche in m² (z. B. „450 m² Wohnfläche“ oder „320 m² NF“).",
-    "- anzahlEinheiten: Anzahl Wohn-/Gewerbeeinheiten (z. B. „6 WE“ oder „12 Einheiten“).",
-    "- baujahr: Jahr der Errichtung (z. B. „1972“ oder „Baujahr 1985“).",
-    "- faktorRendite: Kaufpreisfaktor und/oder Rendite (z. B. „Faktor 18,5“ oder „5,2 % Rendite“).",
-    "- maklerKontakt: Maklerfirma, Ansprechpartner, Telefon, E-Mail — kompakt in value zusammenfassen.",
-    "  verbatimQuote: nur ein kurzes, zusammenhängendes Zitat (eine Zeile, max. ~80 Zeichen), z. B. Firmenname oder Telefonzeile.",
+    feldListe,
     "",
     "Antworte ausschließlich mit gültigem JSON (kein Markdown):",
     "{",
     '  "fields": {',
-    '    "objektadresse": {',
-    feldSchema(),
-    "    },",
-    '    "kaufpreis": {',
-    feldSchema(),
-    "    },",
-    '    "wohnNutzflaeche": {',
-    feldSchema(),
-    "    },",
-    '    "anzahlEinheiten": {',
-    feldSchema(),
-    "    },",
-    '    "baujahr": {',
-    feldSchema(),
-    "    },",
-    '    "faktorRendite": {',
-    feldSchema(),
-    "    },",
-    '    "maklerKontakt": {',
-    feldSchema(),
-    "    }",
+    jsonFelder,
     "  }",
     "}",
   ].join("\n");
@@ -134,12 +170,98 @@ function leeresFeld(): ExposeFeldQuelle {
   return { value: null, verbatimQuote: null, page: null, konfidenz: 0 };
 }
 
-function parseFeld(raw: unknown): ExposeFeldQuelle {
+function parseDeutscheZahl(raw: string): number | null {
+  let s = raw.replace(/[^\d.,]/g, "").trim();
+  if (!s) return null;
+
+  if (s.includes(".") && s.includes(",")) {
+    const lastComma = s.lastIndexOf(",");
+    const lastDot = s.lastIndexOf(".");
+    if (lastComma > lastDot) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
+  } else if (s.includes(",")) {
+    const [, nachkomma] = s.split(",");
+    if (nachkomma !== undefined && nachkomma.length <= 2) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
+  } else if (s.includes(".")) {
+    const [, nachkomma] = s.split(".");
+    if (nachkomma !== undefined && nachkomma.length === 3) {
+      s = s.replace(/\./g, "");
+    }
+  }
+
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function normalizeZahl(raw: string | null, ganzzahl: boolean): string | null {
+  if (!raw) return null;
+
+  let s = raw.trim();
+  const mio = s.match(/([\d.,]+)\s*Mio\.?/i);
+  if (mio) {
+    const basis = parseDeutscheZahl(mio[1]);
+    if (basis !== null) {
+      const wert = basis * 1_000_000;
+      return ganzzahl ? String(Math.round(wert)) : String(wert);
+    }
+  }
+
+  const n = parseDeutscheZahl(s);
+  if (n === null) return null;
+  return ganzzahl ? String(Math.round(n)) : String(n);
+}
+
+function normalizeEnergieausweis(raw: string | null): string | null {
+  if (!raw) return null;
+  const match = raw.trim().match(/\b([A-H]\+?)\b/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
+function normalizeObjektzustand(raw: string | null): string | null {
+  if (!raw) return null;
+  const match = raw.trim().match(/\b([A-D])\b/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
+function normalizeBaujahr(raw: string | null): string | null {
+  if (!raw) return null;
+  const match = raw.match(/\b(1[89]\d{2}|20\d{2})\b/);
+  return match ? match[1] : normalizeZahl(raw, true);
+}
+
+function normalizeFeldWert(id: ExposeFeldId, value: string | null): string | null {
+  if (!value) return null;
+
+  const def = EXPOSE_FELD_DEFINITIONEN.find((d) => d.id === id);
+  if (!def) return value;
+
+  switch (def.typ) {
+    case "zahl":
+      if (id === "baujahr") return normalizeBaujahr(value);
+      return normalizeZahl(value, id !== "jahresnettokaltmiete");
+    case "auswahl":
+      if (id === "energieausweis") return normalizeEnergieausweis(value);
+      if (id === "objektzustand") return normalizeObjektzustand(value);
+      return value.trim() || null;
+    default:
+      return value.trim() || null;
+  }
+}
+
+function parseFeld(id: ExposeFeldId, raw: unknown): ExposeFeldQuelle {
   if (!raw || typeof raw !== "object") return leeresFeld();
   const o = raw as Record<string, unknown>;
 
-  const value =
+  const rawValue =
     typeof o.value === "string" && o.value.trim() ? o.value.trim() : null;
+  const value = normalizeFeldWert(id, rawValue);
   const verbatimQuote =
     typeof o.verbatimQuote === "string" && o.verbatimQuote.trim()
       ? o.verbatimQuote.trim()
@@ -185,7 +307,7 @@ function parseJsonResponse(raw: string): AnalyzeExposeResponse {
 
   const fields = leereFelder();
   for (const id of EXPOSE_FELD_IDS) {
-    fields[id] = parseFeld(fieldsRaw[id]);
+    fields[id] = parseFeld(id, fieldsRaw[id]);
   }
 
   return { fields };
@@ -224,7 +346,7 @@ export async function handleAnalyzeExposeRequest(
       model: MODEL,
       instructions: buildPrompt(),
       input: [{ role: "user", content: [{ type: "input_text", text: userText }] }],
-      max_output_tokens: 2000,
+      max_output_tokens: 3000,
       temperature: 0,
     }),
   });
