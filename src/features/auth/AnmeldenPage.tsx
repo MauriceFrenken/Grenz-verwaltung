@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthShell } from "@/features/auth/AuthShell";
+import { AuthDatenschutzLink } from "@/components/legal/AuthDatenschutzLink";
 
 export function AnmeldenPage() {
   const { anmelden, passwortVergessen } = useAuth();
@@ -192,6 +193,7 @@ export function AnmeldenPage() {
           </button>
         </form>
       )}
+      <AuthDatenschutzLink />
     </AuthShell>
   );
 }

@@ -135,7 +135,9 @@ function AuthGate({ children }: { children: ReactNode }) {
   const istAnmeldenSeite = pathname === "/anmelden";
   const istEinladungSeite = pathname === "/einladung";
   const istPasswortZuruecksetzenSeite = pathname === "/passwort-zuruecksetzen";
-  const istAuthSeite = istAnmeldenSeite || istEinladungSeite || istPasswortZuruecksetzenSeite;
+  const istDatenschutzSeite = pathname === "/datenschutz";
+  const istAuthSeite =
+    istAnmeldenSeite || istEinladungSeite || istPasswortZuruecksetzenSeite || istDatenschutzSeite;
 
   if (isLoading) {
     return (
@@ -150,7 +152,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   }
 
   // Invite / recovery links establish a session and must set a password first.
-  if (istEinladungSeite || istPasswortZuruecksetzenSeite) {
+  if (istEinladungSeite || istPasswortZuruecksetzenSeite || istDatenschutzSeite) {
     return children;
   }
 

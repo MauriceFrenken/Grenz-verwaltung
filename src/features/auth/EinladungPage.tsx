@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthShell } from "@/features/auth/AuthShell";
+import { AuthDatenschutzLink } from "@/components/legal/AuthDatenschutzLink";
 
 export function EinladungPage() {
   const { istAngemeldet, isLoading } = useAuth();
@@ -142,6 +143,7 @@ export function EinladungPage() {
           )}
         </Button>
       </form>
+      <AuthDatenschutzLink variant="hinweis" />
     </AuthShell>
   );
 }

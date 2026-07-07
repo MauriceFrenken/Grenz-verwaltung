@@ -16,6 +16,7 @@ import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zur
 import { Route as EinstellungenRouteImport } from './routes/einstellungen'
 import { Route as EinladungRouteImport } from './routes/einladung'
 import { Route as DokumenteRouteImport } from './routes/dokumente'
+import { Route as DatenschutzRouteImport } from './routes/datenschutz'
 import { Route as AnmeldenRouteImport } from './routes/anmelden'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VerwaltungIndexRouteImport } from './routes/verwaltung.index'
@@ -72,6 +73,11 @@ const EinladungRoute = EinladungRouteImport.update({
 const DokumenteRoute = DokumenteRouteImport.update({
   id: '/dokumente',
   path: '/dokumente',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DatenschutzRoute = DatenschutzRouteImport.update({
+  id: '/datenschutz',
+  path: '/datenschutz',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnmeldenRoute = AnmeldenRouteImport.update({
@@ -191,6 +197,7 @@ const VerwaltungObjekteIdRoute = VerwaltungObjekteIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
+  '/datenschutz': typeof DatenschutzRoute
   '/dokumente': typeof DokumenteRouteWithChildren
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
@@ -222,6 +229,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
+  '/datenschutz': typeof DatenschutzRoute
   '/einladung': typeof EinladungRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
+  '/datenschutz': typeof DatenschutzRoute
   '/dokumente': typeof DokumenteRouteWithChildren
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
@@ -283,6 +292,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/anmelden'
+    | '/datenschutz'
     | '/dokumente'
     | '/einladung'
     | '/einstellungen'
@@ -314,6 +324,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/anmelden'
+    | '/datenschutz'
     | '/einladung'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
@@ -341,6 +352,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/anmelden'
+    | '/datenschutz'
     | '/dokumente'
     | '/einladung'
     | '/einstellungen'
@@ -373,6 +385,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnmeldenRoute: typeof AnmeldenRoute
+  DatenschutzRoute: typeof DatenschutzRoute
   DokumenteRoute: typeof DokumenteRouteWithChildren
   EinladungRoute: typeof EinladungRoute
   EinstellungenRoute: typeof EinstellungenRouteWithChildren
@@ -431,6 +444,13 @@ declare module '@tanstack/react-router' {
       path: '/dokumente'
       fullPath: '/dokumente'
       preLoaderRoute: typeof DokumenteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/datenschutz': {
+      id: '/datenschutz'
+      path: '/datenschutz'
+      fullPath: '/datenschutz'
+      preLoaderRoute: typeof DatenschutzRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/anmelden': {
@@ -682,6 +702,7 @@ const VerwaltungRouteWithChildren = VerwaltungRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnmeldenRoute: AnmeldenRoute,
+  DatenschutzRoute: DatenschutzRoute,
   DokumenteRoute: DokumenteRouteWithChildren,
   EinladungRoute: EinladungRoute,
   EinstellungenRoute: EinstellungenRouteWithChildren,
