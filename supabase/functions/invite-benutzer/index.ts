@@ -165,13 +165,60 @@ Deno.serve(async (req: Request) => {
       rolle?: string;
       mandantZugriff?: "*" | string[];
       redirectTo?: string;
+      resend?: boolean;
     };
+
+    const redirectTo = body.redirectTo?.trim() ?? "";
+    if (!redirectTo) {
+      return json({ error: "redirectTo fehlt" }, 400);
+    }
+
+    const admin = createClient(supabaseUrl, serviceRoleKey);
+
+    if (body.resend === true) {
+      const email = body.email?.trim().toLowerCase() ?? "";
+      if (!email || !email.includes("@")) {
+        return json({ error: "Bitte eine gültige E-Mail angeben" }, 400);
+      }
+
+      const { data: existingList, error: listError } = await admin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+      if (listError) {
+        return json({ error: listError.message }, 400);
+      }
+
+      const existing = existingList.users.find(
+        (u) => u.email?.toLowerCase() === email,
+      );
+      if (!existing) {
+        return json({ error: "Benutzer nicht gefunden" }, 404);
+      }
+      if (existing.email_confirmed_at) {
+        return json(
+          { error: "Dieser Benutzer hat die Einladung bereits angenommen." },
+          400,
+        );
+      }
+
+      const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
+        redirectTo,
+      });
+      if (inviteError) {
+        const message = inviteError.message.includes("rate limit")
+          ? "Zu viele E-Mails in kurzer Zeit. Bitte in einigen Minuten erneut versuchen."
+          : inviteError.message;
+        return json({ error: message }, 400);
+      }
+
+      return json({ ok: true, id: existing.id, resent: true });
+    }
 
     const email = body.email?.trim().toLowerCase() ?? "";
     const name = body.name?.trim() ?? "";
     const stellenbezeichnung = body.stellenbezeichnung?.trim() ?? "";
     const rolle = body.rolle?.trim() ?? "";
-    const redirectTo = body.redirectTo?.trim() ?? "";
     const mandantZugriffRaw = body.mandantZugriff;
     const alleMandanten = mandantZugriffRaw === "*" || mandantZugriffRaw === undefined;
     const mandantIds = alleMandanten
@@ -189,14 +236,9 @@ Deno.serve(async (req: Request) => {
     if (stellenbezeichnung.length < 1) {
       return json({ error: "Bitte eine Stellenbezeichnung angeben" }, 400);
     }
-    if (!redirectTo) {
-      return json({ error: "redirectTo fehlt" }, 400);
-    }
     if (!alleMandanten && mandantIds.length === 0) {
       return json({ error: "Bitte mindestens einen Mandanten auswählen" }, 400);
     }
-
-    const admin = createClient(supabaseUrl, serviceRoleKey);
 
     if (!(await istGueltigeRolle(admin, rolle))) {
       return json({ error: "Ungültige Rolle" }, 400);
@@ -238,7 +280,13 @@ Deno.serve(async (req: Request) => {
       });
 
     if (inviteError) {
-      return json({ error: inviteError.message }, 400);
+      const message = inviteError.message.includes("rate limit")
+        ? "Zu viele E-Mails in kurzer Zeit. Bitte in einigen Minuten erneut versuchen."
+        : inviteError.message.includes("already been registered") ||
+            inviteError.message.includes("already registered")
+          ? "Diese E-Mail ist bereits registriert."
+          : inviteError.message;
+      return json({ error: message }, 400);
     }
 
     const userId = invited.user?.id;

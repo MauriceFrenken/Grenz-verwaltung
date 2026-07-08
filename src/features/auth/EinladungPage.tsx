@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
+import {
+  authUrlFehlerAnzeige,
+  authUrlFehlerBereinigen,
+  authUrlFehlerLesen,
+} from "@/lib/authUrlFehler";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthShell } from "@/features/auth/AuthShell";
 import { AuthDatenschutzLink } from "@/components/legal/AuthDatenschutzLink";
@@ -17,19 +22,32 @@ export function EinladungPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [urlFehler, setUrlFehler] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fehler = authUrlFehlerLesen();
+    if (fehler) {
+      setUrlFehler(authUrlFehlerAnzeige(fehler));
+      authUrlFehlerBereinigen();
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
 
     const timer = window.setTimeout(() => {
       if (active) setSessionReady(true);
-    }, 800);
+    }, 2500);
 
     return () => {
       active = false;
       window.clearTimeout(timer);
     };
   }, []);
+
+  useEffect(() => {
+    if (istAngemeldet) setUrlFehler(null);
+  }, [istAngemeldet]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,7 +86,10 @@ export function EinladungPage() {
     return (
       <AuthShell
         title="Einladung ungültig oder abgelaufen"
-        description="Bitte öffnen Sie den Link aus der Einladungs-E-Mail erneut oder wenden Sie sich an Ihren Administrator."
+        description={
+          urlFehler ??
+          "Bitte öffnen Sie den Link aus der Einladungs-E-Mail erneut oder wenden Sie sich an Ihren Administrator."
+        }
       >
         <Button
           className="h-11 w-full bg-primary text-primary-foreground transition-colors hover:bg-heading"

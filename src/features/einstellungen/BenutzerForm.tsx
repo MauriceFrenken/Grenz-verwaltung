@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -207,6 +207,26 @@ export function BenutzerForm({
       form.setValue("mandantIds", [""]);
     }
   }, [darfAlleMandanten, mandantZuweisung, form]);
+
+  const [isResending, setIsResending] = useState(false);
+
+  const onResend = async () => {
+    if (!benutzer) return;
+    const berechtigung = "aktion.einstellungen.benutzer.einladen";
+    if (!istOpAdmin() && !erlaubtOderHinweis(berechtigung)) return;
+
+    setIsResending(true);
+    try {
+      await einstellungenApi.resendEinladung(benutzer.email);
+      toast.success("Einladung erneut gesendet", {
+        description: `${benutzer.email} erhält eine neue E-Mail mit einem frischen Link (gültig ca. 1 Stunde).`,
+      });
+    } catch (err) {
+      toast.error(apiFehlermeldung(err));
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const onSubmit = async (values: FormValues) => {
     const berechtigung = istBearbeitung
@@ -464,20 +484,30 @@ export function BenutzerForm({
       </div>
 
       <div className="flex justify-between gap-2 pt-2">
-        <div>
+        <div className="flex gap-2">
           {istBearbeitung && onLoeschenAnfragen ? (
             <Button type="button" variant="destructive" onClick={onLoeschenAnfragen}>
               Löschen
             </Button>
           ) : null}
+          {istBearbeitung && benutzer ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onResend}
+              disabled={isResending || form.formState.isSubmitting}
+            >
+              {isResending ? "Wird gesendet…" : "Einladung erneut senden"}
+            </Button>
+          ) : null}
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={onDone} disabled={form.formState.isSubmitting}>
+          <Button type="button" variant="outline" onClick={onDone} disabled={form.formState.isSubmitting || isResending}>
             Abbrechen
           </Button>
           <Button
             type="submit"
-            disabled={form.formState.isSubmitting}
+            disabled={form.formState.isSubmitting || isResending}
             className="bg-primary text-primary-foreground hover:bg-heading"
           >
             {form.formState.isSubmitting

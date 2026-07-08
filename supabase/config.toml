@@ -164,6 +164,12 @@ additional_redirect_urls = [
   "https://frenken-expose-ai.vercel.app",
   "https://frenken-expose-ai.vercel.app/einladung",
   "https://frenken-expose-ai.vercel.app/passwort-zuruecksetzen",
+  "http://localhost:8080",
+  "http://localhost:8080/einladung",
+  "http://localhost:8080/passwort-zuruecksetzen",
+  "http://127.0.0.1:8080",
+  "http://127.0.0.1:8080/einladung",
+  "http://127.0.0.1:8080/passwort-zuruecksetzen",
   "http://localhost:3000",
   "http://localhost:3000/einladung",
   "http://localhost:3000/passwort-zuruecksetzen",
@@ -241,7 +247,7 @@ max_frequency = "1s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
-otp_expiry = 3600
+otp_expiry = 86400
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]

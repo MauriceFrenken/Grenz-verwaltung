@@ -320,21 +320,19 @@ export const einstellungenApi = {
       },
     });
 
-    if (error) {
-      const message = await edgeFunctionErrorMessage(error, data);
-      throw new Error(message);
-    }
+    return parseInviteAntwort(data, error);
+  },
+  async resendEinladung(email: string): Promise<{ id: string }> {
+    const redirectTo = `${window.location.origin}/einladung`;
+    const { data, error } = await supabase.functions.invoke("invite-benutzer", {
+      body: {
+        resend: true,
+        email: email.trim().toLowerCase(),
+        redirectTo,
+      },
+    });
 
-    if (data && typeof data === "object" && "error" in data && data.error) {
-      throw new Error(String(data.error));
-    }
-
-    const id =
-      data && typeof data === "object" && "id" in data && typeof data.id === "string"
-        ? data.id
-        : "";
-    if (!id) throw new Error("Einladung konnte nicht erstellt werden");
-    return { id };
+    return parseInviteAntwort(data, error);
   },
   async updateBenutzer(input: BenutzerUpdateInput): Promise<void> {
     const { data, error } = await supabase.functions.invoke("update-benutzer", {
@@ -371,6 +369,27 @@ export const einstellungenApi = {
     }
   },
 };
+
+async function parseInviteAntwort(
+  data: unknown,
+  error: { message: string; context?: Response } | null,
+): Promise<{ id: string }> {
+  if (error) {
+    const message = await edgeFunctionErrorMessage(error, data);
+    throw new Error(message);
+  }
+
+  if (data && typeof data === "object" && "error" in data && data.error) {
+    throw new Error(String(data.error));
+  }
+
+  const id =
+    data && typeof data === "object" && "id" in data && typeof data.id === "string"
+      ? data.id
+      : "";
+  if (!id) throw new Error("Einladung konnte nicht erstellt werden");
+  return { id };
+}
 
 async function edgeFunctionErrorMessage(error: { message: string }, data: unknown): Promise<string> {
   if (data && typeof data === "object" && "error" in data && data.error) {
