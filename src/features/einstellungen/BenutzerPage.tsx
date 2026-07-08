@@ -132,7 +132,7 @@ export function BenutzerPage() {
                   Neuer Benutzer
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-xl overflow-hidden">
                 <DialogHeader>
                   <DialogTitle>Benutzer einladen</DialogTitle>
                 </DialogHeader>
@@ -167,7 +167,7 @@ export function BenutzerPage() {
       </PageWrapper>
 
       <Dialog open={bearbeiten !== null} onOpenChange={(open) => !open && schliesseBearbeitung()}>
-        <DialogContent>
+        <DialogContent className="max-w-xl overflow-hidden">
           <DialogHeader>
             <DialogTitle>Benutzer bearbeiten</DialogTitle>
           </DialogHeader>

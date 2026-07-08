@@ -284,7 +284,7 @@ export function BenutzerForm({
   }
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="grid w-full min-w-0 gap-4">
       <div className="grid gap-2">
         <Label htmlFor="name">Name</Label>
         <Input id="name" autoComplete="name" {...form.register("name")} />
@@ -483,25 +483,27 @@ export function BenutzerForm({
         ) : null}
       </div>
 
-      <div className="flex justify-between gap-2 pt-2">
-        <div className="flex gap-2">
-          {istBearbeitung && onLoeschenAnfragen ? (
-            <Button type="button" variant="destructive" onClick={onLoeschenAnfragen}>
-              Löschen
-            </Button>
-          ) : null}
-          {istBearbeitung && benutzer ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onResend}
-              disabled={isResending || form.formState.isSubmitting}
-            >
-              {isResending ? "Wird gesendet…" : "Einladung erneut senden"}
-            </Button>
-          ) : null}
-        </div>
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-3 border-t border-hairline pt-4">
+        {istBearbeitung && (onLoeschenAnfragen || benutzer) ? (
+          <div className="flex flex-wrap gap-2">
+            {onLoeschenAnfragen ? (
+              <Button type="button" variant="destructive" onClick={onLoeschenAnfragen}>
+                Löschen
+              </Button>
+            ) : null}
+            {benutzer ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onResend}
+                disabled={isResending || form.formState.isSubmitting}
+              >
+                {isResending ? "Wird gesendet…" : "Einladung erneut senden"}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" onClick={onDone} disabled={form.formState.isSubmitting || isResending}>
             Abbrechen
           </Button>
