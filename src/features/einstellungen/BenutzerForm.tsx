@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, X } from "lucide-react";
@@ -191,22 +191,49 @@ export function BenutzerForm({
   const mandantenListe = mandanten.data?.items ?? [];
   const hatMandanten = mandantenListe.length > 0;
 
+  const mandantStateFuerRolle = (rolle: string) => {
+    const zuweisung = mandantZuweisungFuerRolle(rolle, rollen);
+    if (zuweisung === "alle") {
+      return { mandantModus: "alle" as const, mandantIds: [""] };
+    }
+    const bestehend = form.getValues("mandantIds").filter(Boolean);
+    if (zuweisung === "einzeln") {
+      const auto =
+        mandantenListe.length === 1
+          ? mandantenListe[0].id
+          : bestehend.length > 0
+            ? bestehend[0]
+            : "";
+      return { mandantModus: "bestimmte" as const, mandantIds: [auto] };
+    }
+    return {
+      mandantModus: "bestimmte" as const,
+      mandantIds: bestehend.length > 0 ? bestehend : [""],
+    };
+  };
+
+  useEffect(() => {
+    if (benutzer || rollen.length === 0) return;
+    const rolle = form.getValues("rolle");
+    const naechste = mandantStateFuerRolle(rolle);
+    if (form.getValues("mandantModus") !== naechste.mandantModus) {
+      form.setValue("mandantModus", naechste.mandantModus);
+    }
+    if (form.getValues("mandantIds").join() !== naechste.mandantIds.join()) {
+      form.setValue("mandantIds", naechste.mandantIds);
+    }
+  }, [benutzer, rollen, form, mandantenListe]);
+
   useEffect(() => {
     if (darfAlleMandanten) return;
-    const aktuellerModus = form.getValues("mandantModus");
-    if (aktuellerModus !== "bestimmte") {
-      form.setValue("mandantModus", "bestimmte");
+    const naechste = mandantStateFuerRolle(gewaehlteRolle);
+    if (form.getValues("mandantModus") !== naechste.mandantModus) {
+      form.setValue("mandantModus", naechste.mandantModus);
     }
-    const ids = form.getValues("mandantIds").filter(Boolean);
-    if (mandantZuweisung === "einzeln") {
-      const naechste = ids.length > 0 ? [ids[0]] : [""];
-      if (form.getValues("mandantIds").join() !== naechste.join()) {
-        form.setValue("mandantIds", naechste);
-      }
-    } else if (ids.length === 0) {
-      form.setValue("mandantIds", [""]);
+    if (form.getValues("mandantIds").join() !== naechste.mandantIds.join()) {
+      form.setValue("mandantIds", naechste.mandantIds);
     }
-  }, [darfAlleMandanten, mandantZuweisung, form]);
+  }, [darfAlleMandanten, gewaehlteRolle, mandantZuweisung, form, rollen, mandantenListe]);
 
   const [isResending, setIsResending] = useState(false);
 
@@ -228,6 +255,25 @@ export function BenutzerForm({
     }
   };
 
+  const ersteFehlermeldung = (errors: FieldErrors<FormValues>): string | undefined => {
+    for (const value of Object.values(errors)) {
+      if (!value) continue;
+      if (typeof value === "object" && "message" in value && typeof value.message === "string") {
+        return value.message;
+      }
+      if (Array.isArray(value)) {
+        for (const eintrag of value) {
+          if (eintrag && typeof eintrag.message === "string") return eintrag.message;
+        }
+      }
+    }
+    return undefined;
+  };
+
+  const onInvalid = (errors: FieldErrors<FormValues>) => {
+    toast.error(ersteFehlermeldung(errors) ?? "Bitte alle Pflichtfelder ausfüllen");
+  };
+
   const onSubmit = async (values: FormValues) => {
     const berechtigung = istBearbeitung
       ? "aktion.einstellungen.benutzer.bearbeiten"
@@ -235,8 +281,9 @@ export function BenutzerForm({
     if (!istOpAdmin() && !erlaubtOderHinweis(berechtigung)) return;
 
     try {
+      const zuweisung = mandantZuweisungFuerRolle(values.rolle, rollen);
       const mandantZugriff =
-        values.mandantModus === "alle"
+        zuweisung === "alle" && values.mandantModus === "alle"
           ? ("*" as const)
           : [...new Set(values.mandantIds.filter(Boolean))];
 
@@ -284,7 +331,7 @@ export function BenutzerForm({
   }
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="grid w-full min-w-0 gap-4">
+    <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="grid w-full min-w-0 gap-4">
       <div className="grid gap-2">
         <Label htmlFor="name">Name</Label>
         <Input id="name" autoComplete="name" {...form.register("name")} />
@@ -313,7 +360,12 @@ export function BenutzerForm({
           render={({ field }) => (
             <Select
               value={selectWert(field.value, zuweisbare)}
-              onValueChange={field.onChange}
+              onValueChange={(rolle) => {
+                field.onChange(rolle);
+                const naechste = mandantStateFuerRolle(rolle);
+                form.setValue("mandantModus", naechste.mandantModus);
+                form.setValue("mandantIds", naechste.mandantIds);
+              }}
             >
               <SelectTrigger id="rolle" className="rounded-none">
                 <SelectValue placeholder="Rolle wählen" />

@@ -268,78 +268,76 @@ export function ExposeImportPage() {
   const hatExtrahierteWerte = EXPOSE_FELD_IDS.some((id) => felder[id].value.trim());
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] min-h-0 flex-col overflow-hidden">
-      <div className="shrink-0">
-        <PageHeader
-          titel="Exposé-Import"
-          aktionen={
-            <div className="flex flex-wrap items-center gap-2">
+    <>
+      <PageHeader
+        titel="Exposé-Import"
+        aktionen={
+          <>
+            <PermissionGate
+              berechtigung="aktion.transaktionen.expose_import.hochladen"
+              skeletonClassName="w-44"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                className="hidden"
+                onChange={pdfHochladen}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-foreground text-foreground"
+                disabled={laedtPdf}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {laedtPdf ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" strokeWidth={1.5} />
+                ) : (
+                  <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
+                )}
+                Exposé-PDF hochladen
+              </Button>
+            </PermissionGate>
+            {objectUrl && (
               <PermissionGate
                 berechtigung="aktion.transaktionen.expose_import.hochladen"
-                skeletonClassName="w-44"
+                skeletonClassName="w-40"
               >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  className="hidden"
-                  onChange={pdfHochladen}
-                />
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="border-foreground text-foreground"
-                  disabled={laedtPdf}
-                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-primary text-primary-foreground hover:bg-heading"
+                  disabled={analysiert || laedtPdf}
+                  onClick={kiAnalysieren}
                 >
-                  {laedtPdf ? (
+                  {analysiert ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" strokeWidth={1.5} />
                   ) : (
-                    <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
+                    <Sparkles className="mr-2 h-4 w-4" strokeWidth={1.5} />
                   )}
-                  Exposé-PDF hochladen
+                  Mit KI analysieren
                 </Button>
               </PermissionGate>
-              {objectUrl && (
-                <PermissionGate
-                  berechtigung="aktion.transaktionen.expose_import.hochladen"
-                  skeletonClassName="w-40"
-                >
-                  <Button
-                    size="sm"
-                    className="bg-primary text-primary-foreground hover:bg-heading"
-                    disabled={analysiert || laedtPdf}
-                    onClick={kiAnalysieren}
-                  >
-                    {analysiert ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" strokeWidth={1.5} />
-                    ) : (
-                      <Sparkles className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                    )}
-                    Mit KI analysieren
-                  </Button>
-                </PermissionGate>
-              )}
-              <PermissionGate
-                berechtigung="aktion.transaktionen.expose_import.uebernehmen"
-                skeletonClassName="w-44"
+            )}
+            <PermissionGate
+              berechtigung="aktion.transaktionen.expose_import.uebernehmen"
+              skeletonClassName="w-44"
+            >
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-foreground text-foreground"
+                disabled={!hatExtrahierteWerte}
+                onClick={exportSalesforce}
               >
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-foreground text-foreground"
-                  disabled={!hatExtrahierteWerte}
-                  onClick={exportSalesforce}
-                >
-                  Export to Salesforce
-                </Button>
-              </PermissionGate>
-            </div>
-          }
-        />
-      </div>
+                Export to Salesforce
+              </Button>
+            </PermissionGate>
+          </>
+        }
+      />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-8 pt-6 pb-6 lg:flex-row lg:gap-6">
+      <div className="flex h-[calc(100dvh-4rem-5rem)] min-h-0 flex-col gap-4 overflow-hidden px-8 pt-6 pb-6 lg:flex-row lg:gap-6">
         <div className="flex h-[42vh] min-h-0 min-w-0 shrink-0 flex-col overflow-hidden lg:h-auto lg:flex-1 lg:shrink">
           <PdfSourceViewer
             objectUrl={objectUrl}
@@ -397,6 +395,6 @@ export function ExposeImportPage() {
           </div>
         </aside>
       </div>
-    </div>
+    </>
   );
 }
