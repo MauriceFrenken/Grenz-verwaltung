@@ -32,6 +32,7 @@ import { Route as VerwaltungMandantenRouteImport } from './routes/verwaltung.man
 import { Route as VerwaltungEinheitenRouteImport } from './routes/verwaltung.einheiten'
 import { Route as TransaktionenListeRouteImport } from './routes/transaktionen.liste'
 import { Route as TransaktionenExposeImportRouteImport } from './routes/transaktionen.expose-import'
+import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
 import { Route as EinstellungenRollenRouteImport } from './routes/einstellungen.rollen'
 import { Route as EinstellungenIntegrationenRouteImport } from './routes/einstellungen.integrationen'
 import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
@@ -157,6 +158,11 @@ const TransaktionenExposeImportRoute =
     path: '/expose-import',
     getParentRoute: () => TransaktionenRoute,
   } as any)
+const SalesforceCallbackRoute = SalesforceCallbackRouteImport.update({
+  id: '/salesforce/callback',
+  path: '/salesforce/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EinstellungenRollenRoute = EinstellungenRollenRouteImport.update({
   id: '/rollen',
   path: '/rollen',
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
+  '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRoute
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
+  '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRoute
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
+  '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRoute
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
     | '/einstellungen/rollen'
+    | '/salesforce/callback'
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
@@ -334,6 +344,7 @@ export interface FileRouteTypes {
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
     | '/einstellungen/rollen'
+    | '/salesforce/callback'
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
@@ -366,6 +377,7 @@ export interface FileRouteTypes {
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
     | '/einstellungen/rollen'
+    | '/salesforce/callback'
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
@@ -393,6 +405,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TransaktionenRoute: typeof TransaktionenRouteWithChildren
   VerwaltungRoute: typeof VerwaltungRouteWithChildren
+  SalesforceCallbackRoute: typeof SalesforceCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -558,6 +571,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TransaktionenExposeImportRouteImport
       parentRoute: typeof TransaktionenRoute
     }
+    '/salesforce/callback': {
+      id: '/salesforce/callback'
+      path: '/salesforce/callback'
+      fullPath: '/salesforce/callback'
+      preLoaderRoute: typeof SalesforceCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/einstellungen/rollen': {
       id: '/einstellungen/rollen'
       path: '/rollen'
@@ -710,6 +730,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TransaktionenRoute: TransaktionenRouteWithChildren,
   VerwaltungRoute: VerwaltungRouteWithChildren,
+  SalesforceCallbackRoute: SalesforceCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

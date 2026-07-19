@@ -53,6 +53,7 @@ export const AKTIONS_BERECHTIGUNGEN = [
   { id: "aktion.dokumente.ablage.bearbeiten", label: "Abgelegtes Dokument bearbeiten", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },
   { id: "aktion.transaktionen.expose_import.hochladen", label: "Exposé-PDF hochladen", seite: "seite.transaktionen.expose_import", gruppe: "Transaktionen" },
   { id: "aktion.transaktionen.expose_import.uebernehmen", label: "In Salesforce übernehmen", seite: "seite.transaktionen.expose_import", gruppe: "Transaktionen" },
+  { id: "aktion.transaktionen.expose_import.salesforce_session", label: "Mit Salesforce verbinden", seite: "seite.transaktionen.expose_import", gruppe: "Transaktionen" },
   { id: "aktion.transaktionen.expose_import.korrigieren", label: "Korrigieren", seite: "seite.transaktionen.expose_import", gruppe: "Transaktionen" },
   { id: "aktion.transaktionen.expose_import.verwerfen", label: "Verwerfen", seite: "seite.transaktionen.expose_import", gruppe: "Transaktionen" },
   { id: "aktion.einstellungen.benutzer.einladen", label: "Benutzer einladen", seite: "seite.einstellungen.benutzer", gruppe: "Einstellungen" },

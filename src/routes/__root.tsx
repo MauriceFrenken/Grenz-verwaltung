@@ -130,8 +130,17 @@ function AuthGate({ children }: { children: ReactNode }) {
   const istEinladungSeite = pathname === "/einladung";
   const istPasswortZuruecksetzenSeite = pathname === "/passwort-zuruecksetzen";
   const istDatenschutzSeite = pathname === "/datenschutz";
+  const istSalesforceCallback = pathname === "/salesforce/callback";
   const istAuthSeite =
-    istAnmeldenSeite || istEinladungSeite || istPasswortZuruecksetzenSeite || istDatenschutzSeite;
+    istAnmeldenSeite ||
+    istEinladungSeite ||
+    istPasswortZuruecksetzenSeite ||
+    istDatenschutzSeite ||
+    istSalesforceCallback;
+
+  if (istSalesforceCallback) {
+    return children;
+  }
 
   if (isLoading) {
     return (

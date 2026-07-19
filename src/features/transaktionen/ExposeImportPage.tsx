@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import { BookOpen, Loader2, Sparkles, Upload } from "lucide-react";
+import { BookOpen, Loader2, Sparkles, Unplug, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -16,11 +16,13 @@ import {
   type ExposeFeldId,
   type ExposeFeldQuelle,
 } from "@/lib/expose-ai";
+import { istSalesforceVerbunden } from "@/lib/salesforce";
 
 import { PdfSourceViewer } from "./expose-import/PdfSourceViewer";
 import { extractPdfForChat, type ExtractedPdfForChat } from "./expose-import/extractPdfText";
 import { findQuoteInPages } from "./expose-import/quoteLocation";
 import { analysiereExpose } from "./expose-import/analysieren";
+import { SalesforceConnectDialog } from "./expose-import/SalesforceConnectDialog";
 
 type FeldState = {
   value: string;
@@ -133,6 +135,12 @@ export function ExposeImportPage() {
   const [felder, setFelder] = useState<FelderState>(leereFelder);
   const [laedtPdf, setLaedtPdf] = useState(false);
   const [analysiert, setAnalysiert] = useState(false);
+  const [sfConnectOpen, setSfConnectOpen] = useState(false);
+  const [sfVerbunden, setSfVerbunden] = useState(() => istSalesforceVerbunden());
+
+  const syncSfStatus = useCallback(() => {
+    setSfVerbunden(istSalesforceVerbunden());
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -320,6 +328,20 @@ export function ExposeImportPage() {
               </PermissionGate>
             )}
             <PermissionGate
+              berechtigung="aktion.transaktionen.expose_import.salesforce_session"
+              skeletonClassName="w-48"
+            >
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-foreground text-foreground"
+                onClick={() => setSfConnectOpen(true)}
+              >
+                <Unplug className="mr-2 h-4 w-4" strokeWidth={1.5} />
+                {sfVerbunden ? "Salesforce verbunden" : "Mit Salesforce verbinden"}
+              </Button>
+            </PermissionGate>
+            <PermissionGate
               berechtigung="aktion.transaktionen.expose_import.uebernehmen"
               skeletonClassName="w-44"
             >
@@ -337,6 +359,11 @@ export function ExposeImportPage() {
         }
       />
 
+      <SalesforceConnectDialog
+        open={sfConnectOpen}
+        onOpenChange={setSfConnectOpen}
+        onStatusChange={syncSfStatus}
+      />
       <div className="flex h-[calc(100dvh-4rem-5rem)] min-h-0 flex-col gap-4 overflow-hidden px-8 pt-6 pb-6 lg:flex-row lg:gap-6">
         <div className="flex h-[42vh] min-h-0 min-w-0 shrink-0 flex-col overflow-hidden lg:h-auto lg:flex-1 lg:shrink">
           <PdfSourceViewer
