@@ -40,6 +40,15 @@ Bearbeitungsregel: Ein User darf nur Rollen bearbeiten, deren Rang **strikt grö
 - **Immer** Registry + Default + Gate/Guard bei neuen UI-Elementen
 - OP-Admin bypassed alle Checks in `hatBerechtigung()` — nicht in der Matrix konfigurierbar
 - Matrix wird in Supabase (`rolle_berechtigungen`) gespeichert; Migration: `supabase/migrations/`
+- **Git / Vercel:** Commits und Pushes auf `main` immer mit Author **und** Committer `BitBenByte <233641966+BitBenByte@users.noreply.github.com>` (sonst blockiert Vercel Deployment). Env für den Commit setzen, nicht `git config` ändern:
+
+```bash
+GIT_AUTHOR_NAME="BitBenByte" \
+GIT_AUTHOR_EMAIL="233641966+BitBenByte@users.noreply.github.com" \
+GIT_COMMITTER_NAME="BitBenByte" \
+GIT_COMMITTER_EMAIL="233641966+BitBenByte@users.noreply.github.com" \
+git commit ...
+```
 
 ### PR-Checkliste (Seiten & Buttons)
 
