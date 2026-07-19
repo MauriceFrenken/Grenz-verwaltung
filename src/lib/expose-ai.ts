@@ -1,9 +1,10 @@
 /**
- * Server-only Exposé-Extraktion via OpenAI gpt-4o-mini.
+ * Server-only Exposé-Extraktion via Anthropic Claude Haiku.
  * Niemals aus Client-Code importieren (nur Typen sind client-safe).
  */
-const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-const MODEL = "gpt-4o-mini";
+const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_VERSION = "2023-06-01";
+const MODEL = "claude-haiku-4-5";
 
 const KONFIDENZ_SCHWELLE = 0.75;
 
@@ -93,8 +94,8 @@ const FELD_ANWEISUNGEN: Record<ExposeFeldId, string> = {
     "Objektzustand als Buchstabe A, B, C oder D — nur wenn im Exposé explizit als Zustandsklasse (A–D) erkennbar. Bei Unsicherheit: value null, konfidenz niedrig.",
 };
 
-function getOpenAiKey(): string | null {
-  const key = process.env.OPENAI_API_KEY?.trim() ?? "";
+function getAnthropicKey(): string | null {
+  const key = process.env.ANTHROPIC_API_KEY?.trim() ?? "";
   return key || null;
 }
 
@@ -144,23 +145,16 @@ function buildPrompt(): string {
   ].join("\n");
 }
 
-type OpenAiResponse = {
-  output?: {
-    type?: string;
-    content?: { type?: string; text?: string }[];
-  }[];
-  output_text?: string;
-  error?: { message?: string };
+type AnthropicResponse = {
+  content?: { type?: string; text?: string }[];
+  error?: { type?: string; message?: string };
 };
 
-function extractText(json: OpenAiResponse): string {
-  if (typeof json.output_text === "string" && json.output_text.trim()) {
-    return json.output_text;
-  }
+function extractText(json: AnthropicResponse): string {
   const parts: string[] = [];
-  for (const item of json.output ?? []) {
-    for (const c of item.content ?? []) {
-      if (typeof c.text === "string") parts.push(c.text);
+  for (const block of json.content ?? []) {
+    if (block.type === "text" && typeof block.text === "string") {
+      parts.push(block.text);
     }
   }
   return parts.join(" ");
@@ -316,10 +310,10 @@ function parseJsonResponse(raw: string): AnalyzeExposeResponse {
 export async function handleAnalyzeExposeRequest(
   body: AnalyzeExposeRequest,
 ): Promise<AnalyzeExposeResponse> {
-  const apiKey = getOpenAiKey();
+  const apiKey = getAnthropicKey();
   if (!apiKey) {
     throw new Error(
-      "OPENAI_API_KEY ist nicht konfiguriert. Trage den Schlüssel in .env.local ein und starte den Dev-Server neu.",
+      "ANTHROPIC_API_KEY ist nicht konfiguriert. Trage den Schlüssel in .env.local ein und starte den Dev-Server neu.",
     );
   }
 
@@ -336,24 +330,25 @@ export async function handleAnalyzeExposeRequest(
     context.slice(0, 120_000),
   ].join("\n");
 
-  const res = await fetch(OPENAI_RESPONSES_URL, {
+  const res = await fetch(ANTHROPIC_MESSAGES_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
+      "anthropic-version": ANTHROPIC_VERSION,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
       model: MODEL,
-      instructions: buildPrompt(),
-      input: [{ role: "user", content: [{ type: "input_text", text: userText }] }],
-      max_output_tokens: 3000,
+      max_tokens: 3000,
       temperature: 0,
+      system: buildPrompt(),
+      messages: [{ role: "user", content: userText }],
     }),
   });
 
-  const json = (await res.json()) as OpenAiResponse;
+  const json = (await res.json()) as AnthropicResponse;
   if (!res.ok) {
-    throw new Error(json.error?.message ?? `OpenAI Fehler (${res.status})`);
+    throw new Error(json.error?.message ?? `Anthropic Fehler (${res.status})`);
   }
 
   return parseJsonResponse(extractText(json));

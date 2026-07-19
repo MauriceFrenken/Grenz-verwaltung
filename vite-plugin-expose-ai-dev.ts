@@ -59,7 +59,8 @@ export function exposeAiDevPlugin(): Plugin {
         }
 
         const env = loadEnv(server.config.mode, process.cwd(), "");
-        process.env.OPENAI_API_KEY = env.OPENAI_API_KEY ?? process.env.OPENAI_API_KEY;
+        process.env.ANTHROPIC_API_KEY =
+          env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_API_KEY;
 
         let parsedBody: AnalyzeExposeRequest = { modelContext: "" };
         try {

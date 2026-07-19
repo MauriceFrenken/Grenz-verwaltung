@@ -154,13 +154,12 @@ export function DatenschutzInhalt() {
 
       <section className="space-y-3">
         <h3 className="text-base font-semibold text-heading">
-          7. KI-gestützte Exposé-Analyse (OpenAI)
+          7. KI-gestützte Exposé-Analyse (Anthropic)
         </h3>
         <p>
           Für die Funktion „Exposé-Import“ wird der Textinhalt hochgeladener
-          Exposé-PDFs an OpenAI übermittelt (OpenAI Ireland Ltd., 1st Floor, The
-          Liffey Trust Centre, 117–126 Sheriff Street Upper, Dublin 1, Irland;
-          Verarbeitung teilweise durch OpenAI, L.L.C., San Francisco, USA), um
+          Exposé-PDFs an Anthropic übermittelt (Anthropic Ireland, Limited;
+          Verarbeitung teilweise durch Anthropic, PBC, San Francisco, USA), um
           strukturierte Angaben (z. B. Objektadresse, Kaufpreis, Baujahr,
           Makler-Kontaktdaten) automatisiert zu extrahieren. Die Übermittlung
           erfolgt ausschließlich bei aktiver Nutzung dieser Funktion — nicht
@@ -177,8 +176,8 @@ export function DatenschutzInhalt() {
           statt.
         </p>
         <p>
-          Mit OpenAI besteht ein Auftragsverarbeitungsvertrag gemäß Art. 28
-          DSGVO. Nach den API-Nutzungsbedingungen von OpenAI werden über die
+          Mit Anthropic besteht ein Auftragsverarbeitungsvertrag gemäß Art. 28
+          DSGVO. Nach den API-Nutzungsbedingungen von Anthropic werden über die
           Schnittstelle übermittelte Inhalte nicht zum Training der Modelle
           verwendet. Soweit Daten in die USA übermittelt werden, erfolgt dies
           auf Grundlage des EU-US Data Privacy Framework (Art. 45 DSGVO) bzw.
@@ -197,7 +196,7 @@ export function DatenschutzInhalt() {
           Innerhalb unseres Unternehmens erhalten nur diejenigen Stellen Zugriff
           auf Ihre Daten, die diese zur Erfüllung ihrer Aufgaben benötigen.
           Daneben setzen wir die in dieser Erklärung genannten Dienstleister
-          (Vercel, Supabase, OpenAI) als Auftragsverarbeiter gemäß Art. 28 DSGVO
+          (Vercel, Supabase, Anthropic) als Auftragsverarbeiter gemäß Art. 28 DSGVO
           ein. Eine Übermittlung an sonstige Dritte findet nur statt, wenn
           hierfür eine gesetzliche Verpflichtung besteht oder Sie eingewilligt
           haben.
@@ -210,8 +209,8 @@ export function DatenschutzInhalt() {
         </h3>
         <p>
           Soweit personenbezogene Daten in Länder außerhalb der EU bzw. des EWR
-          übermittelt werden (insbesondere in die USA an Vercel Inc. und OpenAI,
-          L.L.C.), stellen wir durch geeignete Garantien ein angemessenes
+          übermittelt werden (insbesondere in die USA an Vercel Inc. und
+          Anthropic, PBC), stellen wir durch geeignete Garantien ein angemessenes
           Datenschutzniveau sicher: den Angemessenheitsbeschluss zum EU-US Data
           Privacy Framework (Art. 45 DSGVO) für dort zertifizierte Anbieter
           sowie ergänzend die EU-Standardvertragsklauseln der Europäischen
