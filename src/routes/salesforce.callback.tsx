@@ -7,6 +7,7 @@ import {
   salesforceSessionSpeichern,
   type SalesforceSession,
 } from "@/lib/salesforce/config";
+import { enrichSalesforceSession } from "@/lib/salesforce/api";
 import {
   exchangeSalesforceCodeClient,
   pkceLesen,
@@ -71,12 +72,13 @@ function SalesforceCallbackPage() {
 
         pkceLoeschen(state);
 
-        const session: SalesforceSession = {
+        const sessionRoh: SalesforceSession = {
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
           instanceUrl: tokens.instanceUrl,
           gespeichertAm: new Date().toISOString(),
         };
+        const session = await enrichSalesforceSession(sessionRoh);
         salesforceSessionSpeichern(session);
         window.history.replaceState(null, "", window.location.pathname);
 

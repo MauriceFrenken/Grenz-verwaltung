@@ -28,6 +28,9 @@ export type SalesforceSession = {
   refreshToken: string | null;
   instanceUrl: string;
   gespeichertAm: string;
+  /** Optional — nach Connect via /services/oauth2/userinfo. */
+  displayName?: string | null;
+  preferredUsername?: string | null;
 };
 
 function envClientId(): string {
@@ -110,6 +113,8 @@ export function salesforceSessionSpeichern(
     refreshToken: session.refreshToken?.trim() || null,
     instanceUrl: (session.instanceUrl || SALESFORCE_LOGIN_URL).replace(/\/$/, ""),
     gespeichertAm: session.gespeichertAm ?? new Date().toISOString(),
+    displayName: session.displayName?.trim() || null,
+    preferredUsername: session.preferredUsername?.trim() || null,
   };
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(neu));
   return neu;

@@ -43,34 +43,48 @@ export function pkceLoeschen(state: string): void {
   localStorage.removeItem(`${SALESFORCE_PKCE_STORAGE_PREFIX}${state}`);
 }
 
+function isTokenResult(value: unknown): value is SalesforceTokenExchangeResult {
+  if (!value || typeof value !== "object") return false;
+  const v = value as SalesforceTokenExchangeResult;
+  return typeof v.accessToken === "string" && typeof v.instanceUrl === "string";
+}
+
 export async function exchangeSalesforceCodeClient(input: {
   code: string;
   codeVerifier: string;
   redirectUri: string;
 }): Promise<SalesforceTokenExchangeResult> {
-  const res = await fetch(TOKEN_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-
-  if (res.ok) {
-    return (await res.json()) as SalesforceTokenExchangeResult;
-  }
-
-  if (res.status === 404 || res.status === 405) {
-    const { exchangeSalesforceCodeFn } = await import("./exchange-fn");
-    return exchangeSalesforceCodeFn({ data: input });
-  }
-
-  let message = `Token-Austausch fehlgeschlagen (${res.status})`;
+  // Dev: Vite-Plugin unter /api/salesforce-oauth/token
   try {
-    const json = (await res.json()) as { error?: string };
-    if (json.error) message = json.error;
-  } catch {
-    /* ignore */
+    const res = await fetch(TOKEN_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    const contentType = res.headers.get("content-type") ?? "";
+    if (res.ok && contentType.includes("application/json")) {
+      const json: unknown = await res.json();
+      if (isTokenResult(json)) return json;
+    }
+    if (res.ok === false && res.status !== 404 && res.status !== 405) {
+      let message = `Token-Austausch fehlgeschlagen (${res.status})`;
+      try {
+        const json = (await res.json()) as { error?: string };
+        if (json.error) message = json.error;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(message);
+    }
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("Token-Austausch fehlgeschlagen")) {
+      throw e;
+    }
+    // Netzwerk / fehlende Dev-Route → Server-Fn (Vercel / TanStack Start)
   }
-  throw new Error(message);
+
+  const { exchangeSalesforceCodeFn } = await import("./exchange-fn");
+  return exchangeSalesforceCodeFn({ data: input });
 }
 
 /** Popup: Login auf Salesforce → Callback auf unserer Domain → Tokens. */

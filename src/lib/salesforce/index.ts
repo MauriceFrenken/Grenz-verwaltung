@@ -17,3 +17,12 @@ export {
 } from "./config";
 
 export { salesforceLoginPopup, type SalesforceOauthPayload } from "./oauth";
+
+export {
+  enrichSalesforceSession,
+  salesforceApiFetch,
+  salesforceApiJson,
+  salesforceDataApiBase,
+  salesforceUserInfo,
+  type SalesforceUserInfo,
+} from "./api";
