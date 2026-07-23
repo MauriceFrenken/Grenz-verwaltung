@@ -10,10 +10,12 @@ export {
   salesforceAdminCallbackUrl,
   salesforceCallbackUrl,
   salesforceClientId,
+  salesforceSessionHint,
   salesforceSessionLesen,
   salesforceSessionLoeschen,
   salesforceSessionSpeichern,
   type SalesforceSession,
+  type SalesforceSessionHint,
 } from "./config";
 
 export { salesforceLoginPopup, type SalesforceOauthPayload } from "./oauth";
@@ -26,3 +28,26 @@ export {
   salesforceUserInfo,
   type SalesforceUserInfo,
 } from "./api";
+
+export {
+  EMPFEHLUNG_MIN_SCORE,
+  normalizeAddressText,
+  parseAdresse,
+  scoreAddressMatch,
+} from "./address-match";
+
+export {
+  filterObjekteLocal,
+  rankObjekteByAdresse,
+  type SalesforceObjekt,
+  type SalesforceObjektMatch,
+} from "./objects";
+
+export {
+  leseExposeSalesforceDraft,
+  leseExposeSalesforceDraftPdf,
+  loescheExposeSalesforceDraftPdf,
+  speichereExposeSalesforceDraft,
+  speichereExposeSalesforceDraftPdf,
+  type ExposeSalesforceExportDraft,
+} from "./export-draft";

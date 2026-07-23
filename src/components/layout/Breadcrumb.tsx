@@ -18,6 +18,7 @@ const LABELS: Record<string, string> = {
   "/transaktionen": "Transaktionen",
   "/transaktionen/liste": "Transaktionsliste",
   "/transaktionen/expose-import": "Exposé-Import",
+  "/transaktionen/expose-import/salesforce": "Salesforce-Export",
   "/einstellungen": "Einstellungen",
   "/einstellungen/benutzer": "Benutzer",
   "/einstellungen/integrationen": "Integrationen",

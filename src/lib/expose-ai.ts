@@ -7,6 +7,10 @@ const ANTHROPIC_VERSION = "2023-06-01";
 const MODEL = "claude-haiku-4-5";
 
 const KONFIDENZ_SCHWELLE = 0.75;
+/** Adresse oft auf Deckblatt / im Dateinamen — etwas großzügiger annehmen. */
+const KONFIDENZ_SCHWELLE_ADRESSE = 0.55;
+/** Erste Seiten extra hervorheben (Adresse steht dort sehr oft). */
+const ADRESS_PRIORITAET_SEITEN = 4;
 
 export type ExposeFeldQuelle = {
   value: string | null;
@@ -21,10 +25,11 @@ export type AnalyzeExposeRequest = {
   modelContext: string;
 };
 
-export type ExposeFeldGruppe = "immobilie" | "transaktion";
+export type ExposeFeldGruppe = "objekt" | "immobilie" | "transaktion";
 export type ExposeFeldTyp = "zahl" | "text" | "auswahl";
 
 export const EXPOSE_FELD_DEFINITIONEN = [
+  { id: "objektadresse", label: "Adresse", gruppe: "objekt" as const, typ: "text" as const },
   { id: "baujahr", label: "Baujahr", gruppe: "immobilie" as const, typ: "zahl" as const },
   { id: "heizungsart", label: "Heizungsart", gruppe: "immobilie" as const, typ: "text" as const },
   { id: "energieausweis", label: "Energieausweis", gruppe: "immobilie" as const, typ: "auswahl" as const },
@@ -55,6 +60,7 @@ export const EXPOSE_SYSTEM_FELDER = [
 ] as const;
 
 export const EXPOSE_FELD_GRUPPEN: { id: ExposeFeldGruppe; label: string }[] = [
+  { id: "objekt", label: "Objekt" },
   { id: "immobilie", label: "Real Estate" },
   { id: "transaktion", label: "Transaktionsdatensatz" },
 ];
@@ -70,6 +76,8 @@ export type AnalyzeExposeResponse = {
 };
 
 const FELD_ANWEISUNGEN: Record<ExposeFeldId, string> = {
+  objektadresse:
+    "Nur Straße und Hausnummer der beworbenen Immobilie (z. B. „Musterstraße 12“). Keine PLZ, kein Ort, kein Stadtteil, keine Makleradresse.",
   baujahr:
     "Baujahr / Jahr der Errichtung als vierstellige Jahreszahl (z. B. „1972“). Nur die Zahl in value — kein Text.",
   heizungsart:
@@ -121,12 +129,30 @@ function buildPrompt(): string {
     "Du bist ein Assistent für deutsche Immobilien-Exposés (FRENKEN Verwaltung).",
     "Extrahiere strukturierte Felder aus dem bereitgestellten PDF-Text.",
     "",
-    "=== WICHTIG ===",
+    "=== OBJEKTADRESSE (ZUERST PRÜFEN) ===",
+    "Die Objektadresse ist das wichtigste Feld. Suche aktiv und gründlich — setze value nur auf null,",
+    "wenn wirklich keine Straße mit Hausnummer der Immobilie erkennbar ist.",
+    "Suchreihenfolge (alle Schritte durchgehen):",
+    "1) Dateiname / Dokumenttitel — oft enthält er Straße und Hausnummer",
+    "   (z. B. „Expose_Hauptstrasse_12_Koeln.pdf“, „Musterstr_5_Expose.pdf“).",
+    "2) Die hervorgehobenen ersten Seiten (Deckblatt, Titelseite, Objektdaten) — Adresse steht dort sehr oft.",
+    "3) Labels im Text: „Adresse“, „Objektadresse“, „Lage“, „Objekt“, „Anschrift“, „Standort“.",
+    "4) Deutsche Adressmuster: Straße/Str./Strasse + Hausnummer.",
+    "Regeln:",
+    "- value: NUR Straße und Hausnummer (z. B. „Hauptstraße 12“). Keine PLZ, kein Ort.",
+    "- Wenn im Text „Hauptstraße 12, 50667 Köln“ steht → value „Hauptstraße 12“.",
+    "- Teile dürfen aus Dateiname + PDF kombiniert werden, wenn klar dieselbe Immobilie gemeint ist.",
+    "- verbatimQuote: treffender Beleg aus PDF-Text ODER relevanter Teil des Dateinamens.",
+    "- page: Dateiseite des PDF-Belegs; null wenn nur aus dem Dateinamen.",
+    "- Nicht die Absender-/Maklerbüro-Adresse nehmen, wenn klar vom Objekt unterscheidbar.",
+    "- Straße + Hausnummer reichen — lieber das als null.",
+    "",
+    "=== WICHTIG (übrige Felder) ===",
     "- Nur extrahieren, was eindeutig im Dokument steht — keine Vermutungen.",
     "- Nicht alle Exposés enthalten alle Felder: fehlende Angaben als value null lassen.",
     "- verbatimQuote: exakter Wortlaut aus dem PDF — kurz (idealerweise eine Zeile), wörtlich kopiert, keine Zusammenfassung.",
     "- page: Dateiseite (1-basiert), passend zum Marker <<<PAGE n>>> im Text — nicht die gedruckte Seitennummer.",
-    "- Bei Unsicherheit: value null, verbatimQuote null, page null, konfidenz niedrig (< 0.5).",
+    "- Bei Unsicherheit (außer objektadresse): value null, verbatimQuote null, page null, konfidenz niedrig (< 0.5).",
     "",
     "=== ZAHLEN-FORMAT ===",
     "- Alle Felder vom Typ „Zahl“: value enthält ausschließlich Ziffern (ggf. Dezimalpunkt).",
@@ -143,6 +169,14 @@ function buildPrompt(): string {
     "  }",
     "}",
   ].join("\n");
+}
+
+/** Erste N Seiten aus dem <<<PAGE n>>>-Kontext für die Adresssuche voranstellen. */
+function ersteSeitenBlock(modelContext: string, maxSeiten: number): string {
+  const teile = modelContext.split(/(?=<<<PAGE \d+>>>)/).filter((t) => t.trim());
+  const erste = teile.slice(0, maxSeiten).map((t) => t.trim()).filter(Boolean);
+  if (erste.length === 0) return "(keine Seiten gefunden)";
+  return erste.join("\n\n");
 }
 
 type AnthropicResponse = {
@@ -269,7 +303,8 @@ function parseFeld(id: ExposeFeldId, raw: unknown): ExposeFeldQuelle {
       ? o.konfidenz
       : 0;
 
-  if (konfidenz < KONFIDENZ_SCHWELLE) {
+  const schwelle = id === "objektadresse" ? KONFIDENZ_SCHWELLE_ADRESSE : KONFIDENZ_SCHWELLE;
+  if (konfidenz < schwelle) {
     return { value: null, verbatimQuote, page, konfidenz };
   }
 
@@ -323,10 +358,16 @@ export async function handleAnalyzeExposeRequest(
   }
 
   const title = body.documentTitle?.trim() || "Exposé";
+  const adressSeiten = ersteSeitenBlock(context, ADRESS_PRIORITAET_SEITEN);
   const userText = [
-    `Dokument: ${title}`,
+    `Dateiname / Dokumenttitel: ${title}`,
+    "(Prüfe den Dateinamen auf Straße und Hausnummer — oft steckt die Objektadresse darin.)",
     "",
-    "=== PDF-TEXT (Seiten mit <<<PAGE n>>>) ===",
+    `=== ADRESS-PRIORITÄT: Erste ${ADRESS_PRIORITAET_SEITEN} Seiten (Deckblatt / Objektdaten) ===`,
+    "Suche hier zuerst die Objektadresse, bevor du den Rest des Dokuments nutzt:",
+    adressSeiten,
+    "",
+    "=== VOLLSTÄNDIGER PDF-TEXT (Seiten mit <<<PAGE n>>>) ===",
     context.slice(0, 120_000),
   ].join("\n");
 

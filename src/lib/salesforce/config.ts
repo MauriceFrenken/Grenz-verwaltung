@@ -86,7 +86,9 @@ export function salesforceAuthorizeUrl(state: string, codeChallenge: string, red
     state,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
-    prompt: "login",
+    // consent erzwingt ggf. erneute Refresh-Token-Ausgabe (Salesforce liefert
+    // refresh_token oft nur beim ersten Authorize / nach Revoke).
+    prompt: "login consent",
   });
 
   return `${SALESFORCE_LOGIN_URL}/services/oauth2/authorize?${params.toString()}`;
@@ -126,4 +128,21 @@ export function salesforceSessionLoeschen(): void {
 
 export function istSalesforceVerbunden(): boolean {
   return Boolean(salesforceSessionLesen()?.accessToken);
+}
+
+/** OAuth-Session für serverseitige Salesforce-Aufrufe (Export, Objektsuche). */
+export type SalesforceSessionHint = {
+  accessToken?: string;
+  instanceUrl?: string;
+  refreshToken?: string;
+};
+
+export function salesforceSessionHint(): SalesforceSessionHint {
+  const session = salesforceSessionLesen();
+  if (!session) return {};
+  return {
+    accessToken: session.accessToken,
+    instanceUrl: session.instanceUrl,
+    refreshToken: session.refreshToken ?? undefined,
+  };
 }

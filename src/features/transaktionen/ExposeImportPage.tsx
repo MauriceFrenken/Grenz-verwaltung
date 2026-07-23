@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { BookOpen, Loader2, Sparkles, Unplug, Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,10 +23,17 @@ import {
   type ExposeFeldId,
   type ExposeFeldQuelle,
 } from "@/lib/expose-ai";
-import { istSalesforceVerbunden } from "@/lib/salesforce";
+import {
+  istSalesforceVerbunden,
+  speichereExposeSalesforceDraft,
+  speichereExposeSalesforceDraftPdf,
+} from "@/lib/salesforce";
 
 import { PdfSourceViewer } from "./expose-import/PdfSourceViewer";
-import { extractPdfForChat, type ExtractedPdfForChat } from "./expose-import/extractPdfText";
+import {
+  extractPdfForChat,
+  type ExtractedPdfForChat,
+} from "./expose-import/extractPdfText";
 import { findQuoteInPages } from "./expose-import/quoteLocation";
 import { analysiereExpose } from "./expose-import/analysieren";
 import { SalesforceConnectDialog } from "./expose-import/SalesforceConnectDialog";
@@ -47,12 +61,30 @@ function formatHeuteDe(): string {
   });
 }
 
-function ExposeSystemFeldZeile({ label, wert }: { label: string; wert: string }) {
+async function leseDateiBytes(file: File): Promise<Uint8Array> {
+  const buffer = await file.arrayBuffer();
+  return new Uint8Array(buffer);
+}
+
+function ExposeSystemFeldZeile({
+  label,
+  wert,
+}: {
+  label: string;
+  wert: string;
+}) {
   return (
     <div className="flex flex-col gap-2 border border-hairline bg-surface-muted/40 p-4">
       <span className="label-caps text-text-muted">{label}</span>
-      <Input value={wert} readOnly disabled className="bg-surface-muted text-text-muted" />
-      <span className="text-xs text-text-subtle">Wird beim Anlegen automatisch gesetzt</span>
+      <Input
+        value={wert}
+        readOnly
+        disabled
+        className="bg-surface-muted text-text-muted"
+      />
+      <span className="text-xs text-text-subtle">
+        Wird beim Anlegen automatisch gesetzt
+      </span>
     </div>
   );
 }
@@ -90,7 +122,10 @@ function ExposeFeldZeile({
         }
       >
         <span
-          className={cn("label-caps text-text-muted", hatQuelle && "group-hover:text-heading")}
+          className={cn(
+            "label-caps text-text-muted",
+            hatQuelle && "group-hover:text-heading",
+          )}
         >
           {label}
         </span>
@@ -100,7 +135,9 @@ function ExposeFeldZeile({
             Quelle · Seite {feld.quelle.page}
           </span>
         ) : feld.quelle?.verbatimQuote ? (
-          <span className="text-xs text-text-subtle">Quelle nicht im PDF auffindbar</span>
+          <span className="text-xs text-text-subtle">
+            Quelle nicht im PDF auffindbar
+          </span>
         ) : null}
       </button>
       <Input
@@ -123,8 +160,10 @@ function loeseSeite(
 }
 
 export function ExposeImportPage() {
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
+  const pdfDateiRef = useRef<File | null>(null);
 
   const [dateiname, setDateiname] = useState<string | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -136,7 +175,9 @@ export function ExposeImportPage() {
   const [laedtPdf, setLaedtPdf] = useState(false);
   const [analysiert, setAnalysiert] = useState(false);
   const [sfConnectOpen, setSfConnectOpen] = useState(false);
-  const [sfVerbunden, setSfVerbunden] = useState(() => istSalesforceVerbunden());
+  const [sfVerbunden, setSfVerbunden] = useState(() =>
+    istSalesforceVerbunden(),
+  );
 
   const syncSfStatus = useCallback(() => {
     setSfVerbunden(istSalesforceVerbunden());
@@ -172,7 +213,9 @@ export function ExposeImportPage() {
     (id: ExposeFeldId) => {
       const quelle = felder[id].quelle;
       return Boolean(
-        quelle?.verbatimQuote && pdfMeta?.pages.length && loeseSeite(quelle, pdfMeta.pages),
+        quelle?.verbatimQuote &&
+        pdfMeta?.pages.length &&
+        loeseSeite(quelle, pdfMeta.pages),
       );
     },
     [felder, pdfMeta],
@@ -183,7 +226,10 @@ export function ExposeImportPage() {
     e.target.value = "";
     if (!file) return;
 
-    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+    if (
+      file.type !== "application/pdf" &&
+      !file.name.toLowerCase().endsWith(".pdf")
+    ) {
       toast.error("Bitte eine PDF-Datei wählen.");
       return;
     }
@@ -204,9 +250,11 @@ export function ExposeImportPage() {
       setDateiname(file.name);
 
       const extracted = await extractPdfForChat(file);
+      pdfDateiRef.current = file;
       setPdfMeta(extracted);
       toast.success("PDF geladen");
     } catch {
+      pdfDateiRef.current = null;
       toast.error("PDF konnte nicht gelesen werden.");
       setObjectUrl(null);
       setDateiname(null);
@@ -231,7 +279,10 @@ export function ExposeImportPage() {
 
       const neu = leereFelder();
       let erkannt = 0;
-      let erstesMitQuelle: { id: ExposeFeldId; quelle: ExposeFeldQuelle } | null = null;
+      let erstesMitQuelle: {
+        id: ExposeFeldId;
+        quelle: ExposeFeldQuelle;
+      } | null = null;
 
       for (const { id, label } of EXPOSE_FELD_DEFINITIONEN) {
         const quelle = ergebnis.fields[id];
@@ -263,17 +314,59 @@ export function ExposeImportPage() {
         toast.info("Keine Felder konnten eindeutig erkannt werden.");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "KI-Analyse fehlgeschlagen");
+      toast.error(
+        err instanceof Error ? err.message : "KI-Analyse fehlgeschlagen",
+      );
     } finally {
       setAnalysiert(false);
     }
   };
 
   const exportSalesforce = () => {
-    toast.info("Export nach Salesforce wird in Kürze verfügbar sein.");
+    const adresse = felder.objektadresse.value.trim();
+    if (!adresse) {
+      toast.error(
+        "Bitte zuerst eine Objektadresse setzen (per KI oder manuell).",
+      );
+      return;
+    }
+
+    const felderWerte = Object.fromEntries(
+      EXPOSE_FELD_IDS.map((id) => [id, felder[id].value]),
+    ) as Record<ExposeFeldId, string>;
+
+    const draft = speichereExposeSalesforceDraft({
+      dateiname,
+      felder: felderWerte,
+    });
+    const pdfDatei = pdfDateiRef.current;
+
+    void (async () => {
+      if (pdfDatei) {
+        const bytes = await leseDateiBytes(pdfDatei);
+        speichereExposeSalesforceDraftPdf({
+          draftId: draft.id,
+          dateiname: pdfDatei.name,
+          mimeType: pdfDatei.type,
+          bytes,
+        });
+      }
+
+      await navigate({
+        to: "/transaktionen/expose-import/salesforce",
+        search: { draft: draft.id },
+      });
+    })().catch(() => {
+      toast.error(
+        "PDF konnte nicht für den Salesforce-Export vorbereitet werden.",
+      );
+    });
   };
 
-  const hatExtrahierteWerte = EXPOSE_FELD_IDS.some((id) => felder[id].value.trim());
+  const hatExtrahierteWerte = EXPOSE_FELD_IDS.some((id) =>
+    felder[id].value.trim(),
+  );
+  const hatObjektadresse = Boolean(felder.objektadresse.value.trim());
 
   return (
     <>
@@ -300,7 +393,10 @@ export function ExposeImportPage() {
                 onClick={() => fileInputRef.current?.click()}
               >
                 {laedtPdf ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" strokeWidth={1.5} />
+                  <Loader2
+                    className="mr-2 h-4 w-4 animate-spin"
+                    strokeWidth={1.5}
+                  />
                 ) : (
                   <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
                 )}
@@ -319,7 +415,10 @@ export function ExposeImportPage() {
                   onClick={kiAnalysieren}
                 >
                   {analysiert ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" strokeWidth={1.5} />
+                    <Loader2
+                      className="mr-2 h-4 w-4 animate-spin"
+                      strokeWidth={1.5}
+                    />
                   ) : (
                     <Sparkles className="mr-2 h-4 w-4" strokeWidth={1.5} />
                   )}
@@ -338,7 +437,9 @@ export function ExposeImportPage() {
                 onClick={() => setSfConnectOpen(true)}
               >
                 <Unplug className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                {sfVerbunden ? "Salesforce verbunden" : "Mit Salesforce verbinden"}
+                {sfVerbunden
+                  ? "Salesforce verbunden"
+                  : "Mit Salesforce verbinden"}
               </Button>
             </PermissionGate>
             <PermissionGate
@@ -349,7 +450,7 @@ export function ExposeImportPage() {
                 size="sm"
                 variant="outline"
                 className="border-foreground text-foreground"
-                disabled={!hatExtrahierteWerte}
+                disabled={!hatExtrahierteWerte || !hatObjektadresse}
                 onClick={exportSalesforce}
               >
                 Export to Salesforce
@@ -384,8 +485,12 @@ export function ExposeImportPage() {
         <aside className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain lg:w-[340px] lg:flex-none xl:w-[380px]">
           <div className="flex flex-col gap-4 pr-1">
             {EXPOSE_FELD_GRUPPEN.map(({ id: gruppe, label: gruppenLabel }) => {
-              const kiFelder = EXPOSE_FELD_DEFINITIONEN.filter((d) => d.gruppe === gruppe);
-              const systemFelder = EXPOSE_SYSTEM_FELDER.filter((d) => d.gruppe === gruppe);
+              const kiFelder = EXPOSE_FELD_DEFINITIONEN.filter(
+                (d) => d.gruppe === gruppe,
+              );
+              const systemFelder = EXPOSE_SYSTEM_FELDER.filter(
+                (d) => d.gruppe === gruppe,
+              );
 
               return (
                 <ContentSection key={gruppe} titel={gruppenLabel}>
@@ -396,9 +501,14 @@ export function ExposeImportPage() {
                         label={label}
                         feld={felder[id]}
                         onChange={(value) =>
-                          setFelder((prev) => ({ ...prev, [id]: { ...prev[id], value } }))
+                          setFelder((prev) => ({
+                            ...prev,
+                            [id]: { ...prev[id], value },
+                          }))
                         }
-                        onQuelleOeffnen={() => quelleOeffnen(felder[id].quelle, felder[id].value)}
+                        onQuelleOeffnen={() =>
+                          quelleOeffnen(felder[id].quelle, felder[id].value)
+                        }
                         hatQuelle={feldHatQuelle(id)}
                       />
                     ))}

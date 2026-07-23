@@ -69,3 +69,58 @@ export async function exchangeSalesforceAuthorizationCode(
     instanceUrl: (data.instance_url || loginUrl).replace(/\/$/, ""),
   };
 }
+
+/** Refresh Token → neuer Access Token (Server-only). Refresh Tokens halten Wochen/Monate. */
+export async function refreshSalesforceAccessToken(
+  refreshToken: string,
+): Promise<SalesforceTokenExchangeResult> {
+  const clientId = readEnv("SALESFORCE_CLIENT_ID") || readEnv("VITE_SALESFORCE_CLIENT_ID");
+  const clientSecret = readEnv("SALESFORCE_CLIENT_SECRET");
+  const loginUrl = (
+    readEnv("SALESFORCE_LOGIN_URL") || "https://scrmfh25.my.salesforce.com"
+  ).replace(/\/$/, "");
+
+  if (!clientId) {
+    throw new Error("SALESFORCE_CLIENT_ID / VITE_SALESFORCE_CLIENT_ID ist nicht gesetzt.");
+  }
+  const token = refreshToken?.trim();
+  if (!token) {
+    throw new Error("refreshToken ist erforderlich.");
+  }
+
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: token,
+    client_id: clientId,
+  });
+
+  if (clientSecret) {
+    body.set("client_secret", clientSecret);
+  }
+
+  const res = await fetch(`${loginUrl}/services/oauth2/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+
+  const data = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+    refresh_token?: string;
+    instance_url?: string;
+    error?: string;
+    error_description?: string;
+  };
+
+  if (!res.ok || !data.access_token) {
+    const detail = data.error_description || data.error || `HTTP ${res.status}`;
+    throw new Error(`Salesforce Token-Refresh fehlgeschlagen: ${detail}`);
+  }
+
+  return {
+    accessToken: data.access_token,
+    // Salesforce gibt oft keinen neuen Refresh Token zurück — alten behalten.
+    refreshToken: data.refresh_token?.trim() || token,
+    instanceUrl: (data.instance_url || loginUrl).replace(/\/$/, ""),
+  };
+}

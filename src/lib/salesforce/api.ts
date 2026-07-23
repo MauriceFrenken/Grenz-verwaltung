@@ -1,6 +1,7 @@
 import {
   salesforceSessionLesen,
   salesforceSessionLoeschen,
+  salesforceSessionSpeichern,
   type SalesforceSession,
 } from "./config";
 
@@ -22,16 +23,35 @@ function requireSession(): SalesforceSession {
   return session;
 }
 
+/** Access Token per Refresh Token erneuern und in sessionStorage speichern. */
+async function tryRefreshSession(session: SalesforceSession): Promise<SalesforceSession | null> {
+  const refreshToken = session.refreshToken?.trim();
+  if (!refreshToken) return null;
+  try {
+    const { refreshSalesforceTokenFn } = await import("./refresh-fn");
+    const neu = await refreshSalesforceTokenFn({ data: { refreshToken } });
+    return salesforceSessionSpeichern({
+      ...session,
+      accessToken: neu.accessToken,
+      refreshToken: neu.refreshToken ?? refreshToken,
+      instanceUrl: neu.instanceUrl || session.instanceUrl,
+    });
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Authentifizierter Salesforce REST-Call mit der aktuellen Browser-Session.
  * Hinweis: Die Salesforce-Org muss die App-Origin unter Setup → CORS freigeben,
  * sonst schlagen Browser-Calls fehl (Token-Austausch läuft serverseitig).
+ * Bei 401 wird einmalig per Refresh Token erneuert.
  */
 export async function salesforceApiFetch(
   path: string,
   init: RequestInit = {},
 ): Promise<Response> {
-  const session = requireSession();
+  let session = requireSession();
   const base = session.instanceUrl.replace(/\/$/, "");
   const url = path.startsWith("http")
     ? path
@@ -45,7 +65,16 @@ export async function salesforceApiFetch(
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(url, { ...init, headers });
+  let res = await fetch(url, { ...init, headers });
+
+  if (res.status === 401) {
+    const refreshed = await tryRefreshSession(session);
+    if (refreshed) {
+      session = refreshed;
+      headers.set("Authorization", `Bearer ${session.accessToken}`);
+      res = await fetch(url, { ...init, headers });
+    }
+  }
 
   if (res.status === 401) {
     salesforceSessionLoeschen();
@@ -87,18 +116,30 @@ export async function salesforceApiJson<T>(path: string, init?: RequestInit): Pr
 export async function salesforceUserInfo(
   sessionOverride?: SalesforceSession | null,
 ): Promise<SalesforceUserInfo> {
-  const session = sessionOverride ?? requireSession();
+  let session = sessionOverride ?? requireSession();
   if (!session?.accessToken || !session.instanceUrl) {
     throw new Error("Nicht mit Salesforce verbunden. Bitte zuerst anmelden.");
   }
 
   const { fetchSalesforceUserInfoFn } = await import("./userinfo-fn");
-  return fetchSalesforceUserInfoFn({
-    data: {
-      accessToken: session.accessToken,
-      instanceUrl: session.instanceUrl,
-    },
-  });
+  try {
+    return await fetchSalesforceUserInfoFn({
+      data: {
+        accessToken: session.accessToken,
+        instanceUrl: session.instanceUrl,
+      },
+    });
+  } catch (err) {
+    const refreshed = await tryRefreshSession(session);
+    if (!refreshed) throw err;
+    session = refreshed;
+    return fetchSalesforceUserInfoFn({
+      data: {
+        accessToken: session.accessToken,
+        instanceUrl: session.instanceUrl,
+      },
+    });
+  }
 }
 
 /** Session um Userinfo anreichern (API-Smoke-Test nach OAuth). */

@@ -84,10 +84,14 @@ export function SalesforceConnectDialog({ open, onOpenChange, onStatusChange }: 
 
   const tokenUndInstanceKopieren = () => {
     if (!session) return;
-    void inZwischenablage(
-      `Access Token:\n${session.accessToken}\n\nInstance URL:\n${session.instanceUrl}`,
-      "Access Token + Instance URL",
-    );
+    const parts = [
+      `Access Token:\n${session.accessToken}`,
+      `Instance URL:\n${session.instanceUrl}`,
+    ];
+    if (session.refreshToken) {
+      parts.push(`Refresh Token:\n${session.refreshToken}`);
+    }
+    void inZwischenablage(parts.join("\n\n"), "Salesforce Tokens");
   };
 
   return (
@@ -164,10 +168,39 @@ export function SalesforceConnectDialog({ open, onOpenChange, onStatusChange }: 
                 </code>
               </div>
 
+              {session.refreshToken ? (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-heading">Refresh Token</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2"
+                      onClick={() =>
+                        void inZwischenablage(session.refreshToken!, "Refresh Token")
+                      }
+                    >
+                      <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
+                      Kopieren
+                    </Button>
+                  </div>
+                  <code className="max-h-24 overflow-y-auto break-all rounded-none border border-hairline bg-background px-2 py-1.5 text-[11px] leading-relaxed text-text-muted">
+                    {session.refreshToken}
+                  </code>
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted">
+                  Kein Refresh Token (von Admin nicht freigegeben) — die Verbindung gilt
+                  nur für diese Browser-Sitzung und läuft mit dem Access Token ab (~2&nbsp;h).
+                  Danach einfach erneut verbinden.
+                </p>
+              )}
+
               <p className="text-xs text-text-muted">
-                Token + Instance URL können weitergegeben werden (z. B. zum API-Testen). Der
-                Token läuft nach einiger Zeit ab und gilt wie ein Passwort — nur vertrauenswürdig
-                weitergeben.
+                Access Token und Instance URL gelten wie ein Passwort — nur vertrauenswürdig
+                weitergeben. Für den Export muss die Verbindung aktiv sein; Env-Tokens sind
+                nicht nötig.
               </p>
 
               <div className="flex flex-wrap gap-2">

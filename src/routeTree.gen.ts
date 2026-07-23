@@ -39,7 +39,9 @@ import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellunge
 import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
 import { Route as DokumentePruefordnerRouteImport } from './routes/dokumente.pruefordner'
 import { Route as DokumenteAblageRouteImport } from './routes/dokumente.ablage'
+import { Route as TransaktionenExposeImportIndexRouteImport } from './routes/transaktionen.expose-import.index'
 import { Route as VerwaltungObjekteIdRouteImport } from './routes/verwaltung.objekte.$id'
+import { Route as TransaktionenExposeImportSalesforceRouteImport } from './routes/transaktionen.expose-import.salesforce'
 
 const VerwaltungRoute = VerwaltungRouteImport.update({
   id: '/verwaltung',
@@ -194,11 +196,23 @@ const DokumenteAblageRoute = DokumenteAblageRouteImport.update({
   path: '/ablage',
   getParentRoute: () => DokumenteRoute,
 } as any)
+const TransaktionenExposeImportIndexRoute =
+  TransaktionenExposeImportIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => TransaktionenExposeImportRoute,
+  } as any)
 const VerwaltungObjekteIdRoute = VerwaltungObjekteIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => VerwaltungObjekteRoute,
 } as any)
+const TransaktionenExposeImportSalesforceRoute =
+  TransaktionenExposeImportSalesforceRouteImport.update({
+    id: '/salesforce',
+    path: '/salesforce',
+    getParentRoute: () => TransaktionenExposeImportRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -218,7 +232,7 @@ export interface FileRoutesByFullPath {
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
-  '/transaktionen/expose-import': typeof TransaktionenExposeImportRoute
+  '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/mandanten': typeof VerwaltungMandantenRoute
@@ -231,7 +245,9 @@ export interface FileRoutesByFullPath {
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/transaktionen/': typeof TransaktionenIndexRoute
   '/verwaltung/': typeof VerwaltungIndexRoute
+  '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
+  '/transaktionen/expose-import/': typeof TransaktionenExposeImportIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -247,7 +263,6 @@ export interface FileRoutesByTo {
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
-  '/transaktionen/expose-import': typeof TransaktionenExposeImportRoute
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/mandanten': typeof VerwaltungMandantenRoute
@@ -260,7 +275,9 @@ export interface FileRoutesByTo {
   '/einstellungen': typeof EinstellungenIndexRoute
   '/transaktionen': typeof TransaktionenIndexRoute
   '/verwaltung': typeof VerwaltungIndexRoute
+  '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
+  '/transaktionen/expose-import': typeof TransaktionenExposeImportIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -281,7 +298,7 @@ export interface FileRoutesById {
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
-  '/transaktionen/expose-import': typeof TransaktionenExposeImportRoute
+  '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/mandanten': typeof VerwaltungMandantenRoute
@@ -294,7 +311,9 @@ export interface FileRoutesById {
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/transaktionen/': typeof TransaktionenIndexRoute
   '/verwaltung/': typeof VerwaltungIndexRoute
+  '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
+  '/transaktionen/expose-import/': typeof TransaktionenExposeImportIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -329,7 +348,9 @@ export interface FileRouteTypes {
     | '/einstellungen/'
     | '/transaktionen/'
     | '/verwaltung/'
+    | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
+    | '/transaktionen/expose-import/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -345,7 +366,6 @@ export interface FileRouteTypes {
     | '/einstellungen/integrationen'
     | '/einstellungen/rollen'
     | '/salesforce/callback'
-    | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
     | '/verwaltung/mandanten'
@@ -358,7 +378,9 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/transaktionen'
     | '/verwaltung'
+    | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
+    | '/transaktionen/expose-import'
   id:
     | '__root__'
     | '/'
@@ -391,7 +413,9 @@ export interface FileRouteTypes {
     | '/einstellungen/'
     | '/transaktionen/'
     | '/verwaltung/'
+    | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
+    | '/transaktionen/expose-import/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -620,12 +644,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DokumenteAblageRouteImport
       parentRoute: typeof DokumenteRoute
     }
+    '/transaktionen/expose-import/': {
+      id: '/transaktionen/expose-import/'
+      path: '/'
+      fullPath: '/transaktionen/expose-import/'
+      preLoaderRoute: typeof TransaktionenExposeImportIndexRouteImport
+      parentRoute: typeof TransaktionenExposeImportRoute
+    }
     '/verwaltung/objekte/$id': {
       id: '/verwaltung/objekte/$id'
       path: '/$id'
       fullPath: '/verwaltung/objekte/$id'
       preLoaderRoute: typeof VerwaltungObjekteIdRouteImport
       parentRoute: typeof VerwaltungObjekteRoute
+    }
+    '/transaktionen/expose-import/salesforce': {
+      id: '/transaktionen/expose-import/salesforce'
+      path: '/salesforce'
+      fullPath: '/transaktionen/expose-import/salesforce'
+      preLoaderRoute: typeof TransaktionenExposeImportSalesforceRouteImport
+      parentRoute: typeof TransaktionenExposeImportRoute
     }
   }
 }
@@ -666,14 +704,31 @@ const EinstellungenRouteWithChildren = EinstellungenRoute._addFileChildren(
   EinstellungenRouteChildren,
 )
 
+interface TransaktionenExposeImportRouteChildren {
+  TransaktionenExposeImportSalesforceRoute: typeof TransaktionenExposeImportSalesforceRoute
+  TransaktionenExposeImportIndexRoute: typeof TransaktionenExposeImportIndexRoute
+}
+
+const TransaktionenExposeImportRouteChildren: TransaktionenExposeImportRouteChildren =
+  {
+    TransaktionenExposeImportSalesforceRoute:
+      TransaktionenExposeImportSalesforceRoute,
+    TransaktionenExposeImportIndexRoute: TransaktionenExposeImportIndexRoute,
+  }
+
+const TransaktionenExposeImportRouteWithChildren =
+  TransaktionenExposeImportRoute._addFileChildren(
+    TransaktionenExposeImportRouteChildren,
+  )
+
 interface TransaktionenRouteChildren {
-  TransaktionenExposeImportRoute: typeof TransaktionenExposeImportRoute
+  TransaktionenExposeImportRoute: typeof TransaktionenExposeImportRouteWithChildren
   TransaktionenListeRoute: typeof TransaktionenListeRoute
   TransaktionenIndexRoute: typeof TransaktionenIndexRoute
 }
 
 const TransaktionenRouteChildren: TransaktionenRouteChildren = {
-  TransaktionenExposeImportRoute: TransaktionenExposeImportRoute,
+  TransaktionenExposeImportRoute: TransaktionenExposeImportRouteWithChildren,
   TransaktionenListeRoute: TransaktionenListeRoute,
   TransaktionenIndexRoute: TransaktionenIndexRoute,
 }
