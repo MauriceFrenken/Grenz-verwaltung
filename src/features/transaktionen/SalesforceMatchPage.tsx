@@ -10,11 +10,14 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   filterObjekteLocal,
+  istSalesforceVerbunden,
   leseExposeSalesforceDraftPdf,
   loescheExposeSalesforceDraftPdf,
   leseExposeSalesforceDraft,
   rankObjekteByAdresse,
-  salesforceSessionHint,
+  salesforceFehlerText,
+  salesforceSessionHintFrisch,
+  salesforceSessionUebernehmen,
   type ExposeSalesforceExportDraft,
   type SalesforceObjekt,
   type SalesforceObjektMatch,
@@ -25,6 +28,12 @@ import { fetchSalesforceObjekteFn } from "@/lib/salesforce/objects-fn";
 const salesforceExportRoute = getRouteApi(
   "/transaktionen/expose-import/salesforce",
 );
+
+/**
+ * Serverless-Requests sind auf 4,5 MB begrenzt. Größere Exposés werden ohne
+ * Anhang exportiert, damit Objekt und Transaktion trotzdem entstehen.
+ */
+const MAX_PDF_BASE64_BYTES = 3_500_000;
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -118,10 +127,11 @@ export function SalesforceMatchPage() {
     try {
       const result = await fetchSalesforceObjekteFn({
         data: {
-          ...salesforceSessionHint(),
+          ...(await salesforceSessionHintFrisch()),
           adresse: adresse || undefined,
         },
       });
+      salesforceSessionUebernehmen(result.erneuerteSession);
       setKatalog(result.results);
       const empfehlungen =
         result.recommendations.length > 0
@@ -131,10 +141,10 @@ export function SalesforceMatchPage() {
             : [];
       setRecommendations(empfehlungen);
     } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Salesforce-Abfrage fehlgeschlagen";
+      const msg = salesforceFehlerText(
+        err,
+        "Salesforce-Abfrage fehlgeschlagen",
+      );
       setFehler(msg);
       toast.error(msg);
     } finally {
@@ -174,8 +184,9 @@ export function SalesforceMatchPage() {
     setLaedt(true);
     try {
       const result = await fetchSalesforceObjekteFn({
-        data: { ...salesforceSessionHint(), search: q },
+        data: { ...(await salesforceSessionHintFrisch()), search: q },
       });
+      salesforceSessionUebernehmen(result.erneuerteSession);
       const lokal = filterObjekteLocal(katalog, q);
       const byId = new Map<string, SalesforceObjekt>();
       for (const o of [...result.results, ...lokal]) byId.set(o.id, o);
@@ -189,42 +200,66 @@ export function SalesforceMatchPage() {
 
   const exportieren = async (realEstateId: string | null) => {
     if (!draft || exportModus) return;
+
+    if (!istSalesforceVerbunden()) {
+      toast.error(
+        "Nicht mit Salesforce verbunden. Bitte im Exposé-Import auf „Mit Salesforce verbinden“ klicken.",
+      );
+      return;
+    }
+
     setExportModus(realEstateId ? "bestehend" : "neu");
     try {
       const pdf = leseExposeSalesforceDraftPdf(draft.id);
+      const pdfBase64 = pdf ? bytesToBase64(pdf.bytes) : null;
+      const pdfZuGross = Boolean(
+        pdfBase64 && pdfBase64.length > MAX_PDF_BASE64_BYTES,
+      );
+
       const result = await exportExposeToSalesforceFn({
         data: {
-          ...salesforceSessionHint(),
+          ...(await salesforceSessionHintFrisch()),
           realEstateId,
           felder: draft.felder,
-          pdf: pdf
-            ? {
-                fileName: pdf.dateiname,
-                mimeType: pdf.mimeType,
-                base64: bytesToBase64(pdf.bytes),
-              }
-            : null,
+          pdf:
+            pdf && pdfBase64 && !pdfZuGross
+              ? {
+                  fileName: pdf.dateiname,
+                  mimeType: pdf.mimeType,
+                  base64: pdfBase64,
+                }
+              : null,
         },
       });
-      if (!pdf) {
-        toast.info(
-          "Objekt wurde exportiert. Das PDF war in dieser Sitzung nicht mehr verfügbar.",
-        );
-      } else {
-        loescheExposeSalesforceDraftPdf(draft.id);
-      }
+      salesforceSessionUebernehmen(result.erneuerteSession);
+
       toast.success(
         result.mode === "update"
-          ? "Objekt aktualisiert, Transaktion angelegt und Exposé hinterlegt."
-          : "Neues Objekt, Transaktion und Exposé in Salesforce angelegt.",
+          ? "Objekt aktualisiert und Transaktion angelegt."
+          : "Neues Objekt und Transaktion in Salesforce angelegt.",
       );
+
+      if (result.pdfAngehaengt) {
+        loescheExposeSalesforceDraftPdf(draft.id);
+      } else if (pdfZuGross) {
+        toast.warning(
+          "Das Exposé-PDF ist zu groß für den automatischen Upload und wurde nicht angehängt. Bitte manuell in Salesforce hochladen.",
+        );
+      } else if (result.pdfFehler) {
+        toast.warning(
+          `Exposé-PDF konnte nicht angehängt werden: ${result.pdfFehler}`,
+        );
+      } else if (!pdf) {
+        toast.info(
+          "Das PDF war in dieser Sitzung nicht mehr verfügbar und wurde nicht angehängt.",
+        );
+      }
+
       void navigate({ to: "/transaktionen/expose-import" });
     } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Export nach Salesforce fehlgeschlagen";
-      toast.error(msg);
+      toast.error(
+        salesforceFehlerText(err, "Export nach Salesforce fehlgeschlagen"),
+      );
       setExportModus(null);
     }
   };

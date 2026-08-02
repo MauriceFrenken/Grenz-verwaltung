@@ -15,7 +15,9 @@ import {
   SALESFORCE_OAUTH_CALLBACK_URL,
   SALESFORCE_PREFERRED_URL,
   salesforceClientId,
+  salesforceFehlerText,
   salesforceLoginPopup,
+  salesforceSessionAbonnieren,
   salesforceSessionLesen,
   salesforceSessionLoeschen,
   type SalesforceSession,
@@ -37,14 +39,20 @@ async function inZwischenablage(text: string, label: string) {
   }
 }
 
-export function SalesforceConnectDialog({ open, onOpenChange, onStatusChange }: Props) {
+export function SalesforceConnectDialog({
+  open,
+  onOpenChange,
+  onStatusChange,
+}: Props) {
   const [session, setSession] = useState<SalesforceSession | null>(null);
   const [laedt, setLaedt] = useState(false);
   const clientIdOk = Boolean(salesforceClientId());
 
   useEffect(() => {
     if (!open) return;
-    setSession(salesforceSessionLesen());
+    const lesen = () => setSession(salesforceSessionLesen());
+    lesen();
+    return salesforceSessionAbonnieren(lesen);
   }, [open]);
 
   const verbinden = async () => {
@@ -66,7 +74,7 @@ export function SalesforceConnectDialog({ open, onOpenChange, onStatusChange }: 
       );
       // Dialog offen lassen — Access Token zum Kopieren sichtbar
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Verbindung fehlgeschlagen";
+      const msg = salesforceFehlerText(err, "Verbindung fehlgeschlagen");
       if (!msg.includes("abgebrochen")) {
         toast.error(msg);
       }
@@ -100,8 +108,8 @@ export function SalesforceConnectDialog({ open, onOpenChange, onStatusChange }: 
         <DialogHeader>
           <DialogTitle>Mit Salesforce verbinden</DialogTitle>
           <DialogDescription>
-            Jeder Nutzer meldet sich mit seinem eigenen Salesforce-Account an. Das
-            Passwort bleibt bei Salesforce (
+            Jeder Nutzer meldet sich mit seinem eigenen Salesforce-Account an.
+            Das Passwort bleibt bei Salesforce (
             <a
               href={SALESFORCE_PREFERRED_URL}
               target="_blank"
@@ -123,7 +131,9 @@ export function SalesforceConnectDialog({ open, onOpenChange, onStatusChange }: 
                 {session.displayName ? ` — ${session.displayName}` : null}
               </div>
               <p className="text-xs text-text-subtle break-all">
-                {session.preferredUsername ? `${session.preferredUsername} · ` : null}
+                {session.preferredUsername
+                  ? `${session.preferredUsername} · `
+                  : null}
                 seit{" "}
                 {session.gespeichertAm
                   ? new Date(session.gespeichertAm).toLocaleString("de-DE")
@@ -132,13 +142,17 @@ export function SalesforceConnectDialog({ open, onOpenChange, onStatusChange }: 
 
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-heading">Access Token</span>
+                  <span className="text-xs font-medium text-heading">
+                    Access Token
+                  </span>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     className="h-7 px-2"
-                    onClick={() => void inZwischenablage(session.accessToken, "Access Token")}
+                    onClick={() =>
+                      void inZwischenablage(session.accessToken, "Access Token")
+                    }
                   >
                     <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
                     Kopieren
@@ -151,13 +165,17 @@ export function SalesforceConnectDialog({ open, onOpenChange, onStatusChange }: 
 
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-heading">Instance URL</span>
+                  <span className="text-xs font-medium text-heading">
+                    Instance URL
+                  </span>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     className="h-7 px-2"
-                    onClick={() => void inZwischenablage(session.instanceUrl, "Instance URL")}
+                    onClick={() =>
+                      void inZwischenablage(session.instanceUrl, "Instance URL")
+                    }
                   >
                     <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
                     Kopieren
@@ -171,14 +189,19 @@ export function SalesforceConnectDialog({ open, onOpenChange, onStatusChange }: 
               {session.refreshToken ? (
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-heading">Refresh Token</span>
+                    <span className="text-xs font-medium text-heading">
+                      Refresh Token
+                    </span>
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
                       className="h-7 px-2"
                       onClick={() =>
-                        void inZwischenablage(session.refreshToken!, "Refresh Token")
+                        void inZwischenablage(
+                          session.refreshToken!,
+                          "Refresh Token",
+                        )
                       }
                     >
                       <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -188,27 +211,41 @@ export function SalesforceConnectDialog({ open, onOpenChange, onStatusChange }: 
                   <code className="max-h-24 overflow-y-auto break-all rounded-none border border-hairline bg-background px-2 py-1.5 text-[11px] leading-relaxed text-text-muted">
                     {session.refreshToken}
                   </code>
+                  <p className="text-xs text-text-muted">
+                    Die Verbindung bleibt in diesem Browser bestehen und wird
+                    bei Bedarf automatisch erneuert — kein erneutes Anmelden
+                    nötig.
+                  </p>
                 </div>
               ) : (
                 <p className="text-xs text-text-muted">
-                  Kein Refresh Token (von Admin nicht freigegeben) — die Verbindung gilt
-                  nur für diese Browser-Sitzung und läuft mit dem Access Token ab (~2&nbsp;h).
-                  Danach einfach erneut verbinden.
+                  Kein Refresh Token (von Admin nicht freigegeben) — der Access
+                  Token läuft nach ca. 2&nbsp;h ab. Danach einfach erneut
+                  verbinden.
                 </p>
               )}
 
               <p className="text-xs text-text-muted">
-                Access Token und Instance URL gelten wie ein Passwort — nur vertrauenswürdig
-                weitergeben. Für den Export muss die Verbindung aktiv sein; Env-Tokens sind
-                nicht nötig.
+                Access Token und Instance URL gelten wie ein Passwort — nur
+                vertrauenswürdig weitergeben. Für den Export muss die Verbindung
+                aktiv sein; Env-Tokens sind nicht nötig.
               </p>
 
               <div className="flex flex-wrap gap-2">
-                <Button type="button" size="sm" onClick={tokenUndInstanceKopieren}>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={tokenUndInstanceKopieren}
+                >
                   <Copy className="h-4 w-4" strokeWidth={1.5} />
                   Beides kopieren
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={trennen}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={trennen}
+                >
                   <LogOut className="h-4 w-4" strokeWidth={1.5} />
                   Verbindung trennen
                 </Button>
@@ -234,22 +271,31 @@ export function SalesforceConnectDialog({ open, onOpenChange, onStatusChange }: 
             <p className="text-xs text-text-muted">
               Consumer Key als{" "}
               <code className="text-xs">VITE_SALESFORCE_CLIENT_ID</code> in{" "}
-              <code className="text-xs">.env.local</code> und in den Vercel Environment
-              Variables setzen, dann Dev-Server neu starten bzw. neu deployen. Callback:{" "}
-              <code className="text-xs break-all">{SALESFORCE_OAUTH_CALLBACK_URL}</code>
+              <code className="text-xs">.env.local</code> und in den Vercel
+              Environment Variables setzen, dann Dev-Server neu starten bzw. neu
+              deployen. Callback:{" "}
+              <code className="text-xs break-all">
+                {SALESFORCE_OAUTH_CALLBACK_URL}
+              </code>
             </p>
           ) : (
             <p className="text-xs text-text-subtle">
               Callback:{" "}
-              <code className="text-xs break-all">{SALESFORCE_OAUTH_CALLBACK_URL}</code>
-              . Zum Verbinden die Produktions-App auf Vercel nutzen (oder lokal, wenn
-              localhost als Callback in der Connected App hinterlegt ist).
+              <code className="text-xs break-all">
+                {SALESFORCE_OAUTH_CALLBACK_URL}
+              </code>
+              . Zum Verbinden die Produktions-App auf Vercel nutzen (oder lokal,
+              wenn localhost als Callback in der Connected App hinterlegt ist).
             </p>
           )}
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             Schließen
           </Button>
         </DialogFooter>

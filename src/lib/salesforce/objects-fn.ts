@@ -1,9 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import {
-  clearSalesforceCredentialsCache,
-  resolveSalesforceCredentials,
-} from "./server-credentials";
+import { mitSalesforceCredentials } from "./server-credentials";
 import {
   fetchAllSalesforceObjekte,
   rankObjekteByAdresse,
@@ -27,24 +24,17 @@ export type SalesforceObjekteResult = {
   results: SalesforceObjekt[];
   totalLoaded: number;
   authSource: "env" | "session";
+  /** Serverseitig erneuerter Access Token — Client übernimmt ihn. */
+  erneuerteSession?: {
+    accessToken: string;
+    instanceUrl: string;
+    refreshToken: string;
+  };
 };
-
-function looksLikeAuthError(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  return /INVALID_SESSION|Session expired|401|UNAUTHORIZED/i.test(msg);
-}
 
 export const fetchSalesforceObjekteFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as SalesforceObjekteInput)
   .handler(async ({ data }): Promise<SalesforceObjekteResult> => {
-    const sessionHint = {
-      accessToken: data.accessToken,
-      instanceUrl: data.instanceUrl,
-      refreshToken: data.refreshToken,
-    };
-
-    let creds = await resolveSalesforceCredentials(sessionHint);
-
     const search = data.search?.trim() ?? "";
     const adresse = data.adresse?.trim() ?? "";
 
@@ -53,24 +43,21 @@ export const fetchSalesforceObjekteFn = createServerFn({ method: "POST" })
         recommendations: [],
         results: [],
         totalLoaded: 0,
-        authSource: creds.source,
+        authSource: "session",
       };
     }
 
-    const load = async () =>
-      search
-        ? searchSalesforceObjekte(creds.accessToken, creds.instanceUrl, search)
-        : fetchAllSalesforceObjekte(creds.accessToken, creds.instanceUrl);
-
-    let all: SalesforceObjekt[];
-    try {
-      all = await load();
-    } catch (err) {
-      if (!looksLikeAuthError(err)) throw err;
-      clearSalesforceCredentialsCache();
-      creds = await resolveSalesforceCredentials(sessionHint);
-      all = await load();
-    }
+    const { ergebnis: all, creds } = await mitSalesforceCredentials(
+      {
+        accessToken: data.accessToken,
+        instanceUrl: data.instanceUrl,
+        refreshToken: data.refreshToken,
+      },
+      (c) =>
+        search
+          ? searchSalesforceObjekte(c.accessToken, c.instanceUrl, search)
+          : fetchAllSalesforceObjekte(c.accessToken, c.instanceUrl),
+    );
 
     const recommendations = adresse ? rankObjekteByAdresse(all, adresse) : [];
 
@@ -79,5 +66,6 @@ export const fetchSalesforceObjekteFn = createServerFn({ method: "POST" })
       results: all,
       totalLoaded: all.length,
       authSource: creds.source,
+      erneuerteSession: creds.erneuert,
     };
   });

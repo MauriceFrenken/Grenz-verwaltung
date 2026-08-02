@@ -25,6 +25,7 @@ import {
 } from "@/lib/expose-ai";
 import {
   istSalesforceVerbunden,
+  salesforceSessionAbonnieren,
   speichereExposeSalesforceDraft,
   speichereExposeSalesforceDraftPdf,
 } from "@/lib/salesforce";
@@ -175,13 +176,17 @@ export function ExposeImportPage() {
   const [laedtPdf, setLaedtPdf] = useState(false);
   const [analysiert, setAnalysiert] = useState(false);
   const [sfConnectOpen, setSfConnectOpen] = useState(false);
-  const [sfVerbunden, setSfVerbunden] = useState(() =>
-    istSalesforceVerbunden(),
-  );
+  const [sfVerbunden, setSfVerbunden] = useState(false);
 
   const syncSfStatus = useCallback(() => {
     setSfVerbunden(istSalesforceVerbunden());
   }, []);
+
+  // Nach dem Hydrieren lesen: localStorage steht beim SSR-Render nicht bereit.
+  useEffect(() => {
+    syncSfStatus();
+    return salesforceSessionAbonnieren(syncSfStatus);
+  }, [syncSfStatus]);
 
   useEffect(() => {
     return () => {
@@ -328,6 +333,12 @@ export function ExposeImportPage() {
       toast.error(
         "Bitte zuerst eine Objektadresse setzen (per KI oder manuell).",
       );
+      return;
+    }
+
+    if (!istSalesforceVerbunden()) {
+      toast.error("Bitte zuerst mit Salesforce verbinden.");
+      setSfConnectOpen(true);
       return;
     }
 

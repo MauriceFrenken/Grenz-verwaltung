@@ -10,10 +10,13 @@ export {
   salesforceAdminCallbackUrl,
   salesforceCallbackUrl,
   salesforceClientId,
+  salesforceSessionAbonnieren,
+  salesforceSessionAktualisieren,
   salesforceSessionHint,
   salesforceSessionLesen,
   salesforceSessionLoeschen,
   salesforceSessionSpeichern,
+  salesforceTokenIstAlt,
   type SalesforceSession,
   type SalesforceSessionHint,
 } from "./config";
@@ -25,9 +28,13 @@ export {
   salesforceApiFetch,
   salesforceApiJson,
   salesforceDataApiBase,
+  salesforceSessionHintFrisch,
+  salesforceSessionUebernehmen,
   salesforceUserInfo,
   type SalesforceUserInfo,
 } from "./api";
+
+export { salesforceFehlerText } from "./fehler";
 
 export {
   EMPFEHLUNG_MIN_SCORE,

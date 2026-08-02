@@ -13,6 +13,35 @@ export function soqlEscape(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 
+type SfError = { message?: string; errorCode?: string; fields?: string[] };
+
+/**
+ * Salesforce liefert Fehler als Array. Ohne errorCode und Feldnamen ist
+ * z. B. ein Picklist- oder Berechtigungsproblem im UI nicht auffindbar.
+ */
+export function salesforceErrorText(
+  data: unknown,
+  status: number,
+  rawText?: string,
+): string {
+  const standard = `Salesforce API-Fehler (${status})`;
+  const errors = Array.isArray(data) ? (data as SfError[]) : null;
+
+  if (errors?.length) {
+    const text = errors
+      .map((e) => {
+        const felder = e.fields?.length ? ` [${e.fields.join(", ")}]` : "";
+        const code = e.errorCode ? ` (${e.errorCode})` : "";
+        return `${e.message ?? "Unbekannter Fehler"}${felder}${code}`;
+      })
+      .join("; ");
+    if (text) return text;
+  }
+
+  const roh = rawText?.trim().slice(0, 200);
+  return roh ? `${standard}: ${roh}` : standard;
+}
+
 export async function salesforceQueryAll<T>(
   accessToken: string,
   instanceUrl: string,
@@ -30,23 +59,20 @@ export async function salesforceQueryAll<T>(
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const data = (await res.json().catch(() => null)) as
-      | SfQueryResponse<T>
-      | { message?: string; errorCode?: string }[]
-      | null;
+      SfQueryResponse<T> | { message?: string; errorCode?: string }[] | null;
 
     if (!res.ok) {
-      let message = `Salesforce-Abfrage fehlgeschlagen (${res.status})`;
-      if (Array.isArray(data) && data[0]?.message) message = data[0].message;
-      throw new Error(message);
+      throw new Error(salesforceErrorText(data, res.status));
     }
 
     const page = data as SfQueryResponse<T>;
     records.push(...(page.records ?? []));
-    url = page.done || !page.nextRecordsUrl
-      ? null
-      : page.nextRecordsUrl.startsWith("http")
-        ? page.nextRecordsUrl
-        : `${base}${page.nextRecordsUrl}`;
+    url =
+      page.done || !page.nextRecordsUrl
+        ? null
+        : page.nextRecordsUrl.startsWith("http")
+          ? page.nextRecordsUrl
+          : `${base}${page.nextRecordsUrl}`;
   }
 
   return records;
@@ -89,9 +115,7 @@ export async function salesforceRestJson<T>(
   }
 
   if (!res.ok) {
-    let message = `Salesforce API-Fehler (${res.status})`;
-    if (Array.isArray(data) && data[0]?.message) message = data[0].message;
-    throw new Error(message);
+    throw new Error(salesforceErrorText(data, res.status, text));
   }
 
   if (data == null) {

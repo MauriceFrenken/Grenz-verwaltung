@@ -1,8 +1,11 @@
 import {
+  salesforceSessionAktualisieren,
   salesforceSessionLesen,
   salesforceSessionLoeschen,
   salesforceSessionSpeichern,
+  salesforceTokenIstAlt,
   type SalesforceSession,
+  type SalesforceSessionHint,
 } from "./config";
 
 export type SalesforceUserInfo = {
@@ -23,8 +26,10 @@ function requireSession(): SalesforceSession {
   return session;
 }
 
-/** Access Token per Refresh Token erneuern und in sessionStorage speichern. */
-async function tryRefreshSession(session: SalesforceSession): Promise<SalesforceSession | null> {
+/** Access Token per Refresh Token erneuern und speichern. */
+async function tryRefreshSession(
+  session: SalesforceSession,
+): Promise<SalesforceSession | null> {
   const refreshToken = session.refreshToken?.trim();
   if (!refreshToken) return null;
   try {
@@ -35,10 +40,46 @@ async function tryRefreshSession(session: SalesforceSession): Promise<Salesforce
       accessToken: neu.accessToken,
       refreshToken: neu.refreshToken ?? refreshToken,
       instanceUrl: neu.instanceUrl || session.instanceUrl,
+      aktualisiertAm: new Date().toISOString(),
     });
   } catch {
     return null;
   }
+}
+
+/**
+ * Session-Daten für einen serverseitigen Salesforce-Aufruf. Ist der Access
+ * Token alt, wird er vorher erneuert — so läuft der eigentliche Aufruf nicht
+ * in ein abgelaufenes Token.
+ */
+export async function salesforceSessionHintFrisch(): Promise<SalesforceSessionHint> {
+  const session = salesforceSessionLesen();
+  if (!session) return {};
+
+  const aktuell =
+    salesforceTokenIstAlt(session) && session.refreshToken
+      ? ((await tryRefreshSession(session)) ?? session)
+      : session;
+
+  return {
+    accessToken: aktuell.accessToken,
+    instanceUrl: aktuell.instanceUrl,
+    refreshToken: aktuell.refreshToken ?? undefined,
+  };
+}
+
+/**
+ * Übernimmt einen Access Token, den eine Server-Fn per Refresh Token erneuert
+ * hat, in die lokale Verbindung.
+ */
+export function salesforceSessionUebernehmen(
+  erneuert:
+    | { accessToken: string; instanceUrl: string; refreshToken: string }
+    | undefined
+    | null,
+): void {
+  if (!erneuert?.accessToken) return;
+  salesforceSessionAktualisieren(erneuert);
 }
 
 /**
@@ -84,7 +125,10 @@ export async function salesforceApiFetch(
   return res;
 }
 
-export async function salesforceApiJson<T>(path: string, init?: RequestInit): Promise<T> {
+export async function salesforceApiJson<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const res = await salesforceApiFetch(path, init);
   const data = (await res.json().catch(() => null)) as
     | T
@@ -94,7 +138,12 @@ export async function salesforceApiJson<T>(path: string, init?: RequestInit): Pr
 
   if (!res.ok) {
     let message = `Salesforce API-Fehler (${res.status})`;
-    if (Array.isArray(data) && data[0] && "message" in data[0] && data[0].message) {
+    if (
+      Array.isArray(data) &&
+      data[0] &&
+      "message" in data[0] &&
+      data[0].message
+    ) {
       message = data[0].message;
     } else if (
       data &&
@@ -103,7 +152,12 @@ export async function salesforceApiJson<T>(path: string, init?: RequestInit): Pr
       data.error_description
     ) {
       message = data.error_description;
-    } else if (data && !Array.isArray(data) && "error" in data && typeof data.error === "string") {
+    } else if (
+      data &&
+      !Array.isArray(data) &&
+      "error" in data &&
+      typeof data.error === "string"
+    ) {
       message = data.error;
     }
     throw new Error(message);

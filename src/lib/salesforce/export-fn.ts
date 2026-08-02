@@ -4,10 +4,7 @@ import type { ExposeFeldId } from "@/lib/expose-ai";
 
 import { buildRealEstatePayload, buildTransaktionPayload } from "./field-map";
 import { salesforceDataApiPath, salesforceRestJson } from "./query";
-import {
-  clearSalesforceCredentialsCache,
-  resolveSalesforceCredentials,
-} from "./server-credentials";
+import { resolveVerifiedSalesforceCredentials } from "./server-credentials";
 
 export type ExportExposeToSalesforceInput = {
   accessToken?: string;
@@ -28,12 +25,17 @@ export type ExportExposeToSalesforceResult = {
   transactionId: string;
   mode: "update" | "create";
   authSource: "env" | "session";
+  /** Exposé-PDF wurde am Objekt hinterlegt. */
+  pdfAngehaengt: boolean;
+  /** Grund, falls das PDF nicht hinterlegt werden konnte. */
+  pdfFehler?: string;
+  /** Serverseitig erneuerter Access Token — Client übernimmt ihn. */
+  erneuerteSession?: {
+    accessToken: string;
+    instanceUrl: string;
+    refreshToken: string;
+  };
 };
-
-function looksLikeAuthError(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  return /INVALID_SESSION|Session expired|401|UNAUTHORIZED/i.test(msg);
-}
 
 type CreateResult = { id: string; success: boolean; errors: unknown[] };
 
@@ -41,6 +43,10 @@ function normalizePdfTitle(fileName: string): string {
   const trimmed = fileName.trim();
   if (!trimmed) return "Expose";
   return trimmed.replace(/\.pdf$/i, "").trim() || "Expose";
+}
+
+function fehlerText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 async function createRealEstate(
@@ -130,71 +136,95 @@ async function attachPdfToRealEstate(
   );
 }
 
-export const exportExposeToSalesforceFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as ExportExposeToSalesforceInput)
-  .handler(async ({ data }): Promise<ExportExposeToSalesforceResult> => {
-    const sessionHint = {
-      accessToken: data.accessToken,
-      instanceUrl: data.instanceUrl,
-      refreshToken: data.refreshToken,
-    };
+export async function exportExposeToSalesforce(
+  data: ExportExposeToSalesforceInput,
+): Promise<ExportExposeToSalesforceResult> {
+  // Token vorab prüfen und ggf. erneuern: ein Retry mitten in der Sequenz
+  // würde Objekt und Transaktion doppelt anlegen.
+  const creds = await resolveVerifiedSalesforceCredentials({
+    accessToken: data.accessToken,
+    instanceUrl: data.instanceUrl,
+    refreshToken: data.refreshToken,
+  });
 
-    let creds = await resolveSalesforceCredentials(sessionHint);
-    const existingId = data.realEstateId?.trim() || null;
-    const felder = data.felder ?? {};
+  const existingId = data.realEstateId?.trim() || null;
+  const felder = data.felder ?? {};
 
-    const run = async (): Promise<ExportExposeToSalesforceResult> => {
-      let realEstateId: string;
-      let mode: "update" | "create";
+  let realEstateId: string;
+  let mode: "update" | "create";
 
-      if (existingId) {
-        await updateRealEstate(
-          creds.accessToken,
-          creds.instanceUrl,
-          existingId,
-          felder,
-        );
-        realEstateId = existingId;
-        mode = "update";
-      } else {
-        realEstateId = await createRealEstate(
-          creds.accessToken,
-          creds.instanceUrl,
-          felder,
-        );
-        mode = "create";
-      }
+  if (existingId) {
+    try {
+      await updateRealEstate(
+        creds.accessToken,
+        creds.instanceUrl,
+        existingId,
+        felder,
+      );
+    } catch (err) {
+      throw new Error(
+        `Objekt konnte nicht aktualisiert werden: ${fehlerText(err)}`,
+      );
+    }
+    realEstateId = existingId;
+    mode = "update";
+  } else {
+    try {
+      realEstateId = await createRealEstate(
+        creds.accessToken,
+        creds.instanceUrl,
+        felder,
+      );
+    } catch (err) {
+      throw new Error(
+        `Objekt konnte nicht angelegt werden: ${fehlerText(err)}`,
+      );
+    }
+    mode = "create";
+  }
 
-      const transactionId = await createTransaktion(
+  let transactionId: string;
+  try {
+    transactionId = await createTransaktion(
+      creds.accessToken,
+      creds.instanceUrl,
+      realEstateId,
+      felder,
+    );
+  } catch (err) {
+    throw new Error(
+      `Objekt wurde ${mode === "create" ? "angelegt" : "aktualisiert"}, aber die Transaktion konnte nicht angelegt werden: ${fehlerText(err)}`,
+    );
+  }
+
+  // Anhang ist optional: ein Fehler hier darf den Export nicht verwerfen.
+  let pdfAngehaengt = false;
+  let pdfFehler: string | undefined;
+  if (data.pdf) {
+    try {
+      await attachPdfToRealEstate(
         creds.accessToken,
         creds.instanceUrl,
         realEstateId,
-        felder,
+        data.pdf,
       );
-
-      if (data.pdf) {
-        await attachPdfToRealEstate(
-          creds.accessToken,
-          creds.instanceUrl,
-          realEstateId,
-          data.pdf,
-        );
-      }
-
-      return {
-        realEstateId,
-        transactionId,
-        mode,
-        authSource: creds.source,
-      };
-    };
-
-    try {
-      return await run();
+      pdfAngehaengt = true;
     } catch (err) {
-      if (!looksLikeAuthError(err)) throw err;
-      clearSalesforceCredentialsCache();
-      creds = await resolveSalesforceCredentials(sessionHint);
-      return await run();
+      pdfFehler = fehlerText(err);
     }
-  });
+  }
+
+  return {
+    realEstateId,
+    transactionId,
+    mode,
+    authSource: creds.source,
+    pdfAngehaengt,
+    pdfFehler,
+    erneuerteSession: creds.erneuert,
+  };
+}
+
+export const exportExposeToSalesforceFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as ExportExposeToSalesforceInput)
+  .handler(({ data }) => exportExposeToSalesforce(data));
