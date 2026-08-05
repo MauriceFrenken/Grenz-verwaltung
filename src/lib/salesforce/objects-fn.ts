@@ -1,5 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import {
+  salesforceObjektRechte,
+  type SalesforceObjektRechte,
+} from "./describe";
 import { mitSalesforceCredentials } from "./server-credentials";
 import {
   fetchAllSalesforceObjekte,
@@ -17,6 +21,8 @@ export type SalesforceObjekteInput = {
   adresse?: string;
   /** Freitext-Suche in Salesforce */
   search?: string;
+  /** Objektrechte des Users mitliefern (nur beim ersten Laden nötig). */
+  mitRechten?: boolean;
 };
 
 export type SalesforceObjekteResult = {
@@ -24,6 +30,8 @@ export type SalesforceObjekteResult = {
   results: SalesforceObjekt[];
   totalLoaded: number;
   authSource: "env" | "session";
+  /** Darf der User in Salesforce Objekte anlegen/ändern? */
+  rechte?: SalesforceObjektRechte | null;
   /** Serverseitig erneuerter Access Token — Client übernimmt ihn. */
   erneuerteSession?: {
     accessToken: string;
@@ -60,12 +68,20 @@ export const fetchSalesforceObjekteFn = createServerFn({ method: "POST" })
     );
 
     const recommendations = adresse ? rankObjekteByAdresse(all, adresse) : [];
+    const rechte = data.mitRechten
+      ? await salesforceObjektRechte(
+          creds.accessToken,
+          creds.instanceUrl,
+          "Real_Estate__c",
+        )
+      : undefined;
 
     return {
       recommendations,
       results: all,
       totalLoaded: all.length,
       authSource: creds.source,
+      rechte,
       erneuerteSession: creds.erneuert,
     };
   });

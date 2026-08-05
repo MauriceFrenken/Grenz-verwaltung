@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import type { ExposeFeldId } from "@/lib/expose-ai";
 
+import { mitRechteDiagnose } from "./describe";
 import { buildRealEstatePayload, buildTransaktionPayload } from "./field-map";
 import { salesforceDataApiPath, salesforceRestJson } from "./query";
 import { resolveVerifiedSalesforceCredentials } from "./server-credentials";
@@ -163,7 +164,13 @@ export async function exportExposeToSalesforce(
       );
     } catch (err) {
       throw new Error(
-        `Objekt konnte nicht aktualisiert werden: ${fehlerText(err)}`,
+        `Objekt konnte nicht aktualisiert werden: ${await mitRechteDiagnose(
+          creds.accessToken,
+          creds.instanceUrl,
+          "Real_Estate__c",
+          "aktualisieren",
+          fehlerText(err),
+        )}`,
       );
     }
     realEstateId = existingId;
@@ -177,7 +184,13 @@ export async function exportExposeToSalesforce(
       );
     } catch (err) {
       throw new Error(
-        `Objekt konnte nicht angelegt werden: ${fehlerText(err)}`,
+        `Objekt konnte nicht angelegt werden: ${await mitRechteDiagnose(
+          creds.accessToken,
+          creds.instanceUrl,
+          "Real_Estate__c",
+          "anlegen",
+          fehlerText(err),
+        )}`,
       );
     }
     mode = "create";
@@ -193,7 +206,13 @@ export async function exportExposeToSalesforce(
     );
   } catch (err) {
     throw new Error(
-      `Objekt wurde ${mode === "create" ? "angelegt" : "aktualisiert"}, aber die Transaktion konnte nicht angelegt werden: ${fehlerText(err)}`,
+      `Objekt wurde ${mode === "create" ? "angelegt" : "aktualisiert"}, aber die Transaktion konnte nicht angelegt werden: ${await mitRechteDiagnose(
+        creds.accessToken,
+        creds.instanceUrl,
+        "Transaktion__c",
+        "anlegen",
+        fehlerText(err),
+      )}`,
     );
   }
 

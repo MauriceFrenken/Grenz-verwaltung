@@ -22,6 +22,7 @@ import {
   type SalesforceObjekt,
   type SalesforceObjektMatch,
 } from "@/lib/salesforce";
+import type { SalesforceObjektRechte } from "@/lib/salesforce/describe";
 import { exportExposeToSalesforceFn } from "@/lib/salesforce/export-fn";
 import { fetchSalesforceObjekteFn } from "@/lib/salesforce/objects-fn";
 
@@ -98,6 +99,7 @@ export function SalesforceMatchPage() {
     null,
   );
   const [ausgewaehltId, setAusgewaehltId] = useState<string | null>(null);
+  const [rechte, setRechte] = useState<SalesforceObjektRechte | null>(null);
 
   const adresse = draft?.felder.objektadresse?.trim() ?? "";
 
@@ -129,9 +131,11 @@ export function SalesforceMatchPage() {
         data: {
           ...(await salesforceSessionHintFrisch()),
           adresse: adresse || undefined,
+          mitRechten: true,
         },
       });
       salesforceSessionUebernehmen(result.erneuerteSession);
+      setRechte(result.rechte ?? null);
       setKatalog(result.results);
       const empfehlungen =
         result.recommendations.length > 0
@@ -264,6 +268,10 @@ export function SalesforceMatchPage() {
     }
   };
 
+  // undefined = noch nicht geprüft, false = Salesforce verweigert das Recht
+  const darfAnlegen = rechte ? rechte.createable : undefined;
+  const darfAktualisieren = rechte ? rechte.updateable : undefined;
+
   return (
     <>
       <PageHeader
@@ -273,7 +281,17 @@ export function SalesforceMatchPage() {
             <Button
               size="sm"
               className="bg-primary text-primary-foreground hover:bg-heading"
-              disabled={!ausgewaehltId || !draft || exportModus !== null}
+              disabled={
+                !ausgewaehltId ||
+                !draft ||
+                exportModus !== null ||
+                darfAktualisieren === false
+              }
+              title={
+                darfAktualisieren === false
+                  ? "Ihrem Salesforce-Benutzer fehlt das Recht „Bearbeiten“ für Objekte."
+                  : undefined
+              }
               onClick={() => void exportieren(ausgewaehltId)}
             >
               {exportModus === "bestehend" ? (
@@ -285,7 +303,12 @@ export function SalesforceMatchPage() {
               size="sm"
               variant="outline"
               className="border-foreground text-foreground"
-              disabled={!draft || exportModus !== null}
+              disabled={!draft || exportModus !== null || darfAnlegen === false}
+              title={
+                darfAnlegen === false
+                  ? "Ihrem Salesforce-Benutzer fehlt das Recht „Erstellen“ für Objekte."
+                  : undefined
+              }
               onClick={() => void exportieren(null)}
             >
               {exportModus === "neu" ? (
@@ -315,6 +338,23 @@ export function SalesforceMatchPage() {
           </p>
         ) : (
           <div className="flex flex-col gap-8">
+            {rechte && !rechte.createable ? (
+              <div className="border border-destructive/40 bg-destructive/5 px-4 py-3">
+                <p className="text-sm font-medium text-heading">
+                  Keine Berechtigung zum Anlegen von Objekten
+                </p>
+                <p className="mt-1 text-sm text-text-muted">
+                  Ihr Salesforce-Benutzer darf keine Datensätze vom Typ „
+                  {rechte.label}“ ({rechte.name}) anlegen. Der Salesforce-Admin
+                  muss das Recht „Erstellen“ im Profil oder in einem Permission
+                  Set freischalten.
+                  {rechte.updateable
+                    ? " Bestehende Objekte können Sie weiterhin aktualisieren."
+                    : null}
+                </p>
+              </div>
+            ) : null}
+
             <ContentSection titel="Objektadresse">
               <div className="border border-hairline bg-surface-muted/40 px-4 py-3">
                 <p className="font-medium text-heading">
