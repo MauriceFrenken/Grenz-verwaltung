@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -10,6 +10,7 @@ import {
   FileText,
   Loader2,
   Search,
+  Upload,
   X,
 } from "lucide-react";
 
@@ -31,9 +32,26 @@ type Props = {
   highlight: { page: number; quote: string; hint?: string } | null;
   title?: string;
   className?: string;
+  onPdfDrop?: (file: File) => void;
+  dropDisabled?: boolean;
 };
 
 type TextMatch = { pageNumber: number; charIndex: number };
+
+function hatDateien(dt: DataTransfer): boolean {
+  return dt.types.includes("Files") || dt.files.length > 0;
+}
+
+function dateiAusDataTransfer(dt: DataTransfer): File | null {
+  const files = Array.from(dt.files);
+  if (files.length === 0) return null;
+  return (
+    files.find(
+      (f) =>
+        f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
+    ) ?? files[0] ?? null
+  );
+}
 
 function collectTextMatches(pages: PdfPageChunk[], query: string): TextMatch[] {
   const needle = query.trim();
@@ -62,6 +80,8 @@ export function PdfSourceViewer({
   highlight,
   title,
   className,
+  onPdfDrop,
+  dropDisabled = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,6 +90,9 @@ export function PdfSourceViewer({
   const renderTaskRef = useRef<{ cancel?: () => void } | null>(null);
   const highlightRef = useRef(highlight);
   highlightRef.current = highlight;
+  const dragCountRef = useRef(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dropAktiv = Boolean(onPdfDrop) && !dropDisabled;
 
   const [loadedPdf, setLoadedPdf] = useState<PDFDocumentProxy | null>(null);
   const [numPages, setNumPages] = useState(0);
@@ -274,12 +297,63 @@ export function PdfSourceViewer({
   const prevPage = () => onPageChange(displayPage - 1);
   const nextPage = () => onPageChange(displayPage + 1);
 
+  const resetDrag = useCallback(() => {
+    dragCountRef.current = 0;
+    setIsDragOver(false);
+  }, []);
+
+  const onDragEnter = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      if (!onPdfDrop || !hatDateien(e.dataTransfer)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dragCountRef.current += 1;
+      if (!dropDisabled) setIsDragOver(true);
+    },
+    [onPdfDrop, dropDisabled],
+  );
+
+  const onDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCountRef.current = Math.max(0, dragCountRef.current - 1);
+    if (dragCountRef.current === 0) setIsDragOver(false);
+  }, []);
+
+  const onDragOver = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      if (!onPdfDrop || !hatDateien(e.dataTransfer)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = dropDisabled ? "none" : "copy";
+    },
+    [onPdfDrop, dropDisabled],
+  );
+
+  const onDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      if (!onPdfDrop) return;
+      e.preventDefault();
+      e.stopPropagation();
+      resetDrag();
+      if (dropDisabled) return;
+      const file = dateiAusDataTransfer(e.dataTransfer);
+      if (file) onPdfDrop(file);
+    },
+    [onPdfDrop, dropDisabled, resetDrag],
+  );
+
   return (
     <div
       className={cn(
-        "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border border-hairline bg-surface",
+        "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border border-hairline bg-surface",
+        isDragOver && dropAktiv && "border-heading",
         className,
       )}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
     >
       <div className="flex shrink-0 flex-col gap-2 border-b border-hairline bg-surface-muted/40 px-2 py-2 sm:px-3">
         <div className="flex min-w-0 items-center gap-1 sm:gap-2">
@@ -425,8 +499,22 @@ export function PdfSourceViewer({
         }}
       >
         {!objectUrl && (
-          <div className="flex h-full min-h-[280px] items-center justify-center px-4 text-center text-sm text-text-muted">
-            Laden Sie ein Exposé-PDF hoch, um es hier anzuzeigen.
+          <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 px-4 text-center">
+            {onPdfDrop ? (
+              <>
+                <Upload className="h-8 w-8 text-text-subtle" aria-hidden />
+                <p className="text-sm text-text-muted">
+                  Exposé-PDF hierher ziehen
+                </p>
+                <p className="text-xs text-text-subtle">
+                  oder über „Exposé-PDF hochladen“ wählen
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-text-muted">
+                Laden Sie ein Exposé-PDF hoch, um es hier anzuzeigen.
+              </p>
+            )}
           </div>
         )}
         {objectUrl && loadError && (
@@ -474,6 +562,13 @@ export function PdfSourceViewer({
           </div>
         )}
       </div>
+
+      {isDragOver && dropAktiv ? (
+        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-heading bg-heading/10">
+          <Upload className="h-8 w-8 text-heading" aria-hidden />
+          <p className="text-sm font-medium text-heading">PDF hier ablegen</p>
+        </div>
+      ) : null}
     </div>
   );
 }

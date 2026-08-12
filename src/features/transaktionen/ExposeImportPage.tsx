@@ -14,6 +14,7 @@ import { ContentSection } from "@/components/layout/PageWrapper";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { usePermissions } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import {
   EXPOSE_FELD_DEFINITIONEN,
@@ -162,9 +163,13 @@ function loeseSeite(
 
 export function ExposeImportPage() {
   const navigate = useNavigate();
+  const { darfAktion } = usePermissions();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
   const pdfDateiRef = useRef<File | null>(null);
+  const darfHochladen = darfAktion(
+    "aktion.transaktionen.expose_import.hochladen",
+  );
 
   const [dateiname, setDateiname] = useState<string | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -226,11 +231,7 @@ export function ExposeImportPage() {
     [felder, pdfMeta],
   );
 
-  const pdfHochladen = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
+  const pdfDateiUebernehmen = useCallback(async (file: File) => {
     if (
       file.type !== "application/pdf" &&
       !file.name.toLowerCase().endsWith(".pdf")
@@ -267,6 +268,13 @@ export function ExposeImportPage() {
     } finally {
       setLaedtPdf(false);
     }
+  }, []);
+
+  const pdfHochladen = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    void pdfDateiUebernehmen(file);
   };
 
   const kiAnalysieren = async () => {
@@ -499,6 +507,8 @@ export function ExposeImportPage() {
             highlight={highlight}
             title={dateiname ?? undefined}
             className="h-full min-h-0"
+            onPdfDrop={darfHochladen ? pdfDateiUebernehmen : undefined}
+            dropDisabled={laedtPdf}
           />
         </div>
 
