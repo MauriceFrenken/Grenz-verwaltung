@@ -74,7 +74,6 @@ function ObjektZeile({
   /** Stadt aus dem Exposé — für Hinweis, ob die Stadt passt */
   exposeStadt?: string | null;
 }) {
-  const reason = "reason" in o ? o.reason : null;
   const stadt = o.city?.trim() || null;
   const plz = o.zip?.trim() || null;
   const ort = [plz, stadt].filter(Boolean).join(" ") || null;
@@ -124,7 +123,6 @@ function ObjektZeile({
       ) : (
         <p className="text-sm text-text-subtle">Keine Stadt hinterlegt</p>
       )}
-      {reason ? <p className="text-xs text-text-subtle">{reason}</p> : null}
     </button>
   );
 }
@@ -419,44 +417,10 @@ export function SalesforceMatchPage() {
             ) : null}
 
             <ContentSection titel="Objektadresse">
-              <div className="flex flex-col gap-3 border border-hairline bg-surface-muted/40 px-4 py-3">
-                <div>
-                  <p className="label-caps text-text-muted">Salesforce-Name</p>
-                  <p className="font-medium text-heading">
-                    {objektName || "— nicht gesetzt —"}
-                  </p>
-                </div>
-                <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <dt className="label-caps text-text-muted">Straße</dt>
-                    <dd className="text-sm text-heading">
-                      {adressTeile.street || "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="label-caps text-text-muted">Hausnummer</dt>
-                    <dd className="text-sm text-heading">
-                      {adressTeile.number || "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="label-caps text-text-muted">PLZ</dt>
-                    <dd className="text-sm text-heading">
-                      {adressTeile.zip || "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="label-caps text-text-muted">Stadt</dt>
-                    <dd className="text-sm text-heading">
-                      {adressTeile.city || "—"}
-                    </dd>
-                  </div>
-                </dl>
-                {detailAdresse ? (
-                  <p className="text-xs text-text-subtle">
-                    Detailadresse: {detailAdresse}
-                  </p>
-                ) : null}
+              <div className="border border-hairline bg-surface-muted/40 px-4 py-3">
+                <p className="font-medium text-heading">
+                  {objektName || "— nicht gesetzt —"}
+                </p>
               </div>
             </ContentSection>
 
