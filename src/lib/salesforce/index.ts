@@ -50,6 +50,7 @@ export {
   normalizeAddressText,
   parseAdresse,
   scoreAddressMatch,
+  type AddressOrtHint,
 } from "./address-match";
 
 export {

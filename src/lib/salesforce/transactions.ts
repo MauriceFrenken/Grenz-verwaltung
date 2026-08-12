@@ -188,7 +188,12 @@ export function rankTransaktionenByAdresse(
 ): SalesforceTransaktionMatch[] {
   const ranked = transactions
     .map((t) => {
-      const { score, reason } = scoreAddressMatch(adresse, t.adresse);
+      const { score, reason } = scoreAddressMatch(
+        adresse,
+        t.adresse,
+        undefined,
+        { city: t.city, zip: t.zip },
+      );
       return { ...t, score, reason };
     })
     .filter((t) => t.score >= EMPFEHLUNG_MIN_SCORE)

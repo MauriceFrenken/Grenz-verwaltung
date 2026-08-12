@@ -3,6 +3,8 @@
  * Deckt u. a. Straße / Strasse / Str. / Str und ß/ss.
  */
 
+import { parsePlzStadt } from "./address-format";
+
 export type ParsedAdresse = {
   /** Original-Eingabe (getrimmt) */
   raw: string;
@@ -12,6 +14,15 @@ export type ParsedAdresse = {
   houseNumbers: string[];
   /** Vollständiger Schlüssel streetKey + houseNumbers */
   fullKey: string;
+  /** Normalisierter Stadt-Schlüssel (leer wenn unbekannt) */
+  cityKey: string;
+  /** PLZ falls erkannt */
+  zip: string;
+};
+
+export type AddressOrtHint = {
+  city?: string | null;
+  zip?: string | null;
 };
 
 /** Straße / Strasse / Str. / Str → einheitliches Token „str“. */
@@ -46,17 +57,27 @@ const HOUSE_NUMBER_RE =
   /\b(\d{1,4}(?:\s*[-–/]\s*\d{1,4})?[a-z]?)\b/gi;
 
 /**
- * Zerlegt eine Adresse in Straßenkern + Hausnummer(n).
- * Stadt/PLZ nach Komma oder Pipe werden ignoriert.
+ * Zerlegt eine Adresse in Straßenkern + Hausnummer(n) + optional Stadt/PLZ.
  */
 export function parseAdresse(rawInput: string): ParsedAdresse {
   const raw = rawInput.trim();
   if (!raw) {
-    return { raw, streetKey: "", houseNumbers: [], fullKey: "" };
+    return {
+      raw,
+      streetKey: "",
+      houseNumbers: [],
+      fullKey: "",
+      cityKey: "",
+      zip: "",
+    };
   }
 
-  // „Venloer Str. 533, Köln“ / „Sudermanstr. 5 | Köln“
+  // „Venloer Str. 533, Köln“ / „Sudermanstr. 5 | 50668 Köln“
   const ohneOrt = raw.split(/[|,]/)[0]?.trim() ?? raw;
+  const ortTeil = raw.split(/[|,]/).slice(1).join(" ").trim();
+  const { zip, city } = parsePlzStadt(ortTeil);
+  const cityKey = city ? compactAddressKey(city) : "";
+
   const normalized = normalizeAddressText(ohneOrt);
 
   const houseNumbers: string[] = [];
@@ -82,7 +103,7 @@ export function parseAdresse(rawInput: string): ParsedAdresse {
   const streetKey = streetPart.replace(/\s+/g, "");
   const fullKey = streetKey + houseNumbers.join("");
 
-  return { raw, streetKey, houseNumbers, fullKey };
+  return { raw, streetKey, houseNumbers, fullKey, cityKey, zip };
 }
 
 export type AddressMatchScore = {
@@ -90,25 +111,80 @@ export type AddressMatchScore = {
   reason: string;
 };
 
+function resolveOrt(
+  parsed: ParsedAdresse,
+  hint?: AddressOrtHint,
+): { cityKey: string; zip: string } {
+  const cityKey = hint?.city?.trim()
+    ? compactAddressKey(hint.city)
+    : parsed.cityKey;
+  const zip = hint?.zip?.trim() || parsed.zip;
+  return { cityKey, zip };
+}
+
+/** „Frankfurt“ ↔ „Frankfurt am Main“, „Koeln“ ↔ „Köln“. */
+function citiesMatch(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  return a.includes(b) || b.includes(a);
+}
+
 /**
  * Bewertet Ähnlichkeit zweier Adressen (0–1).
- * Berücksichtigt unterschiedliche Schreibweisen von „Straße“.
+ * Berücksichtigt unterschiedliche Schreibweisen von „Straße“ und Stadt.
  */
-export function scoreAddressMatch(a: string, b: string): AddressMatchScore {
+export function scoreAddressMatch(
+  a: string,
+  b: string,
+  ortA?: AddressOrtHint,
+  ortB?: AddressOrtHint,
+): AddressMatchScore {
   const pa = parseAdresse(a);
   const pb = parseAdresse(b);
+  const oa = resolveOrt(pa, ortA);
+  const ob = resolveOrt(pb, ortB);
+
+  const bothCities = Boolean(oa.cityKey && ob.cityKey);
+  const cityOk = !bothCities || citiesMatch(oa.cityKey, ob.cityKey);
+  const bothZips = Boolean(oa.zip && ob.zip);
+  const zipOk = !bothZips || oa.zip === ob.zip;
+
+  // Bekannte, abweichende Städte → kein Treffer (z. B. gleiche Straße in anderer Stadt)
+  if (bothCities && !cityOk) {
+    return { score: 0, reason: "Straße ähnlich, aber andere Stadt" };
+  }
+
+  const withOrtReason = (reason: string): string => {
+    const extras: string[] = [];
+    if (bothCities && cityOk) extras.push("Stadt stimmt");
+    if (bothZips && zipOk) extras.push("PLZ stimmt");
+    return extras.length > 0 ? `${reason}, ${extras.join(", ")}` : reason;
+  };
+
+  const boostForOrt = (base: number): number => {
+    let score = base;
+    if (bothCities && cityOk) score = Math.min(1, score + 0.05);
+    if (bothZips && zipOk) score = Math.min(1, score + 0.02);
+    return score;
+  };
 
   if (!pa.streetKey || !pb.streetKey) {
     const ca = compactAddressKey(a);
     const cb = compactAddressKey(b);
     if (ca && cb && (ca === cb || ca.includes(cb) || cb.includes(ca))) {
-      return { score: 0.7, reason: "Teilübereinstimmung (normalisiert)" };
+      return {
+        score: boostForOrt(0.7),
+        reason: withOrtReason("Teilübereinstimmung (normalisiert)"),
+      };
     }
     return { score: 0, reason: "Keine vergleichbare Straße" };
   }
 
   if (pa.fullKey && pa.fullKey === pb.fullKey) {
-    return { score: 1, reason: "Exakte Übereinstimmung (Schreibweise normalisiert)" };
+    return {
+      score: boostForOrt(1),
+      reason: withOrtReason("Exakte Übereinstimmung (Schreibweise normalisiert)"),
+    };
   }
 
   const streetEqual = pa.streetKey === pb.streetKey;
@@ -126,30 +202,44 @@ export function scoreAddressMatch(a: string, b: string): AddressMatchScore {
     const allMatch =
       numsA.size === numsB.size && overlap.length === numsA.size;
     return {
-      score: allMatch ? 0.98 : 0.9,
-      reason: allMatch
-        ? "Straße und Hausnummer stimmen überein"
-        : "Straße stimmt, Hausnummern überlappen",
+      score: boostForOrt(allMatch ? 0.98 : 0.9),
+      reason: withOrtReason(
+        allMatch
+          ? "Straße und Hausnummer stimmen überein"
+          : "Straße stimmt, Hausnummern überlappen",
+      ),
     };
   }
 
   if (streetSoft && hasNums && overlap.length > 0) {
-    return { score: 0.82, reason: "Ähnliche Straße, passende Hausnummer" };
+    return {
+      score: boostForOrt(0.82),
+      reason: withOrtReason("Ähnliche Straße, passende Hausnummer"),
+    };
   }
 
   if (streetEqual && !hasNums) {
-    return { score: 0.55, reason: "Straßenname stimmt (ohne Hausnummer-Vergleich)" };
+    return {
+      score: boostForOrt(0.55),
+      reason: withOrtReason("Straßenname stimmt (ohne Hausnummer-Vergleich)"),
+    };
   }
 
   if (streetSoft) {
-    return { score: 0.4, reason: "Ähnlicher Straßenname" };
+    return {
+      score: boostForOrt(0.4),
+      reason: withOrtReason("Ähnlicher Straßenname"),
+    };
   }
 
   // Fallback: kompakter Gesamtstring
   const ca = compactAddressKey(a);
   const cb = compactAddressKey(b);
   if (ca.length >= 6 && cb.length >= 6 && (ca.includes(cb) || cb.includes(ca))) {
-    return { score: 0.35, reason: "Teilstring-Treffer" };
+    return {
+      score: boostForOrt(0.35),
+      reason: withOrtReason("Teilstring-Treffer"),
+    };
   }
 
   return { score: 0, reason: "Keine Übereinstimmung" };

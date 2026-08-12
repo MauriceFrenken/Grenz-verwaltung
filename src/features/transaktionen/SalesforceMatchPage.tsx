@@ -16,6 +16,7 @@ import {
   leseExposeSalesforceDraftPdf,
   loescheExposeSalesforceDraftPdf,
   leseExposeSalesforceDraft,
+  normalizeAddressText,
   rankObjekteByAdresse,
   resolveAdressTeile,
   salesforceFehlerText,
@@ -34,10 +35,12 @@ const salesforceExportRoute = getRouteApi(
 );
 
 /**
- * Serverless-Requests sind auf 4,5 MB begrenzt. Größere Exposés werden ohne
- * Anhang exportiert, damit Objekt und Transaktion trotzdem entstehen.
+ * PDF geht als Base64 (~+33 %) über die Server-Fn zu Salesforce.
+ * Früher: künstlich ~3,5 MB wegen altem Vercel-Limit 4,5 MB.
+ * Jetzt: Vercel bis ~100 MB Request-Body → hier 40 MB Original-PDF
+ * (≈ 53 MB Base64), ausreichend für typische Exposés.
  */
-const MAX_PDF_BASE64_BYTES = 3_500_000;
+const MAX_PDF_BYTES = 40 * 1024 * 1024;
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -49,17 +52,43 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+function cityKey(value: string | null | undefined): string {
+  return normalizeAddressText(value ?? "").replace(/\s+/g, "");
+}
+
+function citiesMatchUi(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  return a.includes(b) || b.includes(a);
+}
+
 function ObjektZeile({
   o,
   selected,
   onSelect,
+  exposeStadt,
 }: {
   o: SalesforceObjekt | SalesforceObjektMatch;
   selected: boolean;
   onSelect: () => void;
+  /** Stadt aus dem Exposé — für Hinweis, ob die Stadt passt */
+  exposeStadt?: string | null;
 }) {
   const reason = "reason" in o ? o.reason : null;
-  const detail = o.adresse && o.adresse !== o.name ? o.adresse : null;
+  const stadt = o.city?.trim() || null;
+  const plz = o.zip?.trim() || null;
+  const ort = [plz, stadt].filter(Boolean).join(" ") || null;
+  const strasse = [o.streetName, o.streetNumber].filter(Boolean).join(" ").trim();
+  const detail =
+    o.adresse && o.adresse !== o.name && o.adresse !== ort ? o.adresse : null;
+
+  const exposeCityKey = cityKey(exposeStadt);
+  const objektCityKey = cityKey(stadt);
+  const stadtPasst =
+    exposeCityKey && objektCityKey
+      ? citiesMatchUi(exposeCityKey, objektCityKey)
+      : null;
+
   return (
     <button
       type="button"
@@ -72,9 +101,29 @@ function ObjektZeile({
       )}
     >
       <p className="font-medium text-heading">{o.name || "Ohne Namen"}</p>
-      {detail ? (
+      {strasse && strasse !== o.name ? (
+        <p className="text-sm text-text-muted">{strasse}</p>
+      ) : detail ? (
         <p className="text-sm text-text-muted">{detail}</p>
       ) : null}
+      {ort ? (
+        <p
+          className={cn(
+            "text-sm",
+            stadtPasst === true
+              ? "text-heading"
+              : stadtPasst === false
+                ? "text-destructive"
+                : "text-text-muted",
+          )}
+        >
+          {ort}
+          {stadtPasst === true ? " · Stadt stimmt" : null}
+          {stadtPasst === false ? " · andere Stadt" : null}
+        </p>
+      ) : (
+        <p className="text-sm text-text-subtle">Keine Stadt hinterlegt</p>
+      )}
       {reason ? <p className="text-xs text-text-subtle">{reason}</p> : null}
     </button>
   );
@@ -136,10 +185,16 @@ export function SalesforceMatchPage() {
     setLaedt(true);
     setFehler(null);
     try {
+      const ort = {
+        city: adressTeile.city || undefined,
+        zip: adressTeile.zip || undefined,
+      };
       const result = await fetchSalesforceObjekteFn({
         data: {
           ...(await salesforceSessionHintFrisch()),
           adresse: adresse || undefined,
+          city: ort.city,
+          zip: ort.zip,
           mitRechten: true,
         },
       });
@@ -150,7 +205,7 @@ export function SalesforceMatchPage() {
         result.recommendations.length > 0
           ? result.recommendations
           : adresse
-            ? rankObjekteByAdresse(result.results, adresse)
+            ? rankObjekteByAdresse(result.results, adresse, ort)
             : [];
       setRecommendations(empfehlungen);
     } catch (err) {
@@ -163,7 +218,7 @@ export function SalesforceMatchPage() {
     } finally {
       setLaedt(false);
     }
-  }, [adresse]);
+  }, [adresse, adressTeile.city, adressTeile.zip]);
 
   useEffect(() => {
     if (!draft) return;
@@ -224,10 +279,9 @@ export function SalesforceMatchPage() {
     setExportModus(realEstateId ? "bestehend" : "neu");
     try {
       const pdf = leseExposeSalesforceDraftPdf(draft.id);
-      const pdfBase64 = pdf ? bytesToBase64(pdf.bytes) : null;
-      const pdfZuGross = Boolean(
-        pdfBase64 && pdfBase64.length > MAX_PDF_BASE64_BYTES,
-      );
+      const pdfZuGross = Boolean(pdf && pdf.bytes.byteLength > MAX_PDF_BYTES);
+      const pdfBase64 =
+        pdf && !pdfZuGross ? bytesToBase64(pdf.bytes) : null;
 
       const result = await exportExposeToSalesforceFn({
         data: {
@@ -235,7 +289,7 @@ export function SalesforceMatchPage() {
           realEstateId,
           felder: draft.felder,
           pdf:
-            pdf && pdfBase64 && !pdfZuGross
+            pdf && pdfBase64
               ? {
                   fileName: pdf.dateiname,
                   mimeType: pdf.mimeType,
@@ -256,7 +310,7 @@ export function SalesforceMatchPage() {
         loescheExposeSalesforceDraftPdf(draft.id);
       } else if (pdfZuGross) {
         toast.warning(
-          "Das Exposé-PDF ist zu groß für den automatischen Upload und wurde nicht angehängt. Bitte manuell in Salesforce hochladen.",
+          "Das Exposé-PDF ist größer als 40 MB und wurde nicht angehängt. Bitte manuell in Salesforce hochladen.",
         );
       } else if (result.pdfFehler) {
         toast.warning(
@@ -432,6 +486,7 @@ export function SalesforceMatchPage() {
                       o={o}
                       selected={ausgewaehltId === o.id}
                       onSelect={() => setAusgewaehltId(o.id)}
+                      exposeStadt={adressTeile.city}
                     />
                   ))}
                 </div>
@@ -490,6 +545,7 @@ export function SalesforceMatchPage() {
                         o={o}
                         selected={ausgewaehltId === o.id}
                         onSelect={() => setAusgewaehltId(o.id)}
+                        exposeStadt={adressTeile.city}
                       />
                     ))
                   )}

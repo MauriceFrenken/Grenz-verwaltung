@@ -19,6 +19,10 @@ export type SalesforceObjekteInput = {
   refreshToken?: string;
   /** Objektadresse aus dem Exposé (für Empfehlungen) */
   adresse?: string;
+  /** Stadt aus dem Exposé — für Matching gegen Salesforce City__c */
+  city?: string;
+  /** PLZ aus dem Exposé — für Matching gegen Salesforce ZIP_Code__c */
+  zip?: string;
   /** Freitext-Suche in Salesforce */
   search?: string;
   /** Objektrechte des Users mitliefern (nur beim ersten Laden nötig). */
@@ -45,6 +49,9 @@ export const fetchSalesforceObjekteFn = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<SalesforceObjekteResult> => {
     const search = data.search?.trim() ?? "";
     const adresse = data.adresse?.trim() ?? "";
+    const city = data.city?.trim() ?? "";
+    const zip = data.zip?.trim() ?? "";
+    const ort = city || zip ? { city: city || null, zip: zip || null } : undefined;
 
     if (search && search.length < 2) {
       return {
@@ -67,7 +74,9 @@ export const fetchSalesforceObjekteFn = createServerFn({ method: "POST" })
           : fetchAllSalesforceObjekte(c.accessToken, c.instanceUrl),
     );
 
-    const recommendations = adresse ? rankObjekteByAdresse(all, adresse) : [];
+    const recommendations = adresse
+      ? rankObjekteByAdresse(all, adresse, ort)
+      : [];
     const rechte = data.mitRechten
       ? await salesforceObjektRechte(
           creds.accessToken,

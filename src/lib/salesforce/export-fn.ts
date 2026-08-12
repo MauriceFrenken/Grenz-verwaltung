@@ -40,10 +40,36 @@ export type ExportExposeToSalesforceResult = {
 
 type CreateResult = { id: string; success: boolean; errors: unknown[] };
 
+/**
+ * Salesforce ContentVersion lehnt viele Unicode-Sonderzeichen in PathOnClient ab
+ * (z. B. Hochgestellt ² in „85 m²“). NFKC macht ²→2, ³→3 usw.; Rest wird bereinigt.
+ */
+function sanitizePdfFileName(fileName: string): string {
+  let name = fileName.trim();
+  if (!name) return "Expose.pdf";
+
+  // Nur Basename, falls ein Pfad mitkommt
+  name = name.replace(/^.*[/\\]/, "");
+  // Kompatibilitäts-Normalisierung: ²→2, ³→3, ﬁ→fi, …
+  name = name.normalize("NFKC");
+
+  const hasPdf = /\.pdf$/i.test(name);
+  let base = hasPdf ? name.replace(/\.pdf$/i, "") : name;
+
+  base = base
+    .replace(/[^\p{L}\p{N}\s._-]+/gu, "")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^[._-]+|[._-]+$/g, "")
+    .slice(0, 180);
+
+  if (!base) base = "Expose";
+  return `${base}.pdf`;
+}
+
 function normalizePdfTitle(fileName: string): string {
-  const trimmed = fileName.trim();
-  if (!trimmed) return "Expose";
-  return trimmed.replace(/\.pdf$/i, "").trim() || "Expose";
+  const sanitized = sanitizePdfFileName(fileName);
+  return sanitized.replace(/\.pdf$/i, "") || "Expose";
 }
 
 function fehlerText(err: unknown): string {
@@ -111,15 +137,43 @@ async function createTransaktion(
   return created.id;
 }
 
+/**
+ * ContentVersion per multipart/form-data (Binärdaten).
+ * JSON+Base64 wäre auf ~37,5 MB begrenzt; Multipart erlaubt bis 2 GB bei SF.
+ */
 async function attachPdfToRealEstate(
   accessToken: string,
   instanceUrl: string,
   realEstateId: string,
   pdf: NonNullable<ExportExposeToSalesforceInput["pdf"]>,
 ): Promise<void> {
-  const fileName = pdf.fileName.trim();
+  const rawName = pdf.fileName.trim();
   const base64 = pdf.base64.trim();
-  if (!fileName || !base64) return;
+  if (!rawName || !base64) return;
+
+  const fileName = sanitizePdfFileName(rawName);
+  const title = normalizePdfTitle(fileName);
+  const binary = Buffer.from(base64, "base64");
+  const boundary = `frenken_cv_${Date.now().toString(36)}`;
+
+  const metaJson = JSON.stringify({
+    Title: title,
+    PathOnClient: fileName,
+    FirstPublishLocationId: realEstateId,
+  });
+
+  const preamble = Buffer.from(
+    `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="entity_content";\r\n` +
+      `Content-Type: application/json\r\n\r\n` +
+      `${metaJson}\r\n` +
+      `--${boundary}\r\n` +
+      `Content-Type: application/octet-stream\r\n` +
+      `Content-Disposition: form-data; name="VersionData"; filename="${fileName}"\r\n\r\n`,
+    "utf8",
+  );
+  const epilogue = Buffer.from(`\r\n--${boundary}--\r\n`, "utf8");
+  const body = Buffer.concat([preamble, binary, epilogue]);
 
   await salesforceRestJson<CreateResult>(
     accessToken,
@@ -127,12 +181,11 @@ async function attachPdfToRealEstate(
     `${salesforceDataApiPath()}/sobjects/ContentVersion`,
     {
       method: "POST",
-      body: JSON.stringify({
-        Title: normalizePdfTitle(fileName),
-        PathOnClient: fileName,
-        VersionData: base64,
-        FirstPublishLocationId: realEstateId,
-      }),
+      headers: {
+        // Salesforce erwartet die Boundary in Anführungszeichen.
+        "Content-Type": `multipart/form-data; boundary="${boundary}"`,
+      },
+      body,
     },
   );
 }

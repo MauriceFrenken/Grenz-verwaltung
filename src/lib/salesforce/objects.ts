@@ -3,6 +3,7 @@ import {
   EMPFEHLUNG_MIN_SCORE,
   scoreAddressMatch,
   textMatchesSearch,
+  type AddressOrtHint,
 } from "./address-match";
 import { salesforceQueryAll, soqlEscape } from "./query";
 
@@ -119,12 +120,15 @@ export async function searchSalesforceObjekte(
 export function rankObjekteByAdresse(
   objekte: SalesforceObjekt[],
   adresse: string,
+  ort?: AddressOrtHint,
 ): SalesforceObjektMatch[] {
   return objekte
     .map((o) => {
       const { score, reason } = scoreAddressMatch(
         adresse,
         o.adresse || o.name,
+        ort,
+        { city: o.city, zip: o.zip },
       );
       return { ...o, score, reason };
     })
