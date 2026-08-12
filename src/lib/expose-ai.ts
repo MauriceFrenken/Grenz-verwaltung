@@ -29,7 +29,9 @@ export type ExposeFeldGruppe = "objekt" | "immobilie" | "transaktion";
 export type ExposeFeldTyp = "zahl" | "text" | "auswahl";
 
 export const EXPOSE_FELD_DEFINITIONEN = [
-  { id: "objektadresse", label: "Adresse", gruppe: "objekt" as const, typ: "text" as const },
+  { id: "objektadresse", label: "Straße und Hausnummer", gruppe: "objekt" as const, typ: "text" as const },
+  { id: "stadt", label: "Stadt", gruppe: "objekt" as const, typ: "text" as const },
+  { id: "plz", label: "PLZ", gruppe: "objekt" as const, typ: "text" as const },
   { id: "baujahr", label: "Baujahr", gruppe: "immobilie" as const, typ: "zahl" as const },
   { id: "heizungsart", label: "Heizungsart", gruppe: "immobilie" as const, typ: "text" as const },
   { id: "energieausweis", label: "Energieausweis", gruppe: "immobilie" as const, typ: "auswahl" as const },
@@ -78,6 +80,10 @@ export type AnalyzeExposeResponse = {
 const FELD_ANWEISUNGEN: Record<ExposeFeldId, string> = {
   objektadresse:
     "Nur Straße und Hausnummer der beworbenen Immobilie (z. B. „Musterstraße 12“). Keine PLZ, kein Ort, kein Stadtteil, keine Makleradresse.",
+  stadt:
+    "Ort / Stadt der beworbenen Immobilie (z. B. „Köln“, „Düsseldorf“). Kein Stadtteil allein, keine PLZ, keine Makleradresse.",
+  plz:
+    "Fünfstellige Postleitzahl der beworbenen Immobilie (z. B. „50667“). Nur die Ziffern in value — kein Ort.",
   baujahr:
     "Baujahr / Jahr der Errichtung als vierstellige Jahreszahl (z. B. „1972“). Nur die Zahl in value — kein Text.",
   heizungsart:
@@ -130,29 +136,31 @@ function buildPrompt(): string {
     "Extrahiere strukturierte Felder aus dem bereitgestellten PDF-Text.",
     "",
     "=== OBJEKTADRESSE (ZUERST PRÜFEN) ===",
-    "Die Objektadresse ist das wichtigste Feld. Suche aktiv und gründlich — setze value nur auf null,",
+    "Die Objektadresse ist das wichtigste Feld. Suche aktiv und gründlich — setze objektadresse nur auf null,",
     "wenn wirklich keine Straße mit Hausnummer der Immobilie erkennbar ist.",
     "Suchreihenfolge (alle Schritte durchgehen):",
-    "1) Dateiname / Dokumenttitel — oft enthält er Straße und Hausnummer",
+    "1) Dateiname / Dokumenttitel — oft enthält er Straße, Hausnummer und Stadt",
     "   (z. B. „Expose_Hauptstrasse_12_Koeln.pdf“, „Musterstr_5_Expose.pdf“).",
     "2) Die hervorgehobenen ersten Seiten (Deckblatt, Titelseite, Objektdaten) — Adresse steht dort sehr oft.",
     "3) Labels im Text: „Adresse“, „Objektadresse“, „Lage“, „Objekt“, „Anschrift“, „Standort“.",
-    "4) Deutsche Adressmuster: Straße/Str./Strasse + Hausnummer.",
+    "4) Deutsche Adressmuster: Straße/Str./Strasse + Hausnummer, oft mit PLZ und Ort.",
     "Regeln:",
-    "- value: NUR Straße und Hausnummer (z. B. „Hauptstraße 12“). Keine PLZ, kein Ort.",
-    "- Wenn im Text „Hauptstraße 12, 50667 Köln“ steht → value „Hauptstraße 12“.",
+    "- objektadresse: NUR Straße und Hausnummer (z. B. „Hauptstraße 12“). Keine PLZ, kein Ort.",
+    "- stadt: NUR der Ortsname (z. B. „Köln“). Kein Stadtteil, keine PLZ.",
+    "- plz: NUR die fünfstellige Postleitzahl (z. B. „50667“).",
+    "- Wenn im Text „Hauptstraße 12, 50667 Köln“ steht → objektadresse „Hauptstraße 12“, plz „50667“, stadt „Köln“.",
     "- Teile dürfen aus Dateiname + PDF kombiniert werden, wenn klar dieselbe Immobilie gemeint ist.",
     "- verbatimQuote: treffender Beleg aus PDF-Text ODER relevanter Teil des Dateinamens.",
     "- page: Dateiseite des PDF-Belegs; null wenn nur aus dem Dateinamen.",
     "- Nicht die Absender-/Maklerbüro-Adresse nehmen, wenn klar vom Objekt unterscheidbar.",
-    "- Straße + Hausnummer reichen — lieber das als null.",
+    "- Straße + Hausnummer sind Pflicht; Stadt und PLZ zusätzlich setzen, sobald erkennbar.",
     "",
     "=== WICHTIG (übrige Felder) ===",
     "- Nur extrahieren, was eindeutig im Dokument steht — keine Vermutungen.",
     "- Nicht alle Exposés enthalten alle Felder: fehlende Angaben als value null lassen.",
     "- verbatimQuote: exakter Wortlaut aus dem PDF — kurz (idealerweise eine Zeile), wörtlich kopiert, keine Zusammenfassung.",
     "- page: Dateiseite (1-basiert), passend zum Marker <<<PAGE n>>> im Text — nicht die gedruckte Seitennummer.",
-    "- Bei Unsicherheit (außer objektadresse): value null, verbatimQuote null, page null, konfidenz niedrig (< 0.5).",
+    "- Bei Unsicherheit (außer objektadresse, stadt, plz): value null, verbatimQuote null, page null, konfidenz niedrig (< 0.5).",
     "",
     "=== ZAHLEN-FORMAT ===",
     "- Alle Felder vom Typ „Zahl“: value enthält ausschließlich Ziffern (ggf. Dezimalpunkt).",
@@ -264,8 +272,16 @@ function normalizeBaujahr(raw: string | null): string | null {
   return match ? match[1] : normalizeZahl(raw, true);
 }
 
+function normalizePlz(raw: string): string | null {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 5) return digits;
+  const trimmed = raw.trim();
+  return trimmed || null;
+}
+
 function normalizeFeldWert(id: ExposeFeldId, value: string | null): string | null {
   if (!value) return null;
+  if (id === "plz") return normalizePlz(value);
 
   const def = EXPOSE_FELD_DEFINITIONEN.find((d) => d.id === id);
   if (!def) return value;
@@ -303,7 +319,10 @@ function parseFeld(id: ExposeFeldId, raw: unknown): ExposeFeldQuelle {
       ? o.konfidenz
       : 0;
 
-  const schwelle = id === "objektadresse" ? KONFIDENZ_SCHWELLE_ADRESSE : KONFIDENZ_SCHWELLE;
+  const schwelle =
+    id === "objektadresse" || id === "stadt" || id === "plz"
+      ? KONFIDENZ_SCHWELLE_ADRESSE
+      : KONFIDENZ_SCHWELLE;
   if (konfidenz < schwelle) {
     return { value: null, verbatimQuote, page, konfidenz };
   }

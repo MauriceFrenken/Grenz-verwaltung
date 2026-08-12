@@ -1,24 +1,12 @@
 import type { ExposeFeldId } from "@/lib/expose-ai";
 
-/** Zerlegt „Straße Hausnummer“ (Ort nach Komma/Pipe wird ignoriert). */
-export function splitStrasseHausnummer(adresse: string): {
-  street: string;
-  number: string;
-} {
-  const ohneOrt = adresse.split(/[|,]/)[0]?.trim() ?? adresse.trim();
-  if (!ohneOrt) return { street: "", number: "" };
+import {
+  formatObjektNameFromTeile,
+  resolveAdressTeile,
+  splitStrasseHausnummer,
+} from "./address-format";
 
-  const m = ohneOrt.match(
-    /^(.+?)\s+(\d{1,4}(?:\s*[-–/]\s*\d{1,4})?[a-zA-Z]?)\s*$/,
-  );
-  if (m) {
-    return {
-      street: m[1].trim(),
-      number: m[2].replace(/\s+/g, ""),
-    };
-  }
-  return { street: ohneOrt, number: "" };
-}
+export { splitStrasseHausnummer };
 
 function trimOrEmpty(value: string | null | undefined): string {
   return value?.trim() ?? "";
@@ -77,14 +65,20 @@ export function buildRealEstatePayload(
 ): RealEstatePayload {
   const out: RealEstatePayload = {};
 
-  const adresse = trimOrEmpty(felder.objektadresse);
-  if (adresse) {
-    const { street, number } = splitStrasseHausnummer(adresse);
-    if (opts?.includeName !== false) {
-      out.Name = adresse;
-    }
-    if (street) out.Street_Name__c = street;
-    if (number) out.Street_Number__c = number;
+  const teile = resolveAdressTeile({
+    objektadresse: felder.objektadresse,
+    stadt: felder.stadt,
+    plz: felder.plz,
+  });
+
+  if (teile.street) out.Street_Name__c = teile.street;
+  if (teile.number) out.Street_Number__c = teile.number;
+  if (teile.city) out.City__c = teile.city;
+  if (teile.zip) out.ZIP_Code__c = teile.zip;
+
+  if (opts?.includeName !== false) {
+    const name = formatObjektNameFromTeile(teile);
+    if (name) out.Name = name;
   }
 
   const baujahr = trimOrEmpty(felder.baujahr);

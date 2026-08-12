@@ -1,3 +1,4 @@
+import { formatDetailAdresse, formatObjektName } from "./address-format";
 import {
   EMPFEHLUNG_MIN_SCORE,
   scoreAddressMatch,
@@ -38,29 +39,42 @@ const OBJEKT_SELECT = [
   "ZIP_Code__c",
 ].join(", ");
 
-export function buildObjektAdresse(row: {
+export function buildObjektName(row: {
   Name?: string | null;
+  Street_Name__c?: string | null;
+  Street_Number__c?: string | null;
+  City__c?: string | null;
+}): string {
+  const composed = formatObjektName(
+    row.Street_Name__c,
+    row.Street_Number__c,
+    row.City__c,
+  );
+  return row.Name?.trim() || composed;
+}
+
+/** Detailadresse aus den Salesforce-Feldern, nicht aus dem Namen. */
+export function buildObjektAdresse(row: {
   Street_Name__c?: string | null;
   Street_Number__c?: string | null;
   City__c?: string | null;
   ZIP_Code__c?: string | null;
 }): string {
-  const name = row.Name?.trim() ?? "";
-  if (name) return name;
-
-  const street = [row.Street_Name__c, row.Street_Number__c]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-  const ort = [row.ZIP_Code__c, row.City__c].filter(Boolean).join(" ").trim();
-  return [street, ort].filter(Boolean).join(", ");
+  return formatDetailAdresse(
+    row.Street_Name__c,
+    row.Street_Number__c,
+    row.ZIP_Code__c,
+    row.City__c,
+  );
 }
 
 function mapRow(row: SfObjektRow): SalesforceObjekt {
+  const name = buildObjektName(row);
+  const adresse = buildObjektAdresse(row);
   return {
     id: row.Id,
-    name: row.Name?.trim() || buildObjektAdresse(row) || row.Id,
-    adresse: buildObjektAdresse(row),
+    name: name || adresse || row.Id,
+    adresse: adresse || name,
     streetName: row.Street_Name__c,
     streetNumber: row.Street_Number__c,
     city: row.City__c,
@@ -108,7 +122,10 @@ export function rankObjekteByAdresse(
 ): SalesforceObjektMatch[] {
   return objekte
     .map((o) => {
-      const { score, reason } = scoreAddressMatch(adresse, o.adresse);
+      const { score, reason } = scoreAddressMatch(
+        adresse,
+        o.adresse || o.name,
+      );
       return { ...o, score, reason };
     })
     .filter((o) => o.score >= EMPFEHLUNG_MIN_SCORE)

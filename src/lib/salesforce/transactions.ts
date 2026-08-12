@@ -1,3 +1,4 @@
+import { formatDetailAdresse, formatObjektName } from "./address-format";
 import {
   EMPFEHLUNG_MIN_SCORE,
   scoreAddressMatch,
@@ -68,15 +69,19 @@ function buildAdresse(row: SfTransaktionRow): string {
   const re = row.Real_Estate__r;
   if (!re) return "";
 
-  const name = re.Name?.trim() ?? "";
-  if (name) return name;
+  const detail = formatDetailAdresse(
+    re.Street_Name__c,
+    re.Street_Number__c,
+    re.ZIP_Code__c,
+    re.City__c,
+  );
+  if (detail) return detail;
 
-  const street = [re.Street_Name__c, re.Street_Number__c]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-  const ort = [re.ZIP_Code__c, re.City__c].filter(Boolean).join(" ").trim();
-  return [street, ort].filter(Boolean).join(", ");
+  return (
+    formatObjektName(re.Street_Name__c, re.Street_Number__c, re.City__c) ||
+    re.Name?.trim() ||
+    ""
+  );
 }
 
 function mapRow(row: SfTransaktionRow): SalesforceTransaktion {

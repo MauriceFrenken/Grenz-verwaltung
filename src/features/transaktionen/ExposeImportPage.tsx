@@ -20,6 +20,8 @@ import {
 } from "@/lib/expose-ai";
 import {
   istSalesforceVerbunden,
+  formatObjektNameFromTeile,
+  resolveAdressTeile,
   salesforceSessionAbonnieren,
   speichereExposeSalesforceDraft,
   speichereExposeSalesforceDraftPdf,
@@ -322,7 +324,7 @@ export function ExposeImportPage() {
     const adresse = felder.objektadresse.value.trim();
     if (!adresse) {
       toast.error(
-        "Bitte zuerst eine Objektadresse setzen (per KI oder manuell).",
+        "Bitte zuerst Straße und Hausnummer setzen (per KI oder manuell).",
       );
       return;
     }
@@ -495,6 +497,20 @@ export function ExposeImportPage() {
                         hatQuelle={feldHatQuelle(id)}
                       />
                     ))}
+                    {gruppe === "objekt" ? (
+                      <ExposeSystemFeldZeile
+                        label="Salesforce-Name"
+                        wert={
+                          formatObjektNameFromTeile(
+                            resolveAdressTeile({
+                              objektadresse: felder.objektadresse.value,
+                              stadt: felder.stadt.value,
+                              plz: felder.plz.value,
+                            }),
+                          ) || "—"
+                        }
+                      />
+                    ) : null}
                     {systemFelder.map((feld) => (
                       <ExposeSystemFeldZeile
                         key={feld.id}

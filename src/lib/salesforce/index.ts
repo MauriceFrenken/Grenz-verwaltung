@@ -37,6 +37,15 @@ export {
 export { salesforceFehlerText } from "./fehler";
 
 export {
+  formatDetailAdresse,
+  formatDetailAdresseFromTeile,
+  formatObjektName,
+  formatObjektNameFromTeile,
+  resolveAdressTeile,
+  splitStrasseHausnummer,
+} from "./address-format";
+
+export {
   EMPFEHLUNG_MIN_SCORE,
   normalizeAddressText,
   parseAdresse,

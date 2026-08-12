@@ -10,11 +10,14 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   filterObjekteLocal,
+  formatDetailAdresseFromTeile,
+  formatObjektNameFromTeile,
   istSalesforceVerbunden,
   leseExposeSalesforceDraftPdf,
   loescheExposeSalesforceDraftPdf,
   leseExposeSalesforceDraft,
   rankObjekteByAdresse,
+  resolveAdressTeile,
   salesforceFehlerText,
   salesforceSessionHintFrisch,
   salesforceSessionUebernehmen,
@@ -56,6 +59,7 @@ function ObjektZeile({
   onSelect: () => void;
 }) {
   const reason = "reason" in o ? o.reason : null;
+  const detail = o.adresse && o.adresse !== o.name ? o.adresse : null;
   return (
     <button
       type="button"
@@ -67,12 +71,10 @@ function ObjektZeile({
           : "border-hairline bg-surface hover:border-foreground/40",
       )}
     >
-      <p className="font-medium text-heading">{o.adresse || "Ohne Adresse"}</p>
-      <p className="text-sm text-text-muted">
-        {o.name}
-        {o.city ? ` · ${o.city}` : ""}
-        {o.zip ? ` · ${o.zip}` : ""}
-      </p>
+      <p className="font-medium text-heading">{o.name || "Ohne Namen"}</p>
+      {detail ? (
+        <p className="text-sm text-text-muted">{detail}</p>
+      ) : null}
       {reason ? <p className="text-xs text-text-subtle">{reason}</p> : null}
     </button>
   );
@@ -101,7 +103,14 @@ export function SalesforceMatchPage() {
   const [ausgewaehltId, setAusgewaehltId] = useState<string | null>(null);
   const [rechte, setRechte] = useState<SalesforceObjektRechte | null>(null);
 
-  const adresse = draft?.felder.objektadresse?.trim() ?? "";
+  const adressTeile = resolveAdressTeile({
+    objektadresse: draft?.felder.objektadresse,
+    stadt: draft?.felder.stadt,
+    plz: draft?.felder.plz,
+  });
+  const objektName = formatObjektNameFromTeile(adressTeile);
+  const detailAdresse = formatDetailAdresseFromTeile(adressTeile);
+  const adresse = objektName || detailAdresse;
 
   useEffect(() => {
     if (!draftId) {
@@ -356,10 +365,44 @@ export function SalesforceMatchPage() {
             ) : null}
 
             <ContentSection titel="Objektadresse">
-              <div className="border border-hairline bg-surface-muted/40 px-4 py-3">
-                <p className="font-medium text-heading">
-                  {adresse || "— nicht gesetzt —"}
-                </p>
+              <div className="flex flex-col gap-3 border border-hairline bg-surface-muted/40 px-4 py-3">
+                <div>
+                  <p className="label-caps text-text-muted">Salesforce-Name</p>
+                  <p className="font-medium text-heading">
+                    {objektName || "— nicht gesetzt —"}
+                  </p>
+                </div>
+                <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <dt className="label-caps text-text-muted">Straße</dt>
+                    <dd className="text-sm text-heading">
+                      {adressTeile.street || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="label-caps text-text-muted">Hausnummer</dt>
+                    <dd className="text-sm text-heading">
+                      {adressTeile.number || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="label-caps text-text-muted">PLZ</dt>
+                    <dd className="text-sm text-heading">
+                      {adressTeile.zip || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="label-caps text-text-muted">Stadt</dt>
+                    <dd className="text-sm text-heading">
+                      {adressTeile.city || "—"}
+                    </dd>
+                  </div>
+                </dl>
+                {detailAdresse ? (
+                  <p className="text-xs text-text-subtle">
+                    Detailadresse: {detailAdresse}
+                  </p>
+                ) : null}
               </div>
             </ContentSection>
 
