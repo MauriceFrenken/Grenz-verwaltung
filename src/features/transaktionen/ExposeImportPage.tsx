@@ -1,12 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { BookOpen, Check, Loader2, Sparkles, Unplug, Upload } from "lucide-react";
+import { BookOpen, Check, Loader2, Sparkles, Unplug } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -84,9 +78,6 @@ function ExposeSystemFeldZeile({
         disabled
         className="bg-surface-muted text-text-muted"
       />
-      <span className="text-xs text-text-subtle">
-        Wird beim Anlegen automatisch gesetzt
-      </span>
     </div>
   );
 }
@@ -164,7 +155,6 @@ function loeseSeite(
 export function ExposeImportPage() {
   const navigate = useNavigate();
   const { darfAktion } = usePermissions();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
   const pdfDateiRef = useRef<File | null>(null);
   const darfHochladen = darfAktion(
@@ -269,13 +259,6 @@ export function ExposeImportPage() {
       setLaedtPdf(false);
     }
   }, []);
-
-  const pdfHochladen = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    void pdfDateiUebernehmen(file);
-  };
 
   const kiAnalysieren = async () => {
     if (!pdfMeta?.modelContext) {
@@ -418,35 +401,6 @@ export function ExposeImportPage() {
         }
         aktionen={
           <>
-            <PermissionGate
-              berechtigung="aktion.transaktionen.expose_import.hochladen"
-              skeletonClassName="w-44"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/pdf,.pdf"
-                className="hidden"
-                onChange={pdfHochladen}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-foreground text-foreground"
-                disabled={laedtPdf}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {laedtPdf ? (
-                  <Loader2
-                    className="mr-2 h-4 w-4 animate-spin"
-                    strokeWidth={1.5}
-                  />
-                ) : (
-                  <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                )}
-                Exposé-PDF hochladen
-              </Button>
-            </PermissionGate>
             {objectUrl && (
               <PermissionGate
                 berechtigung="aktion.transaktionen.expose_import.hochladen"
@@ -505,7 +459,6 @@ export function ExposeImportPage() {
             pages={pdfMeta?.pages ?? null}
             pageLabels={pdfMeta?.pageLabels ?? null}
             highlight={highlight}
-            title={dateiname ?? undefined}
             className="h-full min-h-0"
             onPdfDrop={darfHochladen ? pdfDateiUebernehmen : undefined}
             dropDisabled={laedtPdf}

@@ -545,7 +545,7 @@ export function PdfSourceViewer({
                   Exposé-PDF hierher ziehen
                 </p>
                 <p className="text-xs text-text-subtle">
-                  oder über „Exposé-PDF hochladen“ wählen
+                  oder klicken zum Auswählen
                 </p>
               </>
             ) : (
