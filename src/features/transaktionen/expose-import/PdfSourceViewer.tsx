@@ -87,6 +87,7 @@ export function PdfSourceViewer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const highlightWrapRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const renderTaskRef = useRef<{ cancel?: () => void } | null>(null);
   const highlightRef = useRef(highlight);
   highlightRef.current = highlight;
@@ -343,6 +344,11 @@ export function PdfSourceViewer({
     [onPdfDrop, dropDisabled, resetDrag],
   );
 
+  const dateiWaehlen = useCallback(() => {
+    if (!onPdfDrop || dropDisabled) return;
+    fileInputRef.current?.click();
+  }, [onPdfDrop, dropDisabled]);
+
   return (
     <div
       className={cn(
@@ -355,6 +361,19 @@ export function PdfSourceViewer({
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
+      {onPdfDrop ? (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) onPdfDrop(file);
+          }}
+        />
+      ) : null}
       <div className="flex shrink-0 flex-col gap-2 border-b border-hairline bg-surface-muted/40 px-2 py-2 sm:px-3">
         <div className="flex min-w-0 items-center gap-1 sm:gap-2">
           <FileText className="h-4 w-4 shrink-0 text-text-muted" aria-hidden />
@@ -499,7 +518,26 @@ export function PdfSourceViewer({
         }}
       >
         {!objectUrl && (
-          <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 px-4 text-center">
+          <div
+            className={cn(
+              "flex h-full min-h-[280px] flex-col items-center justify-center gap-2 px-4 text-center",
+              dropAktiv && "cursor-pointer",
+            )}
+            role={dropAktiv ? "button" : undefined}
+            tabIndex={dropAktiv ? 0 : undefined}
+            aria-label={dropAktiv ? "Exposé-PDF hochladen" : undefined}
+            onClick={dropAktiv ? dateiWaehlen : undefined}
+            onKeyDown={
+              dropAktiv
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      dateiWaehlen();
+                    }
+                  }
+                : undefined
+            }
+          >
             {onPdfDrop ? (
               <>
                 <Upload className="h-8 w-8 text-text-subtle" aria-hidden />
