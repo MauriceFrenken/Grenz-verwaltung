@@ -6,7 +6,7 @@ import {
   type ChangeEvent,
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { BookOpen, Loader2, Sparkles, Unplug, Upload } from "lucide-react";
+import { BookOpen, Check, Loader2, Sparkles, Unplug, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -383,6 +383,31 @@ export function ExposeImportPage() {
     <>
       <PageHeader
         titel="Exposé-Import"
+        nebenTitel={
+          <PermissionGate
+            berechtigung="aktion.transaktionen.expose_import.salesforce_session"
+            skeletonClassName="w-28"
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              className={cn(
+                "shrink-0",
+                sfVerbunden
+                  ? "border-heading/40 text-heading"
+                  : "border-foreground text-foreground",
+              )}
+              onClick={() => setSfConnectOpen(true)}
+            >
+              {sfVerbunden ? (
+                <Check className="mr-2 h-4 w-4" strokeWidth={1.5} />
+              ) : (
+                <Unplug className="mr-2 h-4 w-4" strokeWidth={1.5} />
+              )}
+              {sfVerbunden ? "verbunden" : "Mit Salesforce verbinden"}
+            </Button>
+          </PermissionGate>
+        }
         aktionen={
           <>
             <PermissionGate
@@ -437,22 +462,6 @@ export function ExposeImportPage() {
                 </Button>
               </PermissionGate>
             )}
-            <PermissionGate
-              berechtigung="aktion.transaktionen.expose_import.salesforce_session"
-              skeletonClassName="w-48"
-            >
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-foreground text-foreground"
-                onClick={() => setSfConnectOpen(true)}
-              >
-                <Unplug className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                {sfVerbunden
-                  ? "Salesforce verbunden"
-                  : "Mit Salesforce verbinden"}
-              </Button>
-            </PermissionGate>
             <PermissionGate
               berechtigung="aktion.transaktionen.expose_import.uebernehmen"
               skeletonClassName="w-44"

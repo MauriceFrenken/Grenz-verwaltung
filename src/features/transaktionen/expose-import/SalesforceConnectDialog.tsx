@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Loader2, LogIn, LogOut } from "lucide-react";
+import { Check, Loader2, LogIn, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  SALESFORCE_OAUTH_CALLBACK_URL,
   SALESFORCE_PREFERRED_URL,
   salesforceClientId,
   salesforceFehlerText,
@@ -29,15 +28,6 @@ type Props = {
   /** Wird nach Connect/Disconnect aufgerufen (z. B. Button-Label aktualisieren). */
   onStatusChange?: () => void;
 };
-
-async function inZwischenablage(text: string, label: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(`${label} kopiert`);
-  } catch {
-    toast.error("Kopieren fehlgeschlagen — bitte manuell markieren.");
-  }
-}
 
 export function SalesforceConnectDialog({
   open,
@@ -58,7 +48,7 @@ export function SalesforceConnectDialog({
   const verbinden = async () => {
     if (!clientIdOk) {
       toast.error(
-        "Connected App noch nicht konfiguriert — Consumer Key (VITE_SALESFORCE_CLIENT_ID) fehlt.",
+        "Salesforce ist noch nicht eingerichtet. Bitte den Administrator kontaktieren.",
       );
       return;
     }
@@ -69,10 +59,10 @@ export function SalesforceConnectDialog({
       onStatusChange?.();
       toast.success(
         neu.displayName
-          ? `Mit Salesforce verbunden (${neu.displayName})`
+          ? `Verbunden als ${neu.displayName}`
           : "Mit Salesforce verbunden",
       );
-      // Dialog offen lassen — Access Token zum Kopieren sichtbar
+      onOpenChange(false);
     } catch (err) {
       const msg = salesforceFehlerText(err, "Verbindung fehlgeschlagen");
       if (!msg.includes("abgebrochen")) {
@@ -88,37 +78,20 @@ export function SalesforceConnectDialog({
     setSession(null);
     onStatusChange?.();
     toast.info("Salesforce-Verbindung getrennt");
-  };
-
-  const tokenUndInstanceKopieren = () => {
-    if (!session) return;
-    const parts = [
-      `Access Token:\n${session.accessToken}`,
-      `Instance URL:\n${session.instanceUrl}`,
-    ];
-    if (session.refreshToken) {
-      parts.push(`Refresh Token:\n${session.refreshToken}`);
-    }
-    void inZwischenablage(parts.join("\n\n"), "Salesforce Tokens");
+    onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg sm:rounded-none">
+      <DialogContent className="max-w-md sm:rounded-none">
         <DialogHeader>
-          <DialogTitle>Mit Salesforce verbinden</DialogTitle>
+          <DialogTitle>
+            {session ? "Salesforce-Verbindung" : "Mit Salesforce verbinden"}
+          </DialogTitle>
           <DialogDescription>
-            Jeder Nutzer meldet sich mit seinem eigenen Salesforce-Account an.
-            Das Passwort bleibt bei Salesforce (
-            <a
-              href={SALESFORCE_PREFERRED_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="text-heading underline-offset-2 hover:underline"
-            >
-              {SALESFORCE_PREFERRED_URL.replace("https://", "")}
-            </a>
-            ).
+            {session
+              ? "Die Verbindung bleibt in diesem Browser bestehen und wird bei Bedarf automatisch erneuert."
+              : "Melden Sie sich mit Ihrem Salesforce-Account an. Das Passwort bleibt bei Salesforce."}
           </DialogDescription>
         </DialogHeader>
 
@@ -130,7 +103,7 @@ export function SalesforceConnectDialog({
                 Verbunden
                 {session.displayName ? ` — ${session.displayName}` : null}
               </div>
-              <p className="text-xs text-text-subtle break-all">
+              <p className="text-xs text-text-subtle">
                 {session.preferredUsername
                   ? `${session.preferredUsername} · `
                   : null}
@@ -139,154 +112,51 @@ export function SalesforceConnectDialog({
                   ? new Date(session.gespeichertAm).toLocaleString("de-DE")
                   : "—"}
               </p>
-
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-heading">
-                    Access Token
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-2"
-                    onClick={() =>
-                      void inZwischenablage(session.accessToken, "Access Token")
-                    }
-                  >
-                    <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    Kopieren
-                  </Button>
-                </div>
-                <code className="max-h-24 overflow-y-auto break-all rounded-none border border-hairline bg-background px-2 py-1.5 text-[11px] leading-relaxed text-text-muted">
-                  {session.accessToken}
-                </code>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-heading">
-                    Instance URL
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-2"
-                    onClick={() =>
-                      void inZwischenablage(session.instanceUrl, "Instance URL")
-                    }
-                  >
-                    <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    Kopieren
-                  </Button>
-                </div>
-                <code className="break-all rounded-none border border-hairline bg-background px-2 py-1.5 text-[11px] text-text-muted">
-                  {session.instanceUrl}
-                </code>
-              </div>
-
-              {session.refreshToken ? (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-heading">
-                      Refresh Token
-                    </span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2"
-                      onClick={() =>
-                        void inZwischenablage(
-                          session.refreshToken!,
-                          "Refresh Token",
-                        )
-                      }
-                    >
-                      <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
-                      Kopieren
-                    </Button>
-                  </div>
-                  <code className="max-h-24 overflow-y-auto break-all rounded-none border border-hairline bg-background px-2 py-1.5 text-[11px] leading-relaxed text-text-muted">
-                    {session.refreshToken}
-                  </code>
-                  <p className="text-xs text-text-muted">
-                    Die Verbindung bleibt in diesem Browser bestehen und wird
-                    bei Bedarf automatisch erneuert — kein erneutes Anmelden
-                    nötig.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-xs text-text-muted">
-                  Kein Refresh Token (von Admin nicht freigegeben) — der Access
-                  Token läuft nach ca. 2&nbsp;h ab. Danach einfach erneut
-                  verbinden.
-                </p>
-              )}
-
-              <p className="text-xs text-text-muted">
-                Access Token und Instance URL gelten wie ein Passwort — nur
-                vertrauenswürdig weitergeben. Für den Export muss die Verbindung
-                aktiv sein; Env-Tokens sind nicht nötig.
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={tokenUndInstanceKopieren}
-                >
-                  <Copy className="h-4 w-4" strokeWidth={1.5} />
-                  Beides kopieren
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={trennen}
-                >
-                  <LogOut className="h-4 w-4" strokeWidth={1.5} />
-                  Verbindung trennen
-                </Button>
-              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={trennen}
+              >
+                <LogOut className="h-4 w-4" strokeWidth={1.5} />
+                Verbindung trennen
+              </Button>
             </div>
           ) : (
-            <Button
-              type="button"
-              className="bg-primary text-primary-foreground hover:bg-heading"
-              disabled={laedt || !clientIdOk}
-              onClick={verbinden}
-            >
-              {laedt ? (
-                <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+            <>
+              <Button
+                type="button"
+                className="bg-primary text-primary-foreground hover:bg-heading"
+                disabled={laedt || !clientIdOk}
+                onClick={verbinden}
+              >
+                {laedt ? (
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+                ) : (
+                  <LogIn className="h-4 w-4" strokeWidth={1.5} />
+                )}
+                Mit Salesforce verbinden
+              </Button>
+              {!clientIdOk ? (
+                <p className="text-xs text-text-muted">
+                  Salesforce ist noch nicht eingerichtet. Bitte den
+                  Administrator kontaktieren.
+                </p>
               ) : (
-                <LogIn className="h-4 w-4" strokeWidth={1.5} />
+                <p className="text-xs text-text-subtle">
+                  Anmeldung über{" "}
+                  <a
+                    href={SALESFORCE_PREFERRED_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-heading underline-offset-2 hover:underline"
+                  >
+                    {SALESFORCE_PREFERRED_URL.replace("https://", "")}
+                  </a>
+                  .
+                </p>
               )}
-              Mit Salesforce verbinden
-            </Button>
-          )}
-
-          {!clientIdOk ? (
-            <p className="text-xs text-text-muted">
-              Consumer Key als{" "}
-              <code className="text-xs">VITE_SALESFORCE_CLIENT_ID</code> in{" "}
-              <code className="text-xs">.env.local</code> und in den Vercel
-              Environment Variables setzen, dann Dev-Server neu starten bzw. neu
-              deployen. Callback:{" "}
-              <code className="text-xs break-all">
-                {SALESFORCE_OAUTH_CALLBACK_URL}
-              </code>
-            </p>
-          ) : (
-            <p className="text-xs text-text-subtle">
-              Callback:{" "}
-              <code className="text-xs break-all">
-                {SALESFORCE_OAUTH_CALLBACK_URL}
-              </code>
-              . Zum Verbinden die Produktions-App auf Vercel nutzen (oder lokal,
-              wenn localhost als Callback in der Connected App hinterlegt ist).
-            </p>
+            </>
           )}
         </div>
 

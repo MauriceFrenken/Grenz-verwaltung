@@ -6,10 +6,18 @@ interface PageHeaderProps {
   titel: string;
   beschreibung?: string;
   aktionen?: ReactNode;
+  /** Steht direkt neben dem Titel (z. B. Status-Button). */
+  nebenTitel?: ReactNode;
   meta?: ReactNode;
 }
 
-export function PageHeader({ titel, beschreibung, aktionen, meta }: PageHeaderProps) {
+export function PageHeader({
+  titel,
+  beschreibung,
+  aktionen,
+  nebenTitel,
+  meta,
+}: PageHeaderProps) {
   const erweitert = Boolean(beschreibung || meta);
 
   return (
@@ -21,15 +29,22 @@ export function PageHeader({ titel, beschreibung, aktionen, meta }: PageHeaderPr
           : "h-[5rem] flex-row items-center justify-between gap-4",
       )}
     >
-      <div className="flex min-w-0 flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-heading">{titel}</h1>
-        {beschreibung ? (
-          <p className="text-sm text-text-muted">{beschreibung}</p>
-        ) : null}
-        {meta ? <div className="pt-1 text-xs text-text-subtle">{meta}</div> : null}
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-heading">
+            {titel}
+          </h1>
+          {beschreibung ? (
+            <p className="text-sm text-text-muted">{beschreibung}</p>
+          ) : null}
+          {meta ? <div className="pt-1 text-xs text-text-subtle">{meta}</div> : null}
+        </div>
+        {nebenTitel}
       </div>
       {aktionen ? (
-        <div className="flex shrink-0 items-center gap-2 overflow-x-auto">{aktionen}</div>
+        <div className="flex shrink-0 items-center gap-2 overflow-x-auto">
+          {aktionen}
+        </div>
       ) : null}
     </header>
   );
