@@ -480,6 +480,20 @@ export function ExposeImportPage() {
               return (
                 <ContentSection key={gruppe} titel={gruppenLabel}>
                   <div className="flex flex-col gap-3">
+                    {gruppe === "objekt" ? (
+                      <ExposeSystemFeldZeile
+                        label="Salesforce-Name"
+                        wert={
+                          formatObjektNameFromTeile(
+                            resolveAdressTeile({
+                              objektadresse: felder.objektadresse.value,
+                              stadt: felder.stadt.value,
+                              plz: felder.plz.value,
+                            }),
+                          ) || "—"
+                        }
+                      />
+                    ) : null}
                     {kiFelder.map(({ id, label }) => (
                       <ExposeFeldZeile
                         key={id}
@@ -497,20 +511,6 @@ export function ExposeImportPage() {
                         hatQuelle={feldHatQuelle(id)}
                       />
                     ))}
-                    {gruppe === "objekt" ? (
-                      <ExposeSystemFeldZeile
-                        label="Salesforce-Name"
-                        wert={
-                          formatObjektNameFromTeile(
-                            resolveAdressTeile({
-                              objektadresse: felder.objektadresse.value,
-                              stadt: felder.stadt.value,
-                              plz: felder.plz.value,
-                            }),
-                          ) || "—"
-                        }
-                      />
-                    ) : null}
                     {systemFelder.map((feld) => (
                       <ExposeSystemFeldZeile
                         key={feld.id}
