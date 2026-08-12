@@ -28,10 +28,34 @@ export type AnalyzeExposeRequest = {
 export type ExposeFeldGruppe = "objekt" | "immobilie" | "transaktion";
 export type ExposeFeldTyp = "zahl" | "text" | "auswahl";
 
+/** Salesforce Real_Estate__c.Real_Estate_Type__c (Picklist Objektart). */
+export const OBJEKTART_OPTIONEN = [
+  "Mehrfamilienhaus",
+  "Wohn-und Geschäftshaus",
+  "Wohnanlage",
+  "Grundstück",
+  "Büroimmobilie",
+  "Büro- und Geschäftshaus",
+  "Geschäftshaus",
+  "Industrieimmobilie",
+  "Hotelimmobilie",
+  "Einfamilienhaus",
+  "Eigentumswohnung",
+] as const;
+
+export type ObjektartWert = (typeof OBJEKTART_OPTIONEN)[number];
+
 export const EXPOSE_FELD_DEFINITIONEN = [
   { id: "objektadresse", label: "Straße und Hausnummer", gruppe: "objekt" as const, typ: "text" as const },
   { id: "stadt", label: "Stadt", gruppe: "objekt" as const, typ: "text" as const },
   { id: "plz", label: "PLZ", gruppe: "objekt" as const, typ: "text" as const },
+  {
+    id: "objektart",
+    label: "Objektart",
+    gruppe: "immobilie" as const,
+    typ: "auswahl" as const,
+    optionen: OBJEKTART_OPTIONEN,
+  },
   { id: "baujahr", label: "Baujahr", gruppe: "immobilie" as const, typ: "zahl" as const },
   { id: "heizungsart", label: "Heizungsart", gruppe: "immobilie" as const, typ: "text" as const },
   { id: "energieausweis", label: "Energieausweis", gruppe: "immobilie" as const, typ: "auswahl" as const },
@@ -77,6 +101,8 @@ export type AnalyzeExposeResponse = {
   fields: ExposeFelder;
 };
 
+const OBJEKTART_OPTIONEN_TEXT = OBJEKTART_OPTIONEN.map((o) => `„${o}“`).join(", ");
+
 const FELD_ANWEISUNGEN: Record<ExposeFeldId, string> = {
   objektadresse:
     "Nur Straße und Hausnummer der beworbenen Immobilie (z. B. „Musterstraße 12“). Keine PLZ, kein Ort, kein Stadtteil, keine Makleradresse.",
@@ -84,6 +110,8 @@ const FELD_ANWEISUNGEN: Record<ExposeFeldId, string> = {
     "Ort / Stadt der beworbenen Immobilie (z. B. „Köln“, „Düsseldorf“). Kein Stadtteil allein, keine PLZ, keine Makleradresse.",
   plz:
     "Fünfstellige Postleitzahl der beworbenen Immobilie (z. B. „50667“). Nur die Ziffern in value — kein Ort.",
+  objektart:
+    `Objektart / Immobilienart der beworbenen Immobilie. value MUSS exakt einer dieser Salesforce-Werte sein: ${OBJEKTART_OPTIONEN_TEXT}. Ableiten aus Titel, Objektbeschreibung, Nutzungsart (Wohnen, Büro, Hotel, …). Bei Unsicherheit oder keinem passenden Wert: value null, konfidenz niedrig. Keine eigenen Formulierungen.`,
   baujahr:
     "Baujahr / Jahr der Errichtung als vierstellige Jahreszahl (z. B. „1972“). Nur die Zahl in value — kein Text.",
   heizungsart:
@@ -266,6 +294,69 @@ function normalizeObjektzustand(raw: string | null): string | null {
   return match ? match[1].toUpperCase() : null;
 }
 
+function normalizeObjektartKey(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+const OBJEKTART_BY_KEY = new Map(
+  OBJEKTART_OPTIONEN.map((o) => [normalizeObjektartKey(o), o] as const),
+);
+
+/** Häufige Exposé-Begriffe → Salesforce-Picklist. */
+const OBJEKTART_ALIASE: Record<string, ObjektartWert> = {
+  mfh: "Mehrfamilienhaus",
+  mehrfamilienhaus: "Mehrfamilienhaus",
+  mehrfamilienhaeuser: "Mehrfamilienhaus",
+  wohnundgeschaeftshaus: "Wohn-und Geschäftshaus",
+  wohnengeschaeftshaus: "Wohn-und Geschäftshaus",
+  wohnanlage: "Wohnanlage",
+  wohnanlagen: "Wohnanlage",
+  wohnkomplex: "Wohnanlage",
+  grundstueck: "Grundstück",
+  baugrundstueck: "Grundstück",
+  bueroimmobilie: "Büroimmobilie",
+  bueroimmobilien: "Büroimmobilie",
+  buerogebaeude: "Büroimmobilie",
+  office: "Büroimmobilie",
+  bueroundgeschaeftshaus: "Büro- und Geschäftshaus",
+  geschaeftshaus: "Geschäftshaus",
+  gewerbeimmobilie: "Geschäftshaus",
+  gewerbeobjekt: "Geschäftshaus",
+  retail: "Geschäftshaus",
+  industrieimmobilie: "Industrieimmobilie",
+  industriehalle: "Industrieimmobilie",
+  lagerhalle: "Industrieimmobilie",
+  hotelimmobilie: "Hotelimmobilie",
+  hotel: "Hotelimmobilie",
+  einfamilienhaus: "Einfamilienhaus",
+  efh: "Einfamilienhaus",
+  eigentumswohnung: "Eigentumswohnung",
+  etw: "Eigentumswohnung",
+  wohnung: "Eigentumswohnung",
+};
+
+function normalizeObjektart(raw: string | null): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const exact = OBJEKTART_OPTIONEN.find((o) => o === trimmed);
+  if (exact) return exact;
+
+  const key = normalizeObjektartKey(trimmed);
+  const byKey = OBJEKTART_BY_KEY.get(key);
+  if (byKey) return byKey;
+
+  return OBJEKTART_ALIASE[key] ?? null;
+}
+
 function normalizeBaujahr(raw: string | null): string | null {
   if (!raw) return null;
   const match = raw.match(/\b(1[89]\d{2}|20\d{2})\b/);
@@ -291,6 +382,7 @@ function normalizeFeldWert(id: ExposeFeldId, value: string | null): string | nul
       if (id === "baujahr") return normalizeBaujahr(value);
       return normalizeZahl(value, id !== "jahresnettokaltmiete");
     case "auswahl":
+      if (id === "objektart") return normalizeObjektart(value);
       if (id === "energieausweis") return normalizeEnergieausweis(value);
       if (id === "objektzustand") return normalizeObjektzustand(value);
       return value.trim() || null;

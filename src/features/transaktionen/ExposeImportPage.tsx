@@ -8,6 +8,13 @@ import { ContentSection } from "@/components/layout/PageWrapper";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { usePermissions } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import {
@@ -84,18 +91,22 @@ function ExposeSystemFeldZeile({
   );
 }
 
+const AUSWAHL_LEER = "__none__";
+
 function ExposeFeldZeile({
   label,
   feld,
   onChange,
   onQuelleOeffnen,
   hatQuelle,
+  optionen,
 }: {
   label: string;
   feld: FeldState;
   onChange: (value: string) => void;
   onQuelleOeffnen: () => void;
   hatQuelle: boolean;
+  optionen?: readonly string[];
 }) {
   return (
     <div className="flex flex-col gap-2 border border-hairline bg-surface p-4">
@@ -135,12 +146,31 @@ function ExposeFeldZeile({
           </span>
         ) : null}
       </button>
-      <Input
-        value={feld.value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Noch nicht ausgefüllt"
-        className="bg-surface"
-      />
+      {optionen ? (
+        <Select
+          value={feld.value || AUSWAHL_LEER}
+          onValueChange={(v) => onChange(v === AUSWAHL_LEER ? "" : v)}
+        >
+          <SelectTrigger className="rounded-none bg-surface">
+            <SelectValue placeholder="Noch nicht ausgefüllt" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={AUSWAHL_LEER}>— Keine —</SelectItem>
+            {optionen.map((opt) => (
+              <SelectItem key={opt} value={opt}>
+                {opt}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <Input
+          value={feld.value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Noch nicht ausgefüllt"
+          className="bg-surface"
+        />
+      )}
     </div>
   );
 }
@@ -494,21 +524,27 @@ export function ExposeImportPage() {
                         }
                       />
                     ) : null}
-                    {kiFelder.map(({ id, label }) => (
+                    {kiFelder.map((def) => (
                       <ExposeFeldZeile
-                        key={id}
-                        label={label}
-                        feld={felder[id]}
+                        key={def.id}
+                        label={def.label}
+                        feld={felder[def.id]}
+                        optionen={
+                          "optionen" in def ? def.optionen : undefined
+                        }
                         onChange={(value) =>
                           setFelder((prev) => ({
                             ...prev,
-                            [id]: { ...prev[id], value },
+                            [def.id]: { ...prev[def.id], value },
                           }))
                         }
                         onQuelleOeffnen={() =>
-                          quelleOeffnen(felder[id].quelle, felder[id].value)
+                          quelleOeffnen(
+                            felder[def.id].quelle,
+                            felder[def.id].value,
+                          )
                         }
-                        hatQuelle={feldHatQuelle(id)}
+                        hatQuelle={feldHatQuelle(def.id)}
                       />
                     ))}
                     {systemFelder.map((feld) => (

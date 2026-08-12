@@ -1,4 +1,8 @@
-import type { ExposeFeldId } from "@/lib/expose-ai";
+import {
+  OBJEKTART_OPTIONEN,
+  type ExposeFeldId,
+  type ObjektartWert,
+} from "@/lib/expose-ai";
 
 import {
   formatObjektNameFromTeile,
@@ -79,6 +83,11 @@ export function buildRealEstatePayload(
   if (opts?.includeName !== false) {
     const name = formatObjektNameFromTeile(teile);
     if (name) out.Name = name;
+  }
+
+  const objektart = trimOrEmpty(felder.objektart);
+  if (objektart && (OBJEKTART_OPTIONEN as readonly string[]).includes(objektart)) {
+    out.Real_Estate_Type__c = objektart as ObjektartWert;
   }
 
   const baujahr = trimOrEmpty(felder.baujahr);
