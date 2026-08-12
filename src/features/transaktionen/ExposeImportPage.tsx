@@ -401,29 +401,27 @@ export function ExposeImportPage() {
         }
         aktionen={
           <>
-            {objectUrl && (
-              <PermissionGate
-                berechtigung="aktion.transaktionen.expose_import.hochladen"
-                skeletonClassName="w-40"
+            <PermissionGate
+              berechtigung="aktion.transaktionen.expose_import.hochladen"
+              skeletonClassName="w-40"
+            >
+              <Button
+                size="sm"
+                className="bg-primary text-primary-foreground hover:bg-heading"
+                disabled={!objectUrl || analysiert || laedtPdf}
+                onClick={kiAnalysieren}
               >
-                <Button
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-heading"
-                  disabled={analysiert || laedtPdf}
-                  onClick={kiAnalysieren}
-                >
-                  {analysiert ? (
-                    <Loader2
-                      className="mr-2 h-4 w-4 animate-spin"
-                      strokeWidth={1.5}
-                    />
-                  ) : (
-                    <Sparkles className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                  )}
-                  Mit KI analysieren
-                </Button>
-              </PermissionGate>
-            )}
+                {analysiert ? (
+                  <Loader2
+                    className="mr-2 h-4 w-4 animate-spin"
+                    strokeWidth={1.5}
+                  />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4" strokeWidth={1.5} />
+                )}
+                Mit KI analysieren
+              </Button>
+            </PermissionGate>
             <PermissionGate
               berechtigung="aktion.transaktionen.expose_import.uebernehmen"
               skeletonClassName="w-44"
@@ -432,7 +430,9 @@ export function ExposeImportPage() {
                 size="sm"
                 variant="outline"
                 className="border-foreground text-foreground"
-                disabled={!hatExtrahierteWerte || !hatObjektadresse}
+                disabled={
+                  !objectUrl || !hatExtrahierteWerte || !hatObjektadresse
+                }
                 onClick={exportSalesforce}
               >
                 Export to Salesforce
