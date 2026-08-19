@@ -12,13 +12,6 @@ import { MICROSOFT_DEFAULT_MAILBOX, MICROSOFT_OAUTH_CALLBACK_URL } from "@/lib/m
 import type { MicrosoftStatusPayload } from "@/lib/microsoft/connect";
 import { microsoftLoginPopup } from "@/lib/microsoft/oauth";
 
-const WEITERE: Array<{ id: string; name: string; hinweis: string }> = [
-  { id: "salesforce", name: "Salesforce", hinweis: "Verbindung läuft über den Exposé-Import." },
-  { id: "dms", name: "DMS", hinweis: "Zielsystem noch offen." },
-  { id: "datev", name: "DATEV", hinweis: "Noch nicht angebunden." },
-  { id: "bank", name: "Bank (EBICS / FinTS)", hinweis: "Noch nicht angebunden." },
-];
-
 function formatDatum(iso: string | null): string {
   if (!iso) return "–";
   try {
@@ -145,7 +138,7 @@ export function IntegrationenPage() {
         beschreibung="Verbindungen gelten für die gesamte App, nicht für einzelne Benutzer."
       />
       <PageWrapper>
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="max-w-3xl">
           <article className="flex flex-col gap-5 border border-hairline bg-surface p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
@@ -253,24 +246,6 @@ export function IntegrationenPage() {
               {anleitungOffen ? <AzureAnleitung callbackUrls={callbackUrls} /> : null}
             </div>
           </article>
-
-          {WEITERE.map((item) => (
-            <article
-              key={item.id}
-              className="flex flex-col justify-between gap-4 border border-hairline bg-surface p-5 opacity-70"
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-heading">{item.name}</h2>
-                  <StatusBadge status="getrennt" />
-                </div>
-                <p className="mt-3 text-xs text-text-subtle">{item.hinweis}</p>
-              </div>
-              <Button size="sm" variant="outline" disabled className="w-fit border-foreground text-foreground">
-                Demnächst
-              </Button>
-            </article>
-          ))}
         </div>
       </PageWrapper>
     </>
