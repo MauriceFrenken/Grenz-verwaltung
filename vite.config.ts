@@ -8,9 +8,10 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 import { exposeAiDevPlugin } from "./vite-plugin-expose-ai-dev";
 import { salesforceOauthDevPlugin } from "./vite-plugin-salesforce-oauth-dev";
+import { microsoftOauthDevPlugin } from "./vite-plugin-microsoft-oauth-dev";
 
 export default defineConfig({
-  plugins: [exposeAiDevPlugin(), salesforceOauthDevPlugin()],
+  plugins: [exposeAiDevPlugin(), salesforceOauthDevPlugin(), microsoftOauthDevPlugin()],
   vite: {
     server: {
       port: 8080,

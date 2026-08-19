@@ -33,6 +33,7 @@ import { Route as VerwaltungEinheitenRouteImport } from './routes/verwaltung.ein
 import { Route as TransaktionenListeRouteImport } from './routes/transaktionen.liste'
 import { Route as TransaktionenExposeImportRouteImport } from './routes/transaktionen.expose-import'
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
+import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
 import { Route as EinstellungenRollenRouteImport } from './routes/einstellungen.rollen'
 import { Route as EinstellungenIntegrationenRouteImport } from './routes/einstellungen.integrationen'
 import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
@@ -165,6 +166,11 @@ const SalesforceCallbackRoute = SalesforceCallbackRouteImport.update({
   path: '/salesforce/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MicrosoftCallbackRoute = MicrosoftCallbackRouteImport.update({
+  id: '/microsoft/callback',
+  path: '/microsoft/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EinstellungenRollenRoute = EinstellungenRollenRouteImport.update({
   id: '/rollen',
   path: '/rollen',
@@ -232,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
+  '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
@@ -263,6 +270,7 @@ export interface FileRoutesByTo {
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
+  '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/mandanten': typeof VerwaltungMandantenRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
+  '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
@@ -335,6 +344,7 @@ export interface FileRouteTypes {
     | '/einstellungen/integrationen'
     | '/einstellungen/rollen'
     | '/salesforce/callback'
+    | '/microsoft/callback'
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
@@ -366,6 +376,7 @@ export interface FileRouteTypes {
     | '/einstellungen/integrationen'
     | '/einstellungen/rollen'
     | '/salesforce/callback'
+    | '/microsoft/callback'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
     | '/verwaltung/mandanten'
@@ -400,6 +411,7 @@ export interface FileRouteTypes {
     | '/einstellungen/integrationen'
     | '/einstellungen/rollen'
     | '/salesforce/callback'
+    | '/microsoft/callback'
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
@@ -430,6 +442,7 @@ export interface RootRouteChildren {
   TransaktionenRoute: typeof TransaktionenRouteWithChildren
   VerwaltungRoute: typeof VerwaltungRouteWithChildren
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
+  MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -600,6 +613,13 @@ declare module '@tanstack/react-router' {
       path: '/salesforce/callback'
       fullPath: '/salesforce/callback'
       preLoaderRoute: typeof SalesforceCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/microsoft/callback': {
+      id: '/microsoft/callback'
+      path: '/microsoft/callback'
+      fullPath: '/microsoft/callback'
+      preLoaderRoute: typeof MicrosoftCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/einstellungen/rollen': {
@@ -786,6 +806,7 @@ const rootRouteChildren: RootRouteChildren = {
   TransaktionenRoute: TransaktionenRouteWithChildren,
   VerwaltungRoute: VerwaltungRouteWithChildren,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
+  MicrosoftCallbackRoute: MicrosoftCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

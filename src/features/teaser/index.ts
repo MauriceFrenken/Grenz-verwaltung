@@ -10,4 +10,4 @@ export {
   NebenkostenTeaser,
 } from "./verwaltung";
 export { AblageTeaser, PruefOrdnerTeaser } from "./dokumente";
-export { IntegrationenTeaser, AuditTeaser } from "./einstellungen";
+export { AuditTeaser } from "./einstellungen";

@@ -131,14 +131,16 @@ function AuthGate({ children }: { children: ReactNode }) {
   const istPasswortZuruecksetzenSeite = pathname === "/passwort-zuruecksetzen";
   const istDatenschutzSeite = pathname === "/datenschutz";
   const istSalesforceCallback = pathname === "/salesforce/callback";
+  const istMicrosoftCallback = pathname === "/microsoft/callback";
+  const istOauthCallback = istSalesforceCallback || istMicrosoftCallback;
   const istAuthSeite =
     istAnmeldenSeite ||
     istEinladungSeite ||
     istPasswortZuruecksetzenSeite ||
     istDatenschutzSeite ||
-    istSalesforceCallback;
+    istOauthCallback;
 
-  if (istSalesforceCallback) {
+  if (istOauthCallback) {
     return children;
   }
 
