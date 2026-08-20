@@ -68,3 +68,6 @@ export {
   speichereExposeSalesforceDraftPdf,
   type ExposeSalesforceExportDraft,
 } from "./export-draft";
+
+export { attachExposePdfClient } from "./attach-pdf-client";
+export { MAX_EXPOSE_PDF_BYTES } from "./content-version";

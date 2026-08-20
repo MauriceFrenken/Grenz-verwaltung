@@ -1,7 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import type { ExposeFeldId } from "@/lib/expose-ai";
+import { graphAnhangInhalt } from "@/lib/microsoft/graph";
+import { microsoftAccessToken } from "@/lib/microsoft/postfach";
+import { leseEintrag } from "@/lib/postfach/store";
 
+import {
+  buildContentVersionMultipart,
+  MAX_EXPOSE_PDF_BYTES,
+} from "./content-version";
 import { mitRechteDiagnose } from "./describe";
 import { buildRealEstatePayload, buildTransaktionPayload } from "./field-map";
 import { salesforceDataApiPath, salesforceRestJson } from "./query";
@@ -14,11 +21,11 @@ export type ExportExposeToSalesforceInput = {
   /** Vorhandenes Real-Estate-Objekt; fehlt → neues Objekt anlegen */
   realEstateId?: string | null;
   felder: Partial<Record<ExposeFeldId, string>>;
-  pdf?: {
-    fileName: string;
-    mimeType?: string;
-    base64: string;
-  } | null;
+  /**
+   * Ankauf-Postfach: PDF wird serverseitig aus Graph geladen und angehängt
+   * (kein großes PDF im Client→Vercel-Request).
+   */
+  postfachEintragId?: string | null;
 };
 
 export type ExportExposeToSalesforceResult = {
@@ -26,9 +33,9 @@ export type ExportExposeToSalesforceResult = {
   transactionId: string;
   mode: "update" | "create";
   authSource: "env" | "session";
-  /** Exposé-PDF wurde am Objekt hinterlegt. */
+  /** Exposé-PDF wurde am Objekt hinterlegt (Graph-Pfad). */
   pdfAngehaengt: boolean;
-  /** Grund, falls das PDF nicht hinterlegt werden konnte. */
+  /** Grund, falls das PDF serverseitig nicht hinterlegt werden konnte. */
   pdfFehler?: string;
   /** Serverseitig erneuerter Access Token — Client übernimmt ihn. */
   erneuerteSession?: {
@@ -40,40 +47,13 @@ export type ExportExposeToSalesforceResult = {
 
 type CreateResult = { id: string; success: boolean; errors: unknown[] };
 
-/**
- * Salesforce ContentVersion lehnt viele Unicode-Sonderzeichen in PathOnClient ab
- * (z. B. Hochgestellt ² in „85 m²“). NFKC macht ²→2, ³→3 usw.; Rest wird bereinigt.
- */
-function sanitizePdfFileName(fileName: string): string {
-  let name = fileName.trim();
-  if (!name) return "Expose.pdf";
-
-  // Nur Basename, falls ein Pfad mitkommt
-  name = name.replace(/^.*[/\\]/, "");
-  // Kompatibilitäts-Normalisierung: ²→2, ³→3, ﬁ→fi, …
-  name = name.normalize("NFKC");
-
-  const hasPdf = /\.pdf$/i.test(name);
-  let base = hasPdf ? name.replace(/\.pdf$/i, "") : name;
-
-  base = base
-    .replace(/[^\p{L}\p{N}\s._-]+/gu, "")
-    .replace(/\s+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^[._-]+|[._-]+$/g, "")
-    .slice(0, 180);
-
-  if (!base) base = "Expose";
-  return `${base}.pdf`;
-}
-
-function normalizePdfTitle(fileName: string): string {
-  const sanitized = sanitizePdfFileName(fileName);
-  return sanitized.replace(/\.pdf$/i, "") || "Expose";
-}
-
 function fehlerText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+function base64ToBytes(base64: string): Uint8Array {
+  const buf = Buffer.from(base64.trim(), "base64");
+  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 }
 
 async function createRealEstate(
@@ -105,8 +85,6 @@ async function updateRealEstate(
   realEstateId: string,
   felder: Partial<Record<ExposeFeldId, string>>,
 ): Promise<void> {
-  // Bei Update: Name nicht anfassen (bestehende SF-Bezeichnung behalten).
-  // Nur nicht-leere Exposé-Felder → kein Überschreiben mit Leerwerten.
   const payload = buildRealEstatePayload(felder, { includeName: false });
   if (Object.keys(payload).length === 0) return;
 
@@ -137,43 +115,25 @@ async function createTransaktion(
   return created.id;
 }
 
-/**
- * ContentVersion per multipart/form-data (Binärdaten).
- * JSON+Base64 wäre auf ~37,5 MB begrenzt; Multipart erlaubt bis 2 GB bei SF.
- */
-async function attachPdfToRealEstate(
+async function attachPdfBinary(
   accessToken: string,
   instanceUrl: string,
   realEstateId: string,
-  pdf: NonNullable<ExportExposeToSalesforceInput["pdf"]>,
+  fileName: string,
+  binary: Uint8Array,
 ): Promise<void> {
-  const rawName = pdf.fileName.trim();
-  const base64 = pdf.base64.trim();
-  if (!rawName || !base64) return;
+  if (binary.byteLength === 0) return;
+  if (binary.byteLength > MAX_EXPOSE_PDF_BYTES) {
+    throw new Error(
+      "Das Exposé-PDF ist größer als 40 MB und kann nicht angehängt werden.",
+    );
+  }
 
-  const fileName = sanitizePdfFileName(rawName);
-  const title = normalizePdfTitle(fileName);
-  const binary = Buffer.from(base64, "base64");
-  const boundary = `frenken_cv_${Date.now().toString(36)}`;
-
-  const metaJson = JSON.stringify({
-    Title: title,
-    PathOnClient: fileName,
-    FirstPublishLocationId: realEstateId,
+  const multipart = buildContentVersionMultipart({
+    realEstateId,
+    fileName,
+    binary,
   });
-
-  const preamble = Buffer.from(
-    `--${boundary}\r\n` +
-      `Content-Disposition: form-data; name="entity_content";\r\n` +
-      `Content-Type: application/json\r\n\r\n` +
-      `${metaJson}\r\n` +
-      `--${boundary}\r\n` +
-      `Content-Type: application/octet-stream\r\n` +
-      `Content-Disposition: form-data; name="VersionData"; filename="${fileName}"\r\n\r\n`,
-    "utf8",
-  );
-  const epilogue = Buffer.from(`\r\n--${boundary}--\r\n`, "utf8");
-  const body = Buffer.concat([preamble, binary, epilogue]);
 
   await salesforceRestJson<CreateResult>(
     accessToken,
@@ -181,12 +141,50 @@ async function attachPdfToRealEstate(
     `${salesforceDataApiPath()}/sobjects/ContentVersion`,
     {
       method: "POST",
-      headers: {
-        // Salesforce erwartet die Boundary in Anführungszeichen.
-        "Content-Type": `multipart/form-data; boundary="${boundary}"`,
-      },
-      body,
+      headers: { "Content-Type": multipart.contentType },
+      body: Buffer.from(multipart.body) as unknown as BodyInit,
     },
+  );
+}
+
+/** PDF aus Ankauf-Postfach (Graph) laden und an Real Estate hängen. */
+async function attachPdfFromPostfach(
+  accessToken: string,
+  instanceUrl: string,
+  realEstateId: string,
+  postfachEintragId: string,
+): Promise<void> {
+  const row = await leseEintrag(postfachEintragId);
+  if (!row.anhang_id) {
+    throw new Error("Zu dieser Mail ist kein PDF-Anhang gespeichert.");
+  }
+  if (
+    typeof row.anhang_groesse === "number" &&
+    row.anhang_groesse > MAX_EXPOSE_PDF_BYTES
+  ) {
+    throw new Error(
+      "Das Exposé-PDF ist größer als 40 MB und kann nicht angehängt werden.",
+    );
+  }
+
+  const { accessToken: graphToken } = await microsoftAccessToken();
+  const anhang = await graphAnhangInhalt(
+    graphToken,
+    row.postfach,
+    row.graph_nachricht_id,
+    row.anhang_id,
+  );
+  if (!anhang.contentBytes) {
+    throw new Error("PDF-Anhang enthält keine Datei-Daten.");
+  }
+
+  const binary = base64ToBytes(anhang.contentBytes);
+  await attachPdfBinary(
+    accessToken,
+    instanceUrl,
+    realEstateId,
+    anhang.name || row.anhang_name || "Expose.pdf",
+    binary,
   );
 }
 
@@ -203,6 +201,7 @@ export async function exportExposeToSalesforce(
 
   const existingId = data.realEstateId?.trim() || null;
   const felder = data.felder ?? {};
+  const postfachEintragId = data.postfachEintragId?.trim() || null;
 
   let realEstateId: string;
   let mode: "update" | "create";
@@ -269,16 +268,17 @@ export async function exportExposeToSalesforce(
     );
   }
 
-  // Anhang ist optional: ein Fehler hier darf den Export nicht verwerfen.
+  // Anhang optional — Fehler hier verwerfen den Export nicht.
+  // Kein PDF im Client→Vercel-Body; bei Postfach holt der Server aus Graph.
   let pdfAngehaengt = false;
   let pdfFehler: string | undefined;
-  if (data.pdf) {
+  if (postfachEintragId) {
     try {
-      await attachPdfToRealEstate(
+      await attachPdfFromPostfach(
         creds.accessToken,
         creds.instanceUrl,
         realEstateId,
-        data.pdf,
+        postfachEintragId,
       );
       pdfAngehaengt = true;
     } catch (err) {

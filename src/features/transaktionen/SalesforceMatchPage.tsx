@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import {
+  attachExposePdfClient,
   filterObjekteLocal,
   formatDetailAdresseFromTeile,
   formatObjektNameFromTeile,
@@ -17,6 +18,7 @@ import {
   leseExposeSalesforceDraftPdf,
   loescheExposeSalesforceDraftPdf,
   leseExposeSalesforceDraft,
+  MAX_EXPOSE_PDF_BYTES,
   normalizeAddressText,
   rankObjekteByAdresse,
   resolveAdressTeile,
@@ -34,24 +36,6 @@ import { fetchSalesforceObjekteFn } from "@/lib/salesforce/objects-fn";
 const salesforceExportRoute = getRouteApi(
   "/transaktionen/expose-import/salesforce",
 );
-
-/**
- * PDF geht als Base64 (~+33 %) über die Server-Fn zu Salesforce.
- * Früher: künstlich ~3,5 MB wegen altem Vercel-Limit 4,5 MB.
- * Jetzt: Vercel bis ~100 MB Request-Body → hier 40 MB Original-PDF
- * (≈ 53 MB Base64), ausreichend für typische Exposés.
- */
-const MAX_PDF_BYTES = 40 * 1024 * 1024;
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-  return btoa(binary);
-}
 
 function cityKey(value: string | null | undefined): string {
   return normalizeAddressText(value ?? "").replace(/\s+/g, "");
@@ -317,23 +301,18 @@ export function SalesforceMatchPage() {
     setExportModus(realEstateId ? "bestehend" : "neu");
     try {
       const pdf = leseExposeSalesforceDraftPdf(draft.id);
-      const pdfZuGross = Boolean(pdf && pdf.bytes.byteLength > MAX_PDF_BYTES);
-      const pdfBase64 =
-        pdf && !pdfZuGross ? bytesToBase64(pdf.bytes) : null;
+      const pdfZuGross = Boolean(
+        pdf && pdf.bytes.byteLength > MAX_EXPOSE_PDF_BYTES,
+      );
 
+      // Kein PDF im Server-Fn-Body (Vercel-Limit). Postfach → Graph serverseitig;
+      // manuelles PDF → danach direkt Browser → Salesforce.
       const result = await exportExposeToSalesforceFn({
         data: {
           ...(await salesforceSessionHintFrisch()),
           realEstateId,
           felder: draft.felder,
-          pdf:
-            pdf && pdfBase64
-              ? {
-                  fileName: pdf.dateiname,
-                  mimeType: pdf.mimeType,
-                  base64: pdfBase64,
-                }
-              : null,
+          postfachEintragId: draft.postfachEintragId ?? null,
         },
       });
       salesforceSessionUebernehmen(result.erneuerteSession);
@@ -344,17 +323,37 @@ export function SalesforceMatchPage() {
           : "Neues Objekt und Transaktion in Salesforce angelegt.",
       );
 
-      if (result.pdfAngehaengt) {
+      let pdfAngehaengt = result.pdfAngehaengt;
+      let pdfFehler = result.pdfFehler;
+
+      if (!pdfAngehaengt && pdf && !pdfZuGross) {
+        try {
+          await attachExposePdfClient({
+            realEstateId: result.realEstateId,
+            fileName: pdf.dateiname,
+            bytes: pdf.bytes,
+          });
+          pdfAngehaengt = true;
+          pdfFehler = undefined;
+        } catch (err) {
+          pdfFehler = salesforceFehlerText(
+            err,
+            pdfFehler ?? "PDF-Upload fehlgeschlagen",
+          );
+        }
+      }
+
+      if (pdfAngehaengt) {
         loescheExposeSalesforceDraftPdf(draft.id);
       } else if (pdfZuGross) {
         toast.warning(
           "Das Exposé-PDF ist größer als 40 MB und wurde nicht angehängt. Bitte manuell in Salesforce hochladen.",
         );
-      } else if (result.pdfFehler) {
+      } else if (pdfFehler) {
         toast.warning(
-          `Exposé-PDF konnte nicht angehängt werden: ${result.pdfFehler}`,
+          `Exposé-PDF konnte nicht angehängt werden: ${pdfFehler}`,
         );
-      } else if (!pdf) {
+      } else if (!pdf && !draft.postfachEintragId) {
         toast.info(
           "Das PDF war in dieser Sitzung nicht mehr verfügbar und wurde nicht angehängt.",
         );
