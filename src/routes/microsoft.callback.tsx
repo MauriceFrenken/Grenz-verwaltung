@@ -19,7 +19,7 @@ function MicrosoftCallbackPage() {
       <div className="max-w-md text-center">
         <h1 className="text-lg font-semibold text-heading">Microsoft-Verbindung</h1>
         <p className="mt-2 text-sm text-text-muted">
-          Die Outlook-Integration läuft jetzt app-only (Client Credentials) ohne Login-Popup.
+          Die Outlook-Integration läuft jetzt app-only ohne Login-Popup.
           Bitte unter Einstellungen › Integrationen „App-Verbindung herstellen“ nutzen.
         </p>
         <Link

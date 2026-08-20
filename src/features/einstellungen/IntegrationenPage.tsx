@@ -147,20 +147,15 @@ export function IntegrationenPage() {
                 <dd className="mt-0.5 text-heading">{formatDatum(status?.letztePruefungAm ?? null)}</dd>
               </div>
               <div>
-                <dt className="text-text-subtle">Entra-App</dt>
+                <dt className="text-text-subtle">Konfiguration</dt>
                 <dd className="mt-0.5 text-heading">
-                  {laedt
-                    ? "…"
-                    : status?.azureKonfiguriert
-                      ? `Client Credentials (${status.clientIdKurz ?? "ok"})`
-                      : "Noch nicht konfiguriert"}
+                  {laedt ? "…" : status?.azureKonfiguriert ? "Bereit" : "Unvollständig"}
                 </dd>
               </div>
             </dl>
 
             <p className="border border-hairline bg-surface-muted px-3 py-2 text-xs text-text-subtle">
-              App-only-Zugriff auf {postfach} — kein Microsoft-Login nötig. Verwendet Client-ID und
-              Secret aus der Entra-App (Application Mail.ReadWrite).
+              App-only-Zugriff auf {postfach} — kein Microsoft-Login nötig.
             </p>
 
             {status?.letzterFehler ? (

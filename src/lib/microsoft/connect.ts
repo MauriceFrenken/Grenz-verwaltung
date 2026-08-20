@@ -14,7 +14,6 @@ import {
   acquireMicrosoftAppToken,
   microsoftAzureIstKonfiguriert,
   microsoftPostfach,
-  microsoftServerClientId,
   microsoftServerTenantId,
 } from "./token-exchange";
 
@@ -24,14 +23,7 @@ export type MicrosoftStatusPayload = MicrosoftIntegrationStatus & {
   postfach: string;
   postfachNachrichten: number | null;
   modus: "app-only";
-  clientIdKurz: string | null;
 };
-
-function clientIdKurz(): string | null {
-  const id = microsoftServerClientId();
-  if (!id) return null;
-  return id.length > 12 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id;
-}
 
 function statusPayload(
   status: MicrosoftIntegrationStatus,
@@ -43,7 +35,6 @@ function statusPayload(
     postfach: microsoftPostfach(),
     postfachNachrichten,
     modus: "app-only",
-    clientIdKurz: clientIdKurz(),
   };
 }
 
