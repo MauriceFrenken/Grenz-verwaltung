@@ -6,6 +6,9 @@ export type GraphPostfachInfo = {
   anzahlNachrichten: number | null;
 };
 
+/** Primärer Anhangstyp für Listen-Icons (PDF vor Bild). */
+export type GraphAnhangArt = "pdf" | "bild" | "keins";
+
 export type GraphNachricht = {
   id: string;
   internetMessageId: string | null;
@@ -14,6 +17,7 @@ export type GraphNachricht = {
   absenderMail: string | null;
   eingegangenAm: string | null;
   hatAnhaenge: boolean;
+  anhangArt: GraphAnhangArt;
   vorschau: string | null;
   webLink: string | null;
 };
@@ -97,6 +101,12 @@ export async function graphPostfachPruefen(
   };
 }
 
+type RohAnhangMeta = {
+  name?: string;
+  contentType?: string;
+  isInline?: boolean;
+};
+
 type RohNachricht = {
   id?: string;
   internetMessageId?: string;
@@ -106,7 +116,27 @@ type RohNachricht = {
   hasAttachments?: boolean;
   bodyPreview?: string;
   webLink?: string;
+  attachments?: RohAnhangMeta[];
 };
+
+function istPdfAnhang(a: RohAnhangMeta): boolean {
+  const ct = (a.contentType ?? "").toLowerCase();
+  const name = (a.name ?? "").toLowerCase();
+  return ct.includes("pdf") || name.endsWith(".pdf");
+}
+
+function istBildAnhang(a: RohAnhangMeta): boolean {
+  const ct = (a.contentType ?? "").toLowerCase();
+  const name = (a.name ?? "").toLowerCase();
+  return ct.startsWith("image/") || /\.(jpe?g|png|gif|webp|tiff?|bmp)$/i.test(name);
+}
+
+function anhangArtAus(roh: RohNachricht): GraphAnhangArt {
+  const anhaenge = (roh.attachments ?? []).filter((a) => !a.isInline);
+  if (anhaenge.some(istPdfAnhang)) return "pdf";
+  if (anhaenge.some(istBildAnhang)) return "bild";
+  return "keins";
+}
 
 function mapNachricht(roh: RohNachricht): GraphNachricht | null {
   if (!roh.id) return null;
@@ -118,6 +148,7 @@ function mapNachricht(roh: RohNachricht): GraphNachricht | null {
     absenderMail: roh.from?.emailAddress?.address?.toLowerCase() ?? null,
     eingegangenAm: roh.receivedDateTime ?? null,
     hatAnhaenge: roh.hasAttachments === true,
+    anhangArt: anhangArtAus(roh),
     vorschau: roh.bodyPreview ?? null,
     webLink: roh.webLink ?? null,
   };
@@ -131,6 +162,7 @@ export async function graphPosteingangNachrichten(
   const anzahl = Math.min(Math.max(optionen.anzahl ?? 25, 1), 100);
   const params = new URLSearchParams({
     $select: "id,internetMessageId,subject,from,receivedDateTime,hasAttachments,bodyPreview,webLink",
+    $expand: "attachments($select=name,contentType,isInline)",
     $orderby: "receivedDateTime desc",
     $top: String(anzahl),
   });

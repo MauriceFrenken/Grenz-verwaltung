@@ -10,7 +10,7 @@ import {
   FolderOpen,
   ClipboardCheck,
   ScrollText,
-  ListChecks,
+  Inbox,
   FileText,
   Plug,
   Landmark,
@@ -80,7 +80,7 @@ const sections: NavSection[] = [
   {
     label: "Transaktionen",
     items: [
-      { to: "/transaktionen/liste", label: "Transaktionsliste", icon: ListChecks, berechtigung: "seite.transaktionen.liste" },
+      { to: "/transaktionen/liste", label: "Offene Exposés", icon: Inbox, berechtigung: "seite.transaktionen.liste" },
       {
         to: "/transaktionen/expose-import",
         label: "Exposé-Import",

@@ -4,6 +4,6 @@ import { seitenGuard } from "@/lib/permissions";
 
 export const Route = createFileRoute("/transaktionen/liste")({
   beforeLoad: seitenGuard("seite.transaktionen.liste"),
-  head: () => ({ meta: [{ title: "Transaktionsliste — FRENKEN Verwaltung" }] }),
+  head: () => ({ meta: [{ title: "Offene Exposés — FRENKEN Verwaltung" }] }),
   component: TransaktionslistePage,
 });
