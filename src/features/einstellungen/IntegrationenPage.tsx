@@ -154,10 +154,6 @@ export function IntegrationenPage() {
               </div>
             </dl>
 
-            <p className="border border-hairline bg-surface-muted px-3 py-2 text-xs text-text-subtle">
-              App-only-Zugriff auf {postfach} — kein Microsoft-Login nötig.
-            </p>
-
             {status?.letzterFehler ? (
               <p className="border border-danger/40 bg-surface-muted px-3 py-2 text-xs whitespace-pre-line text-danger">
                 {status.letzterFehler}
