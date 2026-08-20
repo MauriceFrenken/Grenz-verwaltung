@@ -237,8 +237,8 @@ export interface FileRoutesByFullPath {
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
-  '/salesforce/callback': typeof SalesforceCallbackRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
+  '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
@@ -269,8 +269,8 @@ export interface FileRoutesByTo {
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
-  '/salesforce/callback': typeof SalesforceCallbackRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
+  '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/mandanten': typeof VerwaltungMandantenRoute
@@ -305,8 +305,8 @@ export interface FileRoutesById {
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/einstellungen/rollen': typeof EinstellungenRollenRoute
-  '/salesforce/callback': typeof SalesforceCallbackRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
+  '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
@@ -343,8 +343,8 @@ export interface FileRouteTypes {
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
     | '/einstellungen/rollen'
-    | '/salesforce/callback'
     | '/microsoft/callback'
+    | '/salesforce/callback'
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
@@ -375,8 +375,8 @@ export interface FileRouteTypes {
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
     | '/einstellungen/rollen'
-    | '/salesforce/callback'
     | '/microsoft/callback'
+    | '/salesforce/callback'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
     | '/verwaltung/mandanten'
@@ -410,8 +410,8 @@ export interface FileRouteTypes {
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
     | '/einstellungen/rollen'
-    | '/salesforce/callback'
     | '/microsoft/callback'
+    | '/salesforce/callback'
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
@@ -441,8 +441,8 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TransaktionenRoute: typeof TransaktionenRouteWithChildren
   VerwaltungRoute: typeof VerwaltungRouteWithChildren
-  SalesforceCallbackRoute: typeof SalesforceCallbackRoute
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
+  SalesforceCallbackRoute: typeof SalesforceCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -805,8 +805,8 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TransaktionenRoute: TransaktionenRouteWithChildren,
   VerwaltungRoute: VerwaltungRouteWithChildren,
-  SalesforceCallbackRoute: SalesforceCallbackRoute,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
+  SalesforceCallbackRoute: SalesforceCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,4 +1,5 @@
-import { graphMe, kontoAusGraphMe } from "./graph";
+import { graphPostfachPruefen, graphPostfachUser } from "./graph";
+import { microsoftAccessToken } from "./postfach";
 import {
   leseMicrosoftRow,
   leseMicrosoftStatus,
@@ -6,38 +7,43 @@ import {
   markiereMicrosoftFehler,
   markiereMicrosoftPruefungOk,
   speichereMicrosoftVerbindung,
-  aktualisiereMicrosoftTokens,
   type MicrosoftIntegrationStatus,
 } from "./store";
 import { microsoftCallerAusJwt, type MicrosoftCaller } from "./supabase-admin";
 import {
-  exchangeMicrosoftAuthorizationCode,
+  acquireMicrosoftAppToken,
   microsoftAzureIstKonfiguriert,
-  microsoftErwartetesKonto,
+  microsoftPostfach,
+  microsoftServerClientId,
   microsoftServerTenantId,
-  refreshMicrosoftAccessToken,
-  type MicrosoftTokenExchangeInput,
 } from "./token-exchange";
-
-export type MicrosoftConnectInput = MicrosoftTokenExchangeInput & {
-  supabaseAccessToken: string;
-};
 
 export type MicrosoftStatusPayload = MicrosoftIntegrationStatus & {
   azureKonfiguriert: boolean;
-  erwartetesKonto: string;
-  callbackUrls: string[];
+  /** Shared Postfach — einziges Ziel der App-only-Verbindung. */
+  postfach: string;
+  postfachNachrichten: number | null;
+  modus: "app-only";
+  clientIdKurz: string | null;
 };
 
-function statusPayload(status: MicrosoftIntegrationStatus): MicrosoftStatusPayload {
+function clientIdKurz(): string | null {
+  const id = microsoftServerClientId();
+  if (!id) return null;
+  return id.length > 12 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id;
+}
+
+function statusPayload(
+  status: MicrosoftIntegrationStatus,
+  postfachNachrichten: number | null = null,
+): MicrosoftStatusPayload {
   return {
     ...status,
     azureKonfiguriert: microsoftAzureIstKonfiguriert(),
-    erwartetesKonto: microsoftErwartetesKonto(),
-    callbackUrls: [
-      "https://frenken-expose-ai.vercel.app/microsoft/callback",
-      "http://localhost:8080/microsoft/callback",
-    ],
+    postfach: microsoftPostfach(),
+    postfachNachrichten,
+    modus: "app-only",
+    clientIdKurz: clientIdKurz(),
   };
 }
 
@@ -69,30 +75,34 @@ export async function microsoftStatusFuerNutzer(supabaseAccessToken: string): Pr
   }
 }
 
-export async function completeMicrosoftConnect(input: MicrosoftConnectInput): Promise<MicrosoftStatusPayload> {
+/**
+ * App-only verbinden: Client Credentials → Postfach ankauf@ prüfen → speichern.
+ */
+export async function completeMicrosoftConnect(input: {
+  supabaseAccessToken: string;
+}): Promise<MicrosoftStatusPayload> {
   const caller = await requireCaller(input.supabaseAccessToken, true);
-  const erwartet = microsoftErwartetesKonto();
-  const tokens = await exchangeMicrosoftAuthorizationCode(input);
-  const me = await graphMe(tokens.accessToken);
-  const konto = kontoAusGraphMe(me);
+  const postfach = microsoftPostfach();
 
-  if (!konto) {
-    throw new Error("Microsoft hat keine Konto-E-Mail zurückgegeben.");
-  }
-  if (konto !== erwartet) {
+  if (!microsoftAzureIstKonfiguriert()) {
     throw new Error(
-      `Es wurde „${konto}“ angemeldet, erwartet ist ${erwartet}. Bitte im Microsoft-Dialog genau dieses Konto wählen.`,
+      "Microsoft App-only ist nicht konfiguriert. MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET und MICROSOFT_TENANT_ID (GUID) setzen.",
     );
   }
 
+  const tokens = await acquireMicrosoftAppToken();
+  const user = await graphPostfachUser(tokens.accessToken, postfach);
+  const info = await graphPostfachPruefen(tokens.accessToken, postfach);
+
   const status = await speichereMicrosoftVerbindung({
     tokens,
-    kontoEmail: konto,
-    graphUserId: me.id,
-    tenantId: microsoftServerTenantId() === "organizations" ? null : microsoftServerTenantId(),
+    kontoEmail: postfach,
+    graphUserId: user.id,
+    tenantId: microsoftServerTenantId(),
     verbundenVon: caller.userId,
   });
-  return statusPayload(status);
+
+  return statusPayload(status, info.anzahlNachrichten);
 }
 
 export async function disconnectMicrosoft(supabaseAccessToken: string): Promise<MicrosoftStatusPayload> {
@@ -103,30 +113,18 @@ export async function disconnectMicrosoft(supabaseAccessToken: string): Promise<
 
 export async function probeMicrosoft(supabaseAccessToken: string): Promise<MicrosoftStatusPayload> {
   await requireCaller(supabaseAccessToken, true);
+  const postfach = microsoftPostfach();
+
   const row = await leseMicrosoftRow();
-  if (!row?.refreshToken && !row?.accessToken) {
-    throw new Error("Microsoft ist nicht verbunden.");
+  if (row?.status !== "verbunden" && !row?.accessToken) {
+    throw new Error("Microsoft ist nicht verbunden. Bitte zuerst „App-Verbindung herstellen“.");
   }
 
   try {
-    let access = row.accessToken ?? "";
-    const abgelaufen =
-      !row.tokenLaeuftAbAm || new Date(row.tokenLaeuftAbAm).getTime() < Date.now() + 60_000;
-    if (abgelaufen || !access) {
-      if (!row.refreshToken) throw new Error("Kein Refresh Token gespeichert. Bitte erneut verbinden.");
-      const neu = await refreshMicrosoftAccessToken(row.refreshToken);
-      await aktualisiereMicrosoftTokens(neu);
-      access = neu.accessToken;
-    }
-    const me = await graphMe(access);
-    const konto = kontoAusGraphMe(me);
-    if (konto && konto !== microsoftErwartetesKonto()) {
-      return statusPayload(
-        await markiereMicrosoftFehler(`Verbundenes Konto (${konto}) entspricht nicht ${microsoftErwartetesKonto()}.`),
-      );
-    }
+    const { accessToken } = await microsoftAccessToken();
+    const info = await graphPostfachPruefen(accessToken, postfach);
     await markiereMicrosoftPruefungOk();
-    return statusPayload(await leseMicrosoftStatus());
+    return statusPayload(await leseMicrosoftStatus(), info.anzahlNachrichten);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Prüfung fehlgeschlagen";
     return statusPayload(await markiereMicrosoftFehler(message));

@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { MICROSOFT_DEFAULT_MAILBOX } from "@/lib/microsoft/config";
 import type { MicrosoftStatusPayload } from "@/lib/microsoft/connect";
-import { microsoftLoginPopup } from "@/lib/microsoft/oauth";
 
 function formatDatum(iso: string | null): string {
   if (!iso) return "–";
@@ -29,7 +28,7 @@ export function IntegrationenPage() {
   const token = session?.access_token ?? "";
   const [status, setStatus] = useState<MicrosoftStatusPayload | null>(null);
   const [laedt, setLaedt] = useState(true);
-  const [busy, setBusy] = useState<"connect" | "reauth" | "disconnect" | "probe" | null>(null);
+  const [busy, setBusy] = useState<"connect" | "disconnect" | "probe" | null>(null);
 
   const laden = useCallback(async () => {
     if (!token) return;
@@ -49,18 +48,26 @@ export function IntegrationenPage() {
     void laden();
   }, [laden]);
 
-  const verbinden = async (modus: "connect" | "reauth") => {
+  const verbinden = async () => {
     if (!token) {
       toast.error("Nicht angemeldet.");
       return;
     }
-    setBusy(modus);
+    setBusy("connect");
     try {
-      const next = await microsoftLoginPopup(token);
+      const { microsoftConnectFn } = await import("@/lib/microsoft/server-fn");
+      const next = await microsoftConnectFn({ data: { supabaseAccessToken: token } });
       setStatus(next);
-      toast.success(`Outlook verbunden als ${next.kontoEmail ?? MICROSOFT_DEFAULT_MAILBOX}`);
+      const anzahl = next.postfachNachrichten;
+      toast.success(
+        anzahl === null
+          ? `App-only verbunden mit ${next.postfach}.`
+          : `App-only verbunden mit ${next.postfach} (${anzahl.toLocaleString("de-DE")} Nachrichten).`,
+      );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Verbindung fehlgeschlagen.");
+      toast.error(e instanceof Error ? e.message : "Verbindung fehlgeschlagen.", {
+        duration: 14_000,
+      });
     } finally {
       setBusy(null);
     }
@@ -88,8 +95,16 @@ export function IntegrationenPage() {
       const { microsoftProbeFn } = await import("@/lib/microsoft/server-fn");
       const next = await microsoftProbeFn({ data: { supabaseAccessToken: token } });
       setStatus(next);
-      if (next.status === "verbunden") toast.success("Zugriff auf Microsoft Graph bestätigt.");
-      else toast.error(next.letzterFehler ?? "Prüfung fehlgeschlagen.");
+      if (next.status === "verbunden") {
+        const anzahl = next.postfachNachrichten;
+        toast.success(
+          anzahl === null
+            ? `Posteingang von ${next.postfach} ist lesbar.`
+            : `Posteingang von ${next.postfach} ist lesbar (${anzahl.toLocaleString("de-DE")} Nachrichten).`,
+        );
+      } else {
+        toast.error(next.letzterFehler ?? "Prüfung fehlgeschlagen.", { duration: 14_000 });
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Prüfung fehlgeschlagen.");
     } finally {
@@ -98,7 +113,7 @@ export function IntegrationenPage() {
   };
 
   const verbunden = status?.status === "verbunden";
-  const erwartetesKonto = status?.erwartetesKonto ?? MICROSOFT_DEFAULT_MAILBOX;
+  const postfach = status?.postfach ?? MICROSOFT_DEFAULT_MAILBOX;
 
   return (
     <>
@@ -116,8 +131,12 @@ export function IntegrationenPage() {
 
             <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
               <div>
-                <dt className="text-text-subtle">Konto</dt>
-                <dd className="mt-0.5 text-heading">{status?.kontoEmail ?? erwartetesKonto}</dd>
+                <dt className="text-text-subtle">Postfach</dt>
+                <dd className="mt-0.5 text-heading">{postfach}</dd>
+              </div>
+              <div>
+                <dt className="text-text-subtle">Modus</dt>
+                <dd className="mt-0.5 text-heading">App-only (kein User-Login)</dd>
               </div>
               <div>
                 <dt className="text-text-subtle">Verbunden am</dt>
@@ -133,14 +152,19 @@ export function IntegrationenPage() {
                   {laedt
                     ? "…"
                     : status?.azureKonfiguriert
-                      ? "Client-ID und Secret gesetzt"
+                      ? `Client Credentials (${status.clientIdKurz ?? "ok"})`
                       : "Noch nicht konfiguriert"}
                 </dd>
               </div>
             </dl>
 
+            <p className="border border-hairline bg-surface-muted px-3 py-2 text-xs text-text-subtle">
+              App-only-Zugriff auf {postfach} — kein Microsoft-Login nötig. Verwendet Client-ID und
+              Secret aus der Entra-App (Application Mail.ReadWrite).
+            </p>
+
             {status?.letzterFehler ? (
-              <p className="border border-danger/40 bg-surface-muted px-3 py-2 text-xs text-danger">
+              <p className="border border-danger/40 bg-surface-muted px-3 py-2 text-xs whitespace-pre-line text-danger">
                 {status.letzterFehler}
               </p>
             ) : null}
@@ -151,22 +175,10 @@ export function IntegrationenPage() {
                   size="sm"
                   className="bg-foreground text-background hover:bg-heading"
                   disabled={busy !== null || !status?.azureKonfiguriert}
-                  onClick={() => void verbinden("connect")}
+                  onClick={() => void verbinden()}
                 >
                   {busy === "connect" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                  {verbunden ? "Neu verbinden" : "Mit Outlook verbinden"}
-                </Button>
-              </PermissionGate>
-              <PermissionGate berechtigung="aktion.einstellungen.integrationen.reauth">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-foreground text-foreground"
-                  disabled={busy !== null || !verbunden}
-                  onClick={() => void verbinden("reauth")}
-                >
-                  {busy === "reauth" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                  Re-Auth
+                  {verbunden ? "Neu verbinden" : "App-Verbindung herstellen"}
                 </Button>
               </PermissionGate>
               <PermissionGate berechtigung="aktion.einstellungen.integrationen.verbinden">

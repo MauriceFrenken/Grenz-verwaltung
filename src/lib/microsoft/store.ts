@@ -90,7 +90,7 @@ export async function leseMicrosoftRow(): Promise<MicrosoftIntegrationRow | null
 export async function speichereMicrosoftVerbindung(input: {
   tokens: MicrosoftTokenSet;
   kontoEmail: string;
-  graphUserId: string;
+  graphUserId: string | null;
   tenantId: string | null;
   verbundenVon: string;
 }): Promise<MicrosoftIntegrationStatus> {

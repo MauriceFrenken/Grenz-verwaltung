@@ -1,14 +1,9 @@
-import { MICROSOFT_DEFAULT_MAILBOX, MICROSOFT_OAUTH_SCOPES } from "./config";
-
-export type MicrosoftTokenExchangeInput = {
-  code: string;
-  codeVerifier: string;
-  redirectUri: string;
-};
+import { MICROSOFT_APP_SCOPE, MICROSOFT_DEFAULT_MAILBOX } from "./config";
 
 export type MicrosoftTokenSet = {
   accessToken: string;
-  refreshToken: string;
+  /** App-only hat keinen Refresh Token — immer null. */
+  refreshToken: string | null;
   expiresIn: number;
   scope: string;
   tenantId: string | null;
@@ -31,50 +26,43 @@ export function microsoftServerTenantId(): string {
   return readEnv("MICROSOFT_TENANT_ID") || readEnv("VITE_MICROSOFT_TENANT_ID") || "organizations";
 }
 
-export function microsoftErwartetesKonto(): string {
+/** Einziges Postfach, das die App auslesen darf (muss zur Access Policy passen). */
+export function microsoftPostfach(): string {
   return (readEnv("MICROSOFT_MAILBOX") || MICROSOFT_DEFAULT_MAILBOX).trim().toLowerCase();
 }
 
 export function microsoftAzureIstKonfiguriert(): boolean {
-  return Boolean(microsoftServerClientId() && microsoftServerClientSecret());
+  return Boolean(
+    microsoftServerClientId() &&
+      microsoftServerClientSecret() &&
+      microsoftServerTenantId() &&
+      microsoftServerTenantId() !== "organizations",
+  );
 }
 
 function tokenUrl(): string {
-  return `https://login.microsoftonline.com/${encodeURIComponent(microsoftServerTenantId())}/oauth2/v2.0/token`;
+  const tenant = microsoftServerTenantId();
+  if (!tenant || tenant === "organizations" || tenant === "common") {
+    throw new Error(
+      "MICROSOFT_TENANT_ID muss die konkrete Tenant-GUID sein (App-only funktioniert nicht mit „organizations“).",
+    );
+  }
+  return `https://login.microsoftonline.com/${encodeURIComponent(tenant)}/oauth2/v2.0/token`;
 }
 
 type TokenJson = {
   access_token?: string;
-  refresh_token?: string;
   expires_in?: number;
   scope?: string;
   error?: string;
   error_description?: string;
 };
 
-function parseTokenJson(data: TokenJson, fallbackRefresh?: string): MicrosoftTokenSet {
-  if (!data.access_token) {
-    const detail = data.error_description || data.error || "Kein Access Token";
-    throw new Error(`Microsoft Token-Antwort unvollständig: ${detail}`);
-  }
-  const refresh = data.refresh_token?.trim() || fallbackRefresh?.trim() || "";
-  if (!refresh) {
-    throw new Error(
-      "Microsoft hat keinen Refresh Token geliefert. In der Entra-App „offline_access“ prüfen und erneut verbinden.",
-    );
-  }
-  return {
-    accessToken: data.access_token,
-    refreshToken: refresh,
-    expiresIn: typeof data.expires_in === "number" ? data.expires_in : 3600,
-    scope: data.scope || MICROSOFT_OAUTH_SCOPES,
-    tenantId: null,
-  };
-}
-
-export async function exchangeMicrosoftAuthorizationCode(
-  input: MicrosoftTokenExchangeInput,
-): Promise<MicrosoftTokenSet> {
+/**
+ * App-only Token (Client Credentials). Kein User-Login, kein Refresh Token —
+ * bei Ablauf erneut mit Client-ID + Secret holen.
+ */
+export async function acquireMicrosoftAppToken(): Promise<MicrosoftTokenSet> {
   const clientId = microsoftServerClientId();
   const clientSecret = microsoftServerClientSecret();
   if (!clientId) {
@@ -83,50 +71,12 @@ export async function exchangeMicrosoftAuthorizationCode(
   if (!clientSecret) {
     throw new Error("MICROSOFT_CLIENT_SECRET ist nicht gesetzt (Entra Client Secret).");
   }
-  if (!input.code?.trim() || !input.codeVerifier?.trim() || !input.redirectUri?.trim()) {
-    throw new Error("code, codeVerifier und redirectUri sind erforderlich.");
-  }
 
   const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    code: input.code.trim(),
+    grant_type: "client_credentials",
     client_id: clientId,
     client_secret: clientSecret,
-    redirect_uri: input.redirectUri.trim(),
-    code_verifier: input.codeVerifier.trim(),
-    scope: MICROSOFT_OAUTH_SCOPES,
-  });
-
-  const res = await fetch(tokenUrl(), {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-
-  const data = (await res.json().catch(() => ({}))) as TokenJson;
-  if (!res.ok) {
-    throw new Error(
-      data.error_description || data.error || `Microsoft Token-Austausch fehlgeschlagen (HTTP ${res.status})`,
-    );
-  }
-  return parseTokenJson(data);
-}
-
-export async function refreshMicrosoftAccessToken(refreshToken: string): Promise<MicrosoftTokenSet> {
-  const clientId = microsoftServerClientId();
-  const clientSecret = microsoftServerClientSecret();
-  if (!clientId || !clientSecret) {
-    throw new Error("Microsoft Client-ID oder Secret fehlt.");
-  }
-  const token = refreshToken?.trim();
-  if (!token) throw new Error("refreshToken ist erforderlich.");
-
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: token,
-    client_id: clientId,
-    client_secret: clientSecret,
-    scope: MICROSOFT_OAUTH_SCOPES,
+    scope: MICROSOFT_APP_SCOPE,
   });
 
   const res = await fetch(tokenUrl(), {
@@ -138,8 +88,17 @@ export async function refreshMicrosoftAccessToken(refreshToken: string): Promise
   const data = (await res.json().catch(() => ({}))) as TokenJson;
   if (!res.ok || !data.access_token) {
     throw new Error(
-      data.error_description || data.error || `Microsoft Token-Refresh fehlgeschlagen (HTTP ${res.status})`,
+      data.error_description ||
+        data.error ||
+        `Microsoft App-Token fehlgeschlagen (HTTP ${res.status}). In Entra Application-Permission „Mail.ReadWrite“ + Admin Consent prüfen.`,
     );
   }
-  return parseTokenJson(data, token);
+
+  return {
+    accessToken: data.access_token,
+    refreshToken: null,
+    expiresIn: typeof data.expires_in === "number" ? data.expires_in : 3600,
+    scope: data.scope || MICROSOFT_APP_SCOPE,
+    tenantId: microsoftServerTenantId(),
+  };
 }

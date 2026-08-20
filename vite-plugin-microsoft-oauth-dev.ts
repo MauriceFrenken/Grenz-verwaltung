@@ -37,6 +37,7 @@ function sendJson(res: ServerResponse, status: number, body: unknown) {
   res.end(JSON.stringify(body));
 }
 
+/** Dev-Middleware: App-only Connect ohne Popup (Client Credentials). */
 export function microsoftOauthDevPlugin(): Plugin {
   return {
     name: "microsoft-oauth-dev",
@@ -79,17 +80,9 @@ export function microsoftOauthDevPlugin(): Plugin {
 
         try {
           const raw = await readBody(req);
-          const body = JSON.parse(raw || "{}") as {
-            code?: string;
-            codeVerifier?: string;
-            redirectUri?: string;
-            supabaseAccessToken?: string;
-          };
+          const body = JSON.parse(raw || "{}") as { supabaseAccessToken?: string };
 
           const result = await completeMicrosoftConnect({
-            code: body.code ?? "",
-            codeVerifier: body.codeVerifier ?? "",
-            redirectUri: body.redirectUri ?? "",
             supabaseAccessToken: body.supabaseAccessToken ?? "",
           });
 
