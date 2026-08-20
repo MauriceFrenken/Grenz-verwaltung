@@ -51,6 +51,8 @@ export const AKTIONS_BERECHTIGUNGEN = [
   { id: "aktion.dokumente.kategorien.verwalten", label: "Kategorien verwalten", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },
   { id: "aktion.dokumente.posteingang.analysieren", label: "KI-Analyse starten", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },
   { id: "aktion.dokumente.ablage.bearbeiten", label: "Abgelegtes Dokument bearbeiten", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },
+  { id: "aktion.transaktionen.liste.pruefen", label: "Exposé prüfen (Check)", seite: "seite.transaktionen.liste", gruppe: "Transaktionen" },
+  { id: "aktion.transaktionen.liste.exportieren", label: "Exposé direkt exportieren", seite: "seite.transaktionen.liste", gruppe: "Transaktionen" },
   { id: "aktion.transaktionen.expose_import.hochladen", label: "Exposé-PDF hochladen", seite: "seite.transaktionen.expose_import", gruppe: "Transaktionen" },
   { id: "aktion.transaktionen.expose_import.uebernehmen", label: "In Salesforce übernehmen", seite: "seite.transaktionen.expose_import", gruppe: "Transaktionen" },
   { id: "aktion.transaktionen.expose_import.salesforce_session", label: "Mit Salesforce verbinden", seite: "seite.transaktionen.expose_import", gruppe: "Transaktionen" },

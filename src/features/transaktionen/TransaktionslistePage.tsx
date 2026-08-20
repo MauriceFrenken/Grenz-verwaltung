@@ -1,12 +1,32 @@
-import { useEffect, useState } from "react";
-import { useRouterState } from "@tanstack/react-router";
-import { FileQuestion, FileText, Image } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { FileQuestion, FileText, Image, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageWrapper } from "@/components/layout/PageWrapper";
+import { PermissionGate } from "@/components/auth/PermissionGate";
 import { DataTable, type Column } from "@/components/shared/DataTable";
-import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { useAuth, usePermissions } from "@/hooks/useAuth";
 import type { GraphAnhangArt, GraphNachricht } from "@/lib/microsoft/graph";
+import { base64ZuBytes, felderZuWerten, hatWerte } from "@/lib/postfach/client";
+import type { PostfachEintrag } from "@/lib/postfach/typen";
+import {
+  istSalesforceVerbunden,
+  speichereExposeSalesforceDraft,
+  speichereExposeSalesforceDraftPdf,
+} from "@/lib/salesforce";
+
+import { SalesforceConnectDialog } from "./expose-import/SalesforceConnectDialog";
+
+/** Analyse-Runden: je eine Mail, nacheinander — bis Posteingang leer oder Limit. */
+const MAX_ANALYSE_RUNDEN = 50;
+
+type Zeile = {
+  nachricht: GraphNachricht;
+  eintrag: PostfachEintrag | null;
+};
 
 function formatEingangsdatum(iso: string | null): string {
   if (!iso) return "–";
@@ -34,62 +54,63 @@ function AnhangIcon({ art }: { art: GraphAnhangArt }) {
   );
 }
 
-const spalten: Column<GraphNachricht>[] = [
-  {
-    key: "anhang",
-    header: "",
-    className: "w-10 pr-0",
-    render: (n) => <AnhangIcon art={n.anhangArt} />,
-  },
-  {
-    key: "absender",
-    header: "Absender",
-    className: "max-w-[11rem]",
-    render: (n) => {
-      const sender = n.absenderName?.trim() || n.absenderMail || "–";
-      return (
-        <span className="block max-w-[11rem] truncate font-medium text-heading" title={sender}>
-          {sender}
-        </span>
-      );
-    },
-  },
-  {
-    key: "betreff",
-    header: "Betreff",
-    className: "max-w-0 w-full",
-    render: (n) => (
-      <span className="block max-w-xl truncate" title={n.betreff ?? undefined}>
-        {n.betreff?.trim() || "(kein Betreff)"}
+function AnalyseStatus({ zeile }: { zeile: Zeile }) {
+  const { nachricht, eintrag } = zeile;
+
+  if (!nachricht.pdfAnhang) {
+    return <span className="text-text-subtle">Kein PDF</span>;
+  }
+  if (!eintrag || eintrag.status === "neu") {
+    return (
+      <span className="inline-flex items-center gap-2 text-text-muted">
+        <Loader2
+          className="h-3.5 w-3.5 animate-spin"
+          strokeWidth={1.5}
+          aria-hidden
+        />
+        KI-Analyse
       </span>
-    ),
-  },
-  {
-    key: "datum",
-    header: "Datum",
-    align: "right",
-    render: (n) => (
-      <span className="text-text-muted">{formatEingangsdatum(n.eingegangenAm)}</span>
-    ),
-  },
-];
+    );
+  }
+  if (eintrag.status === "fehler") {
+    return (
+      <span
+        className="text-destructive"
+        title={eintrag.analyseFehler ?? undefined}
+      >
+        Analyse fehlgeschlagen
+      </span>
+    );
+  }
+  if (eintrag.status === "exportiert") {
+    return <span className="text-text-muted">Exportiert</span>;
+  }
+  return <span className="font-medium text-heading">Analysiert</span>;
+}
 
 export function TransaktionslistePage() {
   const { session } = useAuth();
+  const navigate = useNavigate();
+  const { darfAktion } = usePermissions();
   const token = session?.access_token ?? "";
   /** Ändert sich bei jedem Öffnen der Route (inkl. Soft-Navigation / Reload). */
   const besuchKey = useRouterState({
     select: (s) =>
-      s.location.state.__TSR_key ?? s.location.state.key ?? `${s.location.pathname}:${s.location.href}`,
+      s.location.state.__TSR_key ??
+      s.location.state.key ??
+      `${s.location.pathname}:${s.location.href}`,
   });
 
-  const [nachrichten, setNachrichten] = useState<GraphNachricht[]>([]);
+  const [zeilen, setZeilen] = useState<Zeile[]>([]);
   const [laedt, setLaedt] = useState(true);
+  const [analyseLaeuft, setAnalyseLaeuft] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
+  const [aktionId, setAktionId] = useState<string | null>(null);
+  const [sfConnectOpen, setSfConnectOpen] = useState(false);
 
   useEffect(() => {
     if (!token) {
-      setNachrichten([]);
+      setZeilen([]);
       setFehler(null);
       setLaedt(false);
       return;
@@ -99,20 +120,64 @@ export function TransaktionslistePage() {
     setLaedt(true);
     setFehler(null);
 
+    const uebernehmen = (
+      nachrichten: GraphNachricht[],
+      eintraege: PostfachEintrag[],
+    ) => {
+      const nachId = new Map(eintraege.map((e) => [e.graphNachrichtId, e]));
+      setZeilen(
+        nachrichten.map((n) => ({
+          nachricht: n,
+          eintrag: nachId.get(n.id) ?? null,
+        })),
+      );
+    };
+
     void (async () => {
       try {
-        const { microsoftPosteingangFn } = await import("@/lib/microsoft/server-fn");
-        const result = await microsoftPosteingangFn({
-          data: { supabaseAccessToken: token, anzahl: 50 },
+        const { postfachSyncFn } = await import("@/lib/postfach/server-fn");
+
+        // Erster Lauf ohne Analyse: Liste erscheint sofort.
+        const erst = await postfachSyncFn({
+          data: { supabaseAccessToken: token, maxAnalysen: 0 },
         });
         if (cancelled) return;
-        setNachrichten(result.nachrichten);
+        uebernehmen(erst.nachrichten, erst.eintraege);
+        setLaedt(false);
+
+        let offen = erst.offen;
+        for (let runde = 0; offen > 0 && runde < MAX_ANALYSE_RUNDEN; runde++) {
+          setAnalyseLaeuft(true);
+          // Eine Mail pro Runde — await, nie parallel.
+          const weiter = await postfachSyncFn({
+            data: { supabaseAccessToken: token, maxAnalysen: 1 },
+          });
+          if (cancelled) return;
+          if (weiter.eintraege.length > 0) {
+            setZeilen((prev) =>
+              prev.map((z) => {
+                const update = weiter.eintraege.find(
+                  (e) => e.graphNachrichtId === z.nachricht.id,
+                );
+                return update ? { ...z, eintrag: update } : z;
+              }),
+            );
+          }
+          offen = weiter.offen;
+        }
       } catch (e) {
         if (cancelled) return;
-        setNachrichten([]);
-        setFehler(e instanceof Error ? e.message : "Postfach konnte nicht geladen werden.");
+        setZeilen([]);
+        setFehler(
+          e instanceof Error
+            ? e.message
+            : "Postfach konnte nicht geladen werden.",
+        );
       } finally {
-        if (!cancelled) setLaedt(false);
+        if (!cancelled) {
+          setLaedt(false);
+          setAnalyseLaeuft(false);
+        }
       }
     })();
 
@@ -121,17 +186,201 @@ export function TransaktionslistePage() {
     };
   }, [token, besuchKey]);
 
+  const pruefen = useCallback(
+    (eintrag: PostfachEintrag) => {
+      void navigate({
+        to: "/transaktionen/expose-import",
+        search: { postfach: eintrag.id },
+      });
+    },
+    [navigate],
+  );
+
+  const exportieren = useCallback(
+    async (eintrag: PostfachEintrag) => {
+      if (!istSalesforceVerbunden()) {
+        if (
+          darfAktion("aktion.transaktionen.expose_import.salesforce_session")
+        ) {
+          setSfConnectOpen(true);
+        } else {
+          toast.error("Nicht mit Salesforce verbunden.");
+        }
+        return;
+      }
+
+      setAktionId(eintrag.id);
+      try {
+        const { postfachEintragFn } = await import("@/lib/postfach/server-fn");
+        const { pdf } = await postfachEintragFn({
+          data: { supabaseAccessToken: token, eintragId: eintrag.id },
+        });
+
+        const draft = speichereExposeSalesforceDraft({
+          dateiname: pdf.dateiname,
+          felder: felderZuWerten(eintrag.felder),
+          postfachEintragId: eintrag.id,
+        });
+        speichereExposeSalesforceDraftPdf({
+          draftId: draft.id,
+          dateiname: pdf.dateiname,
+          mimeType: pdf.mimeType,
+          bytes: base64ZuBytes(pdf.base64),
+        });
+
+        await navigate({
+          to: "/transaktionen/expose-import/salesforce",
+          search: { draft: draft.id },
+        });
+      } catch (e) {
+        toast.error(
+          e instanceof Error
+            ? e.message
+            : "Export konnte nicht gestartet werden.",
+        );
+      } finally {
+        setAktionId(null);
+      }
+    },
+    [darfAktion, navigate, token],
+  );
+
+  const spalten: Column<Zeile>[] = [
+    {
+      key: "anhang",
+      header: "",
+      className: "w-10 pr-0",
+      render: (z) => <AnhangIcon art={z.nachricht.anhangArt} />,
+    },
+    {
+      key: "absender",
+      header: "Absender",
+      className: "max-w-[11rem]",
+      render: (z) => {
+        const sender =
+          z.nachricht.absenderName?.trim() || z.nachricht.absenderMail || "–";
+        return (
+          <span
+            className="block max-w-[11rem] truncate font-medium text-heading"
+            title={sender}
+          >
+            {sender}
+          </span>
+        );
+      },
+    },
+    {
+      key: "betreff",
+      header: "Betreff",
+      className: "max-w-0 w-full",
+      render: (z) => (
+        <span
+          className="block max-w-xl truncate"
+          title={z.nachricht.betreff ?? undefined}
+        >
+          {z.nachricht.betreff?.trim() || "(kein Betreff)"}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "KI-Status",
+      render: (z) => <AnalyseStatus zeile={z} />,
+    },
+    {
+      key: "datum",
+      header: "Datum",
+      align: "right",
+      render: (z) => (
+        <span className="text-text-muted">
+          {formatEingangsdatum(z.nachricht.eingegangenAm)}
+        </span>
+      ),
+    },
+    {
+      key: "aktionen",
+      header: "",
+      align: "right",
+      render: (z) => {
+        const eintrag = z.eintrag;
+        const bereit = Boolean(
+          eintrag &&
+          (eintrag.status === "analysiert" ||
+            eintrag.status === "exportiert") &&
+          hatWerte(eintrag.felder),
+        );
+        const laedtZeile = aktionId === eintrag?.id;
+
+        return (
+          <div className="flex items-center justify-end gap-2">
+            <PermissionGate
+              berechtigung="aktion.transaktionen.liste.pruefen"
+              skeletonClassName="w-16"
+            >
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-foreground text-foreground"
+                disabled={!bereit || Boolean(aktionId)}
+                onClick={() => eintrag && pruefen(eintrag)}
+              >
+                Check
+              </Button>
+            </PermissionGate>
+            <PermissionGate
+              berechtigung="aktion.transaktionen.liste.exportieren"
+              skeletonClassName="w-16"
+            >
+              <Button
+                size="sm"
+                className="bg-primary text-primary-foreground hover:bg-heading"
+                disabled={!bereit || Boolean(aktionId)}
+                onClick={() => eintrag && void exportieren(eintrag)}
+              >
+                {laedtZeile ? (
+                  <Loader2
+                    className="mr-2 h-4 w-4 animate-spin"
+                    strokeWidth={1.5}
+                  />
+                ) : null}
+                Export
+              </Button>
+            </PermissionGate>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <>
-      <PageHeader titel="Offene Exposés" />
+      <PageHeader
+        titel="Offene Exposés"
+        nebenTitel={
+          analyseLaeuft ? (
+            <span className="inline-flex items-center gap-2 text-xs text-text-muted">
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin"
+                strokeWidth={1.5}
+                aria-hidden
+              />
+              KI-Analyse läuft
+            </span>
+          ) : undefined
+        }
+      />
+      <SalesforceConnectDialog
+        open={sfConnectOpen}
+        onOpenChange={setSfConnectOpen}
+      />
       <PageWrapper>
         <DataTable
           spalten={spalten}
-          zeilen={nachrichten}
+          zeilen={zeilen}
           isLoading={laedt}
-          isEmpty={!laedt && (Boolean(fehler) || nachrichten.length === 0)}
+          isEmpty={!laedt && (Boolean(fehler) || zeilen.length === 0)}
           emptyTitel={fehler ?? "Keine Nachrichten"}
-          rowKey={(n) => n.id}
+          rowKey={(z) => z.nachricht.id}
         />
       </PageWrapper>
     </>

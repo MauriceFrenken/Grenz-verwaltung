@@ -8,6 +8,8 @@ export type ExposeSalesforceExportDraft = {
   gespeichertAm: string;
   dateiname: string | null;
   felder: Partial<Record<ExposeFeldId, string>>;
+  /** Herkunft Ankauf-Postfach — nach dem Export wird die Mail abgelegt. */
+  postfachEintragId?: string | null;
 };
 
 type ExposeSalesforceDraftPdf = {
@@ -32,12 +34,14 @@ function randomId(): string {
 export function speichereExposeSalesforceDraft(input: {
   dateiname: string | null;
   felder: Partial<Record<ExposeFeldId, string>>;
+  postfachEintragId?: string | null;
 }): ExposeSalesforceExportDraft {
   const draft: ExposeSalesforceExportDraft = {
     id: randomId(),
     gespeichertAm: new Date().toISOString(),
     dateiname: input.dateiname,
     felder: input.felder,
+    postfachEintragId: input.postfachEintragId ?? null,
   };
   localStorage.setItem(draftKey(draft.id), JSON.stringify(draft));
   return draft;

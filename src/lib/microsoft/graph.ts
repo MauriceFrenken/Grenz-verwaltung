@@ -9,6 +9,14 @@ export type GraphPostfachInfo = {
 /** Primärer Anhangstyp für Listen-Icons (PDF vor Bild). */
 export type GraphAnhangArt = "pdf" | "bild" | "keins";
 
+/** Anhang-Metadaten aus der Nachrichtenliste — ohne Inhalt. */
+export type GraphAnhangMeta = {
+  id: string | null;
+  name: string;
+  contentType: string | null;
+  groesse: number;
+};
+
 export type GraphNachricht = {
   id: string;
   internetMessageId: string | null;
@@ -18,6 +26,8 @@ export type GraphNachricht = {
   eingegangenAm: string | null;
   hatAnhaenge: boolean;
   anhangArt: GraphAnhangArt;
+  /** Erster PDF-Anhang der Nachricht (Exposé-Kandidat). */
+  pdfAnhang: GraphAnhangMeta | null;
   vorschau: string | null;
   webLink: string | null;
 };
@@ -36,12 +46,18 @@ type GraphFehlerJson = {
   error?: { code?: string; message?: string };
 };
 
-function graphFehler(status: number, json: GraphFehlerJson, postfach?: string): Error {
+function graphFehler(
+  status: number,
+  json: GraphFehlerJson,
+  postfach?: string,
+): Error {
   const code = json.error?.code ?? "";
   const message = json.error?.message ?? `HTTP ${status}`;
 
   if (status === 401) {
-    return new Error(`Microsoft hat den Zugriff abgelehnt (nicht authentifiziert): ${message}`);
+    return new Error(
+      `Microsoft hat den Zugriff abgelehnt (nicht authentifiziert): ${message}`,
+    );
   }
   if (status === 403) {
     return new Error(
@@ -49,7 +65,11 @@ function graphFehler(status: number, json: GraphFehlerJson, postfach?: string): 
         `„Mail.ReadWrite“ (nicht Delegated) und „Grant admin consent“. Graph: ${message}`,
     );
   }
-  if (status === 404 || code === "ErrorItemNotFound" || code === "ResourceNotFound") {
+  if (
+    status === 404 ||
+    code === "ErrorItemNotFound" ||
+    code === "ResourceNotFound"
+  ) {
     return new Error(
       `${postfach ?? "Das Postfach"} wurde in diesem Tenant nicht gefunden. Adresse und Tenant prüfen. Graph: ${message}`,
     );
@@ -59,12 +79,39 @@ function graphFehler(status: number, json: GraphFehlerJson, postfach?: string): 
       `${postfach ?? "Das Postfach"} ist nicht über die Graph-API erreichbar (kein Exchange-Online-Postfach).`,
     );
   }
-  return new Error(`Microsoft Graph Fehler (${status}${code ? ` ${code}` : ""}): ${message}`);
+  return new Error(
+    `Microsoft Graph Fehler (${status}${code ? ` ${code}` : ""}): ${message}`,
+  );
 }
 
-async function graphGet<T>(pfad: string, accessToken: string, postfach?: string): Promise<T> {
+async function graphGet<T>(
+  pfad: string,
+  accessToken: string,
+  postfach?: string,
+): Promise<T> {
   const res = await fetch(`${GRAPH_BASIS}${pfad}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const json: unknown = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw graphFehler(res.status, json as GraphFehlerJson, postfach);
+  }
+  return json as T;
+}
+
+async function graphPost<T>(
+  pfad: string,
+  accessToken: string,
+  body: unknown,
+  postfach?: string,
+): Promise<T> {
+  const res = await fetch(`${GRAPH_BASIS}${pfad}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
   });
   const json: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -97,13 +144,16 @@ export async function graphPostfachPruefen(
   return {
     ordnerId: data.id,
     anzeigename: data.displayName ?? null,
-    anzahlNachrichten: typeof data.totalItemCount === "number" ? data.totalItemCount : null,
+    anzahlNachrichten:
+      typeof data.totalItemCount === "number" ? data.totalItemCount : null,
   };
 }
 
 type RohAnhangMeta = {
+  id?: string;
   name?: string;
   contentType?: string;
+  size?: number;
   isInline?: boolean;
 };
 
@@ -128,18 +178,30 @@ function istPdfAnhang(a: RohAnhangMeta): boolean {
 function istBildAnhang(a: RohAnhangMeta): boolean {
   const ct = (a.contentType ?? "").toLowerCase();
   const name = (a.name ?? "").toLowerCase();
-  return ct.startsWith("image/") || /\.(jpe?g|png|gif|webp|tiff?|bmp)$/i.test(name);
+  return (
+    ct.startsWith("image/") || /\.(jpe?g|png|gif|webp|tiff?|bmp)$/i.test(name)
+  );
 }
 
-function anhangArtAus(roh: RohNachricht): GraphAnhangArt {
-  const anhaenge = (roh.attachments ?? []).filter((a) => !a.isInline);
+function anhangArtAus(anhaenge: RohAnhangMeta[]): GraphAnhangArt {
   if (anhaenge.some(istPdfAnhang)) return "pdf";
   if (anhaenge.some(istBildAnhang)) return "bild";
   return "keins";
 }
 
+function mapAnhangMeta(roh: RohAnhangMeta): GraphAnhangMeta {
+  return {
+    id: roh.id ?? null,
+    name: roh.name ?? "unbenannt",
+    contentType: roh.contentType ?? null,
+    groesse: typeof roh.size === "number" ? roh.size : 0,
+  };
+}
+
 function mapNachricht(roh: RohNachricht): GraphNachricht | null {
   if (!roh.id) return null;
+  const anhaenge = (roh.attachments ?? []).filter((a) => !a.isInline);
+  const pdf = anhaenge.find(istPdfAnhang);
   return {
     id: roh.id,
     internetMessageId: roh.internetMessageId ?? null,
@@ -148,7 +210,8 @@ function mapNachricht(roh: RohNachricht): GraphNachricht | null {
     absenderMail: roh.from?.emailAddress?.address?.toLowerCase() ?? null,
     eingegangenAm: roh.receivedDateTime ?? null,
     hatAnhaenge: roh.hasAttachments === true,
-    anhangArt: anhangArtAus(roh),
+    anhangArt: anhangArtAus(anhaenge),
+    pdfAnhang: pdf ? mapAnhangMeta(pdf) : null,
     vorschau: roh.bodyPreview ?? null,
     webLink: roh.webLink ?? null,
   };
@@ -161,8 +224,9 @@ export async function graphPosteingangNachrichten(
 ): Promise<GraphNachricht[]> {
   const anzahl = Math.min(Math.max(optionen.anzahl ?? 25, 1), 100);
   const params = new URLSearchParams({
-    $select: "id,internetMessageId,subject,from,receivedDateTime,hasAttachments,bodyPreview,webLink",
-    $expand: "attachments($select=name,contentType,isInline)",
+    $select:
+      "id,internetMessageId,subject,from,receivedDateTime,hasAttachments,bodyPreview,webLink",
+    $expand: "attachments($select=id,name,contentType,size,isInline)",
     $orderby: "receivedDateTime desc",
     $top: String(anzahl),
   });
@@ -180,7 +244,9 @@ export async function graphPosteingangNachrichten(
     .map(mapNachricht)
     .filter((n): n is GraphNachricht => n !== null);
 
-  return optionen.nurMitAnhang ? nachrichten.filter((n) => n.hatAnhaenge) : nachrichten;
+  return optionen.nurMitAnhang
+    ? nachrichten.filter((n) => n.hatAnhaenge)
+    : nachrichten;
 }
 
 export async function graphNachrichtAnhaenge(
@@ -213,4 +279,90 @@ export async function graphNachrichtAnhaenge(
       istInline: a.isInline === true,
       contentBytes: a.contentBytes ?? null,
     }));
+}
+
+/** Einzelner Anhang mit Inhalt (Base64) — ohne die übrigen Anhänge zu laden. */
+export async function graphAnhangInhalt(
+  accessToken: string,
+  postfach: string,
+  nachrichtId: string,
+  anhangId: string,
+): Promise<GraphAnhang> {
+  const a = await graphGet<{
+    id?: string;
+    name?: string;
+    contentType?: string;
+    size?: number;
+    isInline?: boolean;
+    contentBytes?: string;
+  }>(
+    `/users/${encodeURIComponent(postfach)}/messages/${encodeURIComponent(nachrichtId)}` +
+      `/attachments/${encodeURIComponent(anhangId)}`,
+    accessToken,
+    postfach,
+  );
+
+  if (!a.contentBytes) {
+    throw new Error(
+      `Anhang „${a.name ?? anhangId}“ enthält keine Datei-Daten.`,
+    );
+  }
+
+  return {
+    id: a.id ?? anhangId,
+    name: a.name ?? "unbenannt",
+    contentType: a.contentType ?? null,
+    groesse: typeof a.size === "number" ? a.size : 0,
+    istInline: a.isInline === true,
+    contentBytes: a.contentBytes,
+  };
+}
+
+/**
+ * Findet einen bestehenden Ordner „anzeigename“ — zuerst unter dem Posteingang,
+ * sonst unter den Stammordnern. Wird nicht angelegt.
+ */
+export async function graphPosteingangUnterordner(
+  accessToken: string,
+  postfach: string,
+  anzeigename: string,
+): Promise<string> {
+  const filter = new URLSearchParams({
+    $select: "id,displayName",
+    $filter: `displayName eq '${anzeigename.replace(/'/g, "''")}'`,
+  });
+  const basis = `/users/${encodeURIComponent(postfach)}`;
+
+  for (const pfad of [
+    `${basis}/mailFolders/inbox/childFolders?${filter.toString()}`,
+    `${basis}/mailFolders?${filter.toString()}`,
+  ]) {
+    const gefunden = await graphGet<{ value?: Array<{ id?: string }> }>(
+      pfad,
+      accessToken,
+      postfach,
+    );
+    const id = gefunden.value?.find((f) => f.id)?.id;
+    if (id) return id;
+  }
+
+  throw new Error(
+    `Ordner „${anzeigename}“ wurde im Postfach nicht gefunden. Bitte manuell anlegen.`,
+  );
+}
+
+/** Verschiebt eine Nachricht in einen anderen Ordner. Graph gibt eine neue ID zurück. */
+export async function graphNachrichtVerschieben(
+  accessToken: string,
+  postfach: string,
+  nachrichtId: string,
+  zielOrdnerId: string,
+): Promise<string> {
+  const verschoben = await graphPost<{ id?: string }>(
+    `/users/${encodeURIComponent(postfach)}/messages/${encodeURIComponent(nachrichtId)}/move`,
+    accessToken,
+    { destinationId: zielOrdnerId },
+    postfach,
+  );
+  return verschoben.id ?? nachrichtId;
 }

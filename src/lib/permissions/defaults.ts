@@ -73,6 +73,8 @@ const MANAGER_AKTIONEN: string[] = [
   "aktion.dokumente.kategorien.verwalten",
   "aktion.dokumente.posteingang.analysieren",
   "aktion.dokumente.ablage.bearbeiten",
+  "aktion.transaktionen.liste.pruefen",
+  "aktion.transaktionen.liste.exportieren",
   "aktion.transaktionen.expose_import.hochladen",
   "aktion.transaktionen.expose_import.uebernehmen",
   "aktion.transaktionen.expose_import.salesforce_session",

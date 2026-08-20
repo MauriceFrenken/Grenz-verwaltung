@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { ContentSection, PageWrapper } from "@/components/layout/PageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import {
   filterObjekteLocal,
@@ -130,6 +131,8 @@ function ObjektZeile({
 export function SalesforceMatchPage() {
   const { draft: draftId } = salesforceExportRoute.useSearch();
   const navigate = useNavigate();
+  const { session } = useAuth();
+  const supabaseToken = session?.access_token ?? "";
 
   const [draft, setDraft] = useState<ExposeSalesforceExportDraft | null>(null);
 
@@ -264,6 +267,43 @@ export function SalesforceMatchPage() {
     }
   };
 
+  /** Exposé kam aus dem Ankauf-Postfach: Mail nach dem Export ablegen. */
+  const mailAblegen = async (
+    eintragId: string | null | undefined,
+    result: { realEstateId: string; transactionId: string },
+  ) => {
+    if (!eintragId) return;
+    if (!supabaseToken) {
+      toast.warning("Mail konnte nicht abgelegt werden: Sitzung abgelaufen.");
+      return;
+    }
+
+    try {
+      const { postfachExportFn } = await import("@/lib/postfach/server-fn");
+      const ablage = await postfachExportFn({
+        data: {
+          supabaseAccessToken: supabaseToken,
+          eintragId,
+          realEstateId: result.realEstateId,
+          transaktionId: result.transactionId,
+        },
+      });
+      if (!ablage.abgelegt) {
+        toast.warning(
+          `Mail konnte nicht in „${ablage.ordner}“ verschoben werden: ${
+            ablage.fehler ?? "unbekannter Fehler"
+          }`,
+        );
+      }
+    } catch (err) {
+      toast.warning(
+        `Mail konnte nicht abgelegt werden: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  };
+
   const exportieren = async (realEstateId: string | null) => {
     if (!draft || exportModus) return;
 
@@ -319,6 +359,8 @@ export function SalesforceMatchPage() {
           "Das PDF war in dieser Sitzung nicht mehr verfügbar und wurde nicht angehängt.",
         );
       }
+
+      await mailAblegen(draft.postfachEintragId, result);
 
       void navigate({ to: "/transaktionen/expose-import" });
     } catch (err) {

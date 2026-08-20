@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { BookOpen, Check, Loader2, Sparkles, Unplug } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,16 +15,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { usePermissions } from "@/hooks/useAuth";
+import { useAuth, usePermissions } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import {
   EXPOSE_FELD_DEFINITIONEN,
   EXPOSE_FELD_GRUPPEN,
   EXPOSE_FELD_IDS,
   EXPOSE_SYSTEM_FELDER,
+  type ExposeFelder,
   type ExposeFeldId,
   type ExposeFeldQuelle,
 } from "@/lib/expose-ai";
+import { base64ZuFile } from "@/lib/postfach/client";
 import {
   istSalesforceVerbunden,
   formatObjektNameFromTeile,
@@ -184,11 +186,17 @@ function loeseSeite(
   return match?.pageNumber ?? quelle.page ?? null;
 }
 
+const exposeImportRoute = getRouteApi("/transaktionen/expose-import/");
+
 export function ExposeImportPage() {
   const navigate = useNavigate();
   const { darfAktion } = usePermissions();
+  const { session } = useAuth();
+  const token = session?.access_token ?? "";
+  const { postfach: postfachSuche } = exposeImportRoute.useSearch();
   const objectUrlRef = useRef<string | null>(null);
   const pdfDateiRef = useRef<File | null>(null);
+  const postfachGeladenRef = useRef<string | null>(null);
   const darfHochladen = darfAktion(
     "aktion.transaktionen.expose_import.hochladen",
   );
@@ -204,6 +212,10 @@ export function ExposeImportPage() {
   const [analysiert, setAnalysiert] = useState(false);
   const [sfConnectOpen, setSfConnectOpen] = useState(false);
   const [sfVerbunden, setSfVerbunden] = useState(false);
+  /** Gesetzt, wenn das Exposé aus dem Ankauf-Postfach stammt. */
+  const [postfachEintragId, setPostfachEintragId] = useState<string | null>(
+    null,
+  );
 
   const syncSfStatus = useCallback(() => {
     setSfVerbunden(istSalesforceVerbunden());
@@ -253,44 +265,150 @@ export function ExposeImportPage() {
     [felder, pdfMeta],
   );
 
-  const pdfDateiUebernehmen = useCallback(async (file: File) => {
-    if (
-      file.type !== "application/pdf" &&
-      !file.name.toLowerCase().endsWith(".pdf")
-    ) {
-      toast.error("Bitte eine PDF-Datei wählen.");
-      return;
-    }
-
-    setLaedtPdf(true);
-    setAnalysiert(false);
-    setFelder(leereFelder());
-    setHighlight(null);
-    setPdfSeite(1);
-
-    try {
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
+  const pdfDateiUebernehmen = useCallback(
+    async (file: File): Promise<ExtractedPdfForChat | null> => {
+      if (
+        file.type !== "application/pdf" &&
+        !file.name.toLowerCase().endsWith(".pdf")
+      ) {
+        toast.error("Bitte eine PDF-Datei wählen.");
+        return null;
       }
-      const url = URL.createObjectURL(file);
-      objectUrlRef.current = url;
-      setObjectUrl(url);
-      setDateiname(file.name);
 
-      const extracted = await extractPdfForChat(file);
-      pdfDateiRef.current = file;
-      setPdfMeta(extracted);
-      toast.success("PDF geladen");
-    } catch {
-      pdfDateiRef.current = null;
-      toast.error("PDF konnte nicht gelesen werden.");
-      setObjectUrl(null);
-      setDateiname(null);
-      setPdfMeta(null);
-    } finally {
-      setLaedtPdf(false);
-    }
-  }, []);
+      setLaedtPdf(true);
+      setAnalysiert(false);
+      setFelder(leereFelder());
+      setHighlight(null);
+      setPdfSeite(1);
+
+      try {
+        if (objectUrlRef.current) {
+          URL.revokeObjectURL(objectUrlRef.current);
+        }
+        const url = URL.createObjectURL(file);
+        objectUrlRef.current = url;
+        setObjectUrl(url);
+        setDateiname(file.name);
+
+        const extracted = await extractPdfForChat(file);
+        pdfDateiRef.current = file;
+        setPdfMeta(extracted);
+        return extracted;
+      } catch {
+        pdfDateiRef.current = null;
+        toast.error("PDF konnte nicht gelesen werden.");
+        setObjectUrl(null);
+        setDateiname(null);
+        setPdfMeta(null);
+        return null;
+      } finally {
+        setLaedtPdf(false);
+      }
+    },
+    [],
+  );
+
+  const pdfDropUebernehmen = useCallback(
+    (file: File) => {
+      void (async () => {
+        setPostfachEintragId(null);
+        postfachGeladenRef.current = null;
+        const extracted = await pdfDateiUebernehmen(file);
+        if (extracted) toast.success("PDF geladen");
+      })();
+    },
+    [pdfDateiUebernehmen],
+  );
+
+  /** KI-Ergebnis in die Felder übernehmen und erste Quelle im PDF markieren. */
+  const ergebnisUebernehmen = useCallback(
+    (fields: ExposeFelder, meta: ExtractedPdfForChat) => {
+      const neu = leereFelder();
+      let erkannt = 0;
+      let erstesMitQuelle: {
+        id: ExposeFeldId;
+        quelle: ExposeFeldQuelle;
+      } | null = null;
+
+      for (const { id } of EXPOSE_FELD_DEFINITIONEN) {
+        const quelle = fields[id];
+        if (!quelle) continue;
+        neu[id] = { value: quelle.value ?? "", quelle };
+        if (quelle.value) {
+          erkannt++;
+          if (!erstesMitQuelle && quelle.verbatimQuote) {
+            erstesMitQuelle = { id, quelle };
+          }
+        }
+      }
+
+      setFelder(neu);
+
+      if (erstesMitQuelle) {
+        const seite = loeseSeite(erstesMitQuelle.quelle, meta.pages);
+        if (seite && erstesMitQuelle.quelle.verbatimQuote) {
+          setPdfSeite(seite);
+          setHighlight({
+            page: seite,
+            quote: erstesMitQuelle.quelle.verbatimQuote,
+            hint: neu[erstesMitQuelle.id].value.trim() || undefined,
+          });
+        }
+      }
+
+      return erkannt;
+    },
+    [],
+  );
+
+  // Aus „Offene Exposés“ übernommen: PDF aus dem Postfach laden, KI-Ergebnis
+  // aus Supabase einsetzen — keine zweite Analyse.
+  useEffect(() => {
+    const eintragId = postfachSuche?.trim();
+    if (!eintragId || !token) return;
+    if (postfachGeladenRef.current === eintragId) return;
+    postfachGeladenRef.current = eintragId;
+
+    let cancelled = false;
+    void (async () => {
+      setLaedtPdf(true);
+      try {
+        const { postfachEintragFn } = await import("@/lib/postfach/server-fn");
+        const { eintrag, pdf } = await postfachEintragFn({
+          data: { supabaseAccessToken: token, eintragId },
+        });
+        if (cancelled) return;
+
+        const datei = base64ZuFile(pdf.base64, pdf.dateiname, pdf.mimeType);
+        const extracted = await pdfDateiUebernehmen(datei);
+        if (cancelled || !extracted) return;
+
+        setPostfachEintragId(eintrag.id);
+        if (eintrag.felder) {
+          const erkannt = ergebnisUebernehmen(eintrag.felder, extracted);
+          toast.success(
+            `${erkannt} Feld${erkannt === 1 ? "" : "er"} aus der KI-Analyse übernommen`,
+          );
+        } else {
+          toast.info("Für diese Mail liegt noch kein KI-Ergebnis vor.");
+        }
+      } catch (err) {
+        if (cancelled) return;
+        postfachGeladenRef.current = null;
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Exposé aus dem Postfach konnte nicht geladen werden.",
+        );
+      } finally {
+        if (!cancelled) setLaedtPdf(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ergebnisUebernehmen, pdfDateiUebernehmen, postfachSuche, token]);
 
   const kiAnalysieren = async () => {
     if (!pdfMeta?.modelContext) {
@@ -305,39 +423,9 @@ export function ExposeImportPage() {
         modelContext: pdfMeta.modelContext,
       });
 
-      const neu = leereFelder();
-      let erkannt = 0;
-      let erstesMitQuelle: {
-        id: ExposeFeldId;
-        quelle: ExposeFeldQuelle;
-      } | null = null;
-
-      for (const { id, label } of EXPOSE_FELD_DEFINITIONEN) {
-        const quelle = ergebnis.fields[id];
-        neu[id] = { value: quelle.value ?? "", quelle };
-        if (quelle.value) {
-          erkannt++;
-          if (!erstesMitQuelle && quelle.verbatimQuote) {
-            erstesMitQuelle = { id, quelle };
-          }
-        }
-      }
-
-      setFelder(neu);
-
+      const erkannt = ergebnisUebernehmen(ergebnis.fields, pdfMeta);
       if (erkannt > 0) {
         toast.success(`${erkannt} Feld${erkannt === 1 ? "" : "er"} extrahiert`);
-        if (erstesMitQuelle) {
-          const seite = loeseSeite(erstesMitQuelle.quelle, pdfMeta.pages);
-          if (seite && erstesMitQuelle.quelle.verbatimQuote) {
-            setPdfSeite(seite);
-            setHighlight({
-              page: seite,
-              quote: erstesMitQuelle.quelle.verbatimQuote,
-              hint: neu[erstesMitQuelle.id].value.trim() || undefined,
-            });
-          }
-        }
       } else {
         toast.info("Keine Felder konnten eindeutig erkannt werden.");
       }
@@ -372,6 +460,7 @@ export function ExposeImportPage() {
     const draft = speichereExposeSalesforceDraft({
       dateiname,
       felder: felderWerte,
+      postfachEintragId,
     });
     const pdfDatei = pdfDateiRef.current;
 
@@ -492,7 +581,7 @@ export function ExposeImportPage() {
             pageLabels={pdfMeta?.pageLabels ?? null}
             highlight={highlight}
             className="h-full min-h-0"
-            onPdfDrop={darfHochladen ? pdfDateiUebernehmen : undefined}
+            onPdfDrop={darfHochladen ? pdfDropUebernehmen : undefined}
             dropDisabled={laedtPdf}
           />
         </div>
