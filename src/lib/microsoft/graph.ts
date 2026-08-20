@@ -1,12 +1,5 @@
 const GRAPH_BASIS = "https://graph.microsoft.com/v1.0";
 
-export type GraphPostfachUser = {
-  id: string;
-  mail: string | null;
-  userPrincipalName: string | null;
-  displayName: string | null;
-};
-
 export type GraphPostfachInfo = {
   ordnerId: string;
   anzeigename: string | null;
@@ -48,9 +41,8 @@ function graphFehler(status: number, json: GraphFehlerJson, postfach?: string): 
   }
   if (status === 403) {
     return new Error(
-      `Kein Zugriff auf ${postfach ?? "das Postfach"} (App-only). Prüfen: (1) Entra Application-Permission ` +
-        `„Mail.ReadWrite“ + Admin Consent, (2) Exchange Application Access Policy beschränkt die App auf ` +
-        `${postfach ?? "dieses Postfach"} (Skript scripts/microsoft-access-policy.ps1). Graph: ${message}`,
+      `Kein Zugriff auf ${postfach ?? "das Postfach"}. In Entra braucht die App die Application-Permission ` +
+        `„Mail.ReadWrite“ (nicht Delegated) und „Grant admin consent“. Graph: ${message}`,
     );
   }
   if (status === 404 || code === "ErrorItemNotFound" || code === "ResourceNotFound") {
@@ -75,33 +67,6 @@ async function graphGet<T>(pfad: string, accessToken: string, postfach?: string)
     throw graphFehler(res.status, json as GraphFehlerJson, postfach);
   }
   return json as T;
-}
-
-/** Postfach-Identität über UPN/Mail (App-only, kein /me). */
-export async function graphPostfachUser(
-  accessToken: string,
-  postfach: string,
-): Promise<GraphPostfachUser> {
-  const data = await graphGet<{
-    id?: string;
-    mail?: string;
-    userPrincipalName?: string;
-    displayName?: string;
-  }>(
-    `/users/${encodeURIComponent(postfach)}?$select=id,mail,userPrincipalName,displayName`,
-    accessToken,
-    postfach,
-  );
-
-  if (!data.id) {
-    throw new Error(`Microsoft Graph hat keine ID für ${postfach} geliefert.`);
-  }
-  return {
-    id: data.id,
-    mail: data.mail ?? null,
-    userPrincipalName: data.userPrincipalName ?? null,
-    displayName: data.displayName ?? null,
-  };
 }
 
 /**

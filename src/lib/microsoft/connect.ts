@@ -1,4 +1,4 @@
-import { graphPostfachPruefen, graphPostfachUser } from "./graph";
+import { graphPostfachPruefen } from "./graph";
 import { microsoftAccessToken } from "./postfach";
 import {
   leseMicrosoftRow,
@@ -82,13 +82,13 @@ export async function completeMicrosoftConnect(input: {
   }
 
   const tokens = await acquireMicrosoftAppToken();
-  const user = await graphPostfachUser(tokens.accessToken, postfach);
+  // Nur Mail-Endpunkt — /users/{mail} (Profil) braucht User.Read.All und ist unnötig.
   const info = await graphPostfachPruefen(tokens.accessToken, postfach);
 
   const status = await speichereMicrosoftVerbindung({
     tokens,
     kontoEmail: postfach,
-    graphUserId: user.id,
+    graphUserId: null,
     tenantId: microsoftServerTenantId(),
     verbundenVon: caller.userId,
   });
