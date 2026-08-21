@@ -1,12 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import type { ExposeFeldId } from "@/lib/expose-ai";
-import { graphAnhangInhalt } from "@/lib/microsoft/graph";
+import { graphAnhangBinary } from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
+import { createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
 import { leseEintrag } from "@/lib/postfach/store";
 
 import {
   buildContentVersionMultipart,
+  EXPOSE_PDF_TEMP_BUCKET,
   MAX_EXPOSE_PDF_BYTES,
 } from "./content-version";
 import { mitRechteDiagnose } from "./describe";
@@ -45,15 +47,39 @@ export type ExportExposeToSalesforceResult = {
   };
 };
 
+export type AttachPdfFromPostfachInput = {
+  accessToken?: string;
+  instanceUrl?: string;
+  refreshToken?: string;
+  realEstateId: string;
+  postfachEintragId: string;
+};
+
+export type AttachPdfFromPostfachResult = {
+  ok: true;
+  erneuerteSession?: ExportExposeToSalesforceResult["erneuerteSession"];
+};
+
+export type AttachPdfFromStorageInput = {
+  accessToken?: string;
+  instanceUrl?: string;
+  refreshToken?: string;
+  /** Supabase Access Token — Pfad-Ownership prüfen */
+  supabaseAccessToken: string;
+  realEstateId: string;
+  storagePath: string;
+  fileName: string;
+};
+
+export type AttachPdfFromStorageResult = {
+  ok: true;
+  erneuerteSession?: ExportExposeToSalesforceResult["erneuerteSession"];
+};
+
 type CreateResult = { id: string; success: boolean; errors: unknown[] };
 
 function fehlerText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-function base64ToBytes(base64: string): Uint8Array {
-  const buf = Buffer.from(base64.trim(), "base64");
-  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 }
 
 async function createRealEstate(
@@ -86,6 +112,36 @@ async function updateRealEstate(
   felder: Partial<Record<ExposeFeldId, string>>,
 ): Promise<void> {
   const payload = buildRealEstatePayload(felder, { includeName: false });
+  if (Object.keys(payload).length === 0) return;
+
+  await salesforceRestJson<void>(
+    accessToken,
+    instanceUrl,
+    `${salesforceDataApiPath()}/sobjects/Real_Estate__c/${encodeURIComponent(realEstateId)}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+  );
+}
+
+/**
+ * Nach dem Anlegen Adressfelder explizit per PATCH setzen.
+ * Manche Orgs/Flows lassen Street/City/ZIP beim Insert leer — Update greift dann.
+ */
+async function ensureAdressfelderNachCreate(
+  accessToken: string,
+  instanceUrl: string,
+  realEstateId: string,
+  felder: Partial<Record<ExposeFeldId, string>>,
+): Promise<void> {
+  const full = buildRealEstatePayload(felder, { includeName: false });
+  const payload: Record<string, string | number> = {};
+  for (const key of [
+    "Street_Name__c",
+    "Street_Number__c",
+    "City__c",
+    "ZIP_Code__c",
+  ] as const) {
+    if (full[key] != null && full[key] !== "") payload[key] = full[key];
+  }
   if (Object.keys(payload).length === 0) return;
 
   await salesforceRestJson<void>(
@@ -135,6 +191,9 @@ async function attachPdfBinary(
     binary,
   });
 
+  // Uint8Array direkt — Buffer-Cast kann in manchen Runtimes den Body leeren.
+  const body = new Uint8Array(multipart.body);
+
   await salesforceRestJson<CreateResult>(
     accessToken,
     instanceUrl,
@@ -142,13 +201,13 @@ async function attachPdfBinary(
     {
       method: "POST",
       headers: { "Content-Type": multipart.contentType },
-      body: Buffer.from(multipart.body) as unknown as BodyInit,
+      body: body as unknown as BodyInit,
     },
   );
 }
 
 /** PDF aus Ankauf-Postfach (Graph) laden und an Real Estate hängen. */
-async function attachPdfFromPostfach(
+export async function attachPdfFromPostfach(
   accessToken: string,
   instanceUrl: string,
   realEstateId: string,
@@ -168,23 +227,19 @@ async function attachPdfFromPostfach(
   }
 
   const { accessToken: graphToken } = await microsoftAccessToken();
-  const anhang = await graphAnhangInhalt(
+  const anhang = await graphAnhangBinary(
     graphToken,
     row.postfach,
     row.graph_nachricht_id,
     row.anhang_id,
   );
-  if (!anhang.contentBytes) {
-    throw new Error("PDF-Anhang enthält keine Datei-Daten.");
-  }
 
-  const binary = base64ToBytes(anhang.contentBytes);
   await attachPdfBinary(
     accessToken,
     instanceUrl,
     realEstateId,
     anhang.name || row.anhang_name || "Expose.pdf",
-    binary,
+    anhang.bytes,
   );
 }
 
@@ -200,7 +255,12 @@ export async function exportExposeToSalesforce(
   });
 
   const existingId = data.realEstateId?.trim() || null;
-  const felder = data.felder ?? {};
+  const felder = Object.fromEntries(
+    Object.entries(data.felder ?? {}).map(([k, v]) => [
+      k,
+      v == null ? "" : String(v),
+    ]),
+  ) as Partial<Record<ExposeFeldId, string>>;
   const postfachEintragId = data.postfachEintragId?.trim() || null;
 
   let realEstateId: string;
@@ -232,6 +292,13 @@ export async function exportExposeToSalesforce(
       realEstateId = await createRealEstate(
         creds.accessToken,
         creds.instanceUrl,
+        felder,
+      );
+      // Adressfelder nachziehen — Insert lässt Street/City/ZIP in manchen Orgs leer.
+      await ensureAdressfelderNachCreate(
+        creds.accessToken,
+        creds.instanceUrl,
+        realEstateId,
         felder,
       );
     } catch (err) {
@@ -300,3 +367,94 @@ export async function exportExposeToSalesforce(
 export const exportExposeToSalesforceFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as ExportExposeToSalesforceInput)
   .handler(({ data }) => exportExposeToSalesforce(data));
+
+/**
+ * Separater PDF-Attach (frische Server-Fn, volles Timeout).
+ * Wird vom Client genutzt, wenn der Attach im Export fehlgeschlagen ist.
+ */
+export const attachExposePdfFromPostfachFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as AttachPdfFromPostfachInput)
+  .handler(async ({ data }): Promise<AttachPdfFromPostfachResult> => {
+    const realEstateId = data.realEstateId?.trim();
+    const postfachEintragId = data.postfachEintragId?.trim();
+    if (!realEstateId) throw new Error("realEstateId fehlt.");
+    if (!postfachEintragId) throw new Error("postfachEintragId fehlt.");
+
+    const creds = await resolveVerifiedSalesforceCredentials({
+      accessToken: data.accessToken,
+      instanceUrl: data.instanceUrl,
+      refreshToken: data.refreshToken,
+    });
+
+    await attachPdfFromPostfach(
+      creds.accessToken,
+      creds.instanceUrl,
+      realEstateId,
+      postfachEintragId,
+    );
+
+    return { ok: true, erneuerteSession: creds.erneuert };
+  });
+
+/**
+ * Manuelles PDF: Client hat nach Storage hochgeladen; Server lädt herunter,
+ * hängt an Salesforce und löscht die Temp-Datei.
+ */
+export const attachExposePdfFromStorageFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as AttachPdfFromStorageInput)
+  .handler(async ({ data }): Promise<AttachPdfFromStorageResult> => {
+    const realEstateId = data.realEstateId?.trim();
+    const storagePath = data.storagePath?.trim();
+    const fileName = data.fileName?.trim() || "Expose.pdf";
+    const supabaseAccessToken = data.supabaseAccessToken?.trim();
+
+    if (!realEstateId) throw new Error("realEstateId fehlt.");
+    if (!storagePath) throw new Error("storagePath fehlt.");
+    if (!supabaseAccessToken) throw new Error("Nicht angemeldet.");
+
+    const admin = createServiceRoleClient();
+    const { data: authData, error: authError } =
+      await admin.auth.getUser(supabaseAccessToken);
+    if (authError || !authData.user?.id) {
+      throw new Error("Sitzung ungültig. Bitte neu anmelden.");
+    }
+
+    const userId = authData.user.id;
+    if (!storagePath.startsWith(`${userId}/`)) {
+      throw new Error("Kein Zugriff auf diese PDF-Datei.");
+    }
+
+    const { data: file, error: downloadError } = await admin.storage
+      .from(EXPOSE_PDF_TEMP_BUCKET)
+      .download(storagePath);
+
+    if (downloadError || !file) {
+      throw new Error(
+        `PDF konnte nicht aus dem Zwischenspeicher geladen werden: ${
+          downloadError?.message ?? "Datei fehlt"
+        }`,
+      );
+    }
+
+    const binary = new Uint8Array(await file.arrayBuffer());
+
+    try {
+      const creds = await resolveVerifiedSalesforceCredentials({
+        accessToken: data.accessToken,
+        instanceUrl: data.instanceUrl,
+        refreshToken: data.refreshToken,
+      });
+
+      await attachPdfBinary(
+        creds.accessToken,
+        creds.instanceUrl,
+        realEstateId,
+        fileName,
+        binary,
+      );
+
+      return { ok: true, erneuerteSession: creds.erneuert };
+    } finally {
+      await admin.storage.from(EXPOSE_PDF_TEMP_BUCKET).remove([storagePath]);
+    }
+  });

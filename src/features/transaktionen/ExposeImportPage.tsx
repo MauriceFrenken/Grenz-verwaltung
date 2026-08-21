@@ -454,7 +454,7 @@ export function ExposeImportPage() {
     }
 
     const felderWerte = Object.fromEntries(
-      EXPOSE_FELD_IDS.map((id) => [id, felder[id].value]),
+      EXPOSE_FELD_IDS.map((id) => [id, felder[id].value ?? ""]),
     ) as Record<ExposeFeldId, string>;
 
     const draft = speichereExposeSalesforceDraft({

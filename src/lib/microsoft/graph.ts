@@ -281,6 +281,71 @@ export async function graphNachrichtAnhaenge(
     }));
 }
 
+function anhangPfad(
+  postfach: string,
+  nachrichtId: string,
+  anhangId: string,
+): string {
+  return (
+    `/users/${encodeURIComponent(postfach)}/messages/${encodeURIComponent(nachrichtId)}` +
+    `/attachments/${encodeURIComponent(anhangId)}`
+  );
+}
+
+/**
+ * Anhang als Roh-Bytes laden.
+ * Nutzt `/$value` statt `contentBytes` — zuverlässiger bei großen PDFs (>3 MB).
+ */
+export async function graphAnhangBinary(
+  accessToken: string,
+  postfach: string,
+  nachrichtId: string,
+  anhangId: string,
+): Promise<{
+  id: string;
+  name: string;
+  contentType: string | null;
+  groesse: number;
+  bytes: Uint8Array;
+}> {
+  const metaPfad =
+    `${anhangPfad(postfach, nachrichtId, anhangId)}` +
+    `?$select=id,name,contentType,size`;
+  const meta = await graphGet<{
+    id?: string;
+    name?: string;
+    contentType?: string;
+    size?: number;
+  }>(metaPfad, accessToken, postfach);
+
+  const valueUrl = `${GRAPH_BASIS}${anhangPfad(postfach, nachrichtId, anhangId)}/$value`;
+  const res = await fetch(valueUrl, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const json: unknown = await res.json().catch(() => ({}));
+    throw graphFehler(res.status, json as GraphFehlerJson, postfach);
+  }
+
+  const buffer = new Uint8Array(await res.arrayBuffer());
+  if (buffer.byteLength === 0) {
+    throw new Error(
+      `Anhang „${meta.name ?? anhangId}“ enthält keine Datei-Daten.`,
+    );
+  }
+
+  return {
+    id: meta.id ?? anhangId,
+    name: meta.name ?? "unbenannt",
+    contentType: meta.contentType ?? null,
+    groesse:
+      typeof meta.size === "number" && meta.size > 0
+        ? meta.size
+        : buffer.byteLength,
+    bytes: buffer,
+  };
+}
+
 /** Einzelner Anhang mit Inhalt (Base64) — ohne die übrigen Anhänge zu laden. */
 export async function graphAnhangInhalt(
   accessToken: string,
@@ -288,33 +353,27 @@ export async function graphAnhangInhalt(
   nachrichtId: string,
   anhangId: string,
 ): Promise<GraphAnhang> {
-  const a = await graphGet<{
-    id?: string;
-    name?: string;
-    contentType?: string;
-    size?: number;
-    isInline?: boolean;
-    contentBytes?: string;
-  }>(
-    `/users/${encodeURIComponent(postfach)}/messages/${encodeURIComponent(nachrichtId)}` +
-      `/attachments/${encodeURIComponent(anhangId)}`,
+  const anhang = await graphAnhangBinary(
     accessToken,
     postfach,
+    nachrichtId,
+    anhangId,
   );
 
-  if (!a.contentBytes) {
-    throw new Error(
-      `Anhang „${a.name ?? anhangId}“ enthält keine Datei-Daten.`,
-    );
-  }
+  // Base64 für Client-Transport (Exposé-Import / Draft); serverseitig lieber Binary nutzen.
+  const contentBytes = Buffer.from(
+    anhang.bytes.buffer,
+    anhang.bytes.byteOffset,
+    anhang.bytes.byteLength,
+  ).toString("base64");
 
   return {
-    id: a.id ?? anhangId,
-    name: a.name ?? "unbenannt",
-    contentType: a.contentType ?? null,
-    groesse: typeof a.size === "number" ? a.size : 0,
-    istInline: a.isInline === true,
-    contentBytes: a.contentBytes,
+    id: anhang.id,
+    name: anhang.name,
+    contentType: anhang.contentType,
+    groesse: anhang.groesse,
+    istInline: false,
+    contentBytes,
   };
 }
 

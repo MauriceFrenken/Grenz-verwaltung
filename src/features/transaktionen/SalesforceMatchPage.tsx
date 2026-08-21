@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import {
-  attachExposePdfClient,
   filterObjekteLocal,
   formatDetailAdresseFromTeile,
   formatObjektNameFromTeile,
@@ -25,12 +24,17 @@ import {
   salesforceFehlerText,
   salesforceSessionHintFrisch,
   salesforceSessionUebernehmen,
+  uploadExposePdfToTempStorage,
   type ExposeSalesforceExportDraft,
   type SalesforceObjekt,
   type SalesforceObjektMatch,
 } from "@/lib/salesforce";
 import type { SalesforceObjektRechte } from "@/lib/salesforce/describe";
-import { exportExposeToSalesforceFn } from "@/lib/salesforce/export-fn";
+import {
+  attachExposePdfFromPostfachFn,
+  attachExposePdfFromStorageFn,
+  exportExposeToSalesforceFn,
+} from "@/lib/salesforce/export-fn";
 import { fetchSalesforceObjekteFn } from "@/lib/salesforce/objects-fn";
 
 const salesforceExportRoute = getRouteApi(
@@ -305,8 +309,7 @@ export function SalesforceMatchPage() {
         pdf && pdf.bytes.byteLength > MAX_EXPOSE_PDF_BYTES,
       );
 
-      // Kein PDF im Server-Fn-Body (Vercel-Limit). Postfach → Graph serverseitig;
-      // manuelles PDF → danach direkt Browser → Salesforce.
+      // Kein PDF im Server-Fn-Body. Postfach → Graph; manuell → Storage → Server → SF.
       const result = await exportExposeToSalesforceFn({
         data: {
           ...(await salesforceSessionHintFrisch()),
@@ -326,13 +329,17 @@ export function SalesforceMatchPage() {
       let pdfAngehaengt = result.pdfAngehaengt;
       let pdfFehler = result.pdfFehler;
 
-      if (!pdfAngehaengt && pdf && !pdfZuGross) {
+      // 1) Postfach: erneuter Server-Attach (eigene Fn, volles Timeout) — kein Browser→SF (CORS).
+      if (!pdfAngehaengt && draft.postfachEintragId) {
         try {
-          await attachExposePdfClient({
-            realEstateId: result.realEstateId,
-            fileName: pdf.dateiname,
-            bytes: pdf.bytes,
+          const retry = await attachExposePdfFromPostfachFn({
+            data: {
+              ...(await salesforceSessionHintFrisch()),
+              realEstateId: result.realEstateId,
+              postfachEintragId: draft.postfachEintragId,
+            },
           });
+          salesforceSessionUebernehmen(retry.erneuerteSession);
           pdfAngehaengt = true;
           pdfFehler = undefined;
         } catch (err) {
@@ -340,6 +347,37 @@ export function SalesforceMatchPage() {
             err,
             pdfFehler ?? "PDF-Upload fehlgeschlagen",
           );
+        }
+      }
+
+      // 2) Manuelles PDF: Client → Supabase Storage → Server → Salesforce (kein Vercel-Body, kein CORS).
+      if (!pdfAngehaengt && !draft.postfachEintragId && pdf && !pdfZuGross) {
+        if (!supabaseToken) {
+          pdfFehler = "Nicht angemeldet — PDF konnte nicht angehängt werden.";
+        } else {
+          try {
+            const uploaded = await uploadExposePdfToTempStorage({
+              bytes: pdf.bytes,
+              fileName: pdf.dateiname,
+            });
+            const attached = await attachExposePdfFromStorageFn({
+              data: {
+                ...(await salesforceSessionHintFrisch()),
+                supabaseAccessToken: supabaseToken,
+                realEstateId: result.realEstateId,
+                storagePath: uploaded.storagePath,
+                fileName: uploaded.fileName,
+              },
+            });
+            salesforceSessionUebernehmen(attached.erneuerteSession);
+            pdfAngehaengt = true;
+            pdfFehler = undefined;
+          } catch (err) {
+            pdfFehler = salesforceFehlerText(
+              err,
+              pdfFehler ?? "PDF-Upload fehlgeschlagen",
+            );
+          }
         }
       }
 
@@ -462,6 +500,9 @@ export function SalesforceMatchPage() {
                 <p className="font-medium text-heading">
                   {objektName || "— nicht gesetzt —"}
                 </p>
+                {detailAdresse && detailAdresse !== objektName ? (
+                  <p className="mt-1 text-sm text-text-muted">{detailAdresse}</p>
+                ) : null}
               </div>
             </ContentSection>
 

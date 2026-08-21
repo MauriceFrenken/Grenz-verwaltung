@@ -5,6 +5,9 @@
 
 export const MAX_EXPOSE_PDF_BYTES = 40 * 1024 * 1024;
 
+/** Privater Supabase-Bucket für Drag-and-Drop-PDFs vor dem SF-Attach. */
+export const EXPOSE_PDF_TEMP_BUCKET = "expose-pdf-temp";
+
 /**
  * Salesforce ContentVersion lehnt viele Unicode-Sonderzeichen in PathOnClient ab
  * (z. B. Hochgestellt ² in „85 m²“). NFKC macht ²→2, ³→3 usw.; Rest wird bereinigt.

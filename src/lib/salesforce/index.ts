@@ -70,4 +70,5 @@ export {
 } from "./export-draft";
 
 export { attachExposePdfClient } from "./attach-pdf-client";
-export { MAX_EXPOSE_PDF_BYTES } from "./content-version";
+export { uploadExposePdfToTempStorage } from "./attach-pdf-storage";
+export { MAX_EXPOSE_PDF_BYTES, EXPOSE_PDF_TEMP_BUCKET } from "./content-version";

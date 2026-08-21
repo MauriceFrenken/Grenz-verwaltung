@@ -7,7 +7,7 @@
  */
 import { handleAnalyzeExposeRequest } from "@/lib/expose-ai";
 import {
-  graphAnhangInhalt,
+  graphAnhangBinary,
   graphPosteingangNachrichten,
 } from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
@@ -17,7 +17,6 @@ import {
 } from "@/lib/microsoft/supabase-admin";
 import { microsoftPostfach } from "@/lib/microsoft/token-exchange";
 
-import { base64ZuBytes } from "./base64";
 import { extrahierePdfText } from "./pdf-text";
 import {
   eintraegeAnlegen,
@@ -54,13 +53,13 @@ async function analysiereEintrag(
       throw new Error("Kein PDF-Anhang an der Mail gefunden.");
     }
 
-    const anhang = await graphAnhangInhalt(
+    const anhang = await graphAnhangBinary(
       accessToken,
       postfach,
       row.graph_nachricht_id,
       row.anhang_id,
     );
-    const bytes = base64ZuBytes(anhang.contentBytes ?? "");
+    const bytes = anhang.bytes;
     if (bytes.byteLength === 0) {
       throw new Error("Der Anhang enthält keine Daten.");
     }
