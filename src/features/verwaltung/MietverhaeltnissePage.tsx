@@ -75,6 +75,11 @@ const spalten: Column<Mietverhaeltnis>[] = [
     render: (m) => datum(m.letzteMieterhoehung),
   },
   {
+    key: "iban",
+    header: "IBAN",
+    render: (m) => text(m.iban),
+  },
+  {
     key: "kaltmiete",
     header: "Kaltmiete",
     align: "right",
@@ -112,6 +117,7 @@ const spalten: Column<Mietverhaeltnis>[] = [
 
 const suchfelder = [
   (m: Mietverhaeltnis) => m.mieterName,
+  (m: Mietverhaeltnis) => m.iban,
   (m: Mietverhaeltnis) => m.objektBezeichnung,
   (m: Mietverhaeltnis) => m.hausteil,
   (m: Mietverhaeltnis) => m.einheitLage,

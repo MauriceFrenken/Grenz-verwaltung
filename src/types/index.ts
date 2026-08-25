@@ -139,6 +139,7 @@ export interface Mietverhaeltnis {
   gesellschaftId: GesellschaftId;
   gesellschaftName: string;
   mieterName: string;
+  iban: string | null;
   beginn: string | null; // ISO-Datum
   ende: string | null;
   letzteMieterhoehung: string | null;
@@ -154,6 +155,7 @@ export type MietverhaeltnisEingabe = Pick<
   Mietverhaeltnis,
   | "einheitId"
   | "mieterName"
+  | "iban"
   | "beginn"
   | "ende"
   | "letzteMieterhoehung"

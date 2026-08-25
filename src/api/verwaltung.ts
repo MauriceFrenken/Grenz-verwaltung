@@ -115,6 +115,7 @@ function mapMietverhaeltnis(row: Record<string, unknown>): Mietverhaeltnis {
     gesellschaftId: String(row.gesellschaft_id ?? ""),
     gesellschaftName: (row.gesellschaft_name as string | null) ?? "",
     mieterName: String(row.mieter_name),
+    iban: (row.iban as string | null) ?? null,
     beginn: (row.beginn as string | null) ?? null,
     ende: (row.ende as string | null) ?? null,
     letzteMieterhoehung: (row.letzte_mieterhoehung as string | null) ?? null,
@@ -280,6 +281,7 @@ export const verwaltungApi = {
     const werte = {
       einheit_id: input.einheitId,
       mieter_name: input.mieterName.trim(),
+      iban: textOderNull(input.iban?.replace(/\s+/g, "").toUpperCase()),
       beginn: input.beginn || null,
       ende: input.ende || null,
       letzte_mieterhoehung: input.letzteMieterhoehung || null,

@@ -35,9 +35,25 @@ const zahlFeld = z
     "Bitte Zahl angeben",
   );
 
+function ibanNormalisieren(wert: string): string {
+  return wert.replace(/\s+/g, "").toUpperCase();
+}
+
 const schema = z.object({
   einheitId: z.string().trim().min(1, "Bitte Einheit wählen"),
   mieterName: z.string().trim().min(2, "Bitte Mieter angeben"),
+  iban: z
+    .string()
+    .trim()
+    .transform(ibanNormalisieren)
+    .refine(
+      (v) =>
+        v === "" ||
+        (v.length >= 15 &&
+          v.length <= 34 &&
+          /^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(v)),
+      "Bitte gültige IBAN angeben",
+    ),
   beginn: z.string(),
   ende: z.string(),
   letzteMieterhoehung: z.string(),
@@ -88,6 +104,7 @@ export function MietverhaeltnisForm({
     defaultValues: {
       einheitId: mietverhaeltnis?.einheitId ?? vorauswahlEinheitId ?? "",
       mieterName: mietverhaeltnis?.mieterName ?? "",
+      iban: mietverhaeltnis?.iban ?? "",
       beginn: mietverhaeltnis?.beginn ?? "",
       ende: mietverhaeltnis?.ende ?? "",
       letzteMieterhoehung: mietverhaeltnis?.letzteMieterhoehung ?? "",
@@ -104,6 +121,7 @@ export function MietverhaeltnisForm({
         id: mietverhaeltnis?.id,
         einheitId: values.einheitId,
         mieterName: values.mieterName,
+        iban: values.iban || null,
         beginn: values.beginn || null,
         ende: values.ende || null,
         letzteMieterhoehung: values.letzteMieterhoehung || null,
@@ -163,6 +181,19 @@ export function MietverhaeltnisForm({
         <Input id="mieterName" {...form.register("mieterName")} />
         {fehler.mieterName ? (
           <p className="text-xs text-danger">{fehler.mieterName.message}</p>
+        ) : null}
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor={`${formId}-iban`}>IBAN</Label>
+        <Input
+          id={`${formId}-iban`}
+          autoComplete="off"
+          spellCheck={false}
+          {...form.register("iban")}
+        />
+        {fehler.iban ? (
+          <p className="text-xs text-danger">{fehler.iban.message}</p>
         ) : null}
       </div>
 
