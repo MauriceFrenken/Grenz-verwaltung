@@ -183,7 +183,10 @@ export function MietverhaeltnissePage() {
             <Button
               size="sm"
               className="bg-primary text-primary-foreground hover:bg-heading"
-              onClick={() => setAnlegenOffen(true)}
+              onClick={() => {
+                schliessen();
+                setAnlegenOffen(true);
+              }}
             >
               <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
               Neues Mietverhältnis
@@ -221,7 +224,10 @@ export function MietverhaeltnissePage() {
           emptyTitel={suche.trim() ? "Keine Treffer" : "Keine Mietverhältnisse"}
           onRowClick={
             darfAktion("aktion.verwaltung.mietverhaeltnisse.bearbeiten")
-              ? (m) => setBearbeiten(m)
+              ? (m) => {
+                  setAnlegenOffen(false);
+                  setBearbeiten(m);
+                }
               : undefined
           }
         />
@@ -234,6 +240,8 @@ export function MietverhaeltnissePage() {
           </DialogHeader>
           {anlegenOffen ? (
             <MietverhaeltnisForm
+              key="anlegen"
+              formId="mietverhaeltnis-anlegen"
               einheiten={einheitenListe}
               onDone={() => {
                 setAnlegenOffen(false);
@@ -255,6 +263,7 @@ export function MietverhaeltnissePage() {
           {bearbeiten ? (
             <MietverhaeltnisForm
               key={bearbeiten.id}
+              formId={`mietverhaeltnis-bearbeiten-${bearbeiten.id}`}
               mietverhaeltnis={bearbeiten}
               einheiten={einheiten.data?.items ?? []}
               onDone={() => {

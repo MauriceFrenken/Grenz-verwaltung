@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -6,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -67,16 +69,19 @@ export function MietverhaeltnisForm({
   mietverhaeltnis,
   einheiten,
   vorauswahlEinheitId,
+  formId = "mietverhaeltnis",
   onDone,
   onLoeschenAnfragen,
 }: {
   mietverhaeltnis?: Mietverhaeltnis;
   einheiten: Einheit[];
   vorauswahlEinheitId?: string | null;
+  formId?: string;
   onDone: () => void;
   onLoeschenAnfragen?: () => void;
 }) {
   const istBearbeitung = Boolean(mietverhaeltnis);
+  const [mitEnde, setMitEnde] = useState(Boolean(mietverhaeltnis?.ende));
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -163,12 +168,34 @@ export function MietverhaeltnisForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="beginn">Vertragsbeginn</Label>
-          <Input id="beginn" type="date" {...form.register("beginn")} />
+          <Label htmlFor={`${formId}-beginn`}>Vertragsbeginn</Label>
+          <Input
+            id={`${formId}-beginn`}
+            type="date"
+            autoComplete="off"
+            {...form.register("beginn")}
+          />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="ende">Vertragsende</Label>
-          <Input id="ende" type="date" {...form.register("ende")} />
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor={`${formId}-mit-ende`}>Vertragsende</Label>
+            <Switch
+              id={`${formId}-mit-ende`}
+              checked={mitEnde}
+              onCheckedChange={(checked) => {
+                setMitEnde(checked);
+                if (!checked) form.setValue("ende", "");
+              }}
+            />
+          </div>
+          {mitEnde ? (
+            <Input
+              id={`${formId}-ende`}
+              type="date"
+              autoComplete="off"
+              {...form.register("ende")}
+            />
+          ) : null}
         </div>
       </div>
 
