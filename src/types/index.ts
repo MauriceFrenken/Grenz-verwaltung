@@ -15,7 +15,15 @@ export type ObjektStatus = "aktiv" | "inaktiv" | "in_ankauf" | "verkauft";
 export type EinheitStatus = "vermietet" | "leerstand" | "wartung" | "reserviert";
 export type EinheitNutzungsart = "wohnen" | "gewerbe" | "garage" | "stellplatz" | "sonstiges";
 export type MietverhaeltnisStatus = "aktiv" | "gekuendigt" | "beendet" | "geplant";
-export type SollstellungStatus = "offen" | "gebucht" | "storniert";
+export type SollstellungLaufStatus = "offen" | "abgeschlossen" | "storniert";
+export type SollstellungPositionStatus =
+  | "fehlt"
+  | "teilweise"
+  | "ausgeglichen"
+  | "ueberzahlung"
+  | "ohne_iban";
+/** @deprecated Alias — alte Domain-Typen; Lauf nutzt SollstellungLaufStatus */
+export type SollstellungStatus = SollstellungLaufStatus | "gebucht";
 export type ZahlungsQuelle = "bankimport" | "manuell" | "verrechnung";
 export type Mahnstufe = 0 | 1 | 2 | 3;
 
@@ -165,10 +173,83 @@ export type MietverhaeltnisEingabe = Pick<
   | "bemerkung"
 > & { id?: MietverhaeltnisId };
 
+export interface SollstellungLauf {
+  id: string;
+  zeitraum: string; // "YYYY-MM"
+  gesellschaftId: GesellschaftId | null;
+  gesellschaftName: string | null;
+  gesellschaftKuerzel: string | null;
+  status: SollstellungLaufStatus;
+  bemerkung: string | null;
+  createdAt: string;
+  anzahlPositionen: number;
+  sollSumme: number;
+  istSumme: number;
+  differenzSumme: number;
+  anzahlFehlt: number;
+  anzahlTeilweise: number;
+  anzahlAusgeglichen: number;
+  anzahlUeberzahlung: number;
+  anzahlOhneIban: number;
+  anzahlBankauszuege: number;
+}
+
+export interface SollstellungPosition {
+  id: string;
+  laufId: string;
+  mietverhaeltnisId: MietverhaeltnisId;
+  mieterName: string;
+  iban: string | null;
+  einheitId: EinheitId;
+  einheitLage: string;
+  objektId: ObjektId;
+  objektBezeichnung: string;
+  gesellschaftId: GesellschaftId;
+  gesellschaftName: string;
+  kaltmiete: number;
+  nkVorauszahlung: number | null;
+  sollBetrag: number;
+  istBetrag: number;
+  differenz: number;
+  status: SollstellungPositionStatus;
+}
+
+export interface Bankauszug {
+  id: string;
+  laufId: string;
+  gesellschaftId: GesellschaftId;
+  gesellschaftName: string;
+  gesellschaftKuerzel: string;
+  dateiname: string;
+  zeitraumVon: string | null;
+  zeitraumBis: string | null;
+  anzahlBuchungen: number;
+  createdAt: string;
+}
+
+export interface Bankbuchung {
+  id: string;
+  bankauszugId: string;
+  buchungsdatum: string;
+  betrag: number;
+  gegenkontoIban: string | null;
+  auftraggeberName: string | null;
+  verwendungszweck: string | null;
+}
+
+export interface SollstellungZuordnung {
+  id: string;
+  positionId: string;
+  bankbuchungId: string;
+  betrag: number;
+  buchung: Bankbuchung;
+}
+
+/** @deprecated — Positionen leben jetzt unter SollstellungPosition */
 export interface Sollstellung {
   id: string;
   mietverhaeltnisId: MietverhaeltnisId;
-  zeitraum: string; // "YYYY-MM"
+  zeitraum: string;
   sollBetrag: number;
   status: SollstellungStatus;
 }

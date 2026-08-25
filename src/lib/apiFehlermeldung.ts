@@ -37,8 +37,10 @@ export function apiFehlermeldung(error: unknown): string {
     if (/row-level security|rls|42501|insufficient_privilege|permission denied/i.test(msg)) {
       return "Sie haben keine Berechtigung für diese Aktion.";
     }
-    if (/duplicate key|already exists|23505/i.test(msg)) {
-      return "Ein Eintrag mit dieser ID existiert bereits.";
+    if (/duplicate key|already exists|23505|existiert bereits/i.test(msg)) {
+      return /sollstellung|monat/i.test(msg)
+        ? "Für diesen Monat existiert bereits eine Sollstellung."
+        : "Ein Eintrag mit dieser ID existiert bereits.";
     }
     if (/already been registered|already registered|user already/i.test(msg)) {
       return "Diese E-Mail ist bereits registriert. Nutzen Sie „Passwort vergessen“ auf der Anmeldeseite.";

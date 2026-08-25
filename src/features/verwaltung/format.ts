@@ -33,6 +33,20 @@ export function text(wert: string | null | undefined): string {
   return wert?.trim() ? wert : PLATZHALTER;
 }
 
+const MONAT = new Intl.DateTimeFormat("de-DE", {
+  month: "long",
+  year: "numeric",
+});
+
+/** "YYYY-MM" → "August 2026" */
+export function monatLabel(zeitraum: string): string {
+  if (!/^\d{4}-\d{2}$/.test(zeitraum)) return zeitraum;
+  const d = new Date(`${zeitraum}-01T12:00:00`);
+  if (Number.isNaN(d.getTime())) return zeitraum;
+  const label = MONAT.format(d);
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export const NUTZUNGSART_LABEL: Record<string, string> = {
   wohnen: "Wohnen",
   gewerbe: "Gewerbe",

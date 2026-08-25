@@ -53,7 +53,7 @@ export function ZahlungenTeaser() {
               className="border-foreground text-foreground"
             >
               <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              Bankimport (CAMT.053)
+              Bankauszug (PDF)
             </Button>
           </PermissionGate>
         }

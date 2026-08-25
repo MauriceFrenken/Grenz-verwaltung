@@ -39,7 +39,7 @@ export const AKTIONS_BERECHTIGUNGEN = [
   { id: "aktion.verwaltung.mietverhaeltnisse.bearbeiten", label: "Mietverhältnis bearbeiten", seite: "seite.verwaltung.mietverhaeltnisse", gruppe: "Verwaltung" },
   { id: "aktion.verwaltung.mietverhaeltnisse.loeschen", label: "Mietverhältnis löschen", seite: "seite.verwaltung.mietverhaeltnisse", gruppe: "Verwaltung" },
   { id: "aktion.buchhaltung.sollstellung.erzeugen", label: "Sollstellung erzeugen", seite: "seite.verwaltung.sollstellung", gruppe: "Buchhaltung" },
-  { id: "aktion.buchhaltung.zahlungen.bankimport", label: "Bankimport (CAMT.053)", seite: "seite.verwaltung.zahlungen", gruppe: "Buchhaltung" },
+  { id: "aktion.buchhaltung.zahlungen.bankimport", label: "Bankauszug (PDF)", seite: "seite.verwaltung.zahlungen", gruppe: "Buchhaltung" },
   { id: "aktion.buchhaltung.nebenkosten.abrechnung_erstellen", label: "Abrechnung erstellen", seite: "seite.verwaltung.nebenkosten", gruppe: "Buchhaltung" },
   { id: "aktion.buchhaltung.nebenkosten.kostenposition_anlegen", label: "Kostenposition anlegen", seite: "seite.verwaltung.nebenkosten", gruppe: "Buchhaltung" },
   { id: "aktion.buchhaltung.nebenkosten.pdf_exportieren", label: "PDF ins DMS + Outlook-Entwurf", seite: "seite.verwaltung.nebenkosten", gruppe: "Buchhaltung" },
