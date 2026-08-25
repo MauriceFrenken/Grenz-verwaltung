@@ -68,7 +68,7 @@ async function upsertProfile(admin, user, { email, name, initialen, rolle = "op_
       initialen,
       rolle,
       stellenbezeichnung: "",
-      alle_mandanten: true,
+      alle_gesellschaften: true,
     },
     { onConflict: "id" },
   );
@@ -77,7 +77,7 @@ async function upsertProfile(admin, user, { email, name, initialen, rolle = "op_
 
 async function upsertOpAdmin(admin, { email, name, password, invite = false, redirectTo }) {
   const initialen = initialenAusName(name);
-  const appMeta = { rolle: "op_admin", mandanten: "*" };
+  const appMeta = { rolle: "op_admin", gesellschaften: "*" };
   const userMeta = { name, stellenbezeichnung: "", initialen };
 
   const { data: existingList, error: listError } = await admin.auth.admin.listUsers({

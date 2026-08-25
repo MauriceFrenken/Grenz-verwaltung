@@ -2,18 +2,18 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
-import { einstellungenApi } from "@/api/einstellungen";
-import { useMandantStore } from "@/store/mandant";
+import { verwaltungApi } from "@/api/verwaltung";
+import { useGesellschaftStore } from "@/store/gesellschaft";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const setMandanten = useMandantStore((s) => s.setMandanten);
+  const setGesellschaften = useGesellschaftStore((s) => s.setGesellschaften);
 
   useEffect(() => {
-    einstellungenApi
-      .listMandanten()
-      .then(({ items }) => setMandanten(items))
-      .catch((err) => console.error("Mandanten konnten nicht geladen werden", err));
-  }, [setMandanten]);
+    verwaltungApi
+      .listGesellschaften()
+      .then(({ items }) => setGesellschaften(items))
+      .catch((err) => console.error("Gesellschaften konnten nicht geladen werden", err));
+  }, [setGesellschaften]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">

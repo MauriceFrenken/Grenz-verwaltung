@@ -1,9 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { EinheitenTeaser } from "@/features/teaser";
+import { EinheitenPage } from "@/features/verwaltung/EinheitenPage";
 import { seitenGuard } from "@/lib/permissions";
+
+export interface EinheitenSuche {
+  gesellschaft?: string;
+  objekt?: string;
+}
 
 export const Route = createFileRoute("/verwaltung/einheiten")({
   beforeLoad: seitenGuard("seite.verwaltung.einheiten"),
+  validateSearch: (search: Record<string, unknown>): EinheitenSuche => ({
+    gesellschaft:
+      typeof search.gesellschaft === "string" ? search.gesellschaft : undefined,
+    objekt: typeof search.objekt === "string" ? search.objekt : undefined,
+  }),
   head: () => ({ meta: [{ title: "Einheiten — FRENKEN Verwaltung" }] }),
-  component: EinheitenTeaser,
+  component: EinheitenPage,
 });

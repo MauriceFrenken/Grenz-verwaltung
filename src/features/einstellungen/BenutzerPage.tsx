@@ -12,26 +12,27 @@ import { useApi } from "@/hooks/useApi";
 import { useAuth, usePermissions } from "@/hooks/useAuth";
 import { useAktionGuard } from "@/hooks/useAktionGuard";
 import { einstellungenApi } from "@/api/einstellungen";
-import { mandantIdsAusBenutzer } from "@/lib/auth";
+import { verwaltungApi } from "@/api/verwaltung";
+import { gesellschaftIdsAusBenutzer } from "@/lib/auth";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import { primaereRolle } from "@/lib/permissions";
 import { ROLLEN } from "@/lib/constants";
 import { usePermissionsStore } from "@/store/permissions";
-import type { Benutzer, Mandant } from "@/types";
+import type { Benutzer, Gesellschaft } from "@/types";
 import { BenutzerForm } from "./BenutzerForm";
 
-function mandantSpalte(b: Benutzer, mandanten: Mandant[]) {
-  const zugriff = mandantIdsAusBenutzer(b);
+function gesellschaftSpalte(b: Benutzer, gesellschaften: Gesellschaft[]) {
+  const zugriff = gesellschaftIdsAusBenutzer(b);
   if (zugriff === "*") {
     return <span className="text-text-muted">Alle</span>;
   }
   const namen = zugriff
-    .map((id) => mandanten.find((m) => m.id === id)?.kuerzel ?? id)
+    .map((id) => gesellschaften.find((m) => m.id === id)?.kuerzel ?? id)
     .join(", ");
   return <span className="text-text-muted">{namen || "–"}</span>;
 }
 
-function spaltenFuerMandanten(mandanten: Mandant[]): Column<Benutzer>[] {
+function spaltenFuerGesellschaften(gesellschaften: Gesellschaft[]): Column<Benutzer>[] {
   return [
     {
       key: "name",
@@ -66,9 +67,9 @@ function spaltenFuerMandanten(mandanten: Mandant[]): Column<Benutzer>[] {
       },
     },
     {
-      key: "mandanten",
-      header: "Mandanten",
-      render: (b) => mandantSpalte(b, mandanten),
+      key: "gesellschaften",
+      header: "Gesellschaften",
+      render: (b) => gesellschaftSpalte(b, gesellschaften),
     },
   ];
 }
@@ -83,8 +84,8 @@ export function BenutzerPage() {
   const [loeschenOffen, setLoeschenOffen] = useState(false);
   const [loeschenLaeuft, setLoeschenLaeuft] = useState(false);
   const { data, isLoading, isEmpty, reload } = useApi(() => einstellungenApi.listBenutzer(), []);
-  const mandanten = useApi(() => einstellungenApi.listMandanten(), []);
-  const spalten = spaltenFuerMandanten(mandanten.data?.items ?? []);
+  const gesellschaften = useApi(() => verwaltungApi.listGesellschaften(), []);
+  const spalten = spaltenFuerGesellschaften(gesellschaften.data?.items ?? []);
 
   const kannBenutzerBearbeiten = (b: Benutzer): boolean => {
     if (istOpAdmin()) return true;

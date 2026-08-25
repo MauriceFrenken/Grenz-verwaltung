@@ -91,17 +91,17 @@ async function istGueltigeRolle(
   return data !== null;
 }
 
-type MandantZuweisung = "alle" | "mehrere" | "einzeln";
+type GesellschaftZuweisung = "alle" | "mehrere" | "einzeln";
 
-async function mandantZuweisungFuerRolle(
+async function gesellschaftZuweisungFuerRolle(
   admin: ReturnType<typeof createClient>,
   rolle: string,
-): Promise<MandantZuweisung> {
+): Promise<GesellschaftZuweisung> {
   if (rolle === "op_admin") return "alle";
 
   const { data, error } = await admin
     .from("rollen")
-    .select("mandant_zuweisung")
+    .select("gesellschaft_zuweisung")
     .eq("id", rolle)
     .maybeSingle();
 
@@ -112,7 +112,7 @@ async function mandantZuweisungFuerRolle(
     throw error;
   }
 
-  const zuweisung = data?.mandant_zuweisung;
+  const zuweisung = data?.gesellschaft_zuweisung;
   if (zuweisung === "mehrere" || zuweisung === "einzeln") return zuweisung;
   return "alle";
 }
@@ -163,7 +163,7 @@ Deno.serve(async (req: Request) => {
       name?: string;
       stellenbezeichnung?: string;
       rolle?: string;
-      mandantZugriff?: "*" | string[];
+      gesellschaftZugriff?: "*" | string[];
       redirectTo?: string;
       resend?: boolean;
     };
@@ -219,12 +219,12 @@ Deno.serve(async (req: Request) => {
     const name = body.name?.trim() ?? "";
     const stellenbezeichnung = body.stellenbezeichnung?.trim() ?? "";
     const rolle = body.rolle?.trim() ?? "";
-    const mandantZugriffRaw = body.mandantZugriff;
-    const alleMandanten = mandantZugriffRaw === "*" || mandantZugriffRaw === undefined;
-    const mandantIds = alleMandanten
+    const gesellschaftZugriffRaw = body.gesellschaftZugriff;
+    const alleGesellschaften = gesellschaftZugriffRaw === "*" || gesellschaftZugriffRaw === undefined;
+    const gesellschaftIds = alleGesellschaften
       ? []
-      : Array.isArray(mandantZugriffRaw)
-        ? [...new Set(mandantZugriffRaw.map((id) => id.trim()).filter(Boolean))]
+      : Array.isArray(gesellschaftZugriffRaw)
+        ? [...new Set(gesellschaftZugriffRaw.map((id) => id.trim()).filter(Boolean))]
         : [];
 
     if (!email || !email.includes("@")) {
@@ -236,8 +236,8 @@ Deno.serve(async (req: Request) => {
     if (stellenbezeichnung.length < 1) {
       return json({ error: "Bitte eine Stellenbezeichnung angeben" }, 400);
     }
-    if (!alleMandanten && mandantIds.length === 0) {
-      return json({ error: "Bitte mindestens einen Mandanten auswählen" }, 400);
+    if (!alleGesellschaften && gesellschaftIds.length === 0) {
+      return json({ error: "Bitte mindestens eine Gesellschaft auswählen" }, 400);
     }
 
     if (!(await istGueltigeRolle(admin, rolle))) {
@@ -247,27 +247,27 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Diese Rolle darf nicht zugewiesen werden" }, 403);
     }
 
-    const mandantZuweisung = await mandantZuweisungFuerRolle(admin, rolle);
+    const gesellschaftZuweisung = await gesellschaftZuweisungFuerRolle(admin, rolle);
 
-    if (mandantZuweisung !== "alle" && alleMandanten) {
-      return json({ error: "Diese Rolle darf keinen Zugriff auf alle Mandanten erhalten" }, 400);
+    if (gesellschaftZuweisung !== "alle" && alleGesellschaften) {
+      return json({ error: "Diese Rolle darf keinen Zugriff auf alle Gesellschaften erhalten" }, 400);
     }
-    if (mandantZuweisung === "einzeln" && mandantIds.length !== 1) {
-      return json({ error: "Für diese Rolle ist genau ein Mandant erlaubt" }, 400);
+    if (gesellschaftZuweisung === "einzeln" && gesellschaftIds.length !== 1) {
+      return json({ error: "Für diese Rolle ist genau ein Gesellschaft erlaubt" }, 400);
     }
 
-    if (!alleMandanten) {
-      const { data: mandanten, error: mandantenError } = await admin
-        .from("mandanten")
+    if (!alleGesellschaften) {
+      const { data: gesellschaften, error: gesellschaftenError } = await admin
+        .from("gesellschaften")
         .select("id")
-        .in("id", mandantIds);
+        .in("id", gesellschaftIds);
 
-      if (mandantenError) {
-        return json({ error: mandantenError.message }, 400);
+      if (gesellschaftenError) {
+        return json({ error: gesellschaftenError.message }, 400);
       }
 
-      if ((mandanten ?? []).length !== mandantIds.length) {
-        return json({ error: "Ein oder mehrere Mandanten sind ungültig" }, 400);
+      if ((gesellschaften ?? []).length !== gesellschaftIds.length) {
+        return json({ error: "Ein oder mehrere Gesellschaften sind ungültig" }, 400);
       }
     }
 
@@ -297,7 +297,7 @@ Deno.serve(async (req: Request) => {
     const { error: metaError } = await admin.auth.admin.updateUserById(userId, {
       app_metadata: {
         rolle,
-        mandanten: alleMandanten ? "*" : mandantIds,
+        gesellschaften: alleGesellschaften ? "*" : gesellschaftIds,
       },
     });
 
@@ -313,7 +313,7 @@ Deno.serve(async (req: Request) => {
         initialen,
         rolle,
         stellenbezeichnung,
-        alle_mandanten: alleMandanten,
+        alle_gesellschaften: alleGesellschaften,
       },
       { onConflict: "id" },
     );
@@ -322,9 +322,9 @@ Deno.serve(async (req: Request) => {
       return json({ error: profileError.message }, 400);
     }
 
-    if (!alleMandanten) {
+    if (!alleGesellschaften) {
       const { error: deleteZuordnungError } = await admin
-        .from("benutzer_mandanten")
+        .from("benutzer_gesellschaften")
         .delete()
         .eq("benutzer_id", userId);
 
@@ -332,10 +332,10 @@ Deno.serve(async (req: Request) => {
         return json({ error: deleteZuordnungError.message }, 400);
       }
 
-      const { error: zuordnungError } = await admin.from("benutzer_mandanten").insert(
-        mandantIds.map((mandant_id) => ({
+      const { error: zuordnungError } = await admin.from("benutzer_gesellschaften").insert(
+        gesellschaftIds.map((gesellschaft_id) => ({
           benutzer_id: userId,
-          mandant_id,
+          gesellschaft_id,
         })),
       );
 

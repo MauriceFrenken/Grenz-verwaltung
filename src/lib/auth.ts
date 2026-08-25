@@ -1,24 +1,24 @@
 import type { User } from "@supabase/supabase-js";
-import type { Benutzer, MandantId, MandantZugriff, RolleName } from "@/types";
+import type { Benutzer, GesellschaftId, GesellschaftZugriff, RolleName } from "@/types";
 
-export function mandantZugriffAusWert(wert: unknown): MandantZugriff {
+export function gesellschaftZugriffAusWert(wert: unknown): GesellschaftZugriff {
   if (wert === "*" || wert === undefined || wert === null) return "*";
   if (!Array.isArray(wert)) return "*";
-  const ids = wert.filter((id): id is MandantId => typeof id === "string" && id.length > 0);
+  const ids = wert.filter((id): id is GesellschaftId => typeof id === "string" && id.length > 0);
   return ids.length > 0 ? ids : "*";
 }
 
-export function mandantIdsAusBenutzer(benutzer: Benutzer): MandantZugriff {
-  const ids = benutzer.rollen.map((r) => r.mandantId);
+export function gesellschaftIdsAusBenutzer(benutzer: Benutzer): GesellschaftZugriff {
+  const ids = benutzer.rollen.map((r) => r.gesellschaftId);
   if (ids.some((id) => id === "*")) return "*";
-  return [...new Set(ids.filter((id): id is MandantId => id !== "*"))];
+  return [...new Set(ids.filter((id): id is GesellschaftId => id !== "*"))];
 }
 
-export function rollenMitMandantZugriff(rolle: RolleName, mandantZugriff: MandantZugriff) {
-  if (mandantZugriff === "*") {
-    return [{ rolle, mandantId: "*" as const }];
+export function rollenMitGesellschaftZugriff(rolle: RolleName, gesellschaftZugriff: GesellschaftZugriff) {
+  if (gesellschaftZugriff === "*") {
+    return [{ rolle, gesellschaftId: "*" as const }];
   }
-  return mandantZugriff.map((mandantId) => ({ rolle, mandantId }));
+  return gesellschaftZugriff.map((gesellschaftId) => ({ rolle, gesellschaftId }));
 }
 
 export function initialenAusName(name: string): string {
@@ -42,7 +42,7 @@ export function benutzerAusUser(user: User): Benutzer {
   const rolleRaw = appMeta.rolle;
   const rolle =
     typeof rolleRaw === "string" && rolleRaw.length > 0 ? (rolleRaw as RolleName) : "leser";
-  const mandantZugriff = mandantZugriffAusWert(appMeta.mandanten);
+  const gesellschaftZugriff = gesellschaftZugriffAusWert(appMeta.gesellschaften);
 
   return {
     id: user.id,
@@ -50,6 +50,6 @@ export function benutzerAusUser(user: User): Benutzer {
     email: user.email ?? "",
     initialen,
     stellenbezeichnung,
-    rollen: rollenMitMandantZugriff(rolle, mandantZugriff),
+    rollen: rollenMitGesellschaftZugriff(rolle, gesellschaftZugriff),
   };
 }

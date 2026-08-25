@@ -95,11 +95,13 @@ function AnalyseStatus({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0 text-text-muted hover:bg-surface-muted hover:text-heading"
+            className="h-7 w-7 shrink-0 text-text-muted hover:bg-surface hover:text-heading hover:ring-1 hover:ring-inset hover:ring-hairline"
             disabled={Boolean(wiederholenId)}
             aria-label="KI-Analyse wiederholen"
-            title="KI-Analyse wiederholen"
-            onClick={() => onWiederholen(eintrag)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onWiederholen(eintrag);
+            }}
           >
             {laedt ? (
               <Loader2

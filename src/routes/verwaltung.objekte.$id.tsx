@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ObjektDetailTeaser } from "@/features/teaser";
-import { seitenGuard } from "@/lib/permissions";
+import { ObjektDetailPage } from "@/features/verwaltung/ObjektDetailPage";
 
 export const Route = createFileRoute("/verwaltung/objekte/$id")({
-  beforeLoad: seitenGuard("seite.verwaltung.objekte"),
+  head: () => ({ meta: [{ title: "Objekt — FRENKEN Verwaltung" }] }),
   component: RouteComponent,
 });
 
 function RouteComponent() {
   const { id } = Route.useParams();
-  return <ObjektDetailTeaser id={id} />;
+  return <ObjektDetailPage id={id} />;
 }

@@ -1,10 +1,5 @@
 export { DashboardTeaser } from "./DashboardTeaser";
 export {
-  MandantenTeaser,
-  ObjekteTeaser,
-  ObjektDetailTeaser,
-  EinheitenTeaser,
-  MietverhaeltnisseTeaser,
   SollstellungTeaser,
   ZahlungenTeaser,
   NebenkostenTeaser,

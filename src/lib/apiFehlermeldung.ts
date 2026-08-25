@@ -1,16 +1,17 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 
-const SLUG_REGEX_MANDANT = /^[a-z][a-z0-9_-]{1,48}$/;
-const SLUG_REGEX_OBJEKT = /^[a-z][a-z0-9_-]{1,63}$/;
+// Grossbuchstaben sind erlaubt, damit die Kuerzel der Quelldaten (G-01, APO-01) direkt als ID dienen.
+const SLUG_REGEX_GESELLSCHAFT = /^[A-Za-z][A-Za-z0-9_-]{1,48}$/;
+const SLUG_REGEX_OBJEKT = /^[A-Za-z][A-Za-z0-9_-]{1,63}$/;
 
-export function istGueltigeSlugId(value: string, art: "mandant" | "objekt" = "mandant"): boolean {
-  return art === "objekt" ? SLUG_REGEX_OBJEKT.test(value) : SLUG_REGEX_MANDANT.test(value);
+export function istGueltigeSlugId(value: string, art: "gesellschaft" | "objekt" = "gesellschaft"): boolean {
+  return art === "objekt" ? SLUG_REGEX_OBJEKT.test(value) : SLUG_REGEX_GESELLSCHAFT.test(value);
 }
 
 export function slugAusText(
   text: string,
   maxLength = 48,
-  art: "mandant" | "objekt" = "mandant",
+  art: "gesellschaft" | "objekt" = "gesellschaft",
 ): string {
   const slug = text
     .toLowerCase()
@@ -49,7 +50,7 @@ export function apiFehlermeldung(error: unknown): string {
       return "Verknüpfte Daten fehlen oder sind ungültig.";
     }
     if (/violates check constraint|id_format/i.test(msg)) {
-      return "Ungültige ID — nur Kleinbuchstaben, Zahlen, Bindestrich und Unterstrich (z. B. frenken-holding).";
+      return "Ungültige ID — nur Buchstaben, Zahlen, Bindestrich und Unterstrich (z. B. G-06).";
     }
 
     return msg;

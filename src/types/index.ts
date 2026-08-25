@@ -1,9 +1,9 @@
 // Zentrales Domain-Modell für FRENKEN Verwaltung.
-// Konsistente IDs (Mandanten-ID, Objekt-ID) werden modulübergreifend verwendet.
+// Konsistente IDs (Gesellschafts-ID, Objekt-ID) werden modulübergreifend verwendet.
 
 import type { KonfigurierbareRolle } from "@/lib/permissions/registry";
 
-export type MandantId = string;
+export type GesellschaftId = string;
 export type ObjektId = string;
 export type EinheitId = string;
 export type MietverhaeltnisId = string;
@@ -13,6 +13,7 @@ export type BenutzerId = string;
 
 export type ObjektStatus = "aktiv" | "inaktiv" | "in_ankauf" | "verkauft";
 export type EinheitStatus = "vermietet" | "leerstand" | "wartung" | "reserviert";
+export type EinheitNutzungsart = "wohnen" | "gewerbe" | "garage" | "stellplatz" | "sonstiges";
 export type MietverhaeltnisStatus = "aktiv" | "gekuendigt" | "beendet" | "geplant";
 export type SollstellungStatus = "offen" | "gebucht" | "storniert";
 export type ZahlungsQuelle = "bankimport" | "manuell" | "verrechnung";
@@ -33,12 +34,30 @@ export type SalesforceStatus = "neu" | "in_pruefung" | "verhandlung" | "abgeschl
 
 export type VerteilerschluesselArt = "flaeche" | "einheiten" | "personen" | "verbrauch" | "individuell";
 
-export interface Mandant {
-  id: MandantId;
+/**
+ * Stammdaten-Hierarchie: Gesellschaft > Objekt > Einheit > Mietverhältnis.
+ * Kennzahlen (Anzahl, Summen, Miete/m², Jahresmiete) kommen berechnet aus den
+ * Datenbank-Views und sind daher hier read-only.
+ */
+
+export interface Gesellschaft {
+  id: GesellschaftId;
   name: string;
   kuerzel: string;
+  datevPostfach: string | null;
+  datevPostfachBezeichnung: string | null;
+  bemerkung: string | null;
+  objekteListe: string;
   anzahlObjekte: number;
+  anzahlEinheiten: number;
+  kaltmiete: number;
+  kaltmieteJahr: number;
 }
+
+export type GesellschaftEingabe = Pick<
+  Gesellschaft,
+  "id" | "name" | "kuerzel" | "datevPostfach" | "datevPostfachBezeichnung" | "bemerkung"
+>;
 
 export interface Adresse {
   strasse: string;
@@ -49,35 +68,100 @@ export interface Adresse {
 
 export interface Objekt {
   id: ObjektId;
+  gesellschaftId: GesellschaftId;
+  gesellschaftName: string;
   bezeichnung: string;
   adresse: Adresse;
-  mandantId: MandantId;
-  anzahlEinheiten: number;
   status: ObjektStatus;
+  quelldatei: string | null;
+  bemerkung: string | null;
+  einheitenGesamt: number;
+  einheitenWohnen: number;
+  einheitenStellplatz: number;
+  einheitenVermietet: number;
+  einheitenLeer: number;
+  wohnflaecheM2: number;
+  kaltmiete: number;
+  kaltmieteJahr: number;
+  mieteProM2Wohnen: number | null;
 }
+
+export type ObjektEingabe = Pick<
+  Objekt,
+  "id" | "gesellschaftId" | "bezeichnung" | "adresse" | "status" | "bemerkung"
+>;
 
 export interface Einheit {
   id: EinheitId;
   objektId: ObjektId;
+  objektBezeichnung: string;
+  gesellschaftId: GesellschaftId;
+  gesellschaftName: string;
+  hausteil: string | null;
   lage: string;
-  flaecheM2: number;
-  aktuellesMietverhaeltnisId: MietverhaeltnisId | null;
-  aktuellesMietverhaeltnisMieterName: string | null;
+  nutzungsart: EinheitNutzungsart;
   status: EinheitStatus;
+  flaecheM2: number | null;
+  flaecheAufmassM2: number | null;
+  bemerkung: string | null;
+  mietverhaeltnisId: MietverhaeltnisId | null;
+  mieterName: string | null;
+  vertragsbeginn: string | null;
+  letzteMieterhoehung: string | null;
+  kaltmiete: number;
+  nkVorauszahlung: number | null;
+  mieteProM2: number | null;
+  kaltmieteJahr: number;
 }
+
+export type EinheitEingabe = Pick<
+  Einheit,
+  | "id"
+  | "objektId"
+  | "hausteil"
+  | "lage"
+  | "nutzungsart"
+  | "status"
+  | "flaecheM2"
+  | "flaecheAufmassM2"
+  | "bemerkung"
+>;
 
 export interface Mietverhaeltnis {
   id: MietverhaeltnisId;
-  mieterName: string;
   einheitId: EinheitId;
+  einheitLage: string;
+  hausteil: string | null;
+  nutzungsart: EinheitNutzungsart;
+  flaecheM2: number | null;
   objektId: ObjektId;
-  kaltmiete: number;
-  nkVorauszahlung: number;
-  beginn: string; // ISO-Datum
+  objektBezeichnung: string;
+  gesellschaftId: GesellschaftId;
+  gesellschaftName: string;
+  mieterName: string;
+  beginn: string | null; // ISO-Datum
   ende: string | null;
+  letzteMieterhoehung: string | null;
+  kaltmiete: number;
+  nkVorauszahlung: number | null;
+  kaltmieteJahr: number;
+  mieteProM2: number | null;
   status: MietverhaeltnisStatus;
-  umlagefaehigeKostenarten: string[];
+  bemerkung: string | null;
 }
+
+export type MietverhaeltnisEingabe = Pick<
+  Mietverhaeltnis,
+  | "einheitId"
+  | "mieterName"
+  | "beginn"
+  | "ende"
+  | "letzteMieterhoehung"
+  | "kaltmiete"
+  | "nkVorauszahlung"
+  | "status"
+  | "bemerkung"
+> & { id?: MietverhaeltnisId };
 
 export interface Sollstellung {
   id: string;
@@ -151,7 +235,7 @@ export interface NkAbrechnung {
 export interface Dokument {
   id: DokumentId;
   dateiname: string;
-  mandantId: MandantId | null;
+  gesellschaftId: GesellschaftId | null;
   objektId: ObjektId | null;
   kategorieId: string | null;
   transaktionId: TransaktionId | null;
@@ -167,7 +251,7 @@ export interface Dokument {
 }
 
 export type DokumentMetadatenKorrektur = {
-  mandantId: string;
+  gesellschaftId: string;
   objektId: string;
   kategorieId: string;
   dateiname: string;
@@ -188,7 +272,7 @@ export interface PruefAufgabe {
   emailText?: string | null;
   anhangName?: string | null;
   vorschlag: {
-    mandantId: MandantId | null;
+    gesellschaftId: GesellschaftId | null;
     objektId: ObjektId | null;
     typ: Dokumententyp;
     kategorieId: string | null;
@@ -248,7 +332,7 @@ export type RolleName =
   | "mitarbeiter"
   | (string & {});
 
-export type MandantZuweisung = "alle" | "mehrere" | "einzeln";
+export type GesellschaftZuweisung = "alle" | "mehrere" | "einzeln";
 
 /** Rollen-Definition aus der Datenbank (System + benutzerdefiniert). */
 export interface RollenDefinition {
@@ -257,7 +341,7 @@ export interface RollenDefinition {
   beschreibung: string;
   rang: number;
   istSystem: boolean;
-  mandantZuweisung: MandantZuweisung;
+  gesellschaftZuweisung: GesellschaftZuweisung;
 }
 
 /** Rollen, die beim Einladen neuer Benutzer wählbar sind (ohne OP-Admin). */
@@ -277,17 +361,17 @@ export interface Benutzer {
   email: string;
   initialen: string;
   stellenbezeichnung: string;
-  rollen: Array<{ rolle: RolleName; mandantId: MandantId | "*" }>;
+  rollen: Array<{ rolle: RolleName; gesellschaftId: GesellschaftId | "*" }>;
 }
 
-export type MandantZugriff = MandantId[] | "*";
+export type GesellschaftZugriff = GesellschaftId[] | "*";
 
 export interface BenutzerEinladungInput {
   name: string;
   email: string;
   stellenbezeichnung: string;
   rolle: EinladungsRolle;
-  mandantZugriff: MandantZugriff;
+  gesellschaftZugriff: GesellschaftZugriff;
 }
 
 export interface BenutzerUpdateInput {
@@ -295,7 +379,7 @@ export interface BenutzerUpdateInput {
   name: string;
   stellenbezeichnung: string;
   rolle: EinladungsRolle;
-  mandantZugriff: MandantZugriff;
+  gesellschaftZugriff: GesellschaftZugriff;
 }
 
 export interface Integration {
@@ -312,7 +396,7 @@ export interface Paginated<T> {
 
 export interface Filter {
   suche?: string;
-  mandantId?: MandantId;
+  gesellschaftId?: GesellschaftId;
   status?: string;
   von?: string;
   bis?: string;

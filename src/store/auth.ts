@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { Session } from "@supabase/supabase-js";
-import type { Benutzer, MandantId, RolleName } from "@/types";
+import type { Benutzer, GesellschaftId, RolleName } from "@/types";
 
 interface AuthState {
   benutzer: Benutzer | null;
@@ -8,7 +8,7 @@ interface AuthState {
   isLoading: boolean;
   setSession: (session: Session | null, benutzer: Benutzer | null) => void;
   setLoading: (isLoading: boolean) => void;
-  hatRolle: (rolle: RolleName, mandantId?: MandantId) => boolean;
+  hatRolle: (rolle: RolleName, gesellschaftId?: GesellschaftId) => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -17,11 +17,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: true,
   setSession: (session, benutzer) => set({ session, benutzer }),
   setLoading: (isLoading) => set({ isLoading }),
-  hatRolle: (rolle, mandantId) => {
+  hatRolle: (rolle, gesellschaftId) => {
     const b = get().benutzer;
     if (!b) return false;
     return b.rollen.some(
-      (r) => r.rolle === rolle && (r.mandantId === "*" || r.mandantId === mandantId),
+      (r) => r.rolle === rolle && (r.gesellschaftId === "*" || r.gesellschaftId === gesellschaftId),
     );
   },
 }));

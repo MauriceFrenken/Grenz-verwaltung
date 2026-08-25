@@ -29,7 +29,7 @@ function nurSeiten(ids: string[]): Record<BerechtigungId, boolean> {
 
 const MANAGER_SEITEN: string[] = [
   "seite.dashboard",
-  "seite.verwaltung.mandanten",
+  "seite.verwaltung.gesellschaften",
   "seite.verwaltung.objekte",
   "seite.verwaltung.einheiten",
   "seite.verwaltung.mietverhaeltnisse",
@@ -47,10 +47,10 @@ const MANAGER_SEITEN: string[] = [
 
 const MANAGER_AKTIONEN: string[] = [
   "aktion.dashboard.zeitraum.aendern",
-  "aktion.mandant.wechseln",
-  "aktion.verwaltung.mandanten.anlegen",
-  "aktion.verwaltung.mandanten.bearbeiten",
-  "aktion.verwaltung.mandanten.loeschen",
+  "aktion.gesellschaft.wechseln",
+  "aktion.verwaltung.gesellschaften.anlegen",
+  "aktion.verwaltung.gesellschaften.bearbeiten",
+  "aktion.verwaltung.gesellschaften.loeschen",
   "aktion.verwaltung.objekte.anlegen",
   "aktion.verwaltung.objekte.lesen",
   "aktion.verwaltung.objekte.bearbeiten",
@@ -101,7 +101,7 @@ const MITARBEITER_SEITEN: string[] = [
 
 const MITARBEITER_AKTIONEN: string[] = [
   "aktion.dashboard.zeitraum.aendern",
-  "aktion.mandant.wechseln",
+  "aktion.gesellschaft.wechseln",
   "aktion.verwaltung.objekte.anlegen",
   "aktion.verwaltung.objekte.lesen",
   "aktion.verwaltung.objekte.bearbeiten",

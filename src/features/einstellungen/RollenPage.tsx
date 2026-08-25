@@ -15,7 +15,7 @@ import {
 import { einstellungenApi } from "@/api/einstellungen";
 import { usePermissions } from "@/hooks/useAuth";
 import { rollenBezeichnung, rollenBeschreibung } from "@/lib/constants";
-import { mandantZuweisungFuerRolle } from "@/lib/rollenMandant";
+import { gesellschaftZuweisungFuerRolle } from "@/lib/rollenGesellschaft";
 import {
   type BerechtigungId,
   type KonfigurierbareRolle,
@@ -23,11 +23,11 @@ import {
   vergebareBerechtigungen,
 } from "@/lib/permissions";
 import { usePermissionsStore } from "@/store/permissions";
-import type { MandantZuweisung, RollenDefinition } from "@/types";
+import type { GesellschaftZuweisung, RollenDefinition } from "@/types";
 import { BerechtigungsMatrix } from "./rollen/BerechtigungsMatrix";
 import { RolleAnlegenForm } from "./rollen/RolleAnlegenForm";
 import { RolleBeschreibungFeld } from "./rollen/RolleBeschreibungFeld";
-import { RolleMandantZugriffFeld } from "./rollen/RolleMandantZugriffFeld";
+import { RolleGesellschaftZugriffFeld } from "./rollen/RolleGesellschaftZugriffFeld";
 import { RollenListe } from "./rollen/RollenListe";
 
 export function RollenPage() {
@@ -54,8 +54,8 @@ export function RollenPage() {
   const [speichert, setSpeichert] = useState(false);
   const [dialogOffen, setDialogOffen] = useState(false);
   const [beschreibungEntwuerfe, setBeschreibungEntwuerfe] = useState<Record<string, string>>({});
-  const [mandantZuweisungEntwuerfe, setMandantZuweisungEntwuerfe] = useState<
-    Record<string, MandantZuweisung>
+  const [gesellschaftZuweisungEntwuerfe, setGesellschaftZuweisungEntwuerfe] = useState<
+    Record<string, GesellschaftZuweisung>
   >({});
 
   useEffect(() => {
@@ -70,13 +70,13 @@ export function RollenPage() {
 
   const readonly = !darfRolleBearbeiten(ausgewaehlteRolle);
   const gespeicherteBeschreibung = rollenBeschreibung(ausgewaehlteRolle, rollen);
-  const gespeicherteMandantZuweisung = mandantZuweisungFuerRolle(ausgewaehlteRolle, rollen);
+  const gespeicherteGesellschaftZuweisung = gesellschaftZuweisungFuerRolle(ausgewaehlteRolle, rollen);
   const aktuelleBeschreibung =
     beschreibungEntwuerfe[ausgewaehlteRolle] ?? gespeicherteBeschreibung;
-  const aktuelleMandantZuweisung =
-    mandantZuweisungEntwuerfe[ausgewaehlteRolle] ?? gespeicherteMandantZuweisung;
+  const aktuelleGesellschaftZuweisung =
+    gesellschaftZuweisungEntwuerfe[ausgewaehlteRolle] ?? gespeicherteGesellschaftZuweisung;
   const beschreibungGeaendert = aktuelleBeschreibung !== gespeicherteBeschreibung;
-  const mandantZuweisungGeaendert = aktuelleMandantZuweisung !== gespeicherteMandantZuweisung;
+  const gesellschaftZuweisungGeaendert = aktuelleGesellschaftZuweisung !== gespeicherteGesellschaftZuweisung;
   const vergebare = useMemo(
     () => vergebareBerechtigungen(eigeneRolle, entwurf),
     [eigeneRolle, entwurf],
@@ -103,14 +103,14 @@ export function RollenPage() {
     });
   }, [beschreibungEntwuerfe, rollen]);
 
-  const hatMandantZuweisungAenderungen = useMemo(() => {
+  const hatGesellschaftZuweisungAenderungen = useMemo(() => {
     return rollen.some((rolle) => {
-      const entwurf = mandantZuweisungEntwuerfe[rolle.id];
+      const entwurf = gesellschaftZuweisungEntwuerfe[rolle.id];
       return (
-        entwurf !== undefined && entwurf !== mandantZuweisungFuerRolle(rolle.id, rollen)
+        entwurf !== undefined && entwurf !== gesellschaftZuweisungFuerRolle(rolle.id, rollen)
       );
     });
-  }, [mandantZuweisungEntwuerfe, rollen]);
+  }, [gesellschaftZuweisungEntwuerfe, rollen]);
 
   const rolleHatAenderungen = useMemo(() => {
     const entwurfRolle = entwurf[ausgewaehlteRolle];
@@ -121,8 +121,8 @@ export function RollenPage() {
         return true;
       }
     }
-    return beschreibungGeaendert || mandantZuweisungGeaendert;
-  }, [entwurf, storeMatrix, ausgewaehlteRolle, beschreibungGeaendert, mandantZuweisungGeaendert]);
+    return beschreibungGeaendert || gesellschaftZuweisungGeaendert;
+  }, [entwurf, storeMatrix, ausgewaehlteRolle, beschreibungGeaendert, gesellschaftZuweisungGeaendert]);
 
   const handleChange = useCallback(
     (rolle: KonfigurierbareRolle, id: BerechtigungId, aktiv: boolean) => {
@@ -173,15 +173,15 @@ export function RollenPage() {
         });
       }
 
-      if (mandantZuweisungGeaendert) {
-        const aktualisiert = await einstellungenApi.updateRolleMandantZuweisung(
+      if (gesellschaftZuweisungGeaendert) {
+        const aktualisiert = await einstellungenApi.updateRolleGesellschaftZuweisung(
           ausgewaehlteRolle,
-          aktuelleMandantZuweisung,
+          aktuelleGesellschaftZuweisung,
         );
         setRollen(
           rollen.map((rolle) => (rolle.id === aktualisiert.id ? aktualisiert : rolle)),
         );
-        setMandantZuweisungEntwuerfe((prev) => {
+        setGesellschaftZuweisungEntwuerfe((prev) => {
           const next = { ...prev };
           delete next[ausgewaehlteRolle];
           return next;
@@ -199,7 +199,7 @@ export function RollenPage() {
   const zuruecksetzen = () => {
     setEntwurf(structuredClone(storeMatrix));
     setBeschreibungEntwuerfe({});
-    setMandantZuweisungEntwuerfe({});
+    setGesellschaftZuweisungEntwuerfe({});
   };
 
   const handleRolleAngelegt = (rolle: RollenDefinition) => {
@@ -247,7 +247,7 @@ export function RollenPage() {
               size="sm"
               variant="outline"
               onClick={zuruecksetzen}
-              disabled={(!hatAenderungen && !hatBeschreibungAenderungen && !hatMandantZuweisungAenderungen) || speichert}
+              disabled={(!hatAenderungen && !hatBeschreibungAenderungen && !hatGesellschaftZuweisungAenderungen) || speichert}
             >
               Zurücksetzen
             </Button>
@@ -290,10 +290,10 @@ export function RollenPage() {
                   }
                   readonly={readonly}
                 />
-                <RolleMandantZugriffFeld
-                  value={aktuelleMandantZuweisung}
+                <RolleGesellschaftZugriffFeld
+                  value={aktuelleGesellschaftZuweisung}
                   onChange={(value) =>
-                    setMandantZuweisungEntwuerfe((prev) => ({
+                    setGesellschaftZuweisungEntwuerfe((prev) => ({
                       ...prev,
                       [ausgewaehlteRolle]: value,
                     }))

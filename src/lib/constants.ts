@@ -10,7 +10,7 @@ export const ROLLEN: Record<RolleName, { bezeichnung: string; beschreibung: stri
   },
   administrator: {
     bezeichnung: "Administrator",
-    beschreibung: "Vollzugriff auf alle Mandanten und Konfiguration.",
+    beschreibung: "Vollzugriff auf alle Gesellschaften und Konfiguration.",
   },
   manager: {
     bezeichnung: "Manager",
@@ -18,11 +18,11 @@ export const ROLLEN: Record<RolleName, { bezeichnung: string; beschreibung: stri
   },
   mitarbeiter: {
     bezeichnung: "Mitarbeiter",
-    beschreibung: "Operativer Zugriff auf zugewiesene Aufgaben und Mandanten.",
+    beschreibung: "Operativer Zugriff auf zugewiesene Aufgaben und Gesellschaften.",
   },
   leser: {
     bezeichnung: "Leser",
-    beschreibung: "Nur-Lesen-Zugriff auf zugewiesene Mandanten.",
+    beschreibung: "Nur-Lesen-Zugriff auf zugewiesene Gesellschaften.",
   },
 };
 

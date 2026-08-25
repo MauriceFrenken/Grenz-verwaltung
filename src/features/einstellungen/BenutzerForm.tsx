@@ -16,15 +16,18 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { einstellungenApi } from "@/api/einstellungen";
+import { verwaltungApi } from "@/api/verwaltung";
 import { useApi } from "@/hooks/useApi";
 import { usePermissions } from "@/hooks/useAuth";
 import { useAktionGuard } from "@/hooks/useAktionGuard";
-import { mandantIdsAusBenutzer } from "@/lib/auth";
+import { gesellschaftIdsAusBenutzer } from "@/lib/auth";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import { rollenBezeichnung } from "@/lib/constants";
 import { SYSTEM_KONFIGURIERBARE_ROLLEN } from "@/lib/permissions";
-import { mandantZuweisungFuerRolle } from "@/lib/rollenMandant";
-import type { Benutzer, EinladungsRolle, RollenDefinition } from "@/types";
+import { gesellschaftZuweisungFuerRolle } from "@/lib/rollenGesellschaft";
+import type { Benutzer, EinladungsRolle, Gesellschaft, RollenDefinition } from "@/types";
+
+type GesellschaftOption = Pick<Gesellschaft, "id" | "name" | "kuerzel">;
 
 function schemaFuerRollen(
   zuweisbareRollen: EinladungsRolle[],
@@ -43,19 +46,19 @@ function schemaFuerRollen(
       email: istBearbeitung
         ? z.string().optional()
         : z.string().trim().email("Bitte gültige E-Mail angeben"),
-      mandantModus: z.enum(["alle", "bestimmte"]),
-      mandantIds: z.array(z.string()),
+      gesellschaftModus: z.enum(["alle", "bestimmte"]),
+      gesellschaftIds: z.array(z.string()),
     })
     .superRefine((data, ctx) => {
-      const zuweisung = mandantZuweisungFuerRolle(data.rolle, rollen);
-      if (zuweisung === "alle" && data.mandantModus === "alle") return;
+      const zuweisung = gesellschaftZuweisungFuerRolle(data.rolle, rollen);
+      if (zuweisung === "alle" && data.gesellschaftModus === "alle") return;
 
-      const gewaehlt = data.mandantIds.filter(Boolean);
+      const gewaehlt = data.gesellschaftIds.filter(Boolean);
       if (gewaehlt.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Bitte mindestens einen Mandanten auswählen",
-          path: ["mandantIds", 0],
+          message: "Bitte mindestens eine Gesellschaft auswählen",
+          path: ["gesellschaftIds", 0],
         });
         return;
       }
@@ -63,8 +66,8 @@ function schemaFuerRollen(
       if (zuweisung === "einzeln" && gewaehlt.length !== 1) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Für diese Rolle ist nur ein Mandant erlaubt",
-          path: ["mandantIds"],
+          message: "Für diese Rolle ist nur eine Gesellschaft erlaubt",
+          path: ["gesellschaftIds"],
         });
         return;
       }
@@ -73,8 +76,8 @@ function schemaFuerRollen(
       if (eindeutig.size !== gewaehlt.length) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Jeder Mandant darf nur einmal zugewiesen werden",
-          path: ["mandantIds"],
+          message: "Jede Gesellschaft darf nur einmal zugewiesen werden",
+          path: ["gesellschaftIds"],
         });
       }
     });
@@ -82,14 +85,14 @@ function schemaFuerRollen(
 
 type FormValues = z.infer<ReturnType<typeof schemaFuerRollen>>;
 
-function defaultWerteFuerBenutzer(benutzer: Benutzer): Pick<FormValues, "mandantModus" | "mandantIds"> {
-  const zugriff = mandantIdsAusBenutzer(benutzer);
+function defaultWerteFuerBenutzer(benutzer: Benutzer): Pick<FormValues, "gesellschaftModus" | "gesellschaftIds"> {
+  const zugriff = gesellschaftIdsAusBenutzer(benutzer);
   if (zugriff === "*") {
-    return { mandantModus: "alle", mandantIds: [""] };
+    return { gesellschaftModus: "alle", gesellschaftIds: [""] };
   }
   return {
-    mandantModus: "bestimmte",
-    mandantIds: zugriff.length > 0 ? zugriff : [""],
+    gesellschaftModus: "bestimmte",
+    gesellschaftIds: zugriff.length > 0 ? zugriff : [""],
   };
 }
 
@@ -131,7 +134,7 @@ export function BenutzerForm({
     [eigeneRolle, rollen, bisherigeRolle, opAdmin],
   );
   const zuweisbareSchluessel = zuweisbare.join("\0");
-  const mandanten = useApi(() => einstellungenApi.listMandanten(), []);
+  const gesellschaften = useApi(() => verwaltungApi.listGesellschaften(), []);
 
   const schema = useMemo(
     () => schemaFuerRollen(zuweisbare, rollen, istBearbeitung),
@@ -142,12 +145,12 @@ export function BenutzerForm({
     bisherigeRolle && zuweisbare.includes(bisherigeRolle)
       ? bisherigeRolle
       : (zuweisbare[zuweisbare.length - 1] ?? "leser");
-  const mandantDefaults = benutzer
+  const gesellschaftDefaults = benutzer
     ? defaultWerteFuerBenutzer(benutzer)
     : {
-        mandantModus:
-          mandantZuweisungFuerRolle(defaultRolle, rollen) === "alle" ? ("alle" as const) : ("bestimmte" as const),
-        mandantIds: [""],
+        gesellschaftModus:
+          gesellschaftZuweisungFuerRolle(defaultRolle, rollen) === "alle" ? ("alle" as const) : ("bestimmte" as const),
+        gesellschaftIds: [""],
       };
 
   const form = useForm<FormValues>({
@@ -157,14 +160,14 @@ export function BenutzerForm({
       stellenbezeichnung: benutzer?.stellenbezeichnung ?? "",
       rolle: defaultRolle,
       email: benutzer?.email ?? "",
-      mandantModus: mandantDefaults.mandantModus,
-      mandantIds: mandantDefaults.mandantIds,
+      gesellschaftModus: gesellschaftDefaults.gesellschaftModus,
+      gesellschaftIds: gesellschaftDefaults.gesellschaftIds,
     },
   });
 
   useEffect(() => {
     if (!benutzer) return;
-    const mandantWerte = defaultWerteFuerBenutzer(benutzer);
+    const gesellschaftWerte = defaultWerteFuerBenutzer(benutzer);
     const rolle =
       bisherigeRolle && zuweisbare.includes(bisherigeRolle)
         ? bisherigeRolle
@@ -174,66 +177,66 @@ export function BenutzerForm({
       stellenbezeichnung: benutzer.stellenbezeichnung,
       rolle,
       email: benutzer.email,
-      mandantModus: mandantWerte.mandantModus,
-      mandantIds: mandantWerte.mandantIds,
+      gesellschaftModus: gesellschaftWerte.gesellschaftModus,
+      gesellschaftIds: gesellschaftWerte.gesellschaftIds,
     });
   }, [benutzer, bisherigeRolle, zuweisbareSchluessel, form]);
 
   const gewaehlteRolle = form.watch("rolle");
-  const mandantModus = form.watch("mandantModus");
-  const mandantIds = form.watch("mandantIds") ?? [];
-  const mandantZuweisung = useMemo(
-    () => mandantZuweisungFuerRolle(gewaehlteRolle, rollen),
+  const gesellschaftModus = form.watch("gesellschaftModus");
+  const gesellschaftIds = form.watch("gesellschaftIds") ?? [];
+  const gesellschaftZuweisung = useMemo(
+    () => gesellschaftZuweisungFuerRolle(gewaehlteRolle, rollen),
     [gewaehlteRolle, rollen],
   );
-  const darfAlleMandanten = mandantZuweisung === "alle";
-  const darfMehrereMandantenZuweisen = mandantZuweisung !== "einzeln";
-  const mandantenListe = mandanten.data?.items ?? [];
-  const hatMandanten = mandantenListe.length > 0;
+  const darfAlleGesellschaften = gesellschaftZuweisung === "alle";
+  const darfMehrereGesellschaftenZuweisen = gesellschaftZuweisung !== "einzeln";
+  const gesellschaftenListe = gesellschaften.data?.items ?? [];
+  const hatGesellschaften = gesellschaftenListe.length > 0;
 
-  const mandantStateFuerRolle = (rolle: string) => {
-    const zuweisung = mandantZuweisungFuerRolle(rolle, rollen);
+  const gesellschaftStateFuerRolle = (rolle: string) => {
+    const zuweisung = gesellschaftZuweisungFuerRolle(rolle, rollen);
     if (zuweisung === "alle") {
-      return { mandantModus: "alle" as const, mandantIds: [""] };
+      return { gesellschaftModus: "alle" as const, gesellschaftIds: [""] };
     }
-    const bestehend = form.getValues("mandantIds").filter(Boolean);
+    const bestehend = form.getValues("gesellschaftIds").filter(Boolean);
     if (zuweisung === "einzeln") {
       const auto =
-        mandantenListe.length === 1
-          ? mandantenListe[0].id
+        gesellschaftenListe.length === 1
+          ? gesellschaftenListe[0].id
           : bestehend.length > 0
             ? bestehend[0]
             : "";
-      return { mandantModus: "bestimmte" as const, mandantIds: [auto] };
+      return { gesellschaftModus: "bestimmte" as const, gesellschaftIds: [auto] };
     }
     return {
-      mandantModus: "bestimmte" as const,
-      mandantIds: bestehend.length > 0 ? bestehend : [""],
+      gesellschaftModus: "bestimmte" as const,
+      gesellschaftIds: bestehend.length > 0 ? bestehend : [""],
     };
   };
 
   useEffect(() => {
     if (benutzer || rollen.length === 0) return;
     const rolle = form.getValues("rolle");
-    const naechste = mandantStateFuerRolle(rolle);
-    if (form.getValues("mandantModus") !== naechste.mandantModus) {
-      form.setValue("mandantModus", naechste.mandantModus);
+    const naechste = gesellschaftStateFuerRolle(rolle);
+    if (form.getValues("gesellschaftModus") !== naechste.gesellschaftModus) {
+      form.setValue("gesellschaftModus", naechste.gesellschaftModus);
     }
-    if (form.getValues("mandantIds").join() !== naechste.mandantIds.join()) {
-      form.setValue("mandantIds", naechste.mandantIds);
+    if (form.getValues("gesellschaftIds").join() !== naechste.gesellschaftIds.join()) {
+      form.setValue("gesellschaftIds", naechste.gesellschaftIds);
     }
-  }, [benutzer, rollen, form, mandantenListe]);
+  }, [benutzer, rollen, form, gesellschaftenListe]);
 
   useEffect(() => {
-    if (darfAlleMandanten) return;
-    const naechste = mandantStateFuerRolle(gewaehlteRolle);
-    if (form.getValues("mandantModus") !== naechste.mandantModus) {
-      form.setValue("mandantModus", naechste.mandantModus);
+    if (darfAlleGesellschaften) return;
+    const naechste = gesellschaftStateFuerRolle(gewaehlteRolle);
+    if (form.getValues("gesellschaftModus") !== naechste.gesellschaftModus) {
+      form.setValue("gesellschaftModus", naechste.gesellschaftModus);
     }
-    if (form.getValues("mandantIds").join() !== naechste.mandantIds.join()) {
-      form.setValue("mandantIds", naechste.mandantIds);
+    if (form.getValues("gesellschaftIds").join() !== naechste.gesellschaftIds.join()) {
+      form.setValue("gesellschaftIds", naechste.gesellschaftIds);
     }
-  }, [darfAlleMandanten, gewaehlteRolle, mandantZuweisung, form, rollen, mandantenListe]);
+  }, [darfAlleGesellschaften, gewaehlteRolle, gesellschaftZuweisung, form, rollen, gesellschaftenListe]);
 
   const [isResending, setIsResending] = useState(false);
 
@@ -281,11 +284,11 @@ export function BenutzerForm({
     if (!istOpAdmin() && !erlaubtOderHinweis(berechtigung)) return;
 
     try {
-      const zuweisung = mandantZuweisungFuerRolle(values.rolle, rollen);
-      const mandantZugriff =
-        zuweisung === "alle" && values.mandantModus === "alle"
+      const zuweisung = gesellschaftZuweisungFuerRolle(values.rolle, rollen);
+      const gesellschaftZugriff =
+        zuweisung === "alle" && values.gesellschaftModus === "alle"
           ? ("*" as const)
-          : [...new Set(values.mandantIds.filter(Boolean))];
+          : [...new Set(values.gesellschaftIds.filter(Boolean))];
 
       if (istBearbeitung && benutzer) {
         await einstellungenApi.updateBenutzer({
@@ -293,7 +296,7 @@ export function BenutzerForm({
           name: values.name,
           stellenbezeichnung: values.stellenbezeichnung,
           rolle: values.rolle,
-          mandantZugriff,
+          gesellschaftZugriff,
         });
         toast.success("Benutzer aktualisiert");
       } else {
@@ -302,7 +305,7 @@ export function BenutzerForm({
           stellenbezeichnung: values.stellenbezeichnung,
           rolle: values.rolle,
           email: values.email ?? "",
-          mandantZugriff,
+          gesellschaftZugriff,
         });
         toast.success("Einladung gesendet", {
           description: `${values.email} erhält eine E-Mail zum Festlegen des Passworts.`,
@@ -314,8 +317,8 @@ export function BenutzerForm({
     }
   };
 
-  const mandantFehler = (index: number) => {
-    const root = form.formState.errors.mandantIds;
+  const gesellschaftFehler = (index: number) => {
+    const root = form.formState.errors.gesellschaftIds;
     if (!root) return undefined;
     if (Array.isArray(root)) return root[index]?.message;
     if (typeof root === "object" && "message" in root) return root.message as string;
@@ -362,9 +365,9 @@ export function BenutzerForm({
               value={selectWert(field.value, zuweisbare)}
               onValueChange={(rolle) => {
                 field.onChange(rolle);
-                const naechste = mandantStateFuerRolle(rolle);
-                form.setValue("mandantModus", naechste.mandantModus);
-                form.setValue("mandantIds", naechste.mandantIds);
+                const naechste = gesellschaftStateFuerRolle(rolle);
+                form.setValue("gesellschaftModus", naechste.gesellschaftModus);
+                form.setValue("gesellschaftIds", naechste.gesellschaftIds);
               }}
             >
               <SelectTrigger id="rolle" className="rounded-none">
@@ -386,35 +389,35 @@ export function BenutzerForm({
       </div>
 
       <div className="grid gap-3">
-        <Label>Mandantenzugriff</Label>
-        {darfAlleMandanten ? (
+        <Label>Gesellschaftszugriff</Label>
+        {darfAlleGesellschaften ? (
           <Controller
             control={form.control}
-            name="mandantModus"
+            name="gesellschaftModus"
             render={({ field }) => (
               <RadioGroup
                 value={field.value}
                 onValueChange={(value) => {
                   field.onChange(value);
-                  if (value === "bestimmte" && form.getValues("mandantIds").length === 0) {
-                    form.setValue("mandantIds", [""]);
+                  if (value === "bestimmte" && form.getValues("gesellschaftIds").length === 0) {
+                    form.setValue("gesellschaftIds", [""]);
                   }
                 }}
                 className="gap-3"
               >
                 <div className="flex items-center gap-2">
-                  <RadioGroupItem value="alle" id="mandant-alle" />
-                  <Label htmlFor="mandant-alle" className="cursor-pointer font-normal">
-                    Alle Mandanten
+                  <RadioGroupItem value="alle" id="gesellschaft-alle" />
+                  <Label htmlFor="gesellschaft-alle" className="cursor-pointer font-normal">
+                    Alle Gesellschaften
                   </Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <RadioGroupItem value="bestimmte" id="mandant-bestimmte" disabled={!hatMandanten} />
+                  <RadioGroupItem value="bestimmte" id="gesellschaft-bestimmte" disabled={!hatGesellschaften} />
                   <Label
-                    htmlFor="mandant-bestimmte"
-                    className={`font-normal ${hatMandanten ? "cursor-pointer" : "text-text-subtle"}`}
+                    htmlFor="gesellschaft-bestimmte"
+                    className={`font-normal ${hatGesellschaften ? "cursor-pointer" : "text-text-subtle"}`}
                   >
-                    Bestimmte Mandanten
+                    Bestimmte Gesellschaften
                   </Label>
                 </div>
               </RadioGroup>
@@ -422,31 +425,26 @@ export function BenutzerForm({
           />
         ) : (
           <p className="text-xs text-text-muted">
-            {mandantZuweisung === "einzeln"
-              ? "Genau ein Mandant erforderlich."
-              : "Nur bestimmte Mandanten möglich."}
+            {gesellschaftZuweisung === "einzeln"
+              ? "Genau eine Gesellschaft erforderlich."
+              : "Nur bestimmte Gesellschaften möglich."}
           </p>
         )}
-        {!hatMandanten ? (
-          <p className="text-xs text-text-muted">Noch keine Mandanten angelegt.</p>
+        {!hatGesellschaften ? (
+          <p className="text-xs text-text-muted">Noch keine Gesellschaften angelegt.</p>
         ) : null}
-        {(mandantModus === "bestimmte" || !darfAlleMandanten) && hatMandanten ? (
+        {(gesellschaftModus === "bestimmte" || !darfAlleGesellschaften) && hatGesellschaften ? (
           <div className="grid gap-2 pl-6">
-            {mandantIds.map((_, index) => {
-              const andere = mandantIds.filter((_, i) => i !== index);
-              const verfuegbar = mandantenListe.filter((m) => !andere.includes(m.id));
-              const gewaehlteId = mandantIds[index];
-              const mandantOptionen =
+            {gesellschaftIds.map((_, index) => {
+              const andere = gesellschaftIds.filter((_, i) => i !== index);
+              const verfuegbar: GesellschaftOption[] = gesellschaftenListe
+                .filter((m) => !andere.includes(m.id))
+                .map((m) => ({ id: m.id, name: m.name, kuerzel: m.kuerzel }));
+              const gewaehlteId = gesellschaftIds[index];
+              // Entfernte Gesellschaft bleibt wählbar, damit die Zuweisung nicht still verloren geht.
+              const gesellschaftOptionen =
                 gewaehlteId && !verfuegbar.some((m) => m.id === gewaehlteId)
-                  ? [
-                      ...verfuegbar,
-                      {
-                        id: gewaehlteId,
-                        name: gewaehlteId,
-                        kuerzel: gewaehlteId,
-                        anzahlObjekte: 0,
-                      },
-                    ]
+                  ? [...verfuegbar, { id: gewaehlteId, name: gewaehlteId, kuerzel: gewaehlteId }]
                   : verfuegbar;
 
               return (
@@ -454,20 +452,20 @@ export function BenutzerForm({
                   <div className="min-w-0 flex-1">
                     <Controller
                       control={form.control}
-                      name={`mandantIds.${index}`}
+                      name={`gesellschaftIds.${index}`}
                       render={({ field }) => (
                         <Select
                           value={selectWert(
                             field.value,
-                            mandantOptionen.map((m) => m.id),
+                            gesellschaftOptionen.map((m) => m.id),
                           )}
                           onValueChange={field.onChange}
                         >
                           <SelectTrigger className="rounded-none">
-                            <SelectValue placeholder="Mandant wählen" />
+                            <SelectValue placeholder="Gesellschaft wählen" />
                           </SelectTrigger>
                           <SelectContent>
-                            {mandantOptionen.map((m) => (
+                            {gesellschaftOptionen.map((m) => (
                               <SelectItem key={m.id} value={m.id}>
                                 {`${m.name} (${m.kuerzel})`}
                               </SelectItem>
@@ -476,21 +474,21 @@ export function BenutzerForm({
                         </Select>
                       )}
                     />
-                    {mandantFehler(index) ? (
-                      <p className="mt-1 text-xs text-danger">{mandantFehler(index)}</p>
+                    {gesellschaftFehler(index) ? (
+                      <p className="mt-1 text-xs text-danger">{gesellschaftFehler(index)}</p>
                     ) : null}
                   </div>
-                  {index > 0 && darfMehrereMandantenZuweisen ? (
+                  {index > 0 && darfMehrereGesellschaftenZuweisen ? (
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
                       className="shrink-0 text-text-muted hover:text-danger"
                       onClick={() => {
-                        const next = mandantIds.filter((__, i) => i !== index);
-                        form.setValue("mandantIds", next.length > 0 ? next : [""]);
+                        const next = gesellschaftIds.filter((__, i) => i !== index);
+                        form.setValue("gesellschaftIds", next.length > 0 ? next : [""]);
                       }}
-                      aria-label="Mandant entfernen"
+                      aria-label="Gesellschaft entfernen"
                     >
                       <X className="h-4 w-4" strokeWidth={1.5} />
                     </Button>
@@ -500,16 +498,16 @@ export function BenutzerForm({
                 </div>
               );
             })}
-            {darfMehrereMandantenZuweisen && mandantIds.length < mandantenListe.length ? (
+            {darfMehrereGesellschaftenZuweisen && gesellschaftIds.length < gesellschaftenListe.length ? (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 className="w-fit"
-                onClick={() => form.setValue("mandantIds", [...mandantIds, ""])}
+                onClick={() => form.setValue("gesellschaftIds", [...gesellschaftIds, ""])}
               >
                 <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                Weiteren Mandanten zuweisen
+                Weitere Gesellschaft zuweisen
               </Button>
             ) : null}
           </div>

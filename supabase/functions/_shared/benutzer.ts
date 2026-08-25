@@ -91,17 +91,17 @@ export async function istGueltigeRolle(
   return data !== null;
 }
 
-export type MandantZuweisung = "alle" | "mehrere" | "einzeln";
+export type GesellschaftZuweisung = "alle" | "mehrere" | "einzeln";
 
-export async function mandantZuweisungFuerRolle(
+export async function gesellschaftZuweisungFuerRolle(
   admin: ReturnType<typeof createClient>,
   rolle: string,
-): Promise<MandantZuweisung> {
+): Promise<GesellschaftZuweisung> {
   if (rolle === "op_admin") return "alle";
 
   const { data, error } = await admin
     .from("rollen")
-    .select("mandant_zuweisung")
+    .select("gesellschaft_zuweisung")
     .eq("id", rolle)
     .maybeSingle();
 
@@ -112,56 +112,56 @@ export async function mandantZuweisungFuerRolle(
     throw error;
   }
 
-  const zuweisung = data?.mandant_zuweisung;
+  const zuweisung = data?.gesellschaft_zuweisung;
   if (zuweisung === "mehrere" || zuweisung === "einzeln") return zuweisung;
   return "alle";
 }
 
-export async function mandantZugriffValidieren(
+export async function gesellschaftZugriffValidieren(
   admin: ReturnType<typeof createClient>,
   rolle: string,
-  alleMandanten: boolean,
-  mandantIds: string[],
+  alleGesellschaften: boolean,
+  gesellschaftIds: string[],
 ): Promise<string | null> {
-  const mandantZuweisung = await mandantZuweisungFuerRolle(admin, rolle);
+  const gesellschaftZuweisung = await gesellschaftZuweisungFuerRolle(admin, rolle);
 
-  if (mandantZuweisung !== "alle" && alleMandanten) {
-    return "Diese Rolle darf keinen Zugriff auf alle Mandanten erhalten";
+  if (gesellschaftZuweisung !== "alle" && alleGesellschaften) {
+    return "Diese Rolle darf keinen Zugriff auf alle Gesellschaften erhalten";
   }
-  if (mandantZuweisung === "einzeln" && mandantIds.length !== 1) {
-    return "Für diese Rolle ist genau ein Mandant erlaubt";
+  if (gesellschaftZuweisung === "einzeln" && gesellschaftIds.length !== 1) {
+    return "Für diese Rolle ist genau ein Gesellschaft erlaubt";
   }
-  if (!alleMandanten) {
-    const { data: mandanten, error: mandantenError } = await admin
-      .from("mandanten")
+  if (!alleGesellschaften) {
+    const { data: gesellschaften, error: gesellschaftenError } = await admin
+      .from("gesellschaften")
       .select("id")
-      .in("id", mandantIds);
+      .in("id", gesellschaftIds);
 
-    if (mandantenError) return mandantenError.message;
-    if ((mandanten ?? []).length !== mandantIds.length) {
-      return "Ein oder mehrere Mandanten sind ungültig";
+    if (gesellschaftenError) return gesellschaftenError.message;
+    if ((gesellschaften ?? []).length !== gesellschaftIds.length) {
+      return "Ein oder mehrere Gesellschaften sind ungültig";
     }
   }
 
   return null;
 }
 
-export async function benutzerMandantenSpeichern(
+export async function benutzerGesellschaftenSpeichern(
   admin: ReturnType<typeof createClient>,
   userId: string,
-  alleMandanten: boolean,
-  mandantIds: string[],
+  alleGesellschaften: boolean,
+  gesellschaftIds: string[],
 ): Promise<string | null> {
   const { error: profileError } = await admin
     .from("profiles")
-    .update({ alle_mandanten: alleMandanten })
+    .update({ alle_gesellschaften: alleGesellschaften })
     .eq("id", userId);
 
   if (profileError) return profileError.message;
 
-  if (alleMandanten) {
+  if (alleGesellschaften) {
     const { error: deleteError } = await admin
-      .from("benutzer_mandanten")
+      .from("benutzer_gesellschaften")
       .delete()
       .eq("benutzer_id", userId);
     if (deleteError) return deleteError.message;
@@ -169,16 +169,16 @@ export async function benutzerMandantenSpeichern(
   }
 
   const { error: deleteZuordnungError } = await admin
-    .from("benutzer_mandanten")
+    .from("benutzer_gesellschaften")
     .delete()
     .eq("benutzer_id", userId);
 
   if (deleteZuordnungError) return deleteZuordnungError.message;
 
-  const { error: zuordnungError } = await admin.from("benutzer_mandanten").insert(
-    mandantIds.map((mandant_id) => ({
+  const { error: zuordnungError } = await admin.from("benutzer_gesellschaften").insert(
+    gesellschaftIds.map((gesellschaft_id) => ({
       benutzer_id: userId,
-      mandant_id,
+      gesellschaft_id,
     })),
   );
 

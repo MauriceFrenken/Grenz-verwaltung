@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 const LABELS: Record<string, string> = {
   "/": "Start",
   "/verwaltung": "Verwaltung",
-  "/verwaltung/mandanten": "Mandanten",
+  "/verwaltung/gesellschaften": "Gesellschaften",
   "/verwaltung/objekte": "Objekte",
   "/verwaltung/einheiten": "Einheiten",
   "/verwaltung/mietverhaeltnisse": "Mietverhältnisse",

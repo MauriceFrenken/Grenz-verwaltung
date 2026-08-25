@@ -6,7 +6,7 @@
 
 export const SEITEN_BERECHTIGUNGEN = [
   { id: "seite.dashboard", pfad: "/", label: "Dashboard", gruppe: "Übersicht" },
-  { id: "seite.verwaltung.mandanten", pfad: "/verwaltung/mandanten", label: "Mandanten", gruppe: "Verwaltung" },
+  { id: "seite.verwaltung.gesellschaften", pfad: "/verwaltung/gesellschaften", label: "Gesellschaften", gruppe: "Verwaltung" },
   { id: "seite.verwaltung.objekte", pfad: "/verwaltung/objekte", label: "Objekte", gruppe: "Verwaltung" },
   { id: "seite.verwaltung.einheiten", pfad: "/verwaltung/einheiten", label: "Einheiten", gruppe: "Verwaltung" },
   { id: "seite.verwaltung.mietverhaeltnisse", pfad: "/verwaltung/mietverhaeltnisse", label: "Mietverhältnisse", gruppe: "Verwaltung" },
@@ -25,10 +25,10 @@ export const SEITEN_BERECHTIGUNGEN = [
 
 export const AKTIONS_BERECHTIGUNGEN = [
   { id: "aktion.dashboard.zeitraum.aendern", label: "Zeitraum wählen", seite: "seite.dashboard", gruppe: "Übersicht" },
-  { id: "aktion.mandant.wechseln", label: "Mandant wechseln", seite: "seite.dashboard", gruppe: "Übersicht" },
-  { id: "aktion.verwaltung.mandanten.anlegen", label: "Neuer Mandant", seite: "seite.verwaltung.mandanten", gruppe: "Verwaltung" },
-  { id: "aktion.verwaltung.mandanten.bearbeiten", label: "Mandant bearbeiten", seite: "seite.verwaltung.mandanten", gruppe: "Verwaltung" },
-  { id: "aktion.verwaltung.mandanten.loeschen", label: "Mandant löschen", seite: "seite.verwaltung.mandanten", gruppe: "Verwaltung" },
+  { id: "aktion.gesellschaft.wechseln", label: "Gesellschaft wechseln", seite: "seite.dashboard", gruppe: "Übersicht" },
+  { id: "aktion.verwaltung.gesellschaften.anlegen", label: "Neue Gesellschaft", seite: "seite.verwaltung.gesellschaften", gruppe: "Verwaltung" },
+  { id: "aktion.verwaltung.gesellschaften.bearbeiten", label: "Gesellschaft bearbeiten", seite: "seite.verwaltung.gesellschaften", gruppe: "Verwaltung" },
+  { id: "aktion.verwaltung.gesellschaften.loeschen", label: "Gesellschaft löschen", seite: "seite.verwaltung.gesellschaften", gruppe: "Verwaltung" },
   { id: "aktion.verwaltung.objekte.anlegen", label: "Neues Objekt", seite: "seite.verwaltung.objekte", gruppe: "Verwaltung" },
   { id: "aktion.verwaltung.objekte.lesen", label: "Objektdetails anzeigen", seite: "seite.verwaltung.objekte", gruppe: "Verwaltung" },
   { id: "aktion.verwaltung.objekte.bearbeiten", label: "Objekt bearbeiten", seite: "seite.verwaltung.objekte", gruppe: "Verwaltung" },

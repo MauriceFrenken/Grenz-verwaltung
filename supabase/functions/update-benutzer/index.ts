@@ -2,12 +2,12 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   BENUTZER_VERWALTER_ROLLEN,
-  benutzerMandantenSpeichern,
+  benutzerGesellschaftenSpeichern,
   darfBenutzerVerwalten,
   darfRolleZuweisen,
   initialenAusName,
   istGueltigeRolle,
-  mandantZugriffValidieren,
+  gesellschaftZugriffValidieren,
 } from "../_shared/benutzer.ts";
 
 const corsHeaders: Record<string, string> = {
@@ -69,19 +69,19 @@ Deno.serve(async (req: Request) => {
       name?: string;
       stellenbezeichnung?: string;
       rolle?: string;
-      mandantZugriff?: "*" | string[];
+      gesellschaftZugriff?: "*" | string[];
     };
 
     const userId = body.id?.trim() ?? "";
     const name = body.name?.trim() ?? "";
     const stellenbezeichnung = body.stellenbezeichnung?.trim() ?? "";
     const rolle = body.rolle?.trim() ?? "";
-    const mandantZugriffRaw = body.mandantZugriff;
-    const alleMandanten = mandantZugriffRaw === "*" || mandantZugriffRaw === undefined;
-    const mandantIds = alleMandanten
+    const gesellschaftZugriffRaw = body.gesellschaftZugriff;
+    const alleGesellschaften = gesellschaftZugriffRaw === "*" || gesellschaftZugriffRaw === undefined;
+    const gesellschaftIds = alleGesellschaften
       ? []
-      : Array.isArray(mandantZugriffRaw)
-        ? [...new Set(mandantZugriffRaw.map((id) => id.trim()).filter(Boolean))]
+      : Array.isArray(gesellschaftZugriffRaw)
+        ? [...new Set(gesellschaftZugriffRaw.map((id) => id.trim()).filter(Boolean))]
         : [];
 
     if (!userId) {
@@ -93,8 +93,8 @@ Deno.serve(async (req: Request) => {
     if (stellenbezeichnung.length < 1) {
       return json({ error: "Bitte eine Stellenbezeichnung angeben" }, 400);
     }
-    if (!alleMandanten && mandantIds.length === 0) {
-      return json({ error: "Bitte mindestens einen Mandanten auswählen" }, 400);
+    if (!alleGesellschaften && gesellschaftIds.length === 0) {
+      return json({ error: "Bitte mindestens eine Gesellschaft auswählen" }, 400);
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
@@ -124,9 +124,9 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Diese Rolle darf nicht zugewiesen werden" }, 403);
     }
 
-    const mandantFehler = await mandantZugriffValidieren(admin, rolle, alleMandanten, mandantIds);
-    if (mandantFehler) {
-      return json({ error: mandantFehler }, 400);
+    const gesellschaftFehler = await gesellschaftZugriffValidieren(admin, rolle, alleGesellschaften, gesellschaftIds);
+    if (gesellschaftFehler) {
+      return json({ error: gesellschaftFehler }, 400);
     }
 
     const initialen = initialenAusName(name);
@@ -135,7 +135,7 @@ Deno.serve(async (req: Request) => {
       user_metadata: { name, stellenbezeichnung, initialen },
       app_metadata: {
         rolle,
-        mandanten: alleMandanten ? "*" : mandantIds,
+        gesellschaften: alleGesellschaften ? "*" : gesellschaftIds,
       },
     });
 
@@ -150,7 +150,7 @@ Deno.serve(async (req: Request) => {
         initialen,
         rolle,
         stellenbezeichnung,
-        alle_mandanten: alleMandanten,
+        alle_gesellschaften: alleGesellschaften,
       })
       .eq("id", userId);
 
@@ -158,14 +158,14 @@ Deno.serve(async (req: Request) => {
       return json({ error: profileError.message }, 400);
     }
 
-    const mandantenFehler = await benutzerMandantenSpeichern(
+    const gesellschaftenFehler = await benutzerGesellschaftenSpeichern(
       admin,
       userId,
-      alleMandanten,
-      mandantIds,
+      alleGesellschaften,
+      gesellschaftIds,
     );
-    if (mandantenFehler) {
-      return json({ error: mandantenFehler }, 400);
+    if (gesellschaftenFehler) {
+      return json({ error: gesellschaftenFehler }, 400);
     }
 
     return json({ ok: true, id: userId });

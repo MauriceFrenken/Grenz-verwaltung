@@ -14,7 +14,11 @@ export function DashboardTeaser() {
         titel="Übersicht"
         aktionen={
           <PermissionGate berechtigung="aktion.dashboard.zeitraum.aendern">
-            <Button variant="outline" size="sm" className="border-foreground text-foreground">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-foreground text-foreground"
+            >
               <Calendar className="mr-2 h-4 w-4" strokeWidth={1.5} />
               Zeitraum wählen
             </Button>
@@ -39,7 +43,9 @@ export function DashboardTeaser() {
           </div>
           <div className="flex min-h-[260px] flex-col border border-hairline bg-surface">
             <div className="hairline-b flex items-center justify-between border-b border-hairline px-4 py-3">
-              <h3 className="label-caps text-text-muted">Rückstände je Objekt</h3>
+              <h3 className="label-caps text-text-muted">
+                Rückstände je Objekt
+              </h3>
               <span className="text-xs text-text-subtle">aktueller Stand</span>
             </div>
             <EmptyState titel="Keine Rückstände erfasst" />

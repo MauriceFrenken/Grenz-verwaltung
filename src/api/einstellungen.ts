@@ -6,16 +6,14 @@ import {
   type KonfigurierbareRolle,
   type RolleBerechtigungenMap,
 } from "@/lib/permissions";
-import { rollenMitMandantZugriff } from "@/lib/auth";
+import { rollenMitGesellschaftZugriff } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import type {
   Benutzer,
   BenutzerEinladungInput,
   BenutzerUpdateInput,
-  Mandant,
-  MandantZuweisung,
+  GesellschaftZuweisung,
   Paginated,
-  Rolle,
   RolleName,
   RollenDefinition,
 } from "@/types";
@@ -24,10 +22,10 @@ const FALLBACK_ROLLEN: RollenDefinition[] = [
   {
     id: "administrator",
     bezeichnung: "Administrator",
-    beschreibung: "Vollzugriff auf alle Mandanten und Konfiguration.",
+    beschreibung: "Vollzugriff auf alle Gesellschaften und Konfiguration.",
     rang: 1,
     istSystem: true,
-    mandantZuweisung: "alle",
+    gesellschaftZuweisung: "alle",
   },
   {
     id: "manager",
@@ -35,23 +33,23 @@ const FALLBACK_ROLLEN: RollenDefinition[] = [
     beschreibung: "Führungsverantwortung mit Zugriff auf Verwaltung und operative Module.",
     rang: 2,
     istSystem: true,
-    mandantZuweisung: "alle",
+    gesellschaftZuweisung: "alle",
   },
   {
     id: "mitarbeiter",
     bezeichnung: "Mitarbeiter",
-    beschreibung: "Operativer Zugriff auf zugewiesene Aufgaben und Mandanten.",
+    beschreibung: "Operativer Zugriff auf zugewiesene Aufgaben und Gesellschaften.",
     rang: 3,
     istSystem: true,
-    mandantZuweisung: "alle",
+    gesellschaftZuweisung: "alle",
   },
   {
     id: "leser",
     bezeichnung: "Leser",
-    beschreibung: "Nur-Lesen-Zugriff auf zugewiesene Mandanten.",
+    beschreibung: "Nur-Lesen-Zugriff auf zugewiesene Gesellschaften.",
     rang: 4,
     istSystem: true,
-    mandantZuweisung: "einzeln",
+    gesellschaftZuweisung: "einzeln",
   },
 ];
 
@@ -61,7 +59,7 @@ function mapRolleRow(row: {
   beschreibung: string;
   rang: number | string;
   ist_system: boolean;
-  mandant_zuweisung?: MandantZuweisung | null;
+  gesellschaft_zuweisung?: GesellschaftZuweisung | null;
 }): RollenDefinition {
   return {
     id: row.id,
@@ -69,60 +67,15 @@ function mapRolleRow(row: {
     beschreibung: row.beschreibung,
     rang: Number(row.rang),
     istSystem: row.ist_system,
-    mandantZuweisung: row.mandant_zuweisung ?? "alle",
+    gesellschaftZuweisung: row.gesellschaft_zuweisung ?? "alle",
   };
 }
 
 export const einstellungenApi = {
-  async listMandanten(): Promise<Paginated<Mandant>> {
-    const { data, error, count } = await supabase
-      .from("mandanten")
-      .select("id, name, kuerzel, objekte(count)", { count: "exact" })
-      .order("name", { ascending: true });
-
-    if (error) {
-      if (error.code === "42P01" || error.message.includes("does not exist")) {
-        return { items: [], gesamt: 0 };
-      }
-      throw error;
-    }
-
-    const items: Mandant[] = (data ?? []).map((row) => ({
-      id: row.id,
-      name: row.name,
-      kuerzel: row.kuerzel,
-      anzahlObjekte: (row.objekte as Array<{ count: number }> | undefined)?.[0]?.count ?? 0,
-    }));
-
-    return { items, gesamt: count ?? items.length };
-  },
-  async saveMandant(input: Omit<Mandant, "anzahlObjekte">): Promise<Mandant> {
-    const { data, error } = await supabase
-      .from("mandanten")
-      .upsert(
-        { id: input.id, name: input.name, kuerzel: input.kuerzel },
-        { onConflict: "id" },
-      )
-      .select("id, name, kuerzel, objekte(count)")
-      .single();
-
-    if (error) throw error;
-
-    return {
-      id: data.id,
-      name: data.name,
-      kuerzel: data.kuerzel,
-      anzahlObjekte: (data.objekte as Array<{ count: number }> | undefined)?.[0]?.count ?? 0,
-    };
-  },
-  async deleteMandant(id: string): Promise<void> {
-    const { error } = await supabase.from("mandanten").delete().eq("id", id);
-    if (error) throw error;
-  },
   async listRollen(): Promise<RollenDefinition[]> {
     const { data, error } = await supabase
       .from("rollen")
-      .select("id, bezeichnung, beschreibung, rang, ist_system, mandant_zuweisung")
+      .select("id, bezeichnung, beschreibung, rang, ist_system, gesellschaft_zuweisung")
       .order("rang", { ascending: true });
 
     if (error) {
@@ -181,17 +134,17 @@ export const einstellungenApi = {
         beschreibung: string;
         rang: number | string;
         ist_system: boolean;
-        mandant_zuweisung?: MandantZuweisung | null;
+        gesellschaft_zuweisung?: GesellschaftZuweisung | null;
       },
     );
   },
-  async updateRolleMandantZuweisung(
+  async updateRolleGesellschaftZuweisung(
     rolle: KonfigurierbareRolle,
-    mandantZuweisung: MandantZuweisung,
+    gesellschaftZuweisung: GesellschaftZuweisung,
   ): Promise<RollenDefinition> {
-    const { data, error } = await supabase.rpc("update_rolle_mandant_zuweisung", {
+    const { data, error } = await supabase.rpc("update_rolle_gesellschaft_zuweisung", {
       p_rolle: rolle,
-      p_mandant_zuweisung: mandantZuweisung,
+      p_gesellschaft_zuweisung: gesellschaftZuweisung,
     });
 
     if (error) throw error;
@@ -203,7 +156,7 @@ export const einstellungenApi = {
         beschreibung: string;
         rang: number | string;
         ist_system: boolean;
-        mandant_zuweisung: MandantZuweisung;
+        gesellschaft_zuweisung: GesellschaftZuweisung;
       },
     );
   },
@@ -262,19 +215,19 @@ export const einstellungenApi = {
     }
   },
   async listBenutzer(): Promise<Paginated<Benutzer>> {
-    const mitMandanten = await supabase
+    const mitGesellschaften = await supabase
       .from("profiles")
-      .select("id, email, name, initialen, rolle, stellenbezeichnung, alle_mandanten, benutzer_mandanten(mandant_id)")
+      .select("id, email, name, initialen, rolle, stellenbezeichnung, alle_gesellschaften, benutzer_gesellschaften(gesellschaft_id)")
       .order("name", { ascending: true });
 
-    if (!mitMandanten.error) {
-      const items: Benutzer[] = (mitMandanten.data ?? []).map((row) => {
+    if (!mitGesellschaften.error) {
+      const items: Benutzer[] = (mitGesellschaften.data ?? []).map((row) => {
         const rolle = row.rolle as RolleName;
-        const zuordnungen = row.benutzer_mandanten as Array<{ mandant_id: string }> | null;
-        const mandantZugriff =
-          row.alle_mandanten || !zuordnungen?.length
+        const zuordnungen = row.benutzer_gesellschaften as Array<{ gesellschaft_id: string }> | null;
+        const gesellschaftZugriff =
+          row.alle_gesellschaften || !zuordnungen?.length
             ? ("*" as const)
-            : zuordnungen.map((z) => z.mandant_id);
+            : zuordnungen.map((z) => z.gesellschaft_id);
 
         return {
           id: row.id,
@@ -282,7 +235,7 @@ export const einstellungenApi = {
           name: row.name,
           initialen: row.initialen,
           stellenbezeichnung: row.stellenbezeichnung ?? "",
-          rollen: rollenMitMandantZugriff(rolle, mandantZugriff),
+          rollen: rollenMitGesellschaftZugriff(rolle, gesellschaftZugriff),
         };
       });
 
@@ -302,7 +255,7 @@ export const einstellungenApi = {
       name: row.name,
       initialen: row.initialen,
       stellenbezeichnung: row.stellenbezeichnung ?? "",
-      rollen: rollenMitMandantZugriff(row.rolle as RolleName, "*"),
+      rollen: rollenMitGesellschaftZugriff(row.rolle as RolleName, "*"),
     }));
 
     return { items, gesamt: items.length };
@@ -315,7 +268,7 @@ export const einstellungenApi = {
         email: input.email.trim().toLowerCase(),
         stellenbezeichnung: input.stellenbezeichnung.trim(),
         rolle: input.rolle,
-        mandantZugriff: input.mandantZugriff,
+        gesellschaftZugriff: input.gesellschaftZugriff,
         redirectTo,
       },
     });
@@ -341,7 +294,7 @@ export const einstellungenApi = {
         name: input.name.trim(),
         stellenbezeichnung: input.stellenbezeichnung.trim(),
         rolle: input.rolle,
-        mandantZugriff: input.mandantZugriff,
+        gesellschaftZugriff: input.gesellschaftZugriff,
       },
     });
 

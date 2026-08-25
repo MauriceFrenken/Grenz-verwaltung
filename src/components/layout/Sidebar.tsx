@@ -46,7 +46,7 @@ const sections: NavSection[] = [
   {
     label: "Verwaltung",
     items: [
-      { to: "/verwaltung/mandanten", label: "Mandanten", icon: Landmark, berechtigung: "seite.verwaltung.mandanten" },
+      { to: "/verwaltung/gesellschaften", label: "Gesellschaften", icon: Landmark, berechtigung: "seite.verwaltung.gesellschaften" },
       { to: "/verwaltung/objekte", label: "Objekte", icon: Building2, berechtigung: "seite.verwaltung.objekte" },
       { to: "/verwaltung/einheiten", label: "Einheiten", icon: Home, berechtigung: "seite.verwaltung.einheiten" },
       {

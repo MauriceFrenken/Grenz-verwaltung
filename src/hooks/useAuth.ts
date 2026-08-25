@@ -107,7 +107,7 @@ export function usePermissions() {
     ): boolean => {
       const seitenMap: Record<string, SeitenBerechtigungId[]> = {
         verwaltung: [
-          "seite.verwaltung.mandanten",
+          "seite.verwaltung.gesellschaften",
           "seite.verwaltung.objekte",
           "seite.verwaltung.einheiten",
           "seite.verwaltung.mietverhaeltnisse",

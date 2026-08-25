@@ -28,7 +28,7 @@ import { Route as VerwaltungSollstellungRouteImport } from './routes/verwaltung.
 import { Route as VerwaltungObjekteRouteImport } from './routes/verwaltung.objekte'
 import { Route as VerwaltungNebenkostenRouteImport } from './routes/verwaltung.nebenkosten'
 import { Route as VerwaltungMietverhaeltnisseRouteImport } from './routes/verwaltung.mietverhaeltnisse'
-import { Route as VerwaltungMandantenRouteImport } from './routes/verwaltung.mandanten'
+import { Route as VerwaltungGesellschaftenRouteImport } from './routes/verwaltung.gesellschaften'
 import { Route as VerwaltungEinheitenRouteImport } from './routes/verwaltung.einheiten'
 import { Route as TransaktionenListeRouteImport } from './routes/transaktionen.liste'
 import { Route as TransaktionenExposeImportRouteImport } from './routes/transaktionen.expose-import'
@@ -40,6 +40,7 @@ import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellunge
 import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
 import { Route as DokumentePruefordnerRouteImport } from './routes/dokumente.pruefordner'
 import { Route as DokumenteAblageRouteImport } from './routes/dokumente.ablage'
+import { Route as VerwaltungObjekteIndexRouteImport } from './routes/verwaltung.objekte.index'
 import { Route as TransaktionenExposeImportIndexRouteImport } from './routes/transaktionen.expose-import.index'
 import { Route as VerwaltungObjekteIdRouteImport } from './routes/verwaltung.objekte.$id'
 import { Route as TransaktionenExposeImportSalesforceRouteImport } from './routes/transaktionen.expose-import.salesforce'
@@ -140,11 +141,12 @@ const VerwaltungMietverhaeltnisseRoute =
     path: '/mietverhaeltnisse',
     getParentRoute: () => VerwaltungRoute,
   } as any)
-const VerwaltungMandantenRoute = VerwaltungMandantenRouteImport.update({
-  id: '/mandanten',
-  path: '/mandanten',
-  getParentRoute: () => VerwaltungRoute,
-} as any)
+const VerwaltungGesellschaftenRoute =
+  VerwaltungGesellschaftenRouteImport.update({
+    id: '/gesellschaften',
+    path: '/gesellschaften',
+    getParentRoute: () => VerwaltungRoute,
+  } as any)
 const VerwaltungEinheitenRoute = VerwaltungEinheitenRouteImport.update({
   id: '/einheiten',
   path: '/einheiten',
@@ -202,6 +204,11 @@ const DokumenteAblageRoute = DokumenteAblageRouteImport.update({
   path: '/ablage',
   getParentRoute: () => DokumenteRoute,
 } as any)
+const VerwaltungObjekteIndexRoute = VerwaltungObjekteIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VerwaltungObjekteRoute,
+} as any)
 const TransaktionenExposeImportIndexRoute =
   TransaktionenExposeImportIndexRouteImport.update({
     id: '/',
@@ -242,7 +249,7 @@ export interface FileRoutesByFullPath {
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
-  '/verwaltung/mandanten': typeof VerwaltungMandantenRoute
+  '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
   '/verwaltung/mietverhaeltnisse': typeof VerwaltungMietverhaeltnisseRoute
   '/verwaltung/nebenkosten': typeof VerwaltungNebenkostenRoute
   '/verwaltung/objekte': typeof VerwaltungObjekteRouteWithChildren
@@ -255,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/transaktionen/expose-import/': typeof TransaktionenExposeImportIndexRoute
+  '/verwaltung/objekte/': typeof VerwaltungObjekteIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -273,10 +281,9 @@ export interface FileRoutesByTo {
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
-  '/verwaltung/mandanten': typeof VerwaltungMandantenRoute
+  '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
   '/verwaltung/mietverhaeltnisse': typeof VerwaltungMietverhaeltnisseRoute
   '/verwaltung/nebenkosten': typeof VerwaltungNebenkostenRoute
-  '/verwaltung/objekte': typeof VerwaltungObjekteRouteWithChildren
   '/verwaltung/sollstellung': typeof VerwaltungSollstellungRoute
   '/verwaltung/zahlungen': typeof VerwaltungZahlungenRoute
   '/dokumente': typeof DokumenteIndexRoute
@@ -286,6 +293,7 @@ export interface FileRoutesByTo {
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportIndexRoute
+  '/verwaltung/objekte': typeof VerwaltungObjekteIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -310,7 +318,7 @@ export interface FileRoutesById {
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
-  '/verwaltung/mandanten': typeof VerwaltungMandantenRoute
+  '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
   '/verwaltung/mietverhaeltnisse': typeof VerwaltungMietverhaeltnisseRoute
   '/verwaltung/nebenkosten': typeof VerwaltungNebenkostenRoute
   '/verwaltung/objekte': typeof VerwaltungObjekteRouteWithChildren
@@ -323,6 +331,7 @@ export interface FileRoutesById {
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/transaktionen/expose-import/': typeof TransaktionenExposeImportIndexRoute
+  '/verwaltung/objekte/': typeof VerwaltungObjekteIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -348,7 +357,7 @@ export interface FileRouteTypes {
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
-    | '/verwaltung/mandanten'
+    | '/verwaltung/gesellschaften'
     | '/verwaltung/mietverhaeltnisse'
     | '/verwaltung/nebenkosten'
     | '/verwaltung/objekte'
@@ -361,6 +370,7 @@ export interface FileRouteTypes {
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/transaktionen/expose-import/'
+    | '/verwaltung/objekte/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -379,10 +389,9 @@ export interface FileRouteTypes {
     | '/salesforce/callback'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
-    | '/verwaltung/mandanten'
+    | '/verwaltung/gesellschaften'
     | '/verwaltung/mietverhaeltnisse'
     | '/verwaltung/nebenkosten'
-    | '/verwaltung/objekte'
     | '/verwaltung/sollstellung'
     | '/verwaltung/zahlungen'
     | '/dokumente'
@@ -392,6 +401,7 @@ export interface FileRouteTypes {
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/transaktionen/expose-import'
+    | '/verwaltung/objekte'
   id:
     | '__root__'
     | '/'
@@ -415,7 +425,7 @@ export interface FileRouteTypes {
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
-    | '/verwaltung/mandanten'
+    | '/verwaltung/gesellschaften'
     | '/verwaltung/mietverhaeltnisse'
     | '/verwaltung/nebenkosten'
     | '/verwaltung/objekte'
@@ -428,6 +438,7 @@ export interface FileRouteTypes {
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/transaktionen/expose-import/'
+    | '/verwaltung/objekte/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -580,11 +591,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerwaltungMietverhaeltnisseRouteImport
       parentRoute: typeof VerwaltungRoute
     }
-    '/verwaltung/mandanten': {
-      id: '/verwaltung/mandanten'
-      path: '/mandanten'
-      fullPath: '/verwaltung/mandanten'
-      preLoaderRoute: typeof VerwaltungMandantenRouteImport
+    '/verwaltung/gesellschaften': {
+      id: '/verwaltung/gesellschaften'
+      path: '/gesellschaften'
+      fullPath: '/verwaltung/gesellschaften'
+      preLoaderRoute: typeof VerwaltungGesellschaftenRouteImport
       parentRoute: typeof VerwaltungRoute
     }
     '/verwaltung/einheiten': {
@@ -663,6 +674,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dokumente/ablage'
       preLoaderRoute: typeof DokumenteAblageRouteImport
       parentRoute: typeof DokumenteRoute
+    }
+    '/verwaltung/objekte/': {
+      id: '/verwaltung/objekte/'
+      path: '/'
+      fullPath: '/verwaltung/objekte/'
+      preLoaderRoute: typeof VerwaltungObjekteIndexRouteImport
+      parentRoute: typeof VerwaltungObjekteRoute
     }
     '/transaktionen/expose-import/': {
       id: '/transaktionen/expose-import/'
@@ -759,10 +777,12 @@ const TransaktionenRouteWithChildren = TransaktionenRoute._addFileChildren(
 
 interface VerwaltungObjekteRouteChildren {
   VerwaltungObjekteIdRoute: typeof VerwaltungObjekteIdRoute
+  VerwaltungObjekteIndexRoute: typeof VerwaltungObjekteIndexRoute
 }
 
 const VerwaltungObjekteRouteChildren: VerwaltungObjekteRouteChildren = {
   VerwaltungObjekteIdRoute: VerwaltungObjekteIdRoute,
+  VerwaltungObjekteIndexRoute: VerwaltungObjekteIndexRoute,
 }
 
 const VerwaltungObjekteRouteWithChildren =
@@ -770,7 +790,7 @@ const VerwaltungObjekteRouteWithChildren =
 
 interface VerwaltungRouteChildren {
   VerwaltungEinheitenRoute: typeof VerwaltungEinheitenRoute
-  VerwaltungMandantenRoute: typeof VerwaltungMandantenRoute
+  VerwaltungGesellschaftenRoute: typeof VerwaltungGesellschaftenRoute
   VerwaltungMietverhaeltnisseRoute: typeof VerwaltungMietverhaeltnisseRoute
   VerwaltungNebenkostenRoute: typeof VerwaltungNebenkostenRoute
   VerwaltungObjekteRoute: typeof VerwaltungObjekteRouteWithChildren
@@ -781,7 +801,7 @@ interface VerwaltungRouteChildren {
 
 const VerwaltungRouteChildren: VerwaltungRouteChildren = {
   VerwaltungEinheitenRoute: VerwaltungEinheitenRoute,
-  VerwaltungMandantenRoute: VerwaltungMandantenRoute,
+  VerwaltungGesellschaftenRoute: VerwaltungGesellschaftenRoute,
   VerwaltungMietverhaeltnisseRoute: VerwaltungMietverhaeltnisseRoute,
   VerwaltungNebenkostenRoute: VerwaltungNebenkostenRoute,
   VerwaltungObjekteRoute: VerwaltungObjekteRouteWithChildren,

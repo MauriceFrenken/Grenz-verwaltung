@@ -143,7 +143,7 @@ export function DatenschutzInhalt() {
         </h3>
         <p>
           Innerhalb der Anwendung werden geschäftsbezogene Daten verarbeitet,
-          die für die interne Verwaltung erforderlich sind — z. B. Mandanten-,
+          die für die interne Verwaltung erforderlich sind — z. B. Gesellschafts-,
           Objekt- und Transaktionsdaten sowie hochgeladene Dokumente. Der
           Zugriff ist rollenbasiert beschränkt; Änderungen an Benutzerkonten und
           Berechtigungen können zu Nachweiszwecken protokolliert werden
