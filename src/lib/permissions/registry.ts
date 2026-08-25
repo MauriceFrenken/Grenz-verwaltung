@@ -25,7 +25,6 @@ export const SEITEN_BERECHTIGUNGEN = [
 
 export const AKTIONS_BERECHTIGUNGEN = [
   { id: "aktion.dashboard.zeitraum.aendern", label: "Zeitraum wählen", seite: "seite.dashboard", gruppe: "Übersicht" },
-  { id: "aktion.gesellschaft.wechseln", label: "Gesellschaft wechseln", seite: "seite.dashboard", gruppe: "Übersicht" },
   { id: "aktion.verwaltung.gesellschaften.anlegen", label: "Neue Gesellschaft", seite: "seite.verwaltung.gesellschaften", gruppe: "Verwaltung" },
   { id: "aktion.verwaltung.gesellschaften.bearbeiten", label: "Gesellschaft bearbeiten", seite: "seite.verwaltung.gesellschaften", gruppe: "Verwaltung" },
   { id: "aktion.verwaltung.gesellschaften.loeschen", label: "Gesellschaft löschen", seite: "seite.verwaltung.gesellschaften", gruppe: "Verwaltung" },

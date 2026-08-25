@@ -47,7 +47,6 @@ const MANAGER_SEITEN: string[] = [
 
 const MANAGER_AKTIONEN: string[] = [
   "aktion.dashboard.zeitraum.aendern",
-  "aktion.gesellschaft.wechseln",
   "aktion.verwaltung.gesellschaften.anlegen",
   "aktion.verwaltung.gesellschaften.bearbeiten",
   "aktion.verwaltung.gesellschaften.loeschen",
@@ -101,7 +100,6 @@ const MITARBEITER_SEITEN: string[] = [
 
 const MITARBEITER_AKTIONEN: string[] = [
   "aktion.dashboard.zeitraum.aendern",
-  "aktion.gesellschaft.wechseln",
   "aktion.verwaltung.objekte.anlegen",
   "aktion.verwaltung.objekte.lesen",
   "aktion.verwaltung.objekte.bearbeiten",

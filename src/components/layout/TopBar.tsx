@@ -1,6 +1,5 @@
 import { Bell, LogOut, Search } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
-import { GesellschaftSwitcher } from "./GesellschaftSwitcher";
 import { Breadcrumb } from "./Breadcrumb";
 import { useAuth } from "@/hooks/useAuth";
 import { APP_NAME, ROLLEN } from "@/lib/constants";
@@ -25,7 +24,6 @@ export function TopBar() {
           {APP_NAME}
         </span>
       </div>
-      <GesellschaftSwitcher />
       <div className="hidden flex-1 items-center px-6 md:flex">
         <Breadcrumb />
       </div>
