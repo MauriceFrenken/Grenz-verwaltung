@@ -48,12 +48,12 @@ export function VerwaltungTabellenLeiste({
 }) {
   return (
     <div className="flex flex-wrap items-end gap-4">
-      {children}
       <TabellenSuche
         value={suchbegriff}
         onChange={onSuchbegriffChange}
         placeholder={placeholder}
       />
+      {children}
     </div>
   );
 }
