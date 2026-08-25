@@ -1,5 +1,4 @@
 -- Verwaltungs-Stammdaten: Gesellschaften > Objekte > Einheiten > Mietverhaeltnisse.
--- Spalten folgen der Kopfzeile der Quelldatei FRENKEN_CRM_Uebersicht.xlsx.
 -- Berechnete Kennzahlen (Anzahl, Summen, Miete/m2, Jahresmiete) liegen in Views,
 -- damit sie nie gegenueber den Basisdaten veralten.
 
@@ -37,7 +36,6 @@ create table public.objekte (
   ort text not null default '',
   land text not null default 'DE',
   status public.objekt_status not null default 'aktiv',
-  quelldatei text,
   bemerkung text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -189,7 +187,6 @@ select
   o.ort,
   o.land,
   o.status,
-  o.quelldatei,
   o.bemerkung,
   coalesce(k.einheiten_gesamt, 0)    as einheiten_gesamt,
   coalesce(k.einheiten_wohnen, 0)    as einheiten_wohnen,

@@ -275,7 +275,6 @@ export function ObjektDetailPage({ id }: { id: string }) {
             ["Gesellschaft", o.gesellschaftName],
             ["Straße", text(o.adresse.strasse)],
             ["PLZ / Ort", `${text(o.adresse.plz)} ${o.adresse.ort}`.trim()],
-            ["Quelldatei", text(o.quelldatei)],
             ["Bemerkung", text(o.bemerkung)],
           ]}
         />

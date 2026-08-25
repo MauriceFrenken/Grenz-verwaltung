@@ -81,7 +81,6 @@ export interface Objekt {
   bezeichnung: string;
   adresse: Adresse;
   status: ObjektStatus;
-  quelldatei: string | null;
   bemerkung: string | null;
   einheitenGesamt: number;
   einheitenWohnen: number;

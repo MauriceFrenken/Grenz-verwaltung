@@ -2,7 +2,7 @@
 -- Die Fachtabellen (gesellschaften/objekte/einheiten/mietverhaeltnisse) folgen in der naechsten Migration.
 
 -- Der alte Verwaltungs-Entwurf wird verworfen; die Folgemigration baut die
--- Fachtabellen passend zu den Quelldaten (Mieterliste) neu auf.
+-- Fachtabellen neu auf.
 drop table if exists public.mietverhaeltnisse cascade;
 drop table if exists public.einheiten cascade;
 drop table if exists public.objekte cascade;

@@ -63,7 +63,6 @@ function mapObjekt(row: Record<string, unknown>): Objekt {
       land: (row.land as string | null) ?? "DE",
     },
     status: row.status as Objekt["status"],
-    quelldatei: (row.quelldatei as string | null) ?? null,
     bemerkung: (row.bemerkung as string | null) ?? null,
     einheitenGesamt: zahl(row.einheiten_gesamt),
     einheitenWohnen: zahl(row.einheiten_wohnen),
