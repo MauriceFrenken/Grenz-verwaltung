@@ -128,6 +128,27 @@ async function zaehleOffene(postfach: string): Promise<number> {
  *                    1 = genau eine offene Mail analysieren (ohne erneut den
  *                        gesamten Posteingang von Graph zu laden).
  */
+/** KI-Analyse für einen fehlgeschlagenen Postfach-Eintrag erneut ausführen. */
+export async function postfachAnalyseWiederholen(input: {
+  supabaseAccessToken: string;
+  eintragId: string;
+}): Promise<ReturnType<typeof zuEintrag>> {
+  await microsoftCallerAusJwt(input.supabaseAccessToken);
+  const { accessToken } = await microsoftAccessToken();
+  const postfach = microsoftPostfach();
+
+  const row = await leseEintrag(input.eintragId);
+  if (row.postfach !== postfach) {
+    throw new Error("Postfach-Eintrag nicht gefunden.");
+  }
+  if (row.status !== "fehler") {
+    throw new Error("Nur fehlgeschlagene Analysen können wiederholt werden.");
+  }
+
+  await analysiereEintrag(accessToken, postfach, row);
+  return zuEintrag(await leseEintrag(input.eintragId));
+}
+
 export async function postfachSynchronisieren(input: {
   supabaseAccessToken: string;
   maxAnalysen?: number;

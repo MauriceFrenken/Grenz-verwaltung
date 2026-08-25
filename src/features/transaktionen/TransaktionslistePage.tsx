@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { FileQuestion, FileText, Image, Loader2 } from "lucide-react";
+import { FileQuestion, FileText, Image, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -54,7 +54,15 @@ function AnhangIcon({ art }: { art: GraphAnhangArt }) {
   );
 }
 
-function AnalyseStatus({ zeile }: { zeile: Zeile }) {
+function AnalyseStatus({
+  zeile,
+  wiederholenId,
+  onWiederholen,
+}: {
+  zeile: Zeile;
+  wiederholenId: string | null;
+  onWiederholen?: (eintrag: PostfachEintrag) => void;
+}) {
   const { nachricht, eintrag } = zeile;
 
   if (!nachricht.pdfAnhang) {
@@ -73,12 +81,37 @@ function AnalyseStatus({ zeile }: { zeile: Zeile }) {
     );
   }
   if (eintrag.status === "fehler") {
+    const laedt = wiederholenId === eintrag.id;
     return (
-      <span
-        className="text-destructive"
-        title={eintrag.analyseFehler ?? undefined}
-      >
-        Analyse fehlgeschlagen
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className="text-destructive"
+          title={eintrag.analyseFehler ?? undefined}
+        >
+          Analyse fehlgeschlagen
+        </span>
+        {onWiederholen ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 text-text-muted hover:text-heading"
+            disabled={Boolean(wiederholenId)}
+            aria-label="KI-Analyse wiederholen"
+            title="KI-Analyse wiederholen"
+            onClick={() => onWiederholen(eintrag)}
+          >
+            {laedt ? (
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin"
+                strokeWidth={1.5}
+                aria-hidden
+              />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+            )}
+          </Button>
+        ) : null}
       </span>
     );
   }
@@ -106,6 +139,7 @@ export function TransaktionslistePage() {
   const [analyseLaeuft, setAnalyseLaeuft] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const [aktionId, setAktionId] = useState<string | null>(null);
+  const [wiederholenId, setWiederholenId] = useState<string | null>(null);
   const [sfConnectOpen, setSfConnectOpen] = useState(false);
 
   useEffect(() => {
@@ -245,6 +279,39 @@ export function TransaktionslistePage() {
     [darfAktion, navigate, token],
   );
 
+  const analyseWiederholen = useCallback(
+    async (eintrag: PostfachEintrag) => {
+      setWiederholenId(eintrag.id);
+      try {
+        const { postfachAnalyseWiederholenFn } = await import(
+          "@/lib/postfach/server-fn"
+        );
+        const aktualisiert = await postfachAnalyseWiederholenFn({
+          data: { supabaseAccessToken: token, eintragId: eintrag.id },
+        });
+        setZeilen((prev) =>
+          prev.map((z) =>
+            z.eintrag?.id === aktualisiert.id
+              ? { ...z, eintrag: aktualisiert }
+              : z,
+          ),
+        );
+        if (aktualisiert.status === "fehler") {
+          toast.error("KI-Analyse erneut fehlgeschlagen.");
+        }
+      } catch (e) {
+        toast.error(
+          e instanceof Error
+            ? e.message
+            : "KI-Analyse konnte nicht wiederholt werden.",
+        );
+      } finally {
+        setWiederholenId(null);
+      }
+    },
+    [token],
+  );
+
   const spalten: Column<Zeile>[] = [
     {
       key: "anhang",
@@ -285,7 +352,17 @@ export function TransaktionslistePage() {
     {
       key: "status",
       header: "KI-Status",
-      render: (z) => <AnalyseStatus zeile={z} />,
+      render: (z) => (
+        <AnalyseStatus
+          zeile={z}
+          wiederholenId={wiederholenId}
+          onWiederholen={
+            darfAktion("aktion.transaktionen.liste.analyse_wiederholen")
+              ? analyseWiederholen
+              : undefined
+          }
+        />
+      ),
     },
     {
       key: "datum",

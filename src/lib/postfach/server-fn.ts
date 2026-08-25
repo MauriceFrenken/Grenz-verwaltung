@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { postfachEintragLaden } from "./eintrag";
 import { postfachExportAbschliessen } from "./export";
-import { postfachSynchronisieren } from "./sync";
+import { postfachAnalyseWiederholen, postfachSynchronisieren } from "./sync";
 
 export const postfachSyncFn = createServerFn({ method: "POST" })
   .validator(
@@ -17,6 +17,13 @@ export const postfachEintragFn = createServerFn({ method: "POST" })
       data as { supabaseAccessToken: string; eintragId: string },
   )
   .handler(async ({ data }) => postfachEintragLaden(data));
+
+export const postfachAnalyseWiederholenFn = createServerFn({ method: "POST" })
+  .validator(
+    (data: unknown) =>
+      data as { supabaseAccessToken: string; eintragId: string },
+  )
+  .handler(async ({ data }) => postfachAnalyseWiederholen(data));
 
 export const postfachExportFn = createServerFn({ method: "POST" })
   .validator(
