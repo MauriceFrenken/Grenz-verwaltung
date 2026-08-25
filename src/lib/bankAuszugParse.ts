@@ -1,6 +1,6 @@
 /**
- * Parser für Volksbank/Raiffeisen-Kontoauszug-Text
- * (Umsätze-PDF: Name → IBAN → Verwendungszweck* → ±Betrag EUR → Datum|Valuta).
+ * Parser für Volksbank/Raiffeisen-Kontoauszug-Text.
+ * Findet Buchungen über IBAN + Betrag + Datum — unabhängig von Zeilenumbrüchen.
  */
 
 export interface BankBuchungEingabe {
@@ -20,71 +20,21 @@ export interface BankAuszugParseErgebnis {
   warnungen: string[];
 }
 
-const IBAN_RE = /^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/;
-const BETRAG_RE = /^([+-]?)(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*EUR$/i;
-const DATUM_RE = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/;
-const VALUTA_RE =
-  /^Valuta\s+(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s*[-–]\s*(\d{1,2})\.(\d{1,2})\.(\d{4}))?/i;
+const IBAN_TOKEN = /(?<![A-Z0-9])([A-Z]{2}[0-9]{2}[A-Z0-9]{11,30})(?![A-Z0-9])/gi;
+const BETRAG_TOKEN =
+  /([+-])\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*EUR/gi;
+const DATUM_TOKEN = /(\d{1,2})\.(\d{1,2})\.(\d{4})/g;
+const VALUTA_TOKEN =
+  /Valuta\s+(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s*[-–]\s*(\d{1,2})\.(\d{1,2})\.(\d{4}))?/gi;
 
 function normalisiereIban(raw: string): string | null {
   const iban = raw.replace(/\s+/g, "").toUpperCase();
-  if (!IBAN_RE.test(iban)) return null;
+  if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/.test(iban)) return null;
   return iban;
-}
-
-function parseDeBetrag(raw: string): number | null {
-  const m = raw.trim().match(BETRAG_RE);
-  if (!m) return null;
-  const sign = m[1] === "-" ? -1 : 1;
-  const n = Number(m[2].replace(/\./g, "").replace(",", "."));
-  if (!Number.isFinite(n)) return null;
-  return sign * n;
 }
 
 function parseDatumTeile(d: string, m: string, y: string): string {
   return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-}
-
-function parseDatumZeile(line: string): string | null {
-  const m = line.trim().match(DATUM_RE);
-  if (!m) return null;
-  return parseDatumTeile(m[1], m[2], m[3]);
-}
-
-function parseValutaZeile(line: string): string | null {
-  const m = line.trim().match(VALUTA_RE);
-  if (!m) return null;
-  if (m[4] && m[5] && m[6]) return parseDatumTeile(m[4], m[5], m[6]);
-  return parseDatumTeile(m[1], m[2], m[3]);
-}
-
-function istRauschen(line: string): boolean {
-  const t = line.trim();
-  if (!t) return true;
-  if (/^Seite\s+\d+\s+von\s+\d+/i.test(t)) return true;
-  if (/^--\s*\d+\s+of\s+\d+\s*--/i.test(t)) return true;
-  if (/Wir machen den Weg frei/i.test(t)) return true;
-  if (/Genossenschaftlichen FinanzGruppe/i.test(t)) return true;
-  if (/^Filterparameter/i.test(t)) return true;
-  if (/\(Endsaldo\)|\(Startsaldo\)/i.test(t)) return true;
-  if (/^Umsätze$/i.test(t)) return true;
-  if (/^Firmenkonto$/i.test(t)) return true;
-  if (/^Kontoinhaber\b/i.test(t)) return true;
-  if (/^Abgefragt von\b/i.test(t)) return true;
-  if (/^BIC\b/i.test(t)) return true;
-  if (/^IBAN\s+[A-Z]{2}\d{2}/i.test(t)) return true;
-  if (/^Datum\s+\d{1,2}\.\d{1,2}\.\d{4}/i.test(t)) return true;
-  if (/^Uhrzeit\b/i.test(t)) return true;
-  if (/^GmbH$/i.test(t)) return true;
-  return false;
-}
-
-function istIbanZeile(line: string): boolean {
-  return Boolean(normalisiereIban(line.trim()));
-}
-
-function istBetragZeile(line: string): boolean {
-  return BETRAG_RE.test(line.trim());
 }
 
 function fingerprint(b: {
@@ -103,108 +53,145 @@ function fingerprint(b: {
   ].join("|");
 }
 
-/** Parst den Fließtext eines VR-Bank-Umsatz-PDFs (zeilenweise). */
+function findeKontoIban(text: string): string | null {
+  const m = text.match(/\bIBAN\s+([A-Z]{2}\d{2}[A-Z0-9]+)/i);
+  return m ? normalisiereIban(m[1]) : null;
+}
+
+function istRauschenName(name: string): boolean {
+  const t = name.trim();
+  if (!t) return true;
+  if (/^Seite\s+\d+/i.test(t)) return true;
+  if (/Filterparameter|Endsaldo|Startsaldo|Firmenkonto|Kontoinhaber|Abgefragt|Umsätze/i.test(t))
+    return true;
+  if (/Wir machen den Weg frei|Genossenschaftlichen FinanzGruppe/i.test(t))
+    return true;
+  if (/^BIC\b/i.test(t)) return true;
+  if (/^GmbH$/i.test(t)) return true;
+  if (/^Abschluss$/i.test(t)) return true;
+  return false;
+}
+
+function nameVorIban(text: string, ibanIndex: number): string | null {
+  const davor = text.slice(Math.max(0, ibanIndex - 200), ibanIndex);
+  const zeilen = davor.split(/\n/).map((z) => z.trim()).filter(Boolean);
+  for (let i = zeilen.length - 1; i >= 0; i--) {
+    const z = zeilen[i]
+      .replace(/\bIBAN\s+[A-Z]{2}\d{2}[A-Z0-9]+\b/gi, "")
+      .replace(BETRAG_TOKEN, "")
+      .replace(DATUM_TOKEN, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!z) continue;
+    if (normalisiereIban(z)) continue;
+    if (istRauschenName(z)) continue;
+    if (z.length > 80) continue;
+    return z;
+  }
+  return null;
+}
+
+function zweckZwischen(
+  text: string,
+  ibanEnd: number,
+  betragStart: number,
+): string | null {
+  const roh = text
+    .slice(ibanEnd, betragStart)
+    .replace(/\n+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return roh || null;
+}
+
+function naechsterBetrag(
+  text: string,
+  ab: number,
+): { betrag: number; index: number; end: number } | null {
+  BETRAG_TOKEN.lastIndex = ab;
+  const m = BETRAG_TOKEN.exec(text);
+  if (!m || m.index === undefined) return null;
+  // Nur Beträge nah hinter der IBAN (nicht die nächste Buchung)
+  if (m.index - ab > 600) return null;
+  const sign = m[1] === "-" ? -1 : 1;
+  const n = Number(m[2].replace(/\./g, "").replace(",", "."));
+  if (!Number.isFinite(n)) return null;
+  return { betrag: sign * n, index: m.index, end: m.index + m[0].length };
+}
+
+function naechstesDatum(
+  text: string,
+  ab: number,
+): { datum: string; end: number } | null {
+  const fenster = text.slice(ab, ab + 120);
+  VALUTA_TOKEN.lastIndex = 0;
+  const v = VALUTA_TOKEN.exec(fenster);
+  if (v) {
+    const datum =
+      v[4] && v[5] && v[6]
+        ? parseDatumTeile(v[4], v[5], v[6])
+        : parseDatumTeile(v[1], v[2], v[3]);
+    return { datum, end: ab + (v.index ?? 0) + v[0].length };
+  }
+  DATUM_TOKEN.lastIndex = 0;
+  const d = DATUM_TOKEN.exec(fenster);
+  if (d) {
+    return {
+      datum: parseDatumTeile(d[1], d[2], d[3]),
+      end: ab + (d.index ?? 0) + d[0].length,
+    };
+  }
+  return null;
+}
+
+/**
+ * Parst Kontoauszug-Text (Zeilen oder Fließtext).
+ * Erwartet IBANs und Beträge im Text — Layout der PDF-Zeilen ist egal.
+ */
 export function parseBankAuszugZeilen(zeilen: string[]): BankAuszugParseErgebnis {
+  const text = zeilen.join("\n");
+  return parseBankAuszugText(text);
+}
+
+export function parseBankAuszugText(text: string): BankAuszugParseErgebnis {
   const warnungen: string[] = [];
   const buchungen: BankBuchungEingabe[] = [];
   const gesehen = new Set<string>();
+  const kontoIban = findeKontoIban(text);
 
-  let kontoIban: string | null = null;
-  for (const z of zeilen) {
-    const m = z.match(/\bIBAN\s+([A-Z]{2}\d{2}[A-Z0-9]+)/i);
-    if (m) {
-      kontoIban = normalisiereIban(m[1]);
-      if (kontoIban) break;
-    }
-  }
+  IBAN_TOKEN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = IBAN_TOKEN.exec(text)) !== null) {
+    const rawIban = match[1];
+    const iban = normalisiereIban(rawIban);
+    if (!iban) continue;
 
-  const clean = zeilen.map((z) => z.trim()).filter((z) => !istRauschen(z));
+    // „IBAN DExx…“ / „IBAN: DExx…“ im Footer oder Verwendungszweck = kein Buchungsstart
+    const prefix = text.slice(Math.max(0, match.index - 8), match.index);
+    if (/IBAN\s*:?\s*$/i.test(prefix)) continue;
 
-  let i = 0;
-  while (i < clean.length) {
-    if (!istIbanZeile(clean[i])) {
-      i++;
-      continue;
-    }
+    const betragTreffer = naechsterBetrag(text, match.index + match[0].length);
+    if (!betragTreffer) continue;
 
-    const iban = normalisiereIban(clean[i])!;
-    let name: string | null = null;
-    if (i > 0) {
-      const prev = clean[i - 1];
-      if (
-        !istIbanZeile(prev) &&
-        !istBetragZeile(prev) &&
-        !DATUM_RE.test(prev) &&
-        !VALUTA_RE.test(prev)
-      ) {
-        name = prev;
-      }
-    }
-
-    const zweckParts: string[] = [];
-    let j = i + 1;
-    while (
-      j < clean.length &&
-      !istBetragZeile(clean[j]) &&
-      !istIbanZeile(clean[j])
-    ) {
-      const z = clean[j];
-      if (DATUM_RE.test(z) || VALUTA_RE.test(z)) break;
-      zweckParts.push(z);
-      j++;
-    }
-
-    if (j >= clean.length || !istBetragZeile(clean[j])) {
-      i++;
-      continue;
-    }
-
-    const betrag = parseDeBetrag(clean[j]);
-    if (betrag === null) {
-      i++;
-      continue;
-    }
-    j++;
-
-    let datum: string | null = null;
-    while (
-      j < clean.length &&
-      !istIbanZeile(clean[j]) &&
-      !istBetragZeile(clean[j])
-    ) {
-      datum = parseDatumZeile(clean[j]) ?? parseValutaZeile(clean[j]);
-      if (datum) {
-        j++;
-        break;
-      }
-      if (!DATUM_RE.test(clean[j]) && !VALUTA_RE.test(clean[j])) {
-        zweckParts.push(clean[j]);
-        j++;
-        continue;
-      }
-      j++;
-    }
-
-    if (!datum) {
-      i = j > i ? j : i + 1;
-      continue;
-    }
+    const datumTreffer = naechstesDatum(text, betragTreffer.end);
+    if (!datumTreffer) continue;
 
     const gegenkonto = iban === kontoIban ? null : iban;
     const eintrag = {
-      buchungsdatum: datum,
-      betrag,
+      buchungsdatum: datumTreffer.datum,
+      betrag: betragTreffer.betrag,
       gegenkontoIban: gegenkonto,
-      auftraggeberName: name,
-      verwendungszweck: zweckParts.join(" ").trim() || null,
+      auftraggeberName: nameVorIban(text, match.index),
+      verwendungszweck: zweckZwischen(
+        text,
+        match.index + match[0].length,
+        betragTreffer.index,
+      ),
     };
     const fp = fingerprint(eintrag);
-    if (!gesehen.has(fp)) {
-      gesehen.add(fp);
-      buchungen.push({ ...eintrag, fingerprint: fp });
-    }
-
-    i = j;
+    if (gesehen.has(fp)) continue;
+    gesehen.add(fp);
+    buchungen.push({ ...eintrag, fingerprint: fp });
   }
 
   if (buchungen.length === 0) {
