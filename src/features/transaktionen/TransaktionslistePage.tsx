@@ -95,7 +95,7 @@ function AnalyseStatus({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0 text-text-muted hover:text-heading"
+            className="h-7 w-7 shrink-0 text-text-muted hover:bg-surface-muted hover:text-heading"
             disabled={Boolean(wiederholenId)}
             aria-label="KI-Analyse wiederholen"
             title="KI-Analyse wiederholen"
