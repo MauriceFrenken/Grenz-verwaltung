@@ -24,6 +24,8 @@ import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import type { Mietverhaeltnis } from "@/types";
 import { MietverhaeltnisForm } from "./MietverhaeltnisForm";
 import { StammdatenFilter } from "./StammdatenFilter";
+import { VerwaltungTabellenLeiste } from "./TabellenSuche";
+import { useTabellenSuche } from "./useTabellenSuche";
 import { datum, euro, flaeche, NUTZUNGSART_LABEL, text } from "./format";
 
 const spalten: Column<Mietverhaeltnis>[] = [
@@ -108,6 +110,16 @@ const spalten: Column<Mietverhaeltnis>[] = [
   },
 ];
 
+const suchfelder = [
+  (m: Mietverhaeltnis) => m.mieterName,
+  (m: Mietverhaeltnis) => m.objektBezeichnung,
+  (m: Mietverhaeltnis) => m.hausteil,
+  (m: Mietverhaeltnis) => m.einheitLage,
+  (m: Mietverhaeltnis) => m.gesellschaftName,
+  (m: Mietverhaeltnis) => NUTZUNGSART_LABEL[m.nutzungsart] ?? m.nutzungsart,
+  (m: Mietverhaeltnis) => m.status,
+];
+
 export function MietverhaeltnissePage() {
   const { gesellschaft, objekt } = useSearch({
     from: "/verwaltung/mietverhaeltnisse",
@@ -119,6 +131,7 @@ export function MietverhaeltnissePage() {
   const [bearbeiten, setBearbeiten] = useState<Mietverhaeltnis | null>(null);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
   const [loeschenLaeuft, setLoeschenLaeuft] = useState(false);
+  const [suche, setSuche] = useState("");
 
   const gesellschaften = useApi(() => verwaltungApi.listGesellschaften(), []);
   const objekte = useApi(() => verwaltungApi.listObjekte(), []);
@@ -131,6 +144,7 @@ export function MietverhaeltnissePage() {
       }),
     [gesellschaft, objekt],
   );
+  const zeilen = useTabellenSuche(data?.items ?? [], suche, suchfelder);
 
   const schliessen = () => {
     setBearbeiten(null);
@@ -178,31 +192,33 @@ export function MietverhaeltnissePage() {
         }
       />
       <PageWrapper>
-        <StammdatenFilter
-          gesellschaften={gesellschaften.data?.items ?? []}
-          gesellschaftId={gesellschaft ?? null}
-          onGesellschaftChange={(id) =>
-            navigate({
-              search: { gesellschaft: id ?? undefined, objekt: undefined },
-              replace: true,
-            })
-          }
-          objekte={objekte.data?.items ?? []}
-          objektId={objekt ?? null}
-          onObjektChange={(id) =>
-            navigate({
-              search: (alt) => ({ ...alt, objekt: id ?? undefined }),
-              replace: true,
-            })
-          }
-        />
+        <VerwaltungTabellenLeiste suchbegriff={suche} onSuchbegriffChange={setSuche}>
+          <StammdatenFilter
+            gesellschaften={gesellschaften.data?.items ?? []}
+            gesellschaftId={gesellschaft ?? null}
+            onGesellschaftChange={(id) =>
+              navigate({
+                search: { gesellschaft: id ?? undefined, objekt: undefined },
+                replace: true,
+              })
+            }
+            objekte={objekte.data?.items ?? []}
+            objektId={objekt ?? null}
+            onObjektChange={(id) =>
+              navigate({
+                search: (alt) => ({ ...alt, objekt: id ?? undefined }),
+                replace: true,
+              })
+            }
+          />
+        </VerwaltungTabellenLeiste>
         <DataTable
           spalten={spalten}
-          zeilen={data?.items ?? []}
+          zeilen={zeilen}
           isLoading={isLoading}
-          isEmpty={isEmpty}
+          isEmpty={isEmpty && !suche.trim()}
           rowKey={(m) => m.id}
-          emptyTitel="Keine Mietverhältnisse"
+          emptyTitel={suche.trim() ? "Keine Treffer" : "Keine Mietverhältnisse"}
           onRowClick={
             darfAktion("aktion.verwaltung.mietverhaeltnisse.bearbeiten")
               ? (m) => setBearbeiten(m)

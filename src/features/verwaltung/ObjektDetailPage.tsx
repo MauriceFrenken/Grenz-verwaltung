@@ -27,6 +27,8 @@ import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import type { Einheit } from "@/types";
 import { EinheitForm } from "./EinheitForm";
 import { ObjektForm } from "./ObjektForm";
+import { VerwaltungTabellenLeiste } from "./TabellenSuche";
+import { useTabellenSuche } from "./useTabellenSuche";
 import { datum, euro, flaeche, NUTZUNGSART_LABEL, text } from "./format";
 
 const einheitenSpalten: Column<Einheit>[] = [
@@ -87,6 +89,15 @@ const einheitenSpalten: Column<Einheit>[] = [
   },
 ];
 
+const einheitenSuchfelder = [
+  (e: Einheit) => e.id,
+  (e: Einheit) => e.hausteil,
+  (e: Einheit) => e.lage,
+  (e: Einheit) => e.mieterName,
+  (e: Einheit) => NUTZUNGSART_LABEL[e.nutzungsart] ?? e.nutzungsart,
+  (e: Einheit) => e.status,
+];
+
 function Stammdaten({ eintraege }: { eintraege: [string, string][] }) {
   return (
     <dl className="grid grid-cols-2 gap-x-8 gap-y-4 border border-hairline bg-surface p-5 md:grid-cols-4">
@@ -113,6 +124,7 @@ export function ObjektDetailPage({ id }: { id: string }) {
   );
   const [einheitLoeschen, setEinheitLoeschen] = useState(false);
   const [einheitLoeschenLaeuft, setEinheitLoeschenLaeuft] = useState(false);
+  const [suche, setSuche] = useState("");
 
   const objekt = useApi(() => verwaltungApi.getObjekt(id), [id]);
   const einheiten = useApi(
@@ -121,6 +133,11 @@ export function ObjektDetailPage({ id }: { id: string }) {
   );
   const objekte = useApi(() => verwaltungApi.listObjekte(), []);
   const gesellschaften = useApi(() => verwaltungApi.listGesellschaften(), []);
+  const einheitenZeilen = useTabellenSuche(
+    einheiten.data?.items ?? [],
+    suche,
+    einheitenSuchfelder,
+  );
 
   const o = objekt.data;
 
@@ -263,13 +280,14 @@ export function ObjektDetailPage({ id }: { id: string }) {
           ]}
         />
 
+        <VerwaltungTabellenLeiste suchbegriff={suche} onSuchbegriffChange={setSuche} />
         <DataTable
           spalten={einheitenSpalten}
-          zeilen={einheiten.data?.items ?? []}
+          zeilen={einheitenZeilen}
           isLoading={einheiten.isLoading}
-          isEmpty={einheiten.isEmpty}
+          isEmpty={einheiten.isEmpty && !suche.trim()}
           rowKey={(e) => e.id}
-          emptyTitel="Keine Einheiten"
+          emptyTitel={suche.trim() ? "Keine Treffer" : "Keine Einheiten"}
           onRowClick={
             darfAktion("aktion.verwaltung.einheiten.bearbeiten")
               ? (e) => setEinheitBearbeiten(e)

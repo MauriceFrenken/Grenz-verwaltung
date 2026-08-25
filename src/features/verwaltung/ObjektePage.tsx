@@ -24,6 +24,8 @@ import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import type { Objekt } from "@/types";
 import { ObjektForm } from "./ObjektForm";
 import { StammdatenFilter } from "./StammdatenFilter";
+import { VerwaltungTabellenLeiste } from "./TabellenSuche";
+import { useTabellenSuche } from "./useTabellenSuche";
 import { euro, flaeche, text } from "./format";
 
 const spalten: Column<Objekt>[] = [
@@ -117,6 +119,16 @@ const spalten: Column<Objekt>[] = [
   },
 ];
 
+const suchfelder = [
+  (o: Objekt) => o.id,
+  (o: Objekt) => o.bezeichnung,
+  (o: Objekt) => o.gesellschaftName,
+  (o: Objekt) => o.adresse.strasse,
+  (o: Objekt) => o.adresse.plz,
+  (o: Objekt) => o.adresse.ort,
+  (o: Objekt) => o.status,
+];
+
 export function ObjektePage() {
   const { gesellschaft } = useSearch({ from: "/verwaltung/objekte" });
   const navigate = useNavigate();
@@ -126,12 +138,14 @@ export function ObjektePage() {
   const [bearbeiten, setBearbeiten] = useState<Objekt | null>(null);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
   const [loeschenLaeuft, setLoeschenLaeuft] = useState(false);
+  const [suche, setSuche] = useState("");
 
   const gesellschaften = useApi(() => verwaltungApi.listGesellschaften(), []);
   const { data, isLoading, isEmpty, reload } = useApi(
     () => verwaltungApi.listObjekte(gesellschaft),
     [gesellschaft],
   );
+  const zeilen = useTabellenSuche(data?.items ?? [], suche, suchfelder);
 
   const schliessen = () => {
     setBearbeiten(null);
@@ -172,24 +186,26 @@ export function ObjektePage() {
         }
       />
       <PageWrapper>
-        <StammdatenFilter
-          gesellschaften={gesellschaften.data?.items ?? []}
-          gesellschaftId={gesellschaft ?? null}
-          onGesellschaftChange={(id) =>
-            navigate({
-              to: "/verwaltung/objekte",
-              search: { gesellschaft: id ?? undefined },
-              replace: true,
-            })
-          }
-        />
+        <VerwaltungTabellenLeiste suchbegriff={suche} onSuchbegriffChange={setSuche}>
+          <StammdatenFilter
+            gesellschaften={gesellschaften.data?.items ?? []}
+            gesellschaftId={gesellschaft ?? null}
+            onGesellschaftChange={(id) =>
+              navigate({
+                to: "/verwaltung/objekte",
+                search: { gesellschaft: id ?? undefined },
+                replace: true,
+              })
+            }
+          />
+        </VerwaltungTabellenLeiste>
         <DataTable
           spalten={spalten}
-          zeilen={data?.items ?? []}
+          zeilen={zeilen}
           isLoading={isLoading}
-          isEmpty={isEmpty}
+          isEmpty={isEmpty && !suche.trim()}
           rowKey={(o) => o.id}
-          emptyTitel="Keine Objekte"
+          emptyTitel={suche.trim() ? "Keine Treffer" : "Keine Objekte"}
           onRowClick={
             darfAktion("aktion.verwaltung.objekte.bearbeiten")
               ? (o) => setBearbeiten(o)

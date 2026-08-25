@@ -24,6 +24,8 @@ import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import type { Einheit } from "@/types";
 import { EinheitForm } from "./EinheitForm";
 import { StammdatenFilter } from "./StammdatenFilter";
+import { VerwaltungTabellenLeiste } from "./TabellenSuche";
+import { useTabellenSuche } from "./useTabellenSuche";
 import { datum, euro, flaeche, NUTZUNGSART_LABEL, text } from "./format";
 
 const spalten: Column<Einheit>[] = [
@@ -120,6 +122,17 @@ const spalten: Column<Einheit>[] = [
   },
 ];
 
+const suchfelder = [
+  (e: Einheit) => e.id,
+  (e: Einheit) => e.objektBezeichnung,
+  (e: Einheit) => e.hausteil,
+  (e: Einheit) => e.lage,
+  (e: Einheit) => e.mieterName,
+  (e: Einheit) => e.gesellschaftName,
+  (e: Einheit) => NUTZUNGSART_LABEL[e.nutzungsart] ?? e.nutzungsart,
+  (e: Einheit) => e.status,
+];
+
 export function EinheitenPage() {
   const { gesellschaft, objekt } = useSearch({ from: "/verwaltung/einheiten" });
   const navigate = useNavigate({ from: "/verwaltung/einheiten" });
@@ -129,6 +142,7 @@ export function EinheitenPage() {
   const [bearbeiten, setBearbeiten] = useState<Einheit | null>(null);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
   const [loeschenLaeuft, setLoeschenLaeuft] = useState(false);
+  const [suche, setSuche] = useState("");
 
   const gesellschaften = useApi(() => verwaltungApi.listGesellschaften(), []);
   const objekte = useApi(() => verwaltungApi.listObjekte(), []);
@@ -140,6 +154,7 @@ export function EinheitenPage() {
       }),
     [gesellschaft, objekt],
   );
+  const zeilen = useTabellenSuche(data?.items ?? [], suche, suchfelder);
 
   const schliessen = () => {
     setBearbeiten(null);
@@ -182,31 +197,33 @@ export function EinheitenPage() {
         }
       />
       <PageWrapper>
-        <StammdatenFilter
-          gesellschaften={gesellschaften.data?.items ?? []}
-          gesellschaftId={gesellschaft ?? null}
-          onGesellschaftChange={(id) =>
-            navigate({
-              search: { gesellschaft: id ?? undefined, objekt: undefined },
-              replace: true,
-            })
-          }
-          objekte={objektListe}
-          objektId={objekt ?? null}
-          onObjektChange={(id) =>
-            navigate({
-              search: (alt) => ({ ...alt, objekt: id ?? undefined }),
-              replace: true,
-            })
-          }
-        />
+        <VerwaltungTabellenLeiste suchbegriff={suche} onSuchbegriffChange={setSuche}>
+          <StammdatenFilter
+            gesellschaften={gesellschaften.data?.items ?? []}
+            gesellschaftId={gesellschaft ?? null}
+            onGesellschaftChange={(id) =>
+              navigate({
+                search: { gesellschaft: id ?? undefined, objekt: undefined },
+                replace: true,
+              })
+            }
+            objekte={objektListe}
+            objektId={objekt ?? null}
+            onObjektChange={(id) =>
+              navigate({
+                search: (alt) => ({ ...alt, objekt: id ?? undefined }),
+                replace: true,
+              })
+            }
+          />
+        </VerwaltungTabellenLeiste>
         <DataTable
           spalten={spalten}
-          zeilen={data?.items ?? []}
+          zeilen={zeilen}
           isLoading={isLoading}
-          isEmpty={isEmpty}
+          isEmpty={isEmpty && !suche.trim()}
           rowKey={(e) => e.id}
-          emptyTitel="Keine Einheiten"
+          emptyTitel={suche.trim() ? "Keine Treffer" : "Keine Einheiten"}
           onRowClick={
             darfAktion("aktion.verwaltung.einheiten.bearbeiten")
               ? (e) => setBearbeiten(e)

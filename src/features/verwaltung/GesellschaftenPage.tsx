@@ -1,4 +1,7 @@
 import { useState } from "react";
+
+import { VerwaltungTabellenLeiste } from "./TabellenSuche";
+import { useTabellenSuche } from "./useTabellenSuche";
 import { Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -86,6 +89,15 @@ const spalten: Column<Gesellschaft>[] = [
   },
 ];
 
+const suchfelder = [
+  (g: Gesellschaft) => g.id,
+  (g: Gesellschaft) => g.name,
+  (g: Gesellschaft) => g.kuerzel,
+  (g: Gesellschaft) => g.datevPostfach,
+  (g: Gesellschaft) => g.objekteListe,
+  (g: Gesellschaft) => g.bemerkung,
+];
+
 export function GesellschaftenPage() {
   const { darfAktion } = usePermissions();
   const { erlaubtOderHinweis } = useAktionGuard();
@@ -93,10 +105,12 @@ export function GesellschaftenPage() {
   const [bearbeiten, setBearbeiten] = useState<Gesellschaft | null>(null);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
   const [loeschenLaeuft, setLoeschenLaeuft] = useState(false);
+  const [suche, setSuche] = useState("");
   const { data, isLoading, isEmpty, reload } = useApi(
     () => verwaltungApi.listGesellschaften(),
     [],
   );
+  const zeilen = useTabellenSuche(data?.items ?? [], suche, suchfelder);
 
   const schliessen = () => {
     setBearbeiten(null);
@@ -138,13 +152,14 @@ export function GesellschaftenPage() {
         }
       />
       <PageWrapper>
+        <VerwaltungTabellenLeiste suchbegriff={suche} onSuchbegriffChange={setSuche} />
         <DataTable
           spalten={spalten}
-          zeilen={data?.items ?? []}
+          zeilen={zeilen}
           isLoading={isLoading}
-          isEmpty={isEmpty}
+          isEmpty={isEmpty && !suche.trim()}
           rowKey={(g) => g.id}
-          emptyTitel="Noch keine Gesellschaften"
+          emptyTitel={suche.trim() ? "Keine Treffer" : "Noch keine Gesellschaften"}
           onRowClick={
             darfAktion("aktion.verwaltung.gesellschaften.bearbeiten")
               ? (g) => setBearbeiten(g)
