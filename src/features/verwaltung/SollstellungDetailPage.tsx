@@ -426,12 +426,21 @@ export function SollstellungDetailPage({ id }: { id: string }) {
         >
           <StammdatenFilter
             gesellschaften={gesellschaften.data?.items ?? []}
-            gesellschaftId={gesellschaftId}
+            gesellschaftId={
+              l.gesellschaftId ? l.gesellschaftId : gesellschaftId
+            }
             onGesellschaftChange={(gid) => {
               setGesellschaftId(gid);
               setObjektId(null);
             }}
-            objekte={objekte.data?.items ?? []}
+            gesellschaftFixiert={Boolean(l.gesellschaftId)}
+            objekte={(objekte.data?.items ?? []).filter(
+              (o) =>
+                (!l.gesellschaftId || o.gesellschaftId === l.gesellschaftId) &&
+                (!(l.gesellschaftId ? l.gesellschaftId : gesellschaftId) ||
+                  o.gesellschaftId ===
+                    (l.gesellschaftId ? l.gesellschaftId : gesellschaftId)),
+            )}
             objektId={objektId}
             onObjektChange={setObjektId}
           />

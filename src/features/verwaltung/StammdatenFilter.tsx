@@ -18,6 +18,7 @@ export function StammdatenFilter({
   objekte,
   objektId,
   onObjektChange,
+  gesellschaftFixiert = false,
 }: {
   gesellschaften: Gesellschaft[];
   gesellschaftId: string | null;
@@ -25,6 +26,8 @@ export function StammdatenFilter({
   objekte?: Objekt[];
   objektId?: string | null;
   onObjektChange?: (id: string | null) => void;
+  /** Wenn true: Gesellschaft-Dropdown ausblenden (Lauf ist bereits auf eine Gesellschaft begrenzt). */
+  gesellschaftFixiert?: boolean;
 }) {
   const objekteGefiltert = gesellschaftId
     ? (objekte ?? []).filter((o) => o.gesellschaftId === gesellschaftId)
@@ -32,30 +35,32 @@ export function StammdatenFilter({
 
   return (
     <div className="flex flex-wrap items-end gap-4">
-      <div className="grid gap-2">
-        <Label
-          htmlFor="filter-gesellschaft"
-          className="label-caps text-text-subtle"
-        >
-          Gesellschaft
-        </Label>
-        <Select
-          value={gesellschaftId ?? ALLE}
-          onValueChange={(v) => onGesellschaftChange(v === ALLE ? null : v)}
-        >
-          <SelectTrigger id="filter-gesellschaft" className="w-72 rounded-none">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALLE}>Alle Gesellschaften</SelectItem>
-            {gesellschaften.map((g) => (
-              <SelectItem key={g.id} value={g.id}>
-                {`${g.name} (${g.kuerzel})`}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {!gesellschaftFixiert ? (
+        <div className="grid gap-2">
+          <Label
+            htmlFor="filter-gesellschaft"
+            className="label-caps text-text-subtle"
+          >
+            Gesellschaft
+          </Label>
+          <Select
+            value={gesellschaftId ?? ALLE}
+            onValueChange={(v) => onGesellschaftChange(v === ALLE ? null : v)}
+          >
+            <SelectTrigger id="filter-gesellschaft" className="w-72 rounded-none">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALLE}>Alle Gesellschaften</SelectItem>
+              {gesellschaften.map((g) => (
+                <SelectItem key={g.id} value={g.id}>
+                  {`${g.name} (${g.kuerzel})`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
 
       {objekte && onObjektChange ? (
         <div className="grid gap-2">
