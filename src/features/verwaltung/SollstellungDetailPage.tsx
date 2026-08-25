@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -42,11 +42,10 @@ import { useTabellenSuche } from "./useTabellenSuche";
 import { datum, euro, monatLabel, text } from "./format";
 
 const STATUS_FILTER: Array<{
-  id: SollstellungPositionStatus | "alle" | "offen";
+  id: SollstellungPositionStatus | "alle";
   label: string;
 }> = [
   { id: "alle", label: "Alle" },
-  { id: "offen", label: "Offen" },
   { id: "fehlt", label: "Fehlt" },
   { id: "teilweise", label: "Teilweise" },
   { id: "ausgeglichen", label: "OK" },
@@ -133,8 +132,8 @@ export function SollstellungDetailPage({ id }: { id: string }) {
   const [gesellschaftId, setGesellschaftId] = useState<string | null>(null);
   const [objektId, setObjektId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<
-    SollstellungPositionStatus | "alle" | "offen"
-  >("offen");
+    SollstellungPositionStatus | "alle"
+  >("fehlt");
   const [importOffen, setImportOffen] = useState(false);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
   const [loeschenLaeuft, setLoeschenLaeuft] = useState(false);
@@ -150,10 +149,7 @@ export function SollstellungDetailPage({ id }: { id: string }) {
       buchhaltungApi.listPositionen(id, {
         gesellschaftId,
         objektId,
-        status:
-          statusFilter === "alle" || statusFilter === "offen"
-            ? null
-            : statusFilter,
+        status: statusFilter === "alle" ? null : statusFilter,
       }),
     [id, gesellschaftId, objektId, statusFilter],
   );
@@ -169,18 +165,11 @@ export function SollstellungDetailPage({ id }: { id: string }) {
     [detail?.id],
   );
 
-  const gefiltert = useMemo(() => {
-    const items = positionen.data?.items ?? [];
-    if (statusFilter !== "offen") return items;
-    return items.filter(
-      (p) =>
-        p.status === "fehlt" ||
-        p.status === "teilweise" ||
-        p.status === "ohne_iban",
-    );
-  }, [positionen.data?.items, statusFilter]);
-
-  const zeilen = useTabellenSuche(gefiltert, suche, suchfelder);
+  const zeilen = useTabellenSuche(
+    positionen.data?.items ?? [],
+    suche,
+    suchfelder,
+  );
 
   const reloadAlles = () => {
     lauf.reload();
@@ -342,7 +331,7 @@ export function SollstellungDetailPage({ id }: { id: string }) {
                 {l.anzahlFehlt + l.anzahlTeilweise}
               </span>
             }
-            hilfetext={`${l.anzahlAusgeglichen} ausgeglichen · ${l.anzahlOhneIban} ohne IBAN`}
+            hilfetext={`${l.anzahlFehlt} fehlt · ${l.anzahlTeilweise} teilweise`}
           />
         </div>
 
@@ -389,17 +378,15 @@ export function SollstellungDetailPage({ id }: { id: string }) {
             const count =
               s.id === "alle"
                 ? l.anzahlPositionen
-                : s.id === "offen"
-                  ? l.anzahlFehlt + l.anzahlTeilweise + l.anzahlOhneIban
-                  : s.id === "fehlt"
-                    ? l.anzahlFehlt
-                    : s.id === "teilweise"
-                      ? l.anzahlTeilweise
-                      : s.id === "ausgeglichen"
-                        ? l.anzahlAusgeglichen
-                        : s.id === "ueberzahlung"
-                          ? l.anzahlUeberzahlung
-                          : l.anzahlOhneIban;
+                : s.id === "fehlt"
+                  ? l.anzahlFehlt
+                  : s.id === "teilweise"
+                    ? l.anzahlTeilweise
+                    : s.id === "ausgeglichen"
+                      ? l.anzahlAusgeglichen
+                      : s.id === "ueberzahlung"
+                        ? l.anzahlUeberzahlung
+                        : l.anzahlOhneIban;
             return (
               <button
                 key={s.id}

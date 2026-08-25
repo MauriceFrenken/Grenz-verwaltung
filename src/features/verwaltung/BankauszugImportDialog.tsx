@@ -135,70 +135,85 @@ export function BankauszugImportDialog({
         onOpenChange(o);
       }}
     >
-      <DialogContent className="max-w-md overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Bankauszug importieren</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-2">
-          <div className="grid gap-2">
-            <Label
-              htmlFor="bank-gesellschaft"
-              className="label-caps text-text-subtle"
-            >
-              Gesellschaft
-            </Label>
-            <Select value={gesellschaftId} onValueChange={setGesellschaftId}>
-              <SelectTrigger
-                id="bank-gesellschaft"
-                className="w-full rounded-none"
+      <DialogContent className="max-w-lg w-[calc(100%-2rem)] gap-0 p-0 sm:rounded-none">
+        <div className="space-y-4 p-6 pb-4">
+          <DialogHeader>
+            <DialogTitle>Bankauszug importieren</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label
+                htmlFor="bank-gesellschaft"
+                className="label-caps text-text-subtle"
               >
-                <SelectValue placeholder="Gesellschaft wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {gesellschaften.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {`${g.name} (${g.kuerzel})`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                Gesellschaft
+              </Label>
+              <Select value={gesellschaftId} onValueChange={setGesellschaftId}>
+                <SelectTrigger
+                  id="bank-gesellschaft"
+                  className="w-full rounded-none"
+                >
+                  <SelectValue placeholder="Gesellschaft wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {gesellschaften.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {`${g.name} (${g.kuerzel})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="grid gap-2">
-            <Label className="label-caps text-text-subtle">Kontoauszug (PDF)</Label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="application/pdf,.pdf"
-              className="hidden"
-              onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              className="justify-start rounded-none"
-              onClick={() => fileRef.current?.click()}
-              disabled={parseLaeuft}
-            >
-              <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              {parseLaeuft
-                ? "PDF wird gelesen…"
-                : (dateiname ?? "PDF wählen")}
-            </Button>
-          </div>
+            <div className="grid gap-2">
+              <Label className="label-caps text-text-subtle">
+                Kontoauszug (PDF)
+              </Label>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                className="hidden"
+                onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto min-h-9 w-full justify-start rounded-none px-3 py-2"
+                onClick={() => fileRef.current?.click()}
+                disabled={parseLaeuft}
+              >
+                <Upload
+                  className="mr-2 h-4 w-4 shrink-0"
+                  strokeWidth={1.5}
+                />
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {parseLaeuft
+                    ? "PDF wird gelesen…"
+                    : (dateiname ?? "PDF wählen")}
+                </span>
+              </Button>
+            </div>
 
-          {vorschau ? (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border border-hairline bg-surface-muted p-3 text-sm">
-              <dt className="text-text-muted">Buchungen</dt>
-              <dd className="text-right text-heading">{vorschau.anzahl}</dd>
-              <dt className="text-text-muted">Eingänge</dt>
-              <dd className="text-right text-heading">{vorschau.eingaenge}</dd>
-              <dt className="text-text-muted">Mit IBAN</dt>
-              <dd className="text-right text-heading">{vorschau.mitIban}</dd>
-            </dl>
-          ) : null}
+            {vorschau ? (
+              <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 border border-hairline bg-surface-muted p-3 text-sm">
+                <dt className="text-text-muted">Buchungen</dt>
+                <dd className="text-right tabular-nums text-heading">
+                  {vorschau.anzahl}
+                </dd>
+                <dt className="text-text-muted">Eingänge</dt>
+                <dd className="text-right tabular-nums text-heading">
+                  {vorschau.eingaenge}
+                </dd>
+                <dt className="text-text-muted">Mit IBAN</dt>
+                <dd className="text-right tabular-nums text-heading">
+                  {vorschau.mitIban}
+                </dd>
+              </dl>
+            ) : null}
+          </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="gap-2 border-t border-hairline p-4 sm:space-x-0">
           <Button
             variant="outline"
             className="rounded-none"
