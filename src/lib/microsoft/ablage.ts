@@ -1,5 +1,6 @@
 import {
-  MICROSOFT_ABLAGE_ROOT_PREFIXES,
+  MICROSOFT_ABLAGE_ROOT_AUSSCHLUSS,
+  MICROSOFT_ABLAGE_ROOT_MUSTER,
   MICROSOFT_ONEDRIVE_USER,
   MICROSOFT_POST_MAILBOX,
 } from "./config";
@@ -35,17 +36,11 @@ export function microsoftPostMailbox(): string {
   ).trim().toLowerCase();
 }
 
-function normalisiereOrdnername(name: string): string {
-  return name.toUpperCase().replace(/[_\s]+/g, " ").trim();
-}
-
 /** Root-Filter: nur Gesellschaftsordner laut Kundenliste. */
 export function istAblageRootOrdner(name: string): boolean {
-  const n = normalisiereOrdnername(name);
-  return MICROSOFT_ABLAGE_ROOT_PREFIXES.some((prefix) => {
-    const p = normalisiereOrdnername(prefix);
-    return n === p || n.startsWith(`${p} `) || n.startsWith(`${p}-`);
-  });
+  const n = name.trim();
+  if (MICROSOFT_ABLAGE_ROOT_AUSSCHLUSS.some((m) => m.test(n))) return false;
+  return MICROSOFT_ABLAGE_ROOT_MUSTER.some((muster) => muster.test(n));
 }
 
 export async function microsoftOneDriveKinderLesen(input: {
@@ -64,9 +59,8 @@ export async function microsoftOneDriveKinderLesen(input: {
   }
 
   const root = await graphDriveRootKinder(accessToken, benutzer);
-  const items = root.filter(
-    (item) => item.istOrdner && istAblageRootOrdner(item.name),
-  );
+  // Nur nach Namen filtern — kein istOrdner-Zwang (Graph liefert facet manchmal nicht).
+  const items = root.filter((item) => istAblageRootOrdner(item.name));
   return { benutzer, items };
 }
 

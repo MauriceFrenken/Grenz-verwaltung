@@ -8,7 +8,6 @@ import { PermissionGate } from "@/components/auth/PermissionGate";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import { useAuth, usePermissions } from "@/hooks/useAuth";
-import { MICROSOFT_POST_MAILBOX } from "@/lib/microsoft/config";
 import type { GraphNachricht } from "@/lib/microsoft/graph";
 import { cn } from "@/lib/utils";
 
@@ -179,11 +178,6 @@ export function PostfachPage() {
     <>
       <PageHeader
         titel="Postfach"
-        nebenTitel={
-          <span className="truncate text-xs text-text-muted">
-            {MICROSOFT_POST_MAILBOX}
-          </span>
-        }
         aktionen={
           <Button
             type="button"

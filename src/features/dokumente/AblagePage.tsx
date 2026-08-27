@@ -6,7 +6,6 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { MICROSOFT_ONEDRIVE_USER } from "@/lib/microsoft/config";
 import type { GraphDriveItem } from "@/lib/microsoft/graph";
 import { cn } from "@/lib/utils";
 
@@ -153,11 +152,6 @@ export function AblagePage() {
     <>
       <PageHeader
         titel="Dokumentenablage"
-        nebenTitel={
-          <span className="truncate text-xs text-text-muted">
-            {MICROSOFT_ONEDRIVE_USER}
-          </span>
-        }
         aktionen={
           <Button
             type="button"
