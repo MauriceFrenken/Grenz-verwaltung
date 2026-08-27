@@ -65,16 +65,3 @@ export function AblageTeaser() {
     </TeaserShell>
   );
 }
-
-export function PostfachTeaser() {
-  return (
-    <TeaserShell>
-      <PageHeader titel="Postfach" />
-      <PageWrapper>
-        <div className="border border-hairline bg-surface">
-          <EmptyState titel="Keine Dokumente zur Prüfung" />
-        </div>
-      </PageWrapper>
-    </TeaserShell>
-  );
-}

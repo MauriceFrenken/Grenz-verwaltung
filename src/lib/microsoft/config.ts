@@ -1,10 +1,13 @@
 export const MICROSOFT_INTEGRATION_ID = "microsoft365";
 
 /**
- * Einziges Zielpostfach. App-only (Client Credentials) + Exchange Application
- * Access Policy beschränken den Zugriff auf genau diese Adresse.
+ * Ankauf-Postfach (Offene Exposés). App-only (Client Credentials) + Exchange
+ * Application Access Policy beschränken den Zugriff auf freigegebene Adressen.
  */
 export const MICROSOFT_DEFAULT_MAILBOX = "ankauf@frenken-immobilien.com";
+
+/** Shared Postfach für Dokumente › Postfach. */
+export const MICROSOFT_POST_MAILBOX = "post@frenken-immobilien.com";
 
 export const MICROSOFT_PRODUCTION_ORIGIN = "https://frenken-expose-ai.vercel.app";
 

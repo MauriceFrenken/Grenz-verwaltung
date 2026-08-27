@@ -26,7 +26,7 @@ export function microsoftServerTenantId(): string {
   return readEnv("MICROSOFT_TENANT_ID") || readEnv("VITE_MICROSOFT_TENANT_ID") || "organizations";
 }
 
-/** Einziges Postfach, das die App auslesen darf (muss zur Access Policy passen). */
+/** Ankauf-Postfach für Offene Exposés (muss zur Access Policy passen). */
 export function microsoftPostfach(): string {
   return (readEnv("MICROSOFT_MAILBOX") || MICROSOFT_DEFAULT_MAILBOX).trim().toLowerCase();
 }
