@@ -1,4 +1,8 @@
-import { MICROSOFT_ONEDRIVE_USER, MICROSOFT_POST_MAILBOX } from "./config";
+import {
+  MICROSOFT_ABLAGE_ROOT_PREFIXES,
+  MICROSOFT_ONEDRIVE_USER,
+  MICROSOFT_POST_MAILBOX,
+} from "./config";
 import {
   graphAnhangBinary,
   graphDriveDateiHochladen,
@@ -31,6 +35,19 @@ export function microsoftPostMailbox(): string {
   ).trim().toLowerCase();
 }
 
+function normalisiereOrdnername(name: string): string {
+  return name.toUpperCase().replace(/[_\s]+/g, " ").trim();
+}
+
+/** Root-Filter: nur Gesellschaftsordner laut Kundenliste. */
+export function istAblageRootOrdner(name: string): boolean {
+  const n = normalisiereOrdnername(name);
+  return MICROSOFT_ABLAGE_ROOT_PREFIXES.some((prefix) => {
+    const p = normalisiereOrdnername(prefix);
+    return n === p || n.startsWith(`${p} `) || n.startsWith(`${p}-`);
+  });
+}
+
 export async function microsoftOneDriveKinderLesen(input: {
   supabaseAccessToken: string;
   /** Leer / fehlend = Root. */
@@ -41,10 +58,15 @@ export async function microsoftOneDriveKinderLesen(input: {
   const benutzer = microsoftOneDriveUser();
   const itemId = input.itemId?.trim() || null;
 
-  const items = itemId
-    ? await graphDriveItemKinder(accessToken, benutzer, itemId)
-    : await graphDriveRootKinder(accessToken, benutzer);
+  if (itemId) {
+    const items = await graphDriveItemKinder(accessToken, benutzer, itemId);
+    return { benutzer, items };
+  }
 
+  const root = await graphDriveRootKinder(accessToken, benutzer);
+  const items = root.filter(
+    (item) => item.istOrdner && istAblageRootOrdner(item.name),
+  );
   return { benutzer, items };
 }
 
