@@ -66,10 +66,10 @@ export function AblageTeaser() {
   );
 }
 
-export function PruefOrdnerTeaser() {
+export function PostfachTeaser() {
   return (
     <TeaserShell>
-      <PageHeader titel="Prüf-Ordner" />
+      <PageHeader titel="Postfach" />
       <PageWrapper>
         <div className="border border-hairline bg-surface">
           <EmptyState titel="Keine Dokumente zur Prüfung" />

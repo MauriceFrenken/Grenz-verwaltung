@@ -4,5 +4,5 @@ export {
   ZahlungenTeaser,
   NebenkostenTeaser,
 } from "./verwaltung";
-export { AblageTeaser, PruefOrdnerTeaser } from "./dokumente";
+export { AblageTeaser, PostfachTeaser } from "./dokumente";
 export { AuditTeaser } from "./einstellungen";

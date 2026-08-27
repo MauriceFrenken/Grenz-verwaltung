@@ -14,7 +14,7 @@ export const SEITEN_BERECHTIGUNGEN = [
   { id: "seite.verwaltung.zahlungen", pfad: "/verwaltung/zahlungen", label: "Zahlungen & Rückstände", gruppe: "Buchhaltung" },
   { id: "seite.verwaltung.nebenkosten", pfad: "/verwaltung/nebenkosten", label: "Nebenkostenabrechnung", gruppe: "Buchhaltung" },
   { id: "seite.dokumente.ablage", pfad: "/dokumente/ablage", label: "Dokumentenablage", gruppe: "Dokumente" },
-  { id: "seite.dokumente.pruefordner", pfad: "/dokumente/pruefordner", label: "Prüf-Ordner", gruppe: "Dokumente" },
+  { id: "seite.dokumente.pruefordner", pfad: "/dokumente/pruefordner", label: "Postfach", gruppe: "Dokumente" },
   { id: "seite.transaktionen.liste", pfad: "/transaktionen/liste", label: "Offene Exposés", gruppe: "Transaktionen" },
   { id: "seite.transaktionen.expose_import", pfad: "/transaktionen/expose-import", label: "Exposé-Import", gruppe: "Transaktionen" },
   { id: "seite.einstellungen.benutzer", pfad: "/einstellungen/benutzer", label: "Benutzer", gruppe: "Einstellungen" },

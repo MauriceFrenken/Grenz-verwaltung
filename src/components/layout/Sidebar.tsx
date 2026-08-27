@@ -74,7 +74,7 @@ const sections: NavSection[] = [
     label: "Dokumente",
     items: [
       { to: "/dokumente/ablage", label: "Dokumentenablage", icon: FolderOpen, berechtigung: "seite.dokumente.ablage" },
-      { to: "/dokumente/pruefordner", label: "Prüf-Ordner", icon: ClipboardCheck, berechtigung: "seite.dokumente.pruefordner" },
+      { to: "/dokumente/pruefordner", label: "Postfach", icon: ClipboardCheck, berechtigung: "seite.dokumente.pruefordner" },
     ],
   },
   {
