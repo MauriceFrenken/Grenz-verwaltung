@@ -99,8 +99,8 @@ export function IntegrationenPage() {
         const anzahl = next.postfachNachrichten;
         toast.success(
           anzahl === null
-            ? `Posteingang von ${next.postfach} ist lesbar.`
-            : `Posteingang von ${next.postfach} ist lesbar (${anzahl.toLocaleString("de-DE")} Nachrichten).`,
+            ? `Postfach und OneDrive erreichbar (${next.postfach}).`
+            : `Postfach und OneDrive erreichbar (${next.postfach}, ${anzahl.toLocaleString("de-DE")} Nachrichten).`,
         );
       } else {
         toast.error(next.letzterFehler ?? "Prüfung fehlgeschlagen.", { duration: 14_000 });

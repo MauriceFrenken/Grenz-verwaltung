@@ -4,5 +4,4 @@ export {
   ZahlungenTeaser,
   NebenkostenTeaser,
 } from "./verwaltung";
-export { AblageTeaser } from "./dokumente";
 export { AuditTeaser } from "./einstellungen";

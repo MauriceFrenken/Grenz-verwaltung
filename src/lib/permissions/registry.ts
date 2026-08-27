@@ -46,6 +46,7 @@ export const AKTIONS_BERECHTIGUNGEN = [
   { id: "aktion.dokumente.pruefordner.bestaetigen", label: "Bestätigen", seite: "seite.dokumente.pruefordner", gruppe: "Dokumente" },
   { id: "aktion.dokumente.pruefordner.neu_zuordnen", label: "Neu zuordnen", seite: "seite.dokumente.pruefordner", gruppe: "Dokumente" },
   { id: "aktion.dokumente.pruefordner.ablehnen", label: "Ablehnen", seite: "seite.dokumente.pruefordner", gruppe: "Dokumente" },
+  { id: "aktion.dokumente.pruefordner.ablegen", label: "Auf OneDrive ablegen", seite: "seite.dokumente.pruefordner", gruppe: "Dokumente" },
   { id: "aktion.dokumente.outlook.verbinden", label: "Outlook verbinden", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },
   { id: "aktion.dokumente.kategorien.verwalten", label: "Kategorien verwalten", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },
   { id: "aktion.dokumente.posteingang.analysieren", label: "KI-Analyse starten", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },

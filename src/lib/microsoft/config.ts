@@ -9,6 +9,9 @@ export const MICROSOFT_DEFAULT_MAILBOX = "ankauf@frenken-immobilien.com";
 /** Shared Postfach für Dokumente › Postfach. */
 export const MICROSOFT_POST_MAILBOX = "post@frenken-immobilien.com";
 
+/** OneDrive-Benutzer für Dokumente › Dokumentenablage. */
+export const MICROSOFT_ONEDRIVE_USER = "m.frenken@frenken-immobilien.com";
+
 export const MICROSOFT_PRODUCTION_ORIGIN = "https://frenken-expose-ai.vercel.app";
 
 /** Scope für Client Credentials — lädt alle Application-Permissions der Entra-App. */

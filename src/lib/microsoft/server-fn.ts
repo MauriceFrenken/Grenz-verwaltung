@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import {
+  microsoftAnhaengeNachOneDriveAblegen,
+  microsoftDokumentPosteingangLesen,
+  microsoftOneDriveKinderLesen,
+} from "./ablage";
+import {
   completeMicrosoftConnect,
   disconnectMicrosoft,
   microsoftStatusFuerNutzer,
@@ -45,3 +50,50 @@ export const microsoftPosteingangFn = createServerFn({ method: "POST" })
 export const microsoftAnhaengeFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { supabaseAccessToken: string; nachrichtId: string })
   .handler(async ({ data }) => microsoftAnhaengeLesen(data));
+
+export const microsoftOneDriveKinderFn = createServerFn({ method: "POST" })
+  .validator(
+    (data: unknown) =>
+      data as {
+        supabaseAccessToken: string;
+        itemId?: string | null;
+      },
+  )
+  .handler(async ({ data }) =>
+    microsoftOneDriveKinderLesen({
+      supabaseAccessToken: asToken(data),
+      itemId: data.itemId,
+    }),
+  );
+
+export const microsoftDokumentPosteingangFn = createServerFn({ method: "POST" })
+  .validator(
+    (data: unknown) =>
+      data as {
+        supabaseAccessToken: string;
+        anzahl?: number;
+      },
+  )
+  .handler(async ({ data }) =>
+    microsoftDokumentPosteingangLesen({
+      supabaseAccessToken: asToken(data),
+      anzahl: data.anzahl,
+    }),
+  );
+
+export const microsoftAnhangAblegenFn = createServerFn({ method: "POST" })
+  .validator(
+    (data: unknown) =>
+      data as {
+        supabaseAccessToken: string;
+        nachrichtId: string;
+        parentItemId?: string | null;
+      },
+  )
+  .handler(async ({ data }) =>
+    microsoftAnhaengeNachOneDriveAblegen({
+      supabaseAccessToken: asToken(data),
+      nachrichtId: data.nachrichtId,
+      parentItemId: data.parentItemId,
+    }),
+  );

@@ -1,10 +1,13 @@
 <#
 .SYNOPSIS
-  Beschränkt die Entra-App „Frenken Verwaltung“ auf das Shared Postfach ankauf@.
+  Beschränkt die Entra-App „Frenken Verwaltung“ auf freigegebene Shared Postfächer.
 
 .DESCRIPTION
   Application-Permission Mail.ReadWrite gilt standardmäßig für ALLE Postfächer.
   Entra kann das nicht eingrenzen — nur Exchange Online Application Access Policy.
+
+  Freigegeben: ankauf@ (Offene Exposés) und post@ (Dokumente › Postfach).
+  OneDrive (Files.*) wird von dieser Policy NICHT beschränkt.
 
   Voraussetzungen:
   - Exchange Admin (oder Global Admin)
@@ -17,7 +20,10 @@
 
 param(
   [string]$AppId = "fcacca52-9a81-46f9-b250-9a4b6059b7bb",
-  [string]$Mailbox = "ankauf@frenken-immobilien.com",
+  [string[]]$Mailboxes = @(
+    "ankauf@frenken-immobilien.com",
+    "post@frenken-immobilien.com"
+  ),
   [string]$GroupName = "Frenken-Graph-Ankauf-Only",
   [string]$ProbeMailbox = "m.frenken@frenken-immobilien.com"
 )
@@ -41,14 +47,18 @@ if (-not $group) {
   Write-Host "    Gruppe existiert bereits." -ForegroundColor DarkGray
 }
 
-Write-Host ">>> $Mailbox zur Gruppe hinzufügen…" -ForegroundColor Cyan
 $members = Get-DistributionGroupMember -Identity $GroupName -ResultSize Unlimited |
   Select-Object -ExpandProperty PrimarySmtpAddress
-if ($members -notcontains $Mailbox) {
-  Add-DistributionGroupMember -Identity $GroupName -Member $Mailbox
-  Write-Host "    Mitglied hinzugefügt." -ForegroundColor Green
-} else {
-  Write-Host "    Mitglied war schon drin." -ForegroundColor DarkGray
+
+foreach ($Mailbox in $Mailboxes) {
+  Write-Host ">>> $Mailbox zur Gruppe hinzufügen…" -ForegroundColor Cyan
+  if ($members -notcontains $Mailbox) {
+    Add-DistributionGroupMember -Identity $GroupName -Member $Mailbox
+    Write-Host "    Mitglied hinzugefügt." -ForegroundColor Green
+    $members += $Mailbox
+  } else {
+    Write-Host "    Mitglied war schon drin." -ForegroundColor DarkGray
+  }
 }
 
 Write-Host ">>> Application Access Policy (RestrictAccess)…" -ForegroundColor Cyan
@@ -68,22 +78,25 @@ New-ApplicationAccessPolicy `
   -AppId $AppId `
   -PolicyScopeGroupId $GroupName `
   -AccessRight RestrictAccess `
-  -Description "Frenken Expose Agent: nur Shared Postfach ankauf@"
+  -Description "Frenken Expose Agent: Shared Postfächer ankauf@ und post@"
 
 Write-Host ">>> Tests (Propagation kann bis ~1 Stunde dauern)…" -ForegroundColor Cyan
 Start-Sleep -Seconds 5
 
-Write-Host "    Erlaubt für $Mailbox :" -ForegroundColor DarkGray
-Test-ApplicationAccessPolicy -Identity $Mailbox -AppId $AppId | Format-List
+foreach ($Mailbox in $Mailboxes) {
+  Write-Host "    Erlaubt für $Mailbox :" -ForegroundColor DarkGray
+  Test-ApplicationAccessPolicy -Identity $Mailbox -AppId $AppId | Format-List
+}
 
 if ($ProbeMailbox) {
-  Write-Host "    Muss DENIED sein für $ProbeMailbox :" -ForegroundColor DarkGray
+  Write-Host "    Muss DENIED sein für $ProbeMailbox (Mail; OneDrive separat via Files.*) :" -ForegroundColor DarkGray
   Test-ApplicationAccessPolicy -Identity $ProbeMailbox -AppId $AppId | Format-List
 }
 
 Write-Host @"
 
-Fertig. Danach in der App unter Integrationen „App-Verbindung herstellen“.
+Fertig. Danach in der App unter Integrationen „Verbindung prüfen“
+(holt frisches Token inkl. Files.ReadWrite.All).
 "@ -ForegroundColor Green
 
 Disconnect-ExchangeOnline -Confirm:$false

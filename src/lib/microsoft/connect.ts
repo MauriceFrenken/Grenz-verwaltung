@@ -1,4 +1,5 @@
-import { graphPostfachPruefen } from "./graph";
+import { graphPostfachPruefen, graphDriveRootKinder } from "./graph";
+import { microsoftOneDriveUser } from "./ablage";
 import { microsoftAccessToken } from "./postfach";
 import {
   leseMicrosoftRow,
@@ -84,6 +85,8 @@ export async function completeMicrosoftConnect(input: {
   const tokens = await acquireMicrosoftAppToken();
   // Nur Mail-Endpunkt — /users/{mail} (Profil) braucht User.Read.All und ist unnötig.
   const info = await graphPostfachPruefen(tokens.accessToken, postfach);
+  // OneDrive (Dokumentenablage) — braucht Files.ReadWrite.All + Admin Consent.
+  await graphDriveRootKinder(tokens.accessToken, microsoftOneDriveUser());
 
   const status = await speichereMicrosoftVerbindung({
     tokens,
@@ -112,8 +115,10 @@ export async function probeMicrosoft(supabaseAccessToken: string): Promise<Micro
   }
 
   try {
-    const { accessToken } = await microsoftAccessToken();
+    // Frisches Token — neue Entra-Permissions (z. B. Files.ReadWrite.All) sofort aktiv.
+    const { accessToken } = await microsoftAccessToken({ erneuern: true });
     const info = await graphPostfachPruefen(accessToken, postfach);
+    await graphDriveRootKinder(accessToken, microsoftOneDriveUser());
     await markiereMicrosoftPruefungOk();
     return statusPayload(await leseMicrosoftStatus(), info.anzahlNachrichten);
   } catch (e) {

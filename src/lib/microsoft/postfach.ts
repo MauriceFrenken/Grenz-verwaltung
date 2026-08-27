@@ -11,8 +11,11 @@ import { acquireMicrosoftAppToken, microsoftPostfach } from "./token-exchange";
 /**
  * Gültiges App-only Access Token. Bei Ablauf erneut per Client Credentials —
  * kein Refresh Token.
+ * `erneuern: true` erzwingt ein neues Token (z. B. nach neuen Entra-Permissions).
  */
-export async function microsoftAccessToken(): Promise<{ accessToken: string; scopes: string | null }> {
+export async function microsoftAccessToken(
+  optionen: { erneuern?: boolean } = {},
+): Promise<{ accessToken: string; scopes: string | null }> {
   const row = await leseMicrosoftRow();
   if (row?.status === "getrennt" && !row.accessToken) {
     throw new Error("Microsoft ist nicht verbunden. Bitte unter Einstellungen › Integrationen verbinden.");
@@ -21,7 +24,7 @@ export async function microsoftAccessToken(): Promise<{ accessToken: string; sco
   const abgelaufen =
     !row?.tokenLaeuftAbAm || new Date(row.tokenLaeuftAbAm).getTime() < Date.now() + 60_000;
 
-  if (row?.accessToken && !abgelaufen) {
+  if (!optionen.erneuern && row?.accessToken && !abgelaufen) {
     return { accessToken: row.accessToken, scopes: row.scopes };
   }
 

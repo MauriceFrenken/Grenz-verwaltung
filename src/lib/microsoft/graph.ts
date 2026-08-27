@@ -61,8 +61,8 @@ function graphFehler(
   }
   if (status === 403) {
     return new Error(
-      `Kein Zugriff auf ${postfach ?? "das Postfach"}. In Entra braucht die App die Application-Permission ` +
-        `„Mail.ReadWrite“ (nicht Delegated) und „Grant admin consent“. Graph: ${message}`,
+      `Kein Zugriff auf ${postfach ?? "die Ressource"}. In Entra braucht die App die passende ` +
+        `Application-Permission (z. B. Mail.ReadWrite / Files.Read.All) und Admin Consent. Graph: ${message}`,
     );
   }
   if (
@@ -424,4 +424,249 @@ export async function graphNachrichtVerschieben(
     postfach,
   );
   return verschoben.id ?? nachrichtId;
+}
+
+export type GraphDriveItem = {
+  id: string;
+  name: string;
+  istOrdner: boolean;
+  groesse: number;
+  geaendertAm: string | null;
+  webUrl: string | null;
+  childCount: number | null;
+};
+
+type RohDriveItem = {
+  id?: string;
+  name?: string;
+  size?: number;
+  lastModifiedDateTime?: string;
+  webUrl?: string;
+  folder?: { childCount?: number };
+  file?: unknown;
+};
+
+function mapDriveItem(roh: RohDriveItem): GraphDriveItem | null {
+  if (!roh.id || !roh.name) return null;
+  const istOrdner = roh.folder != null;
+  return {
+    id: roh.id,
+    name: roh.name,
+    istOrdner,
+    groesse: typeof roh.size === "number" ? roh.size : 0,
+    geaendertAm: roh.lastModifiedDateTime ?? null,
+    webUrl: roh.webUrl ?? null,
+    childCount:
+      istOrdner && typeof roh.folder?.childCount === "number"
+        ? roh.folder.childCount
+        : null,
+  };
+}
+
+function driveItemsSortieren(items: GraphDriveItem[]): GraphDriveItem[] {
+  return [...items].sort((a, b) => {
+    if (a.istOrdner !== b.istOrdner) return a.istOrdner ? -1 : 1;
+    return a.name.localeCompare(b.name, "de", { sensitivity: "base" });
+  });
+}
+
+async function graphDriveKinderSeite(
+  pfad: string,
+  accessToken: string,
+  benutzer: string,
+): Promise<GraphDriveItem[]> {
+  const select =
+    "id,name,folder,file,size,lastModifiedDateTime,webUrl";
+  const params = new URLSearchParams({
+    $select: select,
+    $top: "200",
+  });
+
+  const items: GraphDriveItem[] = [];
+  let url: string | null = `${GRAPH_BASIS}${pfad}?${params.toString()}`;
+
+  while (url) {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const json: unknown = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw graphFehler(res.status, json as GraphFehlerJson, benutzer);
+    }
+    const data = json as {
+      value?: RohDriveItem[];
+      "@odata.nextLink"?: string;
+    };
+    for (const roh of data.value ?? []) {
+      const item = mapDriveItem(roh);
+      if (item) items.push(item);
+    }
+    url = data["@odata.nextLink"] ?? null;
+  }
+
+  return driveItemsSortieren(items);
+}
+
+/** Kinder des OneDrive-Root eines Benutzers. */
+export async function graphDriveRootKinder(
+  accessToken: string,
+  benutzer: string,
+): Promise<GraphDriveItem[]> {
+  return graphDriveKinderSeite(
+    `/users/${encodeURIComponent(benutzer)}/drive/root/children`,
+    accessToken,
+    benutzer,
+  );
+}
+
+/** Kinder eines OneDrive-Ordners. */
+export async function graphDriveItemKinder(
+  accessToken: string,
+  benutzer: string,
+  itemId: string,
+): Promise<GraphDriveItem[]> {
+  return graphDriveKinderSeite(
+    `/users/${encodeURIComponent(benutzer)}/drive/items/${encodeURIComponent(itemId)}/children`,
+    accessToken,
+    benutzer,
+  );
+}
+
+const GRAPH_SIMPLE_UPLOAD_MAX = 4 * 1024 * 1024;
+
+/** Unzulässige Zeichen in OneDrive-Dateinamen ersetzen. */
+export function graphDriveDateinameSaeubern(name: string): string {
+  const bereinigt = name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").trim();
+  return bereinigt || "datei";
+}
+
+function driveUploadPfad(
+  benutzer: string,
+  dateiname: string,
+  parentItemId?: string | null,
+): string {
+  const safe = encodeURIComponent(graphDriveDateinameSaeubern(dateiname));
+  if (parentItemId) {
+    return `/users/${encodeURIComponent(benutzer)}/drive/items/${encodeURIComponent(parentItemId)}:/${safe}:/content`;
+  }
+  return `/users/${encodeURIComponent(benutzer)}/drive/root:/${safe}:/content`;
+}
+
+async function graphDriveSimpleUpload(
+  accessToken: string,
+  benutzer: string,
+  pfad: string,
+  bytes: Uint8Array,
+  contentType: string | null,
+): Promise<GraphDriveItem> {
+  const res = await fetch(`${GRAPH_BASIS}${pfad}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": contentType || "application/octet-stream",
+    },
+    body: Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength),
+  });
+  const json: unknown = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw graphFehler(res.status, json as GraphFehlerJson, benutzer);
+  }
+  const item = mapDriveItem(json as RohDriveItem);
+  if (!item) {
+    throw new Error("OneDrive-Upload: Antwort ohne Datei-Metadaten.");
+  }
+  return item;
+}
+
+/** Upload-Session für Dateien > 4 MB (Graph-Limit für Simple Upload). */
+async function graphDriveSessionUpload(
+  accessToken: string,
+  benutzer: string,
+  dateiname: string,
+  bytes: Uint8Array,
+  parentItemId?: string | null,
+): Promise<GraphDriveItem> {
+  const safeName = graphDriveDateinameSaeubern(dateiname);
+  const createPfad = parentItemId
+    ? `/users/${encodeURIComponent(benutzer)}/drive/items/${encodeURIComponent(parentItemId)}:/${encodeURIComponent(safeName)}:/createUploadSession`
+    : `/users/${encodeURIComponent(benutzer)}/drive/root:/${encodeURIComponent(safeName)}:/createUploadSession`;
+
+  const session = await graphPost<{ uploadUrl?: string }>(
+    createPfad,
+    accessToken,
+    {
+      item: {
+        "@microsoft.graph.conflictBehavior": "rename",
+        name: safeName,
+      },
+    },
+    benutzer,
+  );
+
+  if (!session.uploadUrl) {
+    throw new Error("OneDrive-Upload-Session konnte nicht gestartet werden.");
+  }
+
+  const total = bytes.byteLength;
+  const chunkSize = 320 * 1024 * 10; // 3,2 MB — Vielfaches von 320 KiB
+  let offset = 0;
+  let zuletzt: unknown = {};
+
+  while (offset < total) {
+    const ende = Math.min(offset + chunkSize, total);
+    const chunk = bytes.subarray(offset, ende);
+    const res = await fetch(session.uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Length": String(chunk.byteLength),
+        "Content-Range": `bytes ${offset}-${ende - 1}/${total}`,
+      },
+      body: Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength),
+    });
+    zuletzt = await res.json().catch(() => ({}));
+    if (!res.ok && res.status !== 202) {
+      throw graphFehler(res.status, zuletzt as GraphFehlerJson, benutzer);
+    }
+    offset = ende;
+  }
+
+  const item = mapDriveItem(zuletzt as RohDriveItem);
+  if (!item) {
+    throw new Error(`Upload von „${safeName}“ abgeschlossen, aber ohne Datei-Metadaten.`);
+  }
+  return item;
+}
+
+/** Datei in OneDrive hochladen (Root oder Unterordner). Bei Namenskonflikt: umbenennen. */
+export async function graphDriveDateiHochladen(
+  accessToken: string,
+  benutzer: string,
+  dateiname: string,
+  bytes: Uint8Array,
+  optionen: { parentItemId?: string | null; contentType?: string | null } = {},
+): Promise<GraphDriveItem> {
+  if (bytes.byteLength === 0) {
+    throw new Error(`Datei „${dateiname}“ ist leer.`);
+  }
+
+  if (bytes.byteLength <= GRAPH_SIMPLE_UPLOAD_MAX) {
+    const pfad =
+      driveUploadPfad(benutzer, dateiname, optionen.parentItemId) +
+      "?@microsoft.graph.conflictBehavior=rename";
+    return graphDriveSimpleUpload(
+      accessToken,
+      benutzer,
+      pfad,
+      bytes,
+      optionen.contentType ?? null,
+    );
+  }
+
+  return graphDriveSessionUpload(
+    accessToken,
+    benutzer,
+    dateiname,
+    bytes,
+    optionen.parentItemId,
+  );
 }
