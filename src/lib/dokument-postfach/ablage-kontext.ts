@@ -14,6 +14,29 @@ import { createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
 
 const MAX_ORDNER_TIEFE = 8;
 const OBJEKT_KONFIDENZ_SCHWELLE = 0.45;
+const MIN_GESELLSCHAFT_ORDNER_SCORE = 12;
+
+const GENERISCHE_NAMENS_TOKENS = new Set([
+  "gmbh",
+  "co",
+  "kg",
+  "ag",
+  "und",
+  "der",
+  "die",
+  "das",
+  "gruppe",
+]);
+
+/** Allein zu schwach — „Capital“ trifft MTF und FRENKEN Capital Management. */
+const SCHWACHE_NAMENS_TOKENS = new Set([
+  "capital",
+  "management",
+  "holding",
+  "immobilien",
+  "investment",
+  "frenken",
+]);
 
 export function normalisiereSuchtext(text: string): string {
   return text
@@ -97,6 +120,79 @@ function scoreObjektMatch(
   return score;
 }
 
+/**
+ * Wie gut ein OneDrive-Root-Ordner zur Gesellschaft passt.
+ * Höher = besser. MTF ≠ FRENKEN Capital Management (nur „capital“ reicht nicht).
+ */
+export function scoreGesellschaftOrdner(
+  ordnerName: string,
+  gs: { name: string; kuerzel: string },
+): number {
+  const ordner = normalisiereSuchtext(ordnerName);
+  const name = normalisiereSuchtext(gs.name);
+  const kuerzel = normalisiereSuchtext(gs.kuerzel);
+
+  if (!ordner) return 0;
+
+  if (ordner === name) return 100;
+
+  if (kuerzel.length >= 2 && ordner.includes(kuerzel)) {
+    return kuerzel.length >= 3 ? 85 : 70;
+  }
+
+  const nameTeile = name.split(/\s+/).filter((t) => t.length >= 2);
+  const stark = nameTeile.filter(
+    (t) => !GENERISCHE_NAMENS_TOKENS.has(t) && !SCHWACHE_NAMENS_TOKENS.has(t),
+  );
+  const schwach = nameTeile.filter((t) => SCHWACHE_NAMENS_TOKENS.has(t));
+
+  let score = 0;
+
+  for (const t of stark) {
+    if (ordner.includes(t)) score += t.length * 3;
+    else return 0;
+  }
+
+  for (const t of schwach) {
+    if (ordner.includes(t)) score += t.length;
+  }
+
+  if (name.includes("mtf")) {
+    if (!ordner.includes("mtf")) return 0;
+    score += 20;
+  }
+
+  if (name.includes("frenken")) {
+    if (!ordner.includes("frenken")) return 0;
+    score += 10;
+  } else if (ordner.includes("frenken")) {
+    score -= 40;
+  }
+
+  if (ordner.includes("mtf") && !name.includes("mtf")) {
+    score -= 40;
+  }
+
+  if (stark.length === 0 && schwach.length > 0) {
+    const schwachTreffer = schwach.filter((t) => ordner.includes(t)).length;
+    if (schwachTreffer < schwach.length) return 0;
+    score += schwachTreffer * 4;
+  }
+
+  if (name.includes("immobilien") && !ordner.includes("immobilien")) return 0;
+  if (name.includes("investment") && !ordner.includes("investment")) return 0;
+  if (name.includes("holding") && !ordner.includes("holding")) return 0;
+  if (
+    name.includes("capital") &&
+    name.includes("management") &&
+    !ordner.includes("management")
+  ) {
+    score -= 15;
+  }
+
+  return score;
+}
+
 export async function ladeStammdatenKontext(): Promise<string> {
   const admin = createServiceRoleClient();
 
@@ -131,16 +227,23 @@ export async function findeGesellschaftRootOrdner(
   gesellschaftId: string,
   gesellschaften: Array<{ id: string; name: string; kuerzel: string }>,
 ): Promise<{ id: string; pfad: string } | null> {
+  const gs = gesellschaften.find((g) => g.id === gesellschaftId);
+  if (!gs) return null;
+
   const benutzer = microsoftOneDriveUser();
   const root = await graphDriveRootKinder(accessToken, benutzer);
 
+  let best: { id: string; pfad: string; score: number } | null = null;
+
   for (const item of root) {
     if (!item.istOrdner || !istAblageRootOrdner(item.name)) continue;
-    if (passtPfadZuGesellschaft(`${item.name}/`, gesellschaftId, gesellschaften)) {
-      return { id: item.id, pfad: item.name };
+    const score = scoreGesellschaftOrdner(item.name, gs);
+    if (score >= MIN_GESELLSCHAFT_ORDNER_SCORE && (!best || score > best.score)) {
+      best = { id: item.id, pfad: item.name, score };
     }
   }
-  return null;
+
+  return best ? { id: best.id, pfad: best.pfad } : null;
 }
 
 /**
@@ -261,20 +364,20 @@ export async function loeseOrdnerPfad(
 export function passtPfadZuGesellschaft(
   pfad: string | null | undefined,
   gesellschaftId: string | null,
-  gesellschaften: Array<{ id: string; name: string }>,
+  gesellschaften: Array<{ id: string; name: string; kuerzel?: string }>,
 ): boolean {
   if (!pfad?.trim() || !gesellschaftId) return true;
   const gs = gesellschaften.find((g) => g.id === gesellschaftId);
   if (!gs) return true;
 
-  const root = normalisiereSuchtext(pfad.split("/")[0] ?? "");
-  const tokens = normalisiereSuchtext(gs.name)
-    .split(/\s+/)
-    .filter((t) => t.length >= 3 && t !== "gmbh" && t !== "frenken");
-  if (tokens.length === 0) return true;
+  const rootName = pfad.split("/")[0]?.trim() ?? "";
+  if (!rootName) return true;
 
-  const treffer = tokens.filter((t) => root.includes(t)).length;
-  return treffer >= 1;
+  const score = scoreGesellschaftOrdner(rootName, {
+    name: gs.name,
+    kuerzel: gs.kuerzel ?? "",
+  });
+  return score >= MIN_GESELLSCHAFT_ORDNER_SCORE;
 }
 
 export function findeGesellschaftId(
