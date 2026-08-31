@@ -16,6 +16,7 @@ import {
   ladeOnedriveKontext,
   ladeStammdatenKontext,
   loeseOrdnerPfad,
+  verfeinereOrdnerPfad,
 } from "./ablage-kontext";
 import {
   eintraegeAnlegen,
@@ -104,6 +105,19 @@ async function analysiereEintrag(
       objekte ?? [],
     );
 
+    const gematchtesObjekt =
+      objekte?.find((o) => o.id === objektId) ??
+      objekte?.find((o) => {
+        const such = (ergebnis.felder.objektBezeichnung.value ?? "").toLowerCase();
+        return (
+          such &&
+          (o.bezeichnung.toLowerCase().includes(such) ||
+            such.includes(o.bezeichnung.toLowerCase()) ||
+            (o.strasse && such.includes(o.strasse.toLowerCase())))
+        );
+      }) ??
+      null;
+
     let ablageOrdnerId: string | null = null;
     let ablageOrdnerPfad: string | null =
       ergebnis.felder.ordnerPfad.value?.trim() || null;
@@ -111,8 +125,18 @@ async function analysiereEintrag(
     if (ergebnis.dokumentTyp !== "expose" && ablageOrdnerPfad) {
       const aufgeloest = await loeseOrdnerPfad(accessToken, ablageOrdnerPfad);
       if (aufgeloest) {
-        ablageOrdnerId = aufgeloest.id;
-        ablageOrdnerPfad = aufgeloest.pfad;
+        const verfeinert = await verfeinereOrdnerPfad(accessToken, aufgeloest, {
+          objektBezeichnung: ergebnis.felder.objektBezeichnung.value,
+          strasse: gematchtesObjekt?.strasse,
+          ort: gematchtesObjekt?.ort,
+          bezeichnung: gematchtesObjekt?.bezeichnung,
+        });
+        ablageOrdnerId = verfeinert.id;
+        ablageOrdnerPfad = verfeinert.pfad;
+        ergebnis.felder.ordnerPfad = {
+          ...ergebnis.felder.ordnerPfad,
+          value: verfeinert.pfad,
+        };
       }
     } else if (ergebnis.dokumentTyp === "expose") {
       ablageOrdnerPfad = null;

@@ -16,11 +16,11 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  DOKUMENT_ABLAGE_FELDER,
+  DOKUMENT_KI_FELD_IDS,
   DOKUMENT_FELD_LABELS,
-  DOKUMENT_RECHNUNG_FELDER,
+  DOKUMENT_RECHNUNG_UI_FELDER,
   type DokumentAnalyseFelder,
-  type DokumentFeldId,
+  type DokumentKiFeldId,
   type DokumentFeldQuelle,
 } from "@/lib/dokument-ai";
 import { werteZuFelder } from "@/lib/dokument-postfach/client";
@@ -39,7 +39,7 @@ import { findQuoteInPages } from "../transaktionen/expose-import/quoteLocation";
 import { OrdnerAuswahl } from "./OrdnerAuswahl";
 
 type FeldState = { value: string; quelle: DokumentFeldQuelle | null };
-type FelderState = Record<DokumentFeldId, FeldState>;
+type FelderState = Record<DokumentKiFeldId, FeldState>;
 type HighlightState = { page: number; quote: string; hint?: string } | null;
 
 const AUSWAHL_LEER = "__none__";
@@ -59,10 +59,8 @@ function anhangArtAus(mimeType: string, dateiname: string): AnhangVorschauArt {
 }
 
 function leereFelder(): FelderState {
-  const ids = [...DOKUMENT_ABLAGE_FELDER, ...DOKUMENT_RECHNUNG_FELDER];
-  const unique = [...new Set(ids)];
   return Object.fromEntries(
-    unique.map((id) => [id, { value: "", quelle: null }]),
+    DOKUMENT_KI_FELD_IDS.map((id) => [id, { value: "", quelle: null }]),
   ) as FelderState;
 }
 
@@ -164,7 +162,7 @@ export function DokumentPruefungPage() {
       pages: ExtractedPdfForChat["pages"] | null,
     ) => {
       const neu = leereFelder();
-      for (const id of Object.keys(neu) as DokumentFeldId[]) {
+      for (const id of DOKUMENT_KI_FELD_IDS) {
         const quelle = kiFelder[id];
         if (quelle) {
           neu[id] = {
@@ -269,14 +267,12 @@ export function DokumentPruefungPage() {
     };
   }, []);
 
-  const sichtbareFelder = istRechnung
-    ? DOKUMENT_RECHNUNG_FELDER
-    : DOKUMENT_ABLAGE_FELDER;
+  const sichtbareFelder = istRechnung ? DOKUMENT_RECHNUNG_UI_FELDER : [];
 
   const felderAlsJson = (): DokumentAnalyseFelder => {
     const werte = Object.fromEntries(
-      sichtbareFelder.map((id) => [id, felder[id]?.value ?? ""]),
-    ) as Partial<Record<DokumentFeldId, string>>;
+      DOKUMENT_KI_FELD_IDS.map((id) => [id, felder[id]?.value ?? ""]),
+    ) as Partial<Record<DokumentKiFeldId, string>>;
     return werteZuFelder(werte, eintrag?.felder ?? null);
   };
 
@@ -316,7 +312,7 @@ export function DokumentPruefungPage() {
     toast.info("Buchen wird in einem späteren Schritt implementiert.");
   }
 
-  const quelleOeffnen = (id: DokumentFeldId) => {
+  const quelleOeffnen = (id: DokumentKiFeldId) => {
     const quelle = felder[id]?.quelle;
     if (!quelle?.verbatimQuote) return;
     const seite = loeseSeite(quelle, pdfMeta?.pages ?? null);
@@ -495,21 +491,23 @@ export function DokumentPruefungPage() {
             />
           ) : null}
 
-          {sichtbareFelder.map((id) => (
-            <DokumentFeldZeile
-              key={id}
-              label={DOKUMENT_FELD_LABELS[id]}
-              feld={felder[id] ?? { value: "", quelle: null }}
-              onChange={(value) =>
-                setFelder((prev) => ({
-                  ...prev,
-                  [id]: { ...prev[id], value },
-                }))
-              }
-              onQuelleOeffnen={() => quelleOeffnen(id)}
-              hatQuelle={Boolean(felder[id]?.quelle?.verbatimQuote)}
-            />
-          ))}
+          {sichtbareFelder.length > 0
+            ? sichtbareFelder.map((id) => (
+                <DokumentFeldZeile
+                  key={id}
+                  label={DOKUMENT_FELD_LABELS[id]}
+                  feld={felder[id] ?? { value: "", quelle: null }}
+                  onChange={(value) =>
+                    setFelder((prev) => ({
+                      ...prev,
+                      [id]: { ...prev[id], value },
+                    }))
+                  }
+                  onQuelleOeffnen={() => quelleOeffnen(id)}
+                  hatQuelle={Boolean(felder[id]?.quelle?.verbatimQuote)}
+                />
+              ))
+            : null}
         </aside>
       </div>
     </>

@@ -1,34 +1,34 @@
 /** Client-Helfer für Dokument-Posteingang (Browser-safe). */
 import {
-  DOKUMENT_FELD_IDS,
+  DOKUMENT_KI_FELD_IDS,
   hatAnalyseWerte,
   type DokumentAnalyseFelder,
-  type DokumentFeldId,
+  type DokumentKiFeldId,
 } from "@/lib/dokument-ai";
 
 export { hatAnalyseWerte };
 
 export function felderZuWerten(
   felder: DokumentAnalyseFelder | null,
-): Record<DokumentFeldId, string> {
+): Record<DokumentKiFeldId, string> {
   return Object.fromEntries(
-    DOKUMENT_FELD_IDS.map((id) => [id, felder?.[id]?.value ?? ""]),
-  ) as Record<DokumentFeldId, string>;
+    DOKUMENT_KI_FELD_IDS.map((id) => [id, felder?.[id]?.value ?? ""]),
+  ) as Record<DokumentKiFeldId, string>;
 }
 
 export function werteZuFelder(
-  werte: Partial<Record<DokumentFeldId, string>>,
+  werte: Partial<Record<DokumentKiFeldId, string>>,
   bestehend: DokumentAnalyseFelder | null,
 ): DokumentAnalyseFelder {
   const basis = bestehend ?? (Object.fromEntries(
-    DOKUMENT_FELD_IDS.map((id) => [
+    DOKUMENT_KI_FELD_IDS.map((id) => [
       id,
       { value: null, verbatimQuote: null, page: null, konfidenz: 0 },
     ]),
   ) as DokumentAnalyseFelder);
 
   const out = { ...basis };
-  for (const id of DOKUMENT_FELD_IDS) {
+  for (const id of DOKUMENT_KI_FELD_IDS) {
     if (id in werte) {
       out[id] = {
         ...basis[id],

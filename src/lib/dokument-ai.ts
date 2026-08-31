@@ -16,7 +16,8 @@ export type DokumentFeldQuelle = {
 };
 
 export type DokumentAnalyseFelder = {
-  dokumentart: DokumentFeldQuelle;
+  /** Legacy — wird nicht mehr von der KI befüllt */
+  dokumentart?: DokumentFeldQuelle;
   gesellschaftName: DokumentFeldQuelle;
   objektBezeichnung: DokumentFeldQuelle;
   ordnerPfad: DokumentFeldQuelle;
@@ -30,8 +31,8 @@ export type DokumentAnalyseFelder = {
   rechnungsstellerAdresse: DokumentFeldQuelle;
 };
 
-export const DOKUMENT_FELD_IDS = [
-  "dokumentart",
+/** Felder, die die KI extrahiert (ohne Dokumentart — spart Tokens). */
+export const DOKUMENT_KI_FELD_IDS = [
   "gesellschaftName",
   "objektBezeichnung",
   "ordnerPfad",
@@ -45,18 +46,21 @@ export const DOKUMENT_FELD_IDS = [
   "rechnungsstellerAdresse",
 ] as const;
 
-export type DokumentFeldId = (typeof DOKUMENT_FELD_IDS)[number];
+export type DokumentKiFeldId = (typeof DOKUMENT_KI_FELD_IDS)[number];
 
-export const DOKUMENT_ABLAGE_FELDER: DokumentFeldId[] = [
-  "dokumentart",
+/** @deprecated Alias — umfasst legacy dokumentart nicht mehr */
+export type DokumentFeldId = DokumentKiFeldId;
+
+export const DOKUMENT_FELD_IDS = DOKUMENT_KI_FELD_IDS;
+
+export const DOKUMENT_ABLAGE_FELDER: DokumentKiFeldId[] = [
   "gesellschaftName",
   "objektBezeichnung",
   "ordnerPfad",
 ];
 
-export const DOKUMENT_RECHNUNG_FELDER: DokumentFeldId[] = [
-  "gesellschaftName",
-  "objektBezeichnung",
+/** Nur Rechnungsfelder in der Prüf-UI (Gesellschaft/Objekt stehen unter Zuordnung). */
+export const DOKUMENT_RECHNUNG_UI_FELDER: DokumentKiFeldId[] = [
   "rechnungsnummer",
   "rechnungsdatum",
   "rechnungsbetrag",
@@ -67,8 +71,13 @@ export const DOKUMENT_RECHNUNG_FELDER: DokumentFeldId[] = [
   "rechnungsstellerAdresse",
 ];
 
-export const DOKUMENT_FELD_LABELS: Record<DokumentFeldId, string> = {
-  dokumentart: "Dokumentart",
+export const DOKUMENT_RECHNUNG_FELDER: DokumentKiFeldId[] = [
+  "gesellschaftName",
+  "objektBezeichnung",
+  ...DOKUMENT_RECHNUNG_UI_FELDER,
+];
+
+export const DOKUMENT_FELD_LABELS: Record<DokumentKiFeldId, string> = {
   gesellschaftName: "Gesellschaft",
   objektBezeichnung: "Objekt",
   ordnerPfad: "Zielordner",
@@ -170,7 +179,7 @@ function normalisiereFeld(raw: unknown): DokumentFeldQuelle {
 
 function leereFelder(): DokumentAnalyseFelder {
   return Object.fromEntries(
-    DOKUMENT_FELD_IDS.map((id) => [id, leeresFeld()]),
+    DOKUMENT_KI_FELD_IDS.map((id) => [id, leeresFeld()]),
   ) as DokumentAnalyseFelder;
 }
 
@@ -181,7 +190,7 @@ function parseAntwort(text: string): AnalyzeDokumentResponse {
   const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
   const felderRaw = (parsed.felder ?? {}) as Record<string, unknown>;
   const felder = leereFelder();
-  for (const id of DOKUMENT_FELD_IDS) {
+  for (const id of DOKUMENT_KI_FELD_IDS) {
     felder[id] = normalisiereFeld(felderRaw[id]);
   }
 
@@ -269,15 +278,16 @@ Schritt 1: Klassifiziere den Anhang in genau einen Typ:
 - "dokument": sonstige Geschäftsdokumente (Verträge, Korrespondenz, Protokolle, Versicherungen, …)
 
 Schritt 2a (rechnung): Extrahiere Rechnungsfelder und ordne Gesellschaft/Objekt zu.
-Schritt 2b (dokument): Schlage den passenden Ablageordner vor.
-Schritt 2c (expose): Felder optional — dokumentart z. B. "Exposé", Objektadresse falls erkennbar; ordnerPfad leer lassen.
+Schritt 2b (dokument): Ordne Gesellschaft/Objekt zu und wähle den tiefsten passenden Zielordner.
+Schritt 2c (expose): Objektadresse falls erkennbar; ordnerPfad leer lassen.
 
 ${ABLAGESTRUKTUR}
 
 Regeln:
 - Nutze die Stammdaten-Liste für Gesellschafts- und Objektzuordnung.
-- Nutze die OneDrive-Ordnerliste für den konkreten Zielordner (bestehende Unterordner bevorzugen).
-- ordnerPfad: vollständiger relativer Pfad ab Gesellschafts-Root, z. B. "02_FRENKEN IMMOBILIEN GMBH/02_Finanzen" oder "02_FRENKEN IMMOBILIEN GMBH/05_Immobilien/02_Bestand/IM-2026-001_Duesseldorf_Musterstrasse/03_Finanzen"
+- Nutze die OneDrive-Ordnerliste — wähle den tiefsten existierenden Ordner, der zum Dokument passt.
+- Bei objektbezogenen Unterlagen (Adresse, Grundstück, Immobilie): bis zum konkreten Objektordner (IM-…_Strasse) und ggf. passenden Unterordner (01_Stammdaten, 02_Vertraege, 03_Finanzen, 04_Technik, …) — nicht bei 02_Bestand oder 05_Immobilien stoppen, wenn ein passender Objektordner in der Liste steht.
+- ordnerPfad: exakter vollständiger Pfad aus der OneDrive-Liste, z. B. "05_MTF CAPITAL GMBH/05_Immobilien/02_Bestand/IM-2026-001_Duesseldorf_Bendemannstrasse/01_Stammdaten"
 - Bei Rechnungen: zahlungsempfaenger = an wen gezahlt wird (FRENKEN-Gesellschaft), rechnungssteller = Aussteller.
 - rechnungsbetrag: nur Zahl mit Dezimalpunkt, keine Währung.
 - waehrung: z. B. EUR.
@@ -290,7 +300,6 @@ Antworte NUR mit JSON:
   "dokumentTyp": "rechnung" | "dokument" | "expose",
   "dokumentTypKonfidenz": <0.0-1.0>,
   "felder": {
-    "dokumentart": { ${feldSchema()} },
     "gesellschaftName": { ${feldSchema()} },
     "objektBezeichnung": { ${feldSchema()} },
     "ordnerPfad": { ${feldSchema()} },
@@ -360,7 +369,14 @@ ${kontext ? `\n=== KONTEXT ===\n${kontext}` : ""}`;
 
 export function hatAnalyseWerte(felder: DokumentAnalyseFelder | null): boolean {
   if (!felder) return false;
-  return DOKUMENT_FELD_IDS.some((id) => (felder[id]?.value ?? "").trim());
+  const relevant: DokumentKiFeldId[] = [
+    "ordnerPfad",
+    "gesellschaftName",
+    "objektBezeichnung",
+    "rechnungsnummer",
+    "rechnungsbetrag",
+  ];
+  return relevant.some((id) => (felder[id]?.value ?? "").trim());
 }
 
 export function feldUeberSchwelle(feld: DokumentFeldQuelle | undefined): boolean {
