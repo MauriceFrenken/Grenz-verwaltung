@@ -95,8 +95,14 @@ export type AnalyzeDokumentRequest = {
   onedriveKontext: string;
 };
 
+export type DokumentTyp = "rechnung" | "dokument" | "expose";
+
 export type AnalyzeDokumentResponse = {
+  dokumentTyp: DokumentTyp;
+  dokumentTypKonfidenz: number;
+  /** @deprecated Abgeleitet aus dokumentTyp === "rechnung" */
   istRechnung: boolean;
+  /** @deprecated Alias für dokumentTypKonfidenz bei Rechnungen */
   istRechnungKonfidenz: number;
   felder: DokumentAnalyseFelder;
 };
@@ -179,14 +185,31 @@ function parseAntwort(text: string): AnalyzeDokumentResponse {
     felder[id] = normalisiereFeld(felderRaw[id]);
   }
 
-  return {
-    istRechnung: parsed.istRechnung === true,
-    istRechnungKonfidenz:
-      typeof parsed.istRechnungKonfidenz === "number"
+  const dokumentTyp = normalisiereDokumentTyp(parsed.dokumentTyp, parsed.istRechnung);
+  const dokumentTypKonfidenz =
+    typeof parsed.dokumentTypKonfidenz === "number"
+      ? Math.min(1, Math.max(0, parsed.dokumentTypKonfidenz))
+      : typeof parsed.istRechnungKonfidenz === "number"
         ? Math.min(1, Math.max(0, parsed.istRechnungKonfidenz))
-        : 0,
+        : 0;
+
+  return {
+    dokumentTyp,
+    dokumentTypKonfidenz,
+    istRechnung: dokumentTyp === "rechnung",
+    istRechnungKonfidenz: dokumentTypKonfidenz,
     felder,
   };
+}
+
+function normalisiereDokumentTyp(
+  typ: unknown,
+  legacyIstRechnung: unknown,
+): DokumentTyp {
+  if (typ === "rechnung" || typ === "dokument" || typ === "expose") {
+    return typ;
+  }
+  return legacyIstRechnung === true ? "rechnung" : "dokument";
 }
 
 function feldSchema(): string {
@@ -238,11 +261,16 @@ export async function handleAnalyzeDokumentRequest(
     throw new Error("Kein Analyse-Kontext für dieses Dokument.");
   }
 
-  const systemPrompt = `Du analysierst eingehende Geschäftsdokumente für die FRENKEN-Gruppe.
+  const systemPrompt = `Du analysierst eingehende E-Mail-Anhänge für die FRENKEN-Gruppe.
 
-Schritt 1: Entscheide, ob es sich um eine Rechnung handelt (Rechnung, Invoice, Gutschrift mit Betrag).
-Schritt 2a (Rechnung): Extrahiere Rechnungsfelder und ordne Gesellschaft/Objekt zu.
-Schritt 2b (keine Rechnung): Schlage den passenden Ablageordner vor.
+Schritt 1: Klassifiziere den Anhang in genau einen Typ:
+- "rechnung": Rechnung, Invoice, Gutschrift mit Betrag und Zahlungsaufforderung
+- "expose": Immobilien-Exposé / Verkaufsunterlage (Objektbeschreibung, Kaufpreis, Miete, Maklerangebot, Objektdaten, Grundriss, Energieausweis als Exposé-PDF)
+- "dokument": sonstige Geschäftsdokumente (Verträge, Korrespondenz, Protokolle, Versicherungen, …)
+
+Schritt 2a (rechnung): Extrahiere Rechnungsfelder und ordne Gesellschaft/Objekt zu.
+Schritt 2b (dokument): Schlage den passenden Ablageordner vor.
+Schritt 2c (expose): Felder optional — dokumentart z. B. "Exposé", Objektadresse falls erkennbar; ordnerPfad leer lassen.
 
 ${ABLAGESTRUKTUR}
 
@@ -259,8 +287,8 @@ Regeln:
 
 Antworte NUR mit JSON:
 {
-  "istRechnung": <boolean>,
-  "istRechnungKonfidenz": <0.0-1.0>,
+  "dokumentTyp": "rechnung" | "dokument" | "expose",
+  "dokumentTypKonfidenz": <0.0-1.0>,
   "felder": {
     "dokumentart": { ${feldSchema()} },
     "gesellschaftName": { ${feldSchema()} },

@@ -108,16 +108,18 @@ async function analysiereEintrag(
     let ablageOrdnerPfad: string | null =
       ergebnis.felder.ordnerPfad.value?.trim() || null;
 
-    if (ablageOrdnerPfad) {
+    if (ergebnis.dokumentTyp !== "expose" && ablageOrdnerPfad) {
       const aufgeloest = await loeseOrdnerPfad(accessToken, ablageOrdnerPfad);
       if (aufgeloest) {
         ablageOrdnerId = aufgeloest.id;
         ablageOrdnerPfad = aufgeloest.pfad;
       }
+    } else if (ergebnis.dokumentTyp === "expose") {
+      ablageOrdnerPfad = null;
     }
 
     await speichereAnalyse(row.id, {
-      istRechnung: ergebnis.istRechnung,
+      dokumentTyp: ergebnis.dokumentTyp,
       felder: ergebnis.felder,
       gesellschaftId,
       objektId,

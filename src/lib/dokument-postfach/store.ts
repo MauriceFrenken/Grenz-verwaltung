@@ -9,6 +9,22 @@ import type {
   DokumentPosteingangEintrag,
   DokumentPosteingangStatus,
 } from "./typen";
+import type { DokumentTyp } from "@/lib/dokument-ai";
+
+function zuDokumentTyp(row: DokumentPosteingangRow): DokumentTyp | null {
+  if (
+    row.dokument_typ === "rechnung" ||
+    row.dokument_typ === "dokument" ||
+    row.dokument_typ === "expose"
+  ) {
+    return row.dokument_typ;
+  }
+  if (row.ist_rechnung === true) return "rechnung";
+  if (row.status === "analysiert" || row.status === "abgelegt" || row.status === "gebucht") {
+    return "dokument";
+  }
+  return null;
+}
 
 const TABELLE = "dokument_posteingang";
 
@@ -28,6 +44,7 @@ export type DokumentPosteingangRow = {
   anhang_groesse: number | null;
   status: DokumentPosteingangStatus;
   ist_rechnung: boolean | null;
+  dokument_typ: string | null;
   felder: DokumentAnalyseFelder | null;
   analyse_fehler: string | null;
   analysiert_am: string | null;
@@ -43,7 +60,7 @@ export type DokumentPosteingangRow = {
 const SPALTEN =
   "id,postfach,graph_nachricht_id,internet_message_id,betreff,absender_name," +
   "absender_mail,eingegangen_am,web_link,anhang_id,anhang_name,anhang_content_type," +
-  "anhang_groesse,status,ist_rechnung,felder,analyse_fehler,analysiert_am," +
+  "anhang_groesse,status,ist_rechnung,dokument_typ,felder,analyse_fehler,analysiert_am," +
   "gesellschaft_id,objekt_id,ablage_ordner_id,ablage_ordner_pfad,abgelegt_am,abgelegt_onedrive_id,email_text";
 
 function fehler(kontext: string, message: string): Error {
@@ -62,6 +79,7 @@ export function zuEintrag(row: DokumentPosteingangRow): DokumentPosteingangEintr
     anhangName: row.anhang_name,
     anhangGroesse: row.anhang_groesse,
     status: row.status,
+    dokumentTyp: zuDokumentTyp(row),
     istRechnung: row.ist_rechnung,
     felder: row.felder,
     analyseFehler: row.analyse_fehler,
@@ -148,7 +166,7 @@ export async function leseEintrag(id: string): Promise<DokumentPosteingangRow> {
 export async function speichereAnalyse(
   id: string,
   input: {
-    istRechnung: boolean;
+    dokumentTyp: DokumentTyp;
     felder: DokumentAnalyseFelder;
     gesellschaftId: string | null;
     objektId: string | null;
@@ -161,7 +179,8 @@ export async function speichereAnalyse(
     .from(TABELLE)
     .update({
       status: "analysiert",
-      ist_rechnung: input.istRechnung,
+      dokument_typ: input.dokumentTyp,
+      ist_rechnung: input.dokumentTyp === "rechnung",
       felder: input.felder,
       gesellschaft_id: input.gesellschaftId,
       objekt_id: input.objektId,

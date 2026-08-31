@@ -1,4 +1,4 @@
-import type { DokumentAnalyseFelder } from "@/lib/dokument-ai";
+import type { DokumentAnalyseFelder, DokumentTyp } from "@/lib/dokument-ai";
 import type { DokumentPosteingangNachricht } from "@/lib/microsoft/ablage";
 
 export type DokumentPosteingangStatus =
@@ -19,6 +19,7 @@ export type DokumentPosteingangEintrag = {
   anhangName: string | null;
   anhangGroesse: number | null;
   status: DokumentPosteingangStatus;
+  dokumentTyp: DokumentTyp | null;
   istRechnung: boolean | null;
   felder: DokumentAnalyseFelder | null;
   analyseFehler: string | null;

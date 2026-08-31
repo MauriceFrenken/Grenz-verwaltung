@@ -5,7 +5,6 @@ import {
   FileText,
   Image,
   Loader2,
-  MoreHorizontal,
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -15,12 +14,6 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useAuth, usePermissions } from "@/hooks/useAuth";
 import { hatAnalyseWerte } from "@/lib/dokument-postfach/client";
 import type { DokumentPosteingangEintrag } from "@/lib/dokument-postfach/typen";
@@ -47,6 +40,16 @@ function AnhangIcon({ art }: { art: GraphAnhangArt }) {
       <Icon className="h-4 w-4" strokeWidth={1.5} aria-hidden />
     </span>
   );
+}
+
+function typLabel(eintrag: DokumentPosteingangEintrag | null): string {
+  if (!eintrag || eintrag.status === "neu") return "–";
+  if (eintrag.dokumentTyp === "rechnung") return "Rechnung";
+  if (eintrag.dokumentTyp === "expose") return "Exposé";
+  if (eintrag.dokumentTyp === "dokument") return "Dokument";
+  if (eintrag.istRechnung) return "Rechnung";
+  if (eintrag.status === "analysiert") return "Dokument";
+  return "–";
 }
 
 function AnalyseStatus({ zeile }: { zeile: Zeile }) {
@@ -76,24 +79,18 @@ function AnalyseStatus({ zeile }: { zeile: Zeile }) {
   if (eintrag.status === "gebucht") {
     return <span className="text-text-muted">Gebucht</span>;
   }
-  if (eintrag.istRechnung) {
-    return <span className="font-medium text-heading">Rechnung</span>;
-  }
-  return <span className="font-medium text-heading">Analysiert</span>;
+  return <span className="font-medium text-heading">{typLabel(eintrag)}</span>;
 }
 
 function istBereit(eintrag: DokumentPosteingangEintrag | null): eintrag is DokumentPosteingangEintrag {
-  return Boolean(
-    eintrag &&
-    eintrag.status === "analysiert" &&
-    hatAnalyseWerte(eintrag.felder),
-  );
+  if (!eintrag || eintrag.status !== "analysiert") return false;
+  if (eintrag.dokumentTyp === "expose") return true;
+  return hatAnalyseWerte(eintrag.felder);
 }
 
 export function PostfachPage() {
   const { session } = useAuth();
   const navigate = useNavigate();
-  const { darfAktion } = usePermissions();
   const token = session?.access_token ?? "";
 
   const besuchKey = useRouterState({
@@ -333,13 +330,9 @@ export function PostfachPage() {
       key: "typ",
       header: "Typ",
       className: "w-24",
-      render: (z) => {
-        const e = z.eintrag;
-        if (!e || e.status === "neu") return <span className="text-text-subtle">–</span>;
-        if (e.istRechnung) return <span className="text-heading">Rechnung</span>;
-        if (e.status === "analysiert") return <span className="text-text-muted">Dokument</span>;
-        return <span className="text-text-subtle">–</span>;
-      },
+      render: (z) => (
+        <span className="text-heading">{typLabel(z.eintrag)}</span>
+      ),
     },
     {
       key: "status",
@@ -360,7 +353,61 @@ export function PostfachPage() {
           eintrag &&
           (eintrag.status === "analysiert" || eintrag.status === "fehler"),
         );
-        const istRechnung = Boolean(eintrag?.istRechnung);
+        const istExpose = eintrag?.dokumentTyp === "expose";
+        const istRechnung =
+          eintrag?.dokumentTyp === "rechnung" || Boolean(eintrag?.istRechnung);
+
+        if (istExpose && bereit) {
+          return (
+            <div className="flex items-center justify-end gap-1.5">
+              {kannWiederholen ? (
+                <PermissionGate
+                  berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen"
+                  skeletonClassName="w-8"
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 border-foreground text-foreground"
+                    disabled={laedtZeile}
+                    aria-label="KI-Analyse wiederholen"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (eintrag) void analyseWiederholen(eintrag);
+                    }}
+                  >
+                    {laedtZeile ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    )}
+                  </Button>
+                </PermissionGate>
+              ) : null}
+              <PermissionGate
+                berechtigung="aktion.dokumente.pruefordner.exposes_verschieben"
+                skeletonClassName="w-24"
+              >
+                <Button
+                  size="sm"
+                  className="bg-primary text-primary-foreground hover:bg-heading"
+                  disabled={laedtZeile}
+                  onClick={() =>
+                    eintrag &&
+                    void zuExposesVerschieben(
+                      eintrag,
+                      z.nachricht.id,
+                      z.nachricht.postfach,
+                    )
+                  }
+                >
+                  Zu Exposés
+                </Button>
+              </PermissionGate>
+            </div>
+          );
+        }
 
         return (
           <div className="flex items-center justify-end gap-1.5">
@@ -435,41 +482,6 @@ export function PostfachPage() {
                   </Button>
                 </PermissionGate>
               )
-            ) : null}
-
-            {eintrag ? (
-              <PermissionGate
-                berechtigung="aktion.dokumente.pruefordner.exposes_verschieben"
-                skeletonClassName="w-8"
-              >
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 border-foreground text-foreground"
-                      disabled={laedtZeile}
-                      aria-label="Weitere Aktionen"
-                    >
-                      <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() =>
-                        void zuExposesVerschieben(
-                          eintrag,
-                          z.nachricht.id,
-                          z.nachricht.postfach,
-                        )
-                      }
-                    >
-                      Zu Exposés verschieben
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </PermissionGate>
             ) : null}
           </div>
         );

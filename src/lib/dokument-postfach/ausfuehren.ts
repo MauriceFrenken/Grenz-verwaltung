@@ -24,7 +24,11 @@ export async function dokumentPosteingangSchnellAusfuehren(input: {
     throw new Error("Nur analysierte Einträge können direkt ausgeführt werden.");
   }
 
-  if (row.ist_rechnung) {
+  if (row.dokument_typ === "expose") {
+    throw new Error("Exposés bitte über „Zu Exposés“ verschieben.");
+  }
+
+  if (row.ist_rechnung || row.dokument_typ === "rechnung") {
     return { aktion: "buchen", platzhalter: true };
   }
 
