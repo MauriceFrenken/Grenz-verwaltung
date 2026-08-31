@@ -1,6 +1,7 @@
 /**
- * Kontext für KI: Stammdaten + OneDrive-Ordnerbaum. Server-only.
+ * Kontext für KI: Stammdaten + schrittweise OneDrive-Ordnerwahl. Server-only.
  */
+import { waehleUnterordnerSchritt, type DokumentTyp } from "@/lib/dokument-ai";
 import {
   graphDriveItemKinder,
   graphDriveRootKinder,
@@ -11,11 +12,8 @@ import {
 } from "@/lib/microsoft/ablage";
 import { createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
 
-const MAX_ROOT = 8;
-const MAX_KINDER = 25;
-const MAX_ENKEL = 15;
-const MAX_OBJEKT_PFADE = 180;
-const MAX_OBJEKT_TIEFE = 8;
+const MAX_ORDNER_TIEFE = 8;
+const OBJEKT_KONFIDENZ_SCHWELLE = 0.45;
 
 export function normalisiereSuchtext(text: string): string {
   return text
@@ -63,17 +61,6 @@ export function ordnerSuchTokens(input: {
   return [...tokens];
 }
 
-function ordnerNameScore(name: string, tokens: string[]): number {
-  if (tokens.length === 0) return 0;
-  const norm = normalisiereSuchtext(name);
-  let score = 0;
-  for (const token of tokens) {
-    if (norm.includes(token)) score += token.length;
-  }
-  if (/^im-/i.test(name)) score += 2;
-  return score;
-}
-
 function scoreObjektMatch(
   objekt: {
     bezeichnung: string;
@@ -110,41 +97,6 @@ function scoreObjektMatch(
   return score;
 }
 
-async function sammleObjektOrdnerPfade(
-  accessToken: string,
-  benutzer: string,
-  itemId: string,
-  prefix: string,
-  tiefe: number,
-  pfade: string[],
-): Promise<void> {
-  if (pfade.length >= MAX_OBJEKT_PFADE || tiefe >= MAX_OBJEKT_TIEFE) return;
-
-  const kinder = await graphDriveItemKinder(accessToken, benutzer, itemId);
-  for (const kind of kinder.filter((k) => k.istOrdner)) {
-    if (pfade.length >= MAX_OBJEKT_PFADE) break;
-    const pfad = `${prefix}/${kind.name}`;
-    pfade.push(pfad);
-
-    const n = kind.name.toLowerCase();
-    const tiefer =
-      /^im-/.test(kind.name) ||
-      /bestand|ankauf|verkauf|projekte|stammdaten|vertraege|finanzen|technik|mieter|archiv/i.test(
-        n,
-      );
-    if (tiefer) {
-      await sammleObjektOrdnerPfade(
-        accessToken,
-        benutzer,
-        kind.id,
-        pfad,
-        tiefe + 1,
-        pfade,
-      );
-    }
-  }
-}
-
 export async function ladeStammdatenKontext(): Promise<string> {
   const admin = createServiceRoleClient();
 
@@ -173,52 +125,93 @@ export async function ladeStammdatenKontext(): Promise<string> {
   ].join("\n");
 }
 
-/** Kompakter Baum für KI + tiefe Objektordner-Pfade (getrennt, damit Stammdaten nicht verdrängt werden). */
-export async function ladeOnedriveKontext(accessToken: string): Promise<string> {
+/** Gesellschafts-Root in OneDrive (ein Oberordner pro Gesellschaft). */
+export async function findeGesellschaftRootOrdner(
+  accessToken: string,
+  gesellschaftId: string,
+  gesellschaften: Array<{ id: string; name: string; kuerzel: string }>,
+): Promise<{ id: string; pfad: string } | null> {
   const benutzer = microsoftOneDriveUser();
   const root = await graphDriveRootKinder(accessToken, benutzer);
-  const gesellschaftsOrdner = root
-    .filter((item) => item.istOrdner && istAblageRootOrdner(item.name))
-    .slice(0, MAX_ROOT);
 
-  const baum: string[] = [];
-  const objektPfade: string[] = [];
-
-  for (const ordner of gesellschaftsOrdner) {
-    baum.push(ordner.name);
-    const kinder = await graphDriveItemKinder(accessToken, benutzer, ordner.id);
-    const unterordner = kinder.filter((k) => k.istOrdner).slice(0, MAX_KINDER);
-
-    for (const kind of unterordner) {
-      baum.push(`  ${kind.name}`);
-      const enkel = await graphDriveItemKinder(accessToken, benutzer, kind.id);
-      for (const e of enkel.filter((x) => x.istOrdner).slice(0, MAX_ENKEL)) {
-        baum.push(`    ${e.name}`);
-
-        const immobilienAst =
-          /immobilien/i.test(kind.name) && /bestand|ankauf|verkauf|projekte/i.test(e.name);
-        if (immobilienAst && objektPfade.length < MAX_OBJEKT_PFADE) {
-          await sammleObjektOrdnerPfade(
-            accessToken,
-            benutzer,
-            e.id,
-            `${ordner.name}/${kind.name}/${e.name}`,
-            0,
-            objektPfade,
-          );
-        }
-      }
+  for (const item of root) {
+    if (!item.istOrdner || !istAblageRootOrdner(item.name)) continue;
+    if (passtPfadZuGesellschaft(`${item.name}/`, gesellschaftId, gesellschaften)) {
+      return { id: item.id, pfad: item.name };
     }
   }
+  return null;
+}
 
-  const teile = [
-    "Übersicht (3 Ebenen):",
-    baum.length > 0 ? baum.join("\n") : "(keine Ordner gefunden)",
-  ];
-  if (objektPfade.length > 0) {
-    teile.push("", "Objektordner (volle Pfade — für ordnerPfad bevorzugen):", objektPfade.join("\n"));
+/**
+ * Zielordner Ebene für Ebene ermitteln — nur innerhalb des Gesellschafts-Roots.
+ * Pro Ebene eine kleine KI-Anfrage mit den direkten Unterordnern.
+ */
+export async function ermittleZielordnerIterativ(
+  accessToken: string,
+  input: {
+    gesellschaftId: string;
+    gesellschaftName: string;
+    objektBezeichnung?: string | null;
+    dokumentTyp: DokumentTyp;
+    documentTitle?: string;
+    mailKontext?: string;
+    modelContext?: string;
+  },
+  gesellschaften: Array<{ id: string; name: string; kuerzel: string }>,
+): Promise<{ id: string; pfad: string } | null> {
+  const root = await findeGesellschaftRootOrdner(
+    accessToken,
+    input.gesellschaftId,
+    gesellschaften,
+  );
+  if (!root) return null;
+
+  const benutzer = microsoftOneDriveUser();
+  let aktuell = root;
+
+  for (let tiefe = 0; tiefe < MAX_ORDNER_TIEFE; tiefe++) {
+    const kinder = await graphDriveItemKinder(accessToken, benutzer, aktuell.id);
+    const ordnerNamen = kinder.filter((k) => k.istOrdner).map((k) => k.name);
+    if (ordnerNamen.length === 0) break;
+
+    const wahl = await waehleUnterordnerSchritt({
+      documentTitle: input.documentTitle,
+      mailKontext: input.mailKontext,
+      modelContext: input.modelContext,
+      dokumentTyp: input.dokumentTyp,
+      gesellschaftName: input.gesellschaftName,
+      objektBezeichnung: input.objektBezeichnung,
+      aktuellerPfad: aktuell.pfad,
+      unterordner: ordnerNamen,
+    });
+
+    if (!wahl.gewaehlterOrdner) break;
+
+    const kind = kinder.find(
+      (k) => k.istOrdner && k.name === wahl.gewaehlterOrdner,
+    );
+    if (!kind) break;
+
+    aktuell = { id: kind.id, pfad: `${aktuell.pfad}/${kind.name}` };
   }
-  return teile.join("\n");
+
+  return aktuell;
+}
+
+export function hatObjektZuordnung(
+  objektText: string | null | undefined,
+  konfidenz: number,
+): boolean {
+  const text = (objektText ?? "").trim();
+  if (!text) return false;
+  if (konfidenz < OBJEKT_KONFIDENZ_SCHWELLE) return false;
+  return true;
+}
+
+/** @deprecated Nicht mehr für KI-Kontext — Ordnerwahl läuft iterativ pro Gesellschaft. */
+export async function ladeOnedriveKontext(_accessToken: string): Promise<string> {
+  return "(Ordner werden serverseitig pro Gesellschaft Ebene für Ebene ermittelt)";
 }
 
 /** Ordner-ID anhand eines Pfads wie "02_FRENKEN IMMOBILIEN GMBH/02_Finanzen" auflösen. */
@@ -263,53 +256,6 @@ export async function loeseOrdnerPfad(
 
   if (!aktuellerId) return null;
   return { id: aktuellerId, pfad: aufgeloest.join("/") };
-}
-
-/**
- * Von einem Basisordner aus den tiefsten passenden Unterordner finden
- * (nur innerhalb des gewählten Pfads — kein Sprung in andere Gesellschaften).
- */
-export async function verfeinereOrdnerPfad(
-  accessToken: string,
-  basis: { id: string; pfad: string },
-  suchInput: {
-    objektBezeichnung?: string | null;
-    strasse?: string | null;
-    ort?: string | null;
-    bezeichnung?: string | null;
-  },
-): Promise<{ id: string; pfad: string }> {
-  const tokens = ordnerSuchTokens(suchInput);
-  if (tokens.length === 0) return basis;
-
-  const benutzer = microsoftOneDriveUser();
-  let best = basis;
-  let bestScore = ordnerNameScore(basis.pfad.split("/").pop() ?? "", tokens);
-
-  async function dfs(itemId: string, pfad: string, tiefe: number): Promise<void> {
-    if (tiefe > 4) return;
-
-    const kinder = await graphDriveItemKinder(accessToken, benutzer, itemId);
-    for (const kind of kinder.filter((k) => k.istOrdner)) {
-      const vollerPfad = `${pfad}/${kind.name}`;
-      const score = ordnerNameScore(kind.name, tokens);
-      if (score > bestScore) {
-        bestScore = score;
-        best = { id: kind.id, pfad: vollerPfad };
-      }
-
-      const weiter =
-        score > 0 ||
-        /^im-/i.test(kind.name) ||
-        /stammdaten|vertraege|finanzen|technik|mieter|archiv/i.test(kind.name);
-      if (weiter) {
-        await dfs(kind.id, vollerPfad, tiefe + 1);
-      }
-    }
-  }
-
-  await dfs(basis.id, basis.pfad, 0);
-  return bestScore > 0 ? best : basis;
 }
 
 export function passtPfadZuGesellschaft(

@@ -101,7 +101,22 @@ export type AnalyzeDokumentRequest = {
   modelContext?: string;
   vision?: DokumentVisionBlock[];
   stammdatenKontext: string;
-  onedriveKontext: string;
+};
+
+export type OrdnerWahlSchrittRequest = {
+  documentTitle?: string;
+  mailKontext?: string;
+  modelContext?: string;
+  dokumentTyp: DokumentTyp;
+  gesellschaftName: string;
+  objektBezeichnung?: string | null;
+  aktuellerPfad: string;
+  unterordner: string[];
+};
+
+export type OrdnerWahlSchrittResponse = {
+  gewaehlterOrdner: string | null;
+  konfidenz: number;
 };
 
 export type DokumentTyp = "rechnung" | "dokument" | "expose";
@@ -253,14 +268,62 @@ function visionZuApi(
   };
 }
 
-export async function handleAnalyzeDokumentRequest(
-  input: AnalyzeDokumentRequest,
-): Promise<AnalyzeDokumentResponse> {
+async function anthropicNachricht(
+  system: string,
+  userText: string,
+  vision: DokumentVisionBlock[] = [],
+  maxTokens = 4096,
+): Promise<string> {
   const key = getAnthropicKey();
   if (!key) {
     throw new Error("ANTHROPIC_API_KEY ist nicht konfiguriert.");
   }
 
+  const userContent: Array<Record<string, unknown>> = [
+    { type: "text", text: userText },
+    ...vision.map(visionZuApi),
+  ];
+
+  const res = await fetch(ANTHROPIC_MESSAGES_URL, {
+    method: "POST",
+    headers: {
+      "x-api-key": key,
+      "anthropic-version": ANTHROPIC_VERSION,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: maxTokens,
+      temperature: 0,
+      system,
+      messages: [{ role: "user", content: userContent }],
+    }),
+  });
+
+  const json: unknown = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      typeof json === "object" &&
+      json !== null &&
+      "error" in json &&
+      typeof (json as { error?: { message?: string } }).error?.message ===
+        "string"
+        ? (json as { error: { message: string } }).error.message
+        : `Anthropic-Fehler (${res.status})`;
+    throw new Error(msg);
+  }
+
+  const content = (json as { content?: Array<{ type?: string; text?: string }> })
+    .content;
+  const textBlock = content?.find((b) => b.type === "text");
+  const text = textBlock?.text?.trim();
+  if (!text) throw new Error("KI-Antwort war leer.");
+  return text;
+}
+
+export async function handleAnalyzeDokumentRequest(
+  input: AnalyzeDokumentRequest,
+): Promise<AnalyzeDokumentResponse> {
   const titel = input.documentTitle?.trim() || "Dokument";
   const kontext = (input.modelContext ?? "").slice(0, 120_000);
   const mailKontext = (input.mailKontext ?? "").trim();
@@ -277,20 +340,17 @@ Schritt 1: Klassifiziere den Anhang in genau einen Typ:
 - "expose": Immobilien-Exposé / Verkaufsunterlage (Objektbeschreibung, Kaufpreis, Miete, Maklerangebot, Objektdaten, Grundriss, Energieausweis als Exposé-PDF)
 - "dokument": sonstige Geschäftsdokumente (Verträge, Korrespondenz, Protokolle, Versicherungen, …)
 
-Schritt 2a (rechnung): Extrahiere Rechnungsfelder und ordne Gesellschaft/Objekt zu.
-Schritt 2b (dokument):
-  a) ZUERST gesellschaftName und objektBezeichnung aus STAMMDATEN wählen (Grundstück/Adresse im Dokument). Exakte Bezeichnung aus der Objekt-Liste übernehmen.
-  b) DANACH ordnerPfad aus OneDrive — muss zur gewählten Gesellschaft passen und so tief wie möglich sein.
-Schritt 2c (expose): Objektadresse falls erkennbar; ordnerPfad leer lassen.
+Schritt 2a (rechnung): Extrahiere Rechnungsfelder; Gesellschaft/Objekt aus STAMMDATEN.
+Schritt 2b (dokument): Gesellschaft und ggf. Objekt aus STAMMDATEN — Zielordner wird serverseitig ermittelt.
+Schritt 2c (expose): Objektadresse falls erkennbar.
 
 ${ABLAGESTRUKTUR}
 
 Regeln:
-- gesellschaftName und objektBezeichnung NUR aus STAMMDATEN — niemals aus OneDrive-Ordnernamen ableiten.
-- Bei Grundstück/Adresse im Dokument: passendes Objekt in STAMMDATEN suchen (Straße, Hausnummer, Ort).
-- Nutze die OneDrive-Liste nur für ordnerPfad (bestehende Ordner, tiefster passender Pfad).
-- Bei objektbezogenen Unterlagen: bis zum Objektordner (IM-…_Strasse) und passenden Unterordner (01_Stammdaten, 02_Vertraege, …).
-- ordnerPfad: exakter Pfad aus der OneDrive-Liste; Gesellschaftsteil muss zu gesellschaftName passen.
+- gesellschaftName und objektBezeichnung NUR aus STAMMDATEN.
+- objektBezeichnung: null wenn das Dokument nur die Gesellschaft betrifft (z. B. Versicherung, Bank, Holding, Personal, allgemeine Finanzen) — kein konkretes Grundstück/Objekt im Text.
+- objektBezeichnung: nur setzen wenn Adresse, Grundstück oder Objekt im Dokument klar genannt ist.
+- ordnerPfad: immer null lassen (wird separat über OneDrive ermittelt).
 - Bei Rechnungen: zahlungsempfaenger = an wen gezahlt wird (FRENKEN-Gesellschaft), rechnungssteller = Aussteller.
 - rechnungsbetrag: nur Zahl mit Dezimalpunkt, keine Währung.
 - waehrung: z. B. EUR.
@@ -321,53 +381,81 @@ Antworte NUR mit JSON:
 
 === STAMMDATEN (Gesellschaften & Objekte) ===
 ${input.stammdatenKontext}
-
-=== ONEDRIVE (bestehende Ordner) ===
-${input.onedriveKontext}
 ${mailKontext ? `\n=== E-MAIL ===\n${mailKontext}\n` : ""}
 ${kontext ? `\n=== KONTEXT ===\n${kontext}` : ""}`;
 
-  const userContent: Array<Record<string, unknown>> = [
-    { type: "text", text: userPrompt },
-    ...vision.map(visionZuApi),
-  ];
+  const text = await anthropicNachricht(systemPrompt, userPrompt, vision);
+  return parseAntwort(text);
+}
 
-  const res = await fetch(ANTHROPIC_MESSAGES_URL, {
-    method: "POST",
-    headers: {
-      "x-api-key": key,
-      "anthropic-version": ANTHROPIC_VERSION,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 4096,
-      temperature: 0,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userContent }],
-    }),
-  });
-
-  const json: unknown = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg =
-      typeof json === "object" &&
-      json !== null &&
-      "error" in json &&
-      typeof (json as { error?: { message?: string } }).error?.message ===
-        "string"
-        ? (json as { error: { message: string } }).error.message
-        : `Anthropic-Fehler (${res.status})`;
-    throw new Error(msg);
+export async function waehleUnterordnerSchritt(
+  input: OrdnerWahlSchrittRequest,
+): Promise<OrdnerWahlSchrittResponse> {
+  if (input.unterordner.length === 0) {
+    return { gewaehlterOrdner: null, konfidenz: 1 };
   }
 
-  const content = (json as { content?: Array<{ type?: string; text?: string }> })
-    .content;
-  const textBlock = content?.find((b) => b.type === "text");
-  const text = textBlock?.text?.trim();
-  if (!text) throw new Error("KI-Antwort war leer.");
+  const objektZeile = input.objektBezeichnung?.trim()
+    ? input.objektBezeichnung.trim()
+    : "— (nur Gesellschaftsebene, kein Objekt)";
 
-  return parseAntwort(text);
+  const systemPrompt = `Du wählst den passenden Unterordner für ein Geschäftsdokument in der FRENKEN-Ablage.
+
+${ABLAGESTRUKTUR}
+
+Regeln:
+- Wähle genau einen Ordnernamen aus der Liste (exakte Schreibweise) oder null.
+- null = aktueller Pfad ist bereits der richtige Zielordner.
+- Nur tiefer gehen wenn ein Unterordner eindeutig zum Dokument passt.
+- Ohne Objekt: typisch 01_Geschaeftsfuehrung, 02_Finanzen, 03_Vertraege, 04_Personal — nicht unter 05_Immobilien absteigen.
+- Mit Objekt: unter 05_Immobilien → Bestand/Ankauf → IM-… Objektordner → passende Kategorie (01_Stammdaten, 02_Vertraege, 03_Finanzen, …).
+
+Antworte NUR mit JSON:
+{
+  "gewaehlterOrdner": "<exakter Name aus Liste oder null>",
+  "konfidenz": <0.0-1.0>
+}`;
+
+  const ordnerListe = input.unterordner.map((n) => `- ${n}`).join("\n");
+  const kontext = (input.modelContext ?? "").slice(0, 8_000);
+  const mail = (input.mailKontext ?? "").slice(0, 2_000);
+
+  const userPrompt = `Dokument: ${input.documentTitle ?? "Dokument"}
+Typ: ${input.dokumentTyp}
+Gesellschaft: ${input.gesellschaftName}
+Objekt: ${objektZeile}
+Aktueller Pfad: ${input.aktuellerPfad}
+
+Verfügbare Unterordner:
+${ordnerListe}
+${mail ? `\nE-Mail:\n${mail}` : ""}
+${kontext ? `\nDokumentauszug:\n${kontext}` : ""}`;
+
+  const text = await anthropicNachricht(systemPrompt, userPrompt, [], 512);
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    return { gewaehlterOrdner: null, konfidenz: 0 };
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+  const raw =
+    typeof parsed.gewaehlterOrdner === "string"
+      ? parsed.gewaehlterOrdner.trim()
+      : null;
+  const gewaehlterOrdner =
+    raw && input.unterordner.includes(raw) ? raw : null;
+  const konfidenz =
+    typeof parsed.konfidenz === "number"
+      ? Math.min(1, Math.max(0, parsed.konfidenz))
+      : gewaehlterOrdner
+        ? 0.5
+        : 0;
+
+  if (gewaehlterOrdner && konfidenz < 0.35) {
+    return { gewaehlterOrdner: null, konfidenz };
+  }
+
+  return { gewaehlterOrdner, konfidenz };
 }
 
 export function hatAnalyseWerte(felder: DokumentAnalyseFelder | null): boolean {

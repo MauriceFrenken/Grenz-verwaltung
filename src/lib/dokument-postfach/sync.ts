@@ -11,14 +11,12 @@ import { microsoftCallerAusJwt, createServiceRoleClient } from "@/lib/microsoft/
 
 import { baueAnhangAnalyseKontext } from "./anhang-kontext";
 import {
+  ermittleZielordnerIterativ,
   findeGesellschaftId,
   findeObjektId,
   findeObjektIdStaerkste,
-  ladeOnedriveKontext,
+  hatObjektZuordnung,
   ladeStammdatenKontext,
-  loeseOrdnerPfad,
-  passtPfadZuGesellschaft,
-  verfeinereOrdnerPfad,
 } from "./ablage-kontext";
 import {
   eintraegeAnlegen,
@@ -75,10 +73,7 @@ async function analysiereEintrag(
       },
     });
 
-    const [stammdatenKontext, onedriveKontext] = await Promise.all([
-      ladeStammdatenKontext(),
-      ladeOnedriveKontext(accessToken),
-    ]);
+    const stammdatenKontext = await ladeStammdatenKontext();
 
     const ergebnis = await handleAnalyzeDokumentRequest({
       documentTitle: kontext.titel,
@@ -86,8 +81,12 @@ async function analysiereEintrag(
       modelContext: kontext.modelContext,
       vision: kontext.vision,
       stammdatenKontext,
-      onedriveKontext,
     });
+
+    ergebnis.felder.ordnerPfad = {
+      ...ergebnis.felder.ordnerPfad,
+      value: null,
+    };
 
     const admin = createServiceRoleClient();
     const [{ data: gesellschaften }, { data: objekte }] = await Promise.all([
@@ -97,18 +96,31 @@ async function analysiereEintrag(
         .select("id,bezeichnung,gesellschaft_id,strasse,ort"),
     ]);
 
-    const objektText = ergebnis.felder.objektBezeichnung.value;
+    const objektFeld = ergebnis.felder.objektBezeichnung;
+    const objektText = objektFeld.value;
+    const objektRelevant = hatObjektZuordnung(
+      objektText,
+      objektFeld.konfidenz,
+    );
 
-    const objektId =
-      findeObjektIdStaerkste(objektText, objekte ?? []) ??
-      findeObjektId(
-        objektText,
-        findeGesellschaftId(
-          ergebnis.felder.gesellschaftName.value,
-          gesellschaften ?? [],
-        ),
-        objekte ?? [],
-      );
+    let objektId: string | null = null;
+    if (objektRelevant) {
+      objektId =
+        findeObjektIdStaerkste(objektText, objekte ?? []) ??
+        findeObjektId(
+          objektText,
+          findeGesellschaftId(
+            ergebnis.felder.gesellschaftName.value,
+            gesellschaften ?? [],
+          ),
+          objekte ?? [],
+        );
+    } else {
+      ergebnis.felder.objektBezeichnung = {
+        ...objektFeld,
+        value: null,
+      };
+    }
 
     const gematchtesObjekt =
       objekte?.find((o) => o.id === objektId) ?? null;
@@ -120,6 +132,11 @@ async function analysiereEintrag(
         gesellschaften ?? [],
       );
     }
+
+    const gesellschaftName =
+      gesellschaften?.find((g) => g.id === gesellschaftId)?.name ??
+      ergebnis.felder.gesellschaftName.value ??
+      "";
 
     if (gematchtesObjekt) {
       ergebnis.felder.gesellschaftName = {
@@ -135,35 +152,34 @@ async function analysiereEintrag(
     }
 
     let ablageOrdnerId: string | null = null;
-    let ablageOrdnerPfad: string | null =
-      ergebnis.felder.ordnerPfad.value?.trim() || null;
+    let ablageOrdnerPfad: string | null = null;
 
     if (
-      ablageOrdnerPfad &&
+      ergebnis.dokumentTyp !== "expose" &&
       gesellschaftId &&
-      !passtPfadZuGesellschaft(ablageOrdnerPfad, gesellschaftId, gesellschaften ?? [])
+      gesellschaftName
     ) {
-      ablageOrdnerPfad = null;
-    }
-
-    if (ergebnis.dokumentTyp !== "expose" && ablageOrdnerPfad) {
-      const aufgeloest = await loeseOrdnerPfad(accessToken, ablageOrdnerPfad);
-      if (aufgeloest) {
-        const verfeinert = await verfeinereOrdnerPfad(accessToken, aufgeloest, {
-          objektBezeichnung: ergebnis.felder.objektBezeichnung.value,
-          strasse: gematchtesObjekt?.strasse,
-          ort: gematchtesObjekt?.ort,
-          bezeichnung: gematchtesObjekt?.bezeichnung,
-        });
-        ablageOrdnerId = verfeinert.id;
-        ablageOrdnerPfad = verfeinert.pfad;
+      const ziel = await ermittleZielordnerIterativ(
+        accessToken,
+        {
+          gesellschaftId,
+          gesellschaftName,
+          objektBezeichnung: gematchtesObjekt?.bezeichnung ?? objektText,
+          dokumentTyp: ergebnis.dokumentTyp,
+          documentTitle: kontext.titel,
+          mailKontext: kontext.mailKontext,
+          modelContext: kontext.modelContext,
+        },
+        gesellschaften ?? [],
+      );
+      if (ziel) {
+        ablageOrdnerId = ziel.id;
+        ablageOrdnerPfad = ziel.pfad;
         ergebnis.felder.ordnerPfad = {
           ...ergebnis.felder.ordnerPfad,
-          value: verfeinert.pfad,
+          value: ziel.pfad,
         };
       }
-    } else if (ergebnis.dokumentTyp === "expose") {
-      ablageOrdnerPfad = null;
     }
 
     await speichereAnalyse(row.id, {
