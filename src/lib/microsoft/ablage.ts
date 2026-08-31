@@ -1,8 +1,10 @@
 import {
   MICROSOFT_ABLAGE_ROOT_AUSSCHLUSS,
   MICROSOFT_ABLAGE_ROOT_MUSTER,
+  MICROSOFT_DOKUMENT_POSTEINGANG_SEIT,
   MICROSOFT_ONEDRIVE_USER,
   MICROSOFT_POST_MAILBOX,
+  MICROSOFT_POST_MAILBOX_ZWEIT,
 } from "./config";
 import {
   graphAnhangBinary,
@@ -36,6 +38,45 @@ export function microsoftPostMailbox(): string {
   ).trim().toLowerCase();
 }
 
+/** Zweites Postfach für Dokumente › Postfach. */
+export function microsoftPostMailboxZweit(): string {
+  return (
+    readEnv("MICROSOFT_POST_MAILBOX_ZWEIT") || MICROSOFT_POST_MAILBOX_ZWEIT
+  ).trim().toLowerCase();
+}
+
+export type DokumentPosteingangQuelle = {
+  postfach: string;
+  seit?: string;
+};
+
+/** Alle Postfächer für Dokumente › Postfach (Reihenfolge = Anzeige). */
+export function microsoftDokumentPosteingangQuellen(): DokumentPosteingangQuelle[] {
+  const primaer = microsoftPostMailbox();
+  const zweit = microsoftPostMailboxZweit();
+  const seit =
+    readEnv("MICROSOFT_DOKUMENT_POSTEINGANG_SEIT") ||
+    MICROSOFT_DOKUMENT_POSTEINGANG_SEIT;
+
+  const quellen: DokumentPosteingangQuelle[] = [{ postfach: primaer }];
+  if (zweit && zweit !== primaer) {
+    quellen.push({ postfach: zweit, seit });
+  }
+  return quellen;
+}
+
+export type DokumentPosteingangNachricht = GraphNachricht & { postfach: string };
+
+function dokumentPosteingangSortieren(
+  nachrichten: DokumentPosteingangNachricht[],
+): DokumentPosteingangNachricht[] {
+  return [...nachrichten].sort((a, b) => {
+    const da = a.eingegangenAm ? new Date(a.eingegangenAm).getTime() : 0;
+    const db = b.eingegangenAm ? new Date(b.eingegangenAm).getTime() : 0;
+    return db - da;
+  });
+}
+
 /** Root-Filter: nur Gesellschaftsordner laut Kundenliste. */
 export function istAblageRootOrdner(name: string): boolean {
   const n = name.trim();
@@ -64,19 +105,29 @@ export async function microsoftOneDriveKinderLesen(input: {
   return { benutzer, items };
 }
 
-/** Liest den Posteingang von post@ (Dokumente › Postfach). */
+/** Liest den Posteingang aller Dokument-Postfächer (Dokumente › Postfach). */
 export async function microsoftDokumentPosteingangLesen(input: {
   supabaseAccessToken: string;
   anzahl?: number;
-}): Promise<{ postfach: string; nachrichten: GraphNachricht[] }> {
+}): Promise<{ postfaecher: string[]; nachrichten: DokumentPosteingangNachricht[] }> {
   await microsoftCallerAusJwt(input.supabaseAccessToken);
   const { accessToken } = await microsoftAccessToken();
-  const postfach = microsoftPostMailbox();
-  const nachrichten = await graphPosteingangNachrichten(accessToken, postfach, {
-    anzahl: input.anzahl ?? 50,
-    nurMitAnhang: true,
-  });
-  return { postfach, nachrichten };
+  const quellen = microsoftDokumentPosteingangQuellen();
+  const anzahl = input.anzahl ?? 50;
+
+  const bloecke = await Promise.all(
+    quellen.map(async ({ postfach, seit }) => {
+      const liste = await graphPosteingangNachrichten(accessToken, postfach, {
+        anzahl,
+        seit,
+        nurMitAnhang: true,
+      });
+      return liste.map((n) => ({ ...n, postfach }));
+    }),
+  );
+
+  const nachrichten = dokumentPosteingangSortieren(bloecke.flat()).slice(0, anzahl);
+  return { postfaecher: quellen.map((q) => q.postfach), nachrichten };
 }
 
 export type AblegenErgebnis = {
@@ -85,10 +136,22 @@ export type AblegenErgebnis = {
   hochgeladen: Array<{ name: string; id: string; webUrl: string | null }>;
 };
 
+function dokumentPostfachAufloesen(postfach?: string | null): string {
+  const erlaubt = new Set(
+    microsoftDokumentPosteingangQuellen().map((q) => q.postfach),
+  );
+  const gewaehlt = (postfach?.trim() || microsoftPostMailbox()).toLowerCase();
+  if (!erlaubt.has(gewaehlt)) {
+    throw new Error("Postfach für diese Nachricht ist nicht konfiguriert.");
+  }
+  return gewaehlt;
+}
+
 /** Alle Nicht-Inline-Anhänge einer Mail nach OneDrive (Root) ablegen. */
 export async function microsoftAnhaengeNachOneDriveAblegen(input: {
   supabaseAccessToken: string;
   nachrichtId: string;
+  postfach?: string | null;
   /** Optional: Zielordner in OneDrive. */
   parentItemId?: string | null;
 }): Promise<AblegenErgebnis> {
@@ -98,7 +161,7 @@ export async function microsoftAnhaengeNachOneDriveAblegen(input: {
   }
 
   const { accessToken } = await microsoftAccessToken();
-  const postfach = microsoftPostMailbox();
+  const postfach = dokumentPostfachAufloesen(input.postfach);
   const onedriveUser = microsoftOneDriveUser();
   const nachrichtId = input.nachrichtId.trim();
 

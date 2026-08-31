@@ -6,7 +6,7 @@
   Application-Permission Mail.ReadWrite gilt standardmäßig für ALLE Postfächer.
   Entra kann das nicht eingrenzen — nur Exchange Online Application Access Policy.
 
-  Freigegeben: ankauf@ (Offene Exposés) und post@ (Dokumente › Postfach).
+  Freigegeben: ankauf@ (Offene Exposés), post@ und m.frenken@ (Dokumente › Postfach).
   OneDrive (Files.*) wird von dieser Policy NICHT beschränkt.
 
   Voraussetzungen:
@@ -22,7 +22,8 @@ param(
   [string]$AppId = "fcacca52-9a81-46f9-b250-9a4b6059b7bb",
   [string[]]$Mailboxes = @(
     "ankauf@frenken-immobilien.com",
-    "post@frenken-immobilien.com"
+    "post@frenken-immobilien.com",
+    "m.frenken@frenken-immobilien.com"
   ),
   [string]$GroupName = "Frenken-Graph-Ankauf-Only",
   [string]$ProbeMailbox = "m.frenken@frenken-immobilien.com"

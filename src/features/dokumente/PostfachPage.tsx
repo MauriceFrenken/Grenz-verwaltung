@@ -8,7 +8,7 @@ import { PermissionGate } from "@/components/auth/PermissionGate";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import { useAuth, usePermissions } from "@/hooks/useAuth";
-import type { GraphNachricht } from "@/lib/microsoft/graph";
+import type { DokumentPosteingangNachricht } from "@/lib/microsoft/ablage";
 import { cn } from "@/lib/utils";
 
 function formatEingangsdatum(iso: string | null): string {
@@ -29,7 +29,7 @@ export function PostfachPage() {
   const token = session?.access_token ?? "";
   const darfAblegen = darfAktion("aktion.dokumente.pruefordner.ablegen");
 
-  const [nachrichten, setNachrichten] = useState<GraphNachricht[]>([]);
+  const [nachrichten, setNachrichten] = useState<DokumentPosteingangNachricht[]>([]);
   const [laedt, setLaedt] = useState(true);
   const [fehler, setFehler] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -75,9 +75,9 @@ export function PostfachPage() {
     };
   }, [token, reloadKey]);
 
-  async function ablegen(nachricht: GraphNachricht) {
+  async function ablegen(nachricht: DokumentPosteingangNachricht) {
     if (!token || !darfAblegen) return;
-    setAblegenId(nachricht.id);
+    setAblegenId(`${nachricht.postfach}:${nachricht.id}`);
     try {
       const { microsoftAnhangAblegenFn } = await import(
         "@/lib/microsoft/server-fn"
@@ -86,6 +86,7 @@ export function PostfachPage() {
         data: {
           supabaseAccessToken: token,
           nachrichtId: nachricht.id,
+          postfach: nachricht.postfach,
         },
       });
       const namen = result.hochgeladen.map((h) => h.name).join(", ");
@@ -104,7 +105,7 @@ export function PostfachPage() {
     }
   }
 
-  const spalten: Column<GraphNachricht>[] = [
+  const spalten: Column<DokumentPosteingangNachricht>[] = [
     {
       key: "absender",
       header: "Absender",
@@ -163,7 +164,7 @@ export function PostfachPage() {
                 void ablegen(row);
               }}
             >
-              {ablegenId === row.id ? (
+              {ablegenId === `${row.postfach}:${row.id}` ? (
                 <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
               ) : (
                 <HardDriveUpload className="h-4 w-4" strokeWidth={1.5} />
@@ -207,7 +208,7 @@ export function PostfachPage() {
           isLoading={laedt}
           isEmpty={!laedt && !fehler && nachrichten.length === 0}
           emptyTitel="Keine Nachrichten mit Anhang"
-          rowKey={(z) => z.id}
+          rowKey={(z) => `${z.postfach}:${z.id}`}
         />
       </PageWrapper>
     </>

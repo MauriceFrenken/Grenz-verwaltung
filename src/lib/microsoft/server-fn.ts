@@ -87,6 +87,7 @@ export const microsoftAnhangAblegenFn = createServerFn({ method: "POST" })
       data as {
         supabaseAccessToken: string;
         nachrichtId: string;
+        postfach?: string | null;
         parentItemId?: string | null;
       },
   )
@@ -94,6 +95,7 @@ export const microsoftAnhangAblegenFn = createServerFn({ method: "POST" })
     microsoftAnhaengeNachOneDriveAblegen({
       supabaseAccessToken: asToken(data),
       nachrichtId: data.nachrichtId,
+      postfach: data.postfach,
       parentItemId: data.parentItemId,
     }),
   );

@@ -9,6 +9,12 @@ export const MICROSOFT_DEFAULT_MAILBOX = "ankauf@frenken-immobilien.com";
 /** Shared Postfach für Dokumente › Postfach. */
 export const MICROSOFT_POST_MAILBOX = "post@frenken-immobilien.com";
 
+/** Zweites Postfach für Dokumente › Postfach (nur Anhänge ab Cutoff-Datum). */
+export const MICROSOFT_POST_MAILBOX_ZWEIT = "m.frenken@frenken-immobilien.com";
+
+/** Nur Mails ab diesem Datum aus dem zweiten Postfach (ISO). */
+export const MICROSOFT_DOKUMENT_POSTEINGANG_SEIT = "2025-08-20T00:00:00Z";
+
 /** OneDrive-Benutzer für Dokumente › Dokumentenablage. */
 export const MICROSOFT_ONEDRIVE_USER = "m.frenken@frenken-immobilien.com";
 
