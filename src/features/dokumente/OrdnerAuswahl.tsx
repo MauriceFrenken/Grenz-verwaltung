@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronRight, Folder, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,41 @@ type Props = {
   className?: string;
 };
 
+function ordnerNamePasst(name: string, teil: string): boolean {
+  const a = name.trim().toLowerCase();
+  const b = teil.trim().toLowerCase();
+  return a === b || a.includes(b) || b.includes(a);
+}
+
+async function loesePfadZuSegmenten(
+  token: string,
+  pfadString: string,
+): Promise<PfadSegment[]> {
+  const teile = pfadString
+    .split("/")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  if (teile.length === 0) return [];
+
+  const { microsoftOneDriveKinderFn } = await import("@/lib/microsoft/server-fn");
+  const segmente: PfadSegment[] = [];
+  let parentId: string | null = null;
+
+  for (const teil of teile) {
+    const result = await microsoftOneDriveKinderFn({
+      data: { supabaseAccessToken: token, itemId: parentId },
+    });
+    const ordner = result.items.find(
+      (i) => i.istOrdner && ordnerNamePasst(i.name, teil),
+    );
+    if (!ordner) break;
+    segmente.push({ id: ordner.id, name: ordner.name });
+    parentId = ordner.id;
+  }
+
+  return segmente;
+}
+
 export function OrdnerAuswahl({
   token,
   gewaehlterOrdnerId,
@@ -28,7 +63,46 @@ export function OrdnerAuswahl({
   const [laedt, setLaedt] = useState(true);
   const [fehler, setFehler] = useState<string | null>(null);
 
+  const pfadSyncKey = `${gewaehlterOrdnerId ?? ""}:${gewaehlterOrdnerPfad ?? ""}`;
+  const letzterSyncKey = useRef<string | null>(null);
+
   const aktuellerOrdnerId = pfad.length > 0 ? pfad[pfad.length - 1]!.id : null;
+
+  useEffect(() => {
+    if (!token || !gewaehlterOrdnerPfad?.trim() || !gewaehlterOrdnerId) {
+      if (letzterSyncKey.current !== pfadSyncKey) {
+        setPfad([]);
+        letzterSyncKey.current = pfadSyncKey;
+      }
+      return;
+    }
+
+    if (letzterSyncKey.current === pfadSyncKey) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const segmente = await loesePfadZuSegmenten(token, gewaehlterOrdnerPfad);
+        if (cancelled) return;
+
+        const last = segmente[segmente.length - 1];
+        if (last?.id === gewaehlterOrdnerId && segmente.length > 0) {
+          setPfad(segmente.slice(0, -1));
+        } else if (segmente.length > 0) {
+          setPfad(segmente);
+        } else {
+          setPfad([]);
+        }
+        letzterSyncKey.current = pfadSyncKey;
+      } catch {
+        if (!cancelled) setPfad([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, gewaehlterOrdnerId, gewaehlterOrdnerPfad, pfadSyncKey]);
 
   useEffect(() => {
     if (!token) {
@@ -89,13 +163,35 @@ export function OrdnerAuswahl({
     }
   }
 
+  function gewaehltenInListeWaehlen() {
+    if (!gewaehlterOrdnerId || !gewaehlterOrdnerPfad) return;
+    onAuswahl({ id: gewaehlterOrdnerId, pfad: gewaehlterOrdnerPfad });
+  }
+
   const istGewaehlt = (id: string) => gewaehlterOrdnerId === id;
+  const gewaehlterInAktuellerListe = items.some(
+    (i) => i.id === gewaehlterOrdnerId,
+  );
+
+  const angezeigterPfad =
+    gewaehlterOrdnerPfad ||
+    (pfad.length > 0 ? ordnerPfadString() : null);
 
   return (
     <div className={cn("flex flex-col gap-2 border border-hairline bg-surface p-4", className)}>
       <div className="flex items-center justify-between gap-2">
         <span className="label-caps text-text-muted">Zielordner</span>
-        {aktuellerOrdnerId ? (
+        {gewaehlterInAktuellerListe ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="border-foreground text-foreground"
+            onClick={gewaehltenInListeWaehlen}
+          >
+            Diesen Ordner wählen
+          </Button>
+        ) : aktuellerOrdnerId ? (
           <Button
             type="button"
             size="sm"
@@ -108,9 +204,9 @@ export function OrdnerAuswahl({
         ) : null}
       </div>
 
-      {gewaehlterOrdnerPfad ? (
+      {angezeigterPfad ? (
         <p className="break-words text-sm font-medium leading-relaxed text-heading">
-          {gewaehlterOrdnerPfad}
+          {angezeigterPfad}
         </p>
       ) : (
         <p className="text-sm text-text-muted">Noch kein Ordner gewählt</p>
@@ -132,12 +228,12 @@ export function OrdnerAuswahl({
         </button>
         {pfad.map((seg, i) => (
           <span key={seg.id} className="flex items-center gap-0.5">
-            <ChevronRight className="h-3 w-3 text-text-subtle" aria-hidden />
+            <ChevronRight className="h-3 w-3 shrink-0 text-text-subtle" aria-hidden />
             <button
               type="button"
               onClick={() => zuSegment(i)}
               className={cn(
-                "truncate rounded px-1 py-0.5 hover:bg-surface-muted max-w-[10rem]",
+                "break-words rounded px-1 py-0.5 text-left hover:bg-surface-muted",
                 i === pfad.length - 1 ? "font-medium text-heading" : "text-text-muted",
               )}
             >
@@ -145,6 +241,16 @@ export function OrdnerAuswahl({
             </button>
           </span>
         ))}
+        {gewaehlterOrdnerId &&
+        gewaehlterOrdnerPfad &&
+        gewaehlterInAktuellerListe ? (
+          <span className="flex items-center gap-0.5">
+            <ChevronRight className="h-3 w-3 shrink-0 text-text-subtle" aria-hidden />
+            <span className="break-words px-1 py-0.5 font-medium text-heading">
+              {gewaehlterOrdnerPfad.split("/").filter(Boolean).pop()}
+            </span>
+          </span>
+        ) : null}
       </nav>
 
       {fehler ? (
@@ -169,12 +275,12 @@ export function OrdnerAuswahl({
                   type="button"
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-muted",
-                    istGewaehlt(item.id) && "bg-surface-muted font-medium",
+                    istGewaehlt(item.id) && "bg-surface-muted font-medium text-heading",
                   )}
                   onClick={() => inOrdner(item)}
                 >
                   <Folder className="h-4 w-4 shrink-0 text-text-muted" aria-hidden />
-                  <span className="truncate">{item.name}</span>
+                  <span className="break-words">{item.name}</span>
                 </button>
               </li>
             ))}
