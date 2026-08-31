@@ -448,7 +448,6 @@ ${ABLAGESTRUKTUR}
 Regeln:
 - Wähle genau einen Ordnernamen aus der Liste (exakte Schreibweise).
 - Die Gesellschaft kommt aus Stammdaten — der Ordnername kann anders formatiert sein (z. B. Präfix 05_, Großschreibung).
-- MTF Capital GmbH ≠ FRENKEN Capital Management GmbH — ähnliche Wörter sind verschiedene Gesellschaften.
 - Nur Ordner aus der Liste wählen.
 
 Antworte NUR mit JSON:
