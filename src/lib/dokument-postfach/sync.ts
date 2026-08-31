@@ -13,9 +13,11 @@ import { baueAnhangAnalyseKontext } from "./anhang-kontext";
 import {
   findeGesellschaftId,
   findeObjektId,
+  findeObjektIdStaerkste,
   ladeOnedriveKontext,
   ladeStammdatenKontext,
   loeseOrdnerPfad,
+  passtPfadZuGesellschaft,
   verfeinereOrdnerPfad,
 } from "./ablage-kontext";
 import {
@@ -95,32 +97,54 @@ async function analysiereEintrag(
         .select("id,bezeichnung,gesellschaft_id,strasse,ort"),
     ]);
 
-    const gesellschaftId = findeGesellschaftId(
-      ergebnis.felder.gesellschaftName.value,
-      gesellschaften ?? [],
-    );
-    const objektId = findeObjektId(
-      ergebnis.felder.objektBezeichnung.value,
-      gesellschaftId,
-      objekte ?? [],
-    );
+    const objektText = ergebnis.felder.objektBezeichnung.value;
+
+    const objektId =
+      findeObjektIdStaerkste(objektText, objekte ?? []) ??
+      findeObjektId(
+        objektText,
+        findeGesellschaftId(
+          ergebnis.felder.gesellschaftName.value,
+          gesellschaften ?? [],
+        ),
+        objekte ?? [],
+      );
 
     const gematchtesObjekt =
-      objekte?.find((o) => o.id === objektId) ??
-      objekte?.find((o) => {
-        const such = (ergebnis.felder.objektBezeichnung.value ?? "").toLowerCase();
-        return (
-          such &&
-          (o.bezeichnung.toLowerCase().includes(such) ||
-            such.includes(o.bezeichnung.toLowerCase()) ||
-            (o.strasse && such.includes(o.strasse.toLowerCase())))
-        );
-      }) ??
-      null;
+      objekte?.find((o) => o.id === objektId) ?? null;
+
+    let gesellschaftId = gematchtesObjekt?.gesellschaft_id ?? null;
+    if (!gesellschaftId) {
+      gesellschaftId = findeGesellschaftId(
+        ergebnis.felder.gesellschaftName.value,
+        gesellschaften ?? [],
+      );
+    }
+
+    if (gematchtesObjekt) {
+      ergebnis.felder.gesellschaftName = {
+        ...ergebnis.felder.gesellschaftName,
+        value:
+          gesellschaften?.find((g) => g.id === gematchtesObjekt.gesellschaft_id)
+            ?.name ?? ergebnis.felder.gesellschaftName.value,
+      };
+      ergebnis.felder.objektBezeichnung = {
+        ...ergebnis.felder.objektBezeichnung,
+        value: gematchtesObjekt.bezeichnung,
+      };
+    }
 
     let ablageOrdnerId: string | null = null;
     let ablageOrdnerPfad: string | null =
       ergebnis.felder.ordnerPfad.value?.trim() || null;
+
+    if (
+      ablageOrdnerPfad &&
+      gesellschaftId &&
+      !passtPfadZuGesellschaft(ablageOrdnerPfad, gesellschaftId, gesellschaften ?? [])
+    ) {
+      ablageOrdnerPfad = null;
+    }
 
     if (ergebnis.dokumentTyp !== "expose" && ablageOrdnerPfad) {
       const aufgeloest = await loeseOrdnerPfad(accessToken, ablageOrdnerPfad);

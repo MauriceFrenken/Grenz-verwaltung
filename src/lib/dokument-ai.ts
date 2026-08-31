@@ -278,16 +278,19 @@ Schritt 1: Klassifiziere den Anhang in genau einen Typ:
 - "dokument": sonstige Geschäftsdokumente (Verträge, Korrespondenz, Protokolle, Versicherungen, …)
 
 Schritt 2a (rechnung): Extrahiere Rechnungsfelder und ordne Gesellschaft/Objekt zu.
-Schritt 2b (dokument): Ordne Gesellschaft/Objekt zu und wähle den tiefsten passenden Zielordner.
+Schritt 2b (dokument):
+  a) ZUERST gesellschaftName und objektBezeichnung aus STAMMDATEN wählen (Grundstück/Adresse im Dokument). Exakte Bezeichnung aus der Objekt-Liste übernehmen.
+  b) DANACH ordnerPfad aus OneDrive — muss zur gewählten Gesellschaft passen und so tief wie möglich sein.
 Schritt 2c (expose): Objektadresse falls erkennbar; ordnerPfad leer lassen.
 
 ${ABLAGESTRUKTUR}
 
 Regeln:
-- Nutze die Stammdaten-Liste für Gesellschafts- und Objektzuordnung.
-- Nutze die OneDrive-Ordnerliste — wähle den tiefsten existierenden Ordner, der zum Dokument passt.
-- Bei objektbezogenen Unterlagen (Adresse, Grundstück, Immobilie): bis zum konkreten Objektordner (IM-…_Strasse) und ggf. passenden Unterordner (01_Stammdaten, 02_Vertraege, 03_Finanzen, 04_Technik, …) — nicht bei 02_Bestand oder 05_Immobilien stoppen, wenn ein passender Objektordner in der Liste steht.
-- ordnerPfad: exakter vollständiger Pfad aus der OneDrive-Liste, z. B. "05_MTF CAPITAL GMBH/05_Immobilien/02_Bestand/IM-2026-001_Duesseldorf_Bendemannstrasse/01_Stammdaten"
+- gesellschaftName und objektBezeichnung NUR aus STAMMDATEN — niemals aus OneDrive-Ordnernamen ableiten.
+- Bei Grundstück/Adresse im Dokument: passendes Objekt in STAMMDATEN suchen (Straße, Hausnummer, Ort).
+- Nutze die OneDrive-Liste nur für ordnerPfad (bestehende Ordner, tiefster passender Pfad).
+- Bei objektbezogenen Unterlagen: bis zum Objektordner (IM-…_Strasse) und passenden Unterordner (01_Stammdaten, 02_Vertraege, …).
+- ordnerPfad: exakter Pfad aus der OneDrive-Liste; Gesellschaftsteil muss zu gesellschaftName passen.
 - Bei Rechnungen: zahlungsempfaenger = an wen gezahlt wird (FRENKEN-Gesellschaft), rechnungssteller = Aussteller.
 - rechnungsbetrag: nur Zahl mit Dezimalpunkt, keine Währung.
 - waehrung: z. B. EUR.
