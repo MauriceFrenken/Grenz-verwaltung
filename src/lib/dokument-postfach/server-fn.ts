@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import { dokumentPosteingangSchnellAusfuehren } from "./ausfuehren";
 import { dokumentPosteingangAblegen } from "./ablegen";
 import { dokumentPosteingangEintragLaden } from "./eintrag";
 import {
   dokumentPosteingangAnalyseWiederholen,
   dokumentPosteingangSynchronisieren,
 } from "./sync";
+import { dokumentPosteingangZuExposesVerschieben } from "./verschieben";
 
 export const dokumentPosteingangSyncFn = createServerFn({ method: "POST" })
   .validator(
@@ -45,3 +47,21 @@ export const dokumentPosteingangAblegenFn = createServerFn({ method: "POST" })
       },
   )
   .handler(async ({ data }) => dokumentPosteingangAblegen(data));
+
+export const dokumentPosteingangSchnellAusfuehrenFn = createServerFn({
+  method: "POST",
+})
+  .validator(
+    (data: unknown) =>
+      data as { supabaseAccessToken: string; eintragId: string },
+  )
+  .handler(async ({ data }) => dokumentPosteingangSchnellAusfuehren(data));
+
+export const dokumentPosteingangZuExposesVerschiebenFn = createServerFn({
+  method: "POST",
+})
+  .validator(
+    (data: unknown) =>
+      data as { supabaseAccessToken: string; eintragId: string },
+  )
+  .handler(async ({ data }) => dokumentPosteingangZuExposesVerschieben(data));

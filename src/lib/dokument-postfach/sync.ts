@@ -137,8 +137,10 @@ export async function dokumentPosteingangAnalyseWiederholen(input: {
   const { accessToken } = await microsoftAccessToken();
 
   const row = await leseEintrag(input.eintragId);
-  if (row.status !== "fehler") {
-    throw new Error("Nur fehlgeschlagene Analysen können wiederholt werden.");
+  if (row.status !== "fehler" && row.status !== "analysiert") {
+    throw new Error(
+      "Nur analysierte oder fehlgeschlagene Einträge können erneut analysiert werden.",
+    );
   }
 
   await setzeStatusNeu(row.id);

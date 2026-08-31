@@ -441,6 +441,66 @@ export async function graphNachrichtVerschieben(
   return verschoben.id ?? nachrichtId;
 }
 
+/** Posteingangs-Ordner-ID eines Postfachs. */
+export async function graphPosteingangOrdnerId(
+  accessToken: string,
+  postfach: string,
+): Promise<string> {
+  const data = await graphGet<{ id?: string }>(
+    `/users/${encodeURIComponent(postfach)}/mailFolders/inbox?$select=id`,
+    accessToken,
+    postfach,
+  );
+  if (!data.id) {
+    throw new Error(`Posteingang von ${postfach} konnte nicht gelesen werden.`);
+  }
+  return data.id;
+}
+
+/** Kopiert eine Nachricht in einen Ordner (auch anderes Postfach). */
+export async function graphNachrichtKopieren(
+  accessToken: string,
+  quellPostfach: string,
+  nachrichtId: string,
+  zielOrdnerId: string,
+): Promise<string> {
+  const kopie = await graphPost<{ id?: string }>(
+    `/users/${encodeURIComponent(quellPostfach)}/messages/${encodeURIComponent(nachrichtId)}/copy`,
+    accessToken,
+    { destinationId: zielOrdnerId },
+    quellPostfach,
+  );
+  return kopie.id ?? "";
+}
+
+async function graphDelete(
+  pfad: string,
+  accessToken: string,
+  postfach?: string,
+): Promise<void> {
+  const res = await fetch(`${GRAPH_BASIS}${pfad}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok && res.status !== 204) {
+    const json: unknown = await res.json().catch(() => ({}));
+    throw graphFehler(res.status, json as GraphFehlerJson, postfach);
+  }
+}
+
+/** Löscht eine Nachricht endgültig aus dem Postfach. */
+export async function graphNachrichtLoeschen(
+  accessToken: string,
+  postfach: string,
+  nachrichtId: string,
+): Promise<void> {
+  await graphDelete(
+    `/users/${encodeURIComponent(postfach)}/messages/${encodeURIComponent(nachrichtId)}`,
+    accessToken,
+    postfach,
+  );
+}
+
 export type GraphDriveItem = {
   id: string;
   name: string;

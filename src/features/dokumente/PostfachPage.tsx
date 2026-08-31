@@ -3,9 +3,9 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   FileQuestion,
   FileText,
-  HardDriveUpload,
   Image,
   Loader2,
+  MoreHorizontal,
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +15,12 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth, usePermissions } from "@/hooks/useAuth";
 import { hatAnalyseWerte } from "@/lib/dokument-postfach/client";
 import type { DokumentPosteingangEintrag } from "@/lib/dokument-postfach/typen";
@@ -28,18 +34,6 @@ type Zeile = {
   nachricht: DokumentPosteingangNachricht;
   eintrag: DokumentPosteingangEintrag | null;
 };
-
-function formatEingangsdatum(iso: string | null): string {
-  if (!iso) return "–";
-  try {
-    return new Intl.DateTimeFormat("de-DE", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(iso));
-  } catch {
-    return "–";
-  }
-}
 
 function AnhangIcon({ art }: { art: GraphAnhangArt }) {
   const Icon = art === "pdf" ? FileText : art === "bild" ? Image : FileQuestion;
@@ -55,15 +49,7 @@ function AnhangIcon({ art }: { art: GraphAnhangArt }) {
   );
 }
 
-function AnalyseStatus({
-  zeile,
-  wiederholenId,
-  onWiederholen,
-}: {
-  zeile: Zeile;
-  wiederholenId: string | null;
-  onWiederholen?: (eintrag: DokumentPosteingangEintrag) => void;
-}) {
+function AnalyseStatus({ zeile }: { zeile: Zeile }) {
   const { nachricht, eintrag } = zeile;
 
   if (!nachricht.primaerAnhang) {
@@ -78,32 +64,9 @@ function AnalyseStatus({
     );
   }
   if (eintrag.status === "fehler") {
-    const laedt = wiederholenId === eintrag.id;
     return (
-      <span className="inline-flex items-center gap-1.5">
-        <span className="text-destructive" title={eintrag.analyseFehler ?? undefined}>
-          Analyse fehlgeschlagen
-        </span>
-        {onWiederholen ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0 text-text-muted hover:bg-surface hover:text-heading"
-            disabled={Boolean(wiederholenId)}
-            aria-label="KI-Analyse wiederholen"
-            onClick={(e) => {
-              e.stopPropagation();
-              onWiederholen(eintrag);
-            }}
-          >
-            {laedt ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} aria-hidden />
-            ) : (
-              <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-            )}
-          </Button>
-        ) : null}
+      <span className="text-destructive" title={eintrag.analyseFehler ?? undefined}>
+        Analyse fehlgeschlagen
       </span>
     );
   }
@@ -119,12 +82,19 @@ function AnalyseStatus({
   return <span className="font-medium text-heading">Analysiert</span>;
 }
 
+function istBereit(eintrag: DokumentPosteingangEintrag | null): eintrag is DokumentPosteingangEintrag {
+  return Boolean(
+    eintrag &&
+    eintrag.status === "analysiert" &&
+    hatAnalyseWerte(eintrag.felder),
+  );
+}
+
 export function PostfachPage() {
   const { session } = useAuth();
   const navigate = useNavigate();
   const { darfAktion } = usePermissions();
   const token = session?.access_token ?? "";
-  const darfAblegen = darfAktion("aktion.dokumente.pruefordner.ablegen");
 
   const besuchKey = useRouterState({
     select: (s) =>
@@ -138,8 +108,7 @@ export function PostfachPage() {
   const [analyseLaeuft, setAnalyseLaeuft] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [ablegenId, setAblegenId] = useState<string | null>(null);
-  const [wiederholenId, setWiederholenId] = useState<string | null>(null);
+  const [aktionId, setAktionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -233,7 +202,7 @@ export function PostfachPage() {
 
   const analyseWiederholen = useCallback(
     async (eintrag: DokumentPosteingangEintrag) => {
-      setWiederholenId(eintrag.id);
+      setAktionId(eintrag.id);
       try {
         const { dokumentPosteingangAnalyseWiederholenFn } = await import(
           "@/lib/dokument-postfach/server-fn"
@@ -250,6 +219,8 @@ export function PostfachPage() {
         );
         if (aktualisiert.status === "fehler") {
           toast.error("KI-Analyse erneut fehlgeschlagen.");
+        } else {
+          toast.success("KI-Analyse abgeschlossen.");
         }
       } catch (e) {
         toast.error(
@@ -258,41 +229,78 @@ export function PostfachPage() {
             : "KI-Analyse konnte nicht wiederholt werden.",
         );
       } finally {
-        setWiederholenId(null);
+        setAktionId(null);
       }
     },
     [token],
   );
 
-  async function schnellAblegen(nachricht: DokumentPosteingangNachricht) {
-    if (!token || !darfAblegen) return;
-    setAblegenId(`${nachricht.postfach}:${nachricht.id}`);
-    try {
-      const { microsoftAnhangAblegenFn } = await import(
-        "@/lib/microsoft/server-fn"
-      );
-      const result = await microsoftAnhangAblegenFn({
-        data: {
-          supabaseAccessToken: token,
-          nachrichtId: nachricht.id,
-          postfach: nachricht.postfach,
-        },
-      });
-      const namen = result.hochgeladen.map((h) => h.name).join(", ");
-      toast.success(
-        result.hochgeladen.length === 1
-          ? `Abgelegt: ${namen}`
-          : `${result.hochgeladen.length} Dateien abgelegt: ${namen}`,
-      );
-    } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Ablegen fehlgeschlagen.",
-        { duration: 12_000 },
-      );
-    } finally {
-      setAblegenId(null);
-    }
-  }
+  const direktAusfuehren = useCallback(
+    async (eintrag: DokumentPosteingangEintrag) => {
+      setAktionId(eintrag.id);
+      try {
+        const { dokumentPosteingangSchnellAusfuehrenFn } = await import(
+          "@/lib/dokument-postfach/server-fn"
+        );
+        const ergebnis = await dokumentPosteingangSchnellAusfuehrenFn({
+          data: { supabaseAccessToken: token, eintragId: eintrag.id },
+        });
+        if (ergebnis.aktion === "buchen") {
+          toast.info("Buchen wird in einem späteren Schritt implementiert.");
+          return;
+        }
+        toast.success(`Abgelegt: ${ergebnis.ordnerPfad}`);
+        setZeilen((prev) =>
+          prev.map((z) =>
+            z.eintrag?.id === eintrag.id
+              ? {
+                  ...z,
+                  eintrag: {
+                    ...z.eintrag,
+                    status: "abgelegt" as const,
+                    abgelegtAm: new Date().toISOString(),
+                  },
+                }
+              : z,
+          ),
+        );
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : "Aktion fehlgeschlagen.",
+          { duration: 12_000 },
+        );
+      } finally {
+        setAktionId(null);
+      }
+    },
+    [token],
+  );
+
+  const zuExposesVerschieben = useCallback(
+    async (eintrag: DokumentPosteingangEintrag, nachrichtId: string, postfach: string) => {
+      setAktionId(eintrag.id);
+      try {
+        const { dokumentPosteingangZuExposesVerschiebenFn } = await import(
+          "@/lib/dokument-postfach/server-fn"
+        );
+        const { zielPostfach } = await dokumentPosteingangZuExposesVerschiebenFn({
+          data: { supabaseAccessToken: token, eintragId: eintrag.id },
+        });
+        setZeilen((prev) =>
+          prev.filter((z) => `${z.nachricht.postfach}:${z.nachricht.id}` !== `${postfach}:${nachrichtId}`),
+        );
+        toast.success(`Nach Exposés verschoben (${zielPostfach}).`);
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : "Verschieben fehlgeschlagen.",
+          { duration: 12_000 },
+        );
+      } finally {
+        setAktionId(null);
+      }
+    },
+    [token],
+  );
 
   const spalten: Column<Zeile>[] = [
     {
@@ -304,7 +312,7 @@ export function PostfachPage() {
     {
       key: "absender",
       header: "Absender",
-      className: "max-w-[11rem]",
+      className: "max-w-[10rem]",
       render: (z) => (
         <span className="truncate block" title={z.nachricht.absenderMail ?? undefined}>
           {z.nachricht.absenderName || z.nachricht.absenderMail || "–"}
@@ -324,6 +332,7 @@ export function PostfachPage() {
     {
       key: "typ",
       header: "Typ",
+      className: "w-24",
       render: (z) => {
         const e = z.eintrag;
         if (!e || e.status === "neu") return <span className="text-text-subtle">–</span>;
@@ -335,42 +344,26 @@ export function PostfachPage() {
     {
       key: "status",
       header: "KI-Status",
-      render: (z) => (
-        <AnalyseStatus
-          zeile={z}
-          wiederholenId={wiederholenId}
-          onWiederholen={
-            darfAktion("aktion.dokumente.pruefordner.analyse_wiederholen")
-              ? analyseWiederholen
-              : undefined
-          }
-        />
-      ),
-    },
-    {
-      key: "datum",
-      header: "Datum",
-      align: "right",
-      render: (z) => (
-        <span className="text-text-muted">
-          {formatEingangsdatum(z.nachricht.eingegangenAm)}
-        </span>
-      ),
+      className: "w-36",
+      render: (z) => <AnalyseStatus zeile={z} />,
     },
     {
       key: "aktion",
       header: "",
       align: "right",
+      className: "w-[1%] whitespace-nowrap",
       render: (z) => {
         const eintrag = z.eintrag;
-        const bereit = Boolean(
+        const bereit = istBereit(eintrag);
+        const laedtZeile = aktionId === eintrag?.id;
+        const kannWiederholen = Boolean(
           eintrag &&
-          eintrag.status === "analysiert" &&
-          hatAnalyseWerte(eintrag.felder),
+          (eintrag.status === "analysiert" || eintrag.status === "fehler"),
         );
+        const istRechnung = Boolean(eintrag?.istRechnung);
 
         return (
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-1.5">
             <PermissionGate
               berechtigung="aktion.dokumente.pruefordner.pruefen"
               skeletonClassName="w-16"
@@ -379,32 +372,103 @@ export function PostfachPage() {
                 size="sm"
                 variant="outline"
                 className="border-foreground text-foreground"
-                disabled={!bereit}
+                disabled={!bereit || laedtZeile}
                 onClick={() => eintrag && pruefen(eintrag)}
               >
                 Check
               </Button>
             </PermissionGate>
-            {darfAblegen && !bereit ? (
-              <PermissionGate berechtigung="aktion.dokumente.pruefordner.ablegen">
+
+            {kannWiederholen ? (
+              <PermissionGate
+                berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen"
+                skeletonClassName="w-8"
+              >
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  className="border-foreground text-foreground"
-                  disabled={Boolean(ablegenId)}
-                  aria-label="Schnell ablegen"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 border-foreground text-foreground"
+                  disabled={laedtZeile}
+                  aria-label="KI-Analyse wiederholen"
                   onClick={(e) => {
                     e.stopPropagation();
-                    void schnellAblegen(z.nachricht);
+                    if (eintrag) void analyseWiederholen(eintrag);
                   }}
                 >
-                  {ablegenId === `${z.nachricht.postfach}:${z.nachricht.id}` ? (
-                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+                  {laedtZeile ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
                   ) : (
-                    <HardDriveUpload className="h-4 w-4" strokeWidth={1.5} />
+                    <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />
                   )}
                 </Button>
+              </PermissionGate>
+            ) : null}
+
+            {bereit ? (
+              istRechnung ? (
+                <PermissionGate
+                  berechtigung="aktion.dokumente.pruefordner.buchen"
+                  skeletonClassName="w-16"
+                >
+                  <Button
+                    size="sm"
+                    className="bg-primary text-primary-foreground hover:bg-heading"
+                    disabled={laedtZeile}
+                    onClick={() => eintrag && void direktAusfuehren(eintrag)}
+                  >
+                    Buchen
+                  </Button>
+                </PermissionGate>
+              ) : (
+                <PermissionGate
+                  berechtigung="aktion.dokumente.pruefordner.ablegen"
+                  skeletonClassName="w-16"
+                >
+                  <Button
+                    size="sm"
+                    className="bg-primary text-primary-foreground hover:bg-heading"
+                    disabled={laedtZeile}
+                    onClick={() => eintrag && void direktAusfuehren(eintrag)}
+                  >
+                    Ablegen
+                  </Button>
+                </PermissionGate>
+              )
+            ) : null}
+
+            {eintrag ? (
+              <PermissionGate
+                berechtigung="aktion.dokumente.pruefordner.exposes_verschieben"
+                skeletonClassName="w-8"
+              >
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 border-foreground text-foreground"
+                      disabled={laedtZeile}
+                      aria-label="Weitere Aktionen"
+                    >
+                      <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() =>
+                        void zuExposesVerschieben(
+                          eintrag,
+                          z.nachricht.id,
+                          z.nachricht.postfach,
+                        )
+                      }
+                    >
+                      Zu Exposés verschieben
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </PermissionGate>
             ) : null}
           </div>

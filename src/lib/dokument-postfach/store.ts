@@ -270,6 +270,14 @@ export async function markiereAbgelegt(
   }
 }
 
+export async function loescheEintrag(id: string): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin.from(TABELLE).delete().eq("id", id);
+  if (error) {
+    throw fehler("Dokument-Posteingang-Eintrag konnte nicht gelöscht werden", error.message);
+  }
+}
+
 export async function naechsteOffeneMail(): Promise<DokumentPosteingangRow | null> {
   const admin = createServiceRoleClient();
   const { data, error } = await admin
