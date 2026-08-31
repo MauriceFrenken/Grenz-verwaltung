@@ -109,7 +109,7 @@ export function OrdnerAuswahl({
       </div>
 
       {gewaehlterOrdnerPfad ? (
-        <p className="text-sm font-medium text-heading truncate" title={gewaehlterOrdnerPfad}>
+        <p className="break-words text-sm font-medium leading-relaxed text-heading">
           {gewaehlterOrdnerPfad}
         </p>
       ) : (
