@@ -14,7 +14,7 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
-import { useAuth, usePermissions } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { hatAnalyseWerte } from "@/lib/dokument-postfach/client";
 import type { DokumentPosteingangEintrag } from "@/lib/dokument-postfach/typen";
 import type { DokumentPosteingangNachricht } from "@/lib/microsoft/ablage";
