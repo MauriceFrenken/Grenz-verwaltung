@@ -118,6 +118,7 @@ export function usePermissions() {
         dokumente: [
           "seite.dokumente.ablage",
           "seite.dokumente.pruefordner",
+          "seite.dokumente.pruefung",
         ],
         transaktionen: ["seite.transaktionen.liste", "seite.transaktionen.expose_import"],
         einstellungen: [

@@ -9,82 +9,48 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AnmeldenRouteImport } from './routes/anmelden'
-import { Route as DatenschutzRouteImport } from './routes/datenschutz'
-import { Route as DokumenteRouteImport } from './routes/dokumente'
-import { Route as EinladungRouteImport } from './routes/einladung'
-import { Route as EinstellungenRouteImport } from './routes/einstellungen'
-import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as TransaktionenRouteImport } from './routes/transaktionen'
 import { Route as VerwaltungRouteImport } from './routes/verwaltung'
-import { Route as DokumenteIndexRouteImport } from './routes/dokumente.index'
-import { Route as DokumenteAblageRouteImport } from './routes/dokumente.ablage'
-import { Route as DokumentePruefordnerRouteImport } from './routes/dokumente.pruefordner'
-import { Route as EinstellungenIndexRouteImport } from './routes/einstellungen.index'
-import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
-import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
-import { Route as EinstellungenIntegrationenRouteImport } from './routes/einstellungen.integrationen'
-import { Route as EinstellungenRollenRouteImport } from './routes/einstellungen.rollen'
-import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
-import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
-import { Route as TransaktionenIndexRouteImport } from './routes/transaktionen.index'
-import { Route as TransaktionenExposeImportRouteImport } from './routes/transaktionen.expose-import'
-import { Route as TransaktionenListeRouteImport } from './routes/transaktionen.liste'
+import { Route as TransaktionenRouteImport } from './routes/transaktionen'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
+import { Route as EinstellungenRouteImport } from './routes/einstellungen'
+import { Route as EinladungRouteImport } from './routes/einladung'
+import { Route as DokumenteRouteImport } from './routes/dokumente'
+import { Route as DatenschutzRouteImport } from './routes/datenschutz'
+import { Route as AnmeldenRouteImport } from './routes/anmelden'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as VerwaltungIndexRouteImport } from './routes/verwaltung.index'
-import { Route as VerwaltungEinheitenRouteImport } from './routes/verwaltung.einheiten'
-import { Route as VerwaltungGesellschaftenRouteImport } from './routes/verwaltung.gesellschaften'
-import { Route as VerwaltungMietverhaeltnisseRouteImport } from './routes/verwaltung.mietverhaeltnisse'
-import { Route as VerwaltungNebenkostenRouteImport } from './routes/verwaltung.nebenkosten'
-import { Route as VerwaltungObjekteRouteImport } from './routes/verwaltung.objekte'
-import { Route as VerwaltungSollstellungRouteImport } from './routes/verwaltung.sollstellung'
+import { Route as TransaktionenIndexRouteImport } from './routes/transaktionen.index'
+import { Route as EinstellungenIndexRouteImport } from './routes/einstellungen.index'
+import { Route as DokumenteIndexRouteImport } from './routes/dokumente.index'
 import { Route as VerwaltungZahlungenRouteImport } from './routes/verwaltung.zahlungen'
-import { Route as TransaktionenExposeImportIndexRouteImport } from './routes/transaktionen.expose-import.index'
-import { Route as TransaktionenExposeImportSalesforceRouteImport } from './routes/transaktionen.expose-import.salesforce'
-import { Route as VerwaltungObjekteIndexRouteImport } from './routes/verwaltung.objekte.index'
-import { Route as VerwaltungObjekteIdRouteImport } from './routes/verwaltung.objekte.$id'
+import { Route as VerwaltungSollstellungRouteImport } from './routes/verwaltung.sollstellung'
+import { Route as VerwaltungObjekteRouteImport } from './routes/verwaltung.objekte'
+import { Route as VerwaltungNebenkostenRouteImport } from './routes/verwaltung.nebenkosten'
+import { Route as VerwaltungMietverhaeltnisseRouteImport } from './routes/verwaltung.mietverhaeltnisse'
+import { Route as VerwaltungGesellschaftenRouteImport } from './routes/verwaltung.gesellschaften'
+import { Route as VerwaltungEinheitenRouteImport } from './routes/verwaltung.einheiten'
+import { Route as TransaktionenListeRouteImport } from './routes/transaktionen.liste'
+import { Route as TransaktionenExposeImportRouteImport } from './routes/transaktionen.expose-import'
+import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
+import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
+import { Route as EinstellungenRollenRouteImport } from './routes/einstellungen.rollen'
+import { Route as EinstellungenIntegrationenRouteImport } from './routes/einstellungen.integrationen'
+import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
+import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
+import { Route as DokumentePruefungRouteImport } from './routes/dokumente.pruefung'
+import { Route as DokumentePruefordnerRouteImport } from './routes/dokumente.pruefordner'
+import { Route as DokumenteAblageRouteImport } from './routes/dokumente.ablage'
 import { Route as VerwaltungSollstellungIndexRouteImport } from './routes/verwaltung.sollstellung.index'
+import { Route as VerwaltungObjekteIndexRouteImport } from './routes/verwaltung.objekte.index'
+import { Route as TransaktionenExposeImportIndexRouteImport } from './routes/transaktionen.expose-import.index'
 import { Route as VerwaltungSollstellungIdRouteImport } from './routes/verwaltung.sollstellung.$id'
+import { Route as VerwaltungObjekteIdRouteImport } from './routes/verwaltung.objekte.$id'
+import { Route as TransaktionenExposeImportSalesforceRouteImport } from './routes/transaktionen.expose-import.salesforce'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AnmeldenRoute = AnmeldenRouteImport.update({
-  id: '/anmelden',
-  path: '/anmelden',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DatenschutzRoute = DatenschutzRouteImport.update({
-  id: '/datenschutz',
-  path: '/datenschutz',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DokumenteRoute = DokumenteRouteImport.update({
-  id: '/dokumente',
-  path: '/dokumente',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EinladungRoute = EinladungRouteImport.update({
-  id: '/einladung',
-  path: '/einladung',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EinstellungenRoute = EinstellungenRouteImport.update({
-  id: '/einstellungen',
-  path: '/einstellungen',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PasswortZuruecksetzenRoute = PasswortZuruecksetzenRouteImport.update({
-  id: '/passwort-zuruecksetzen',
-  path: '/passwort-zuruecksetzen',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
+const VerwaltungRoute = VerwaltungRouteImport.update({
+  id: '/verwaltung',
+  path: '/verwaltung',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TransaktionenRoute = TransaktionenRouteImport.update({
@@ -92,65 +58,106 @@ const TransaktionenRoute = TransaktionenRouteImport.update({
   path: '/transaktionen',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VerwaltungRoute = VerwaltungRouteImport.update({
-  id: '/verwaltung',
-  path: '/verwaltung',
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DokumenteIndexRoute = DokumenteIndexRouteImport.update({
+const PasswortZuruecksetzenRoute = PasswortZuruecksetzenRouteImport.update({
+  id: '/passwort-zuruecksetzen',
+  path: '/passwort-zuruecksetzen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EinstellungenRoute = EinstellungenRouteImport.update({
+  id: '/einstellungen',
+  path: '/einstellungen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EinladungRoute = EinladungRouteImport.update({
+  id: '/einladung',
+  path: '/einladung',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DokumenteRoute = DokumenteRouteImport.update({
+  id: '/dokumente',
+  path: '/dokumente',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DatenschutzRoute = DatenschutzRouteImport.update({
+  id: '/datenschutz',
+  path: '/datenschutz',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnmeldenRoute = AnmeldenRouteImport.update({
+  id: '/anmelden',
+  path: '/anmelden',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => DokumenteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const DokumenteAblageRoute = DokumenteAblageRouteImport.update({
-  id: '/ablage',
-  path: '/ablage',
-  getParentRoute: () => DokumenteRoute,
+const VerwaltungIndexRoute = VerwaltungIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VerwaltungRoute,
 } as any)
-const DokumentePruefordnerRoute = DokumentePruefordnerRouteImport.update({
-  id: '/pruefordner',
-  path: '/pruefordner',
-  getParentRoute: () => DokumenteRoute,
+const TransaktionenIndexRoute = TransaktionenIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TransaktionenRoute,
 } as any)
 const EinstellungenIndexRoute = EinstellungenIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => EinstellungenRoute,
 } as any)
-const EinstellungenAuditRoute = EinstellungenAuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
-  getParentRoute: () => EinstellungenRoute,
-} as any)
-const EinstellungenBenutzerRoute = EinstellungenBenutzerRouteImport.update({
-  id: '/benutzer',
-  path: '/benutzer',
-  getParentRoute: () => EinstellungenRoute,
-} as any)
-const EinstellungenIntegrationenRoute =
-  EinstellungenIntegrationenRouteImport.update({
-    id: '/integrationen',
-    path: '/integrationen',
-    getParentRoute: () => EinstellungenRoute,
-  } as any)
-const EinstellungenRollenRoute = EinstellungenRollenRouteImport.update({
-  id: '/rollen',
-  path: '/rollen',
-  getParentRoute: () => EinstellungenRoute,
-} as any)
-const MicrosoftCallbackRoute = MicrosoftCallbackRouteImport.update({
-  id: '/microsoft/callback',
-  path: '/microsoft/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SalesforceCallbackRoute = SalesforceCallbackRouteImport.update({
-  id: '/salesforce/callback',
-  path: '/salesforce/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TransaktionenIndexRoute = TransaktionenIndexRouteImport.update({
+const DokumenteIndexRoute = DokumenteIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => DokumenteRoute,
+} as any)
+const VerwaltungZahlungenRoute = VerwaltungZahlungenRouteImport.update({
+  id: '/zahlungen',
+  path: '/zahlungen',
+  getParentRoute: () => VerwaltungRoute,
+} as any)
+const VerwaltungSollstellungRoute = VerwaltungSollstellungRouteImport.update({
+  id: '/sollstellung',
+  path: '/sollstellung',
+  getParentRoute: () => VerwaltungRoute,
+} as any)
+const VerwaltungObjekteRoute = VerwaltungObjekteRouteImport.update({
+  id: '/objekte',
+  path: '/objekte',
+  getParentRoute: () => VerwaltungRoute,
+} as any)
+const VerwaltungNebenkostenRoute = VerwaltungNebenkostenRouteImport.update({
+  id: '/nebenkosten',
+  path: '/nebenkosten',
+  getParentRoute: () => VerwaltungRoute,
+} as any)
+const VerwaltungMietverhaeltnisseRoute =
+  VerwaltungMietverhaeltnisseRouteImport.update({
+    id: '/mietverhaeltnisse',
+    path: '/mietverhaeltnisse',
+    getParentRoute: () => VerwaltungRoute,
+  } as any)
+const VerwaltungGesellschaftenRoute =
+  VerwaltungGesellschaftenRouteImport.update({
+    id: '/gesellschaften',
+    path: '/gesellschaften',
+    getParentRoute: () => VerwaltungRoute,
+  } as any)
+const VerwaltungEinheitenRoute = VerwaltungEinheitenRouteImport.update({
+  id: '/einheiten',
+  path: '/einheiten',
+  getParentRoute: () => VerwaltungRoute,
+} as any)
+const TransaktionenListeRoute = TransaktionenListeRouteImport.update({
+  id: '/liste',
+  path: '/liste',
   getParentRoute: () => TransaktionenRoute,
 } as any)
 const TransaktionenExposeImportRoute =
@@ -159,74 +166,51 @@ const TransaktionenExposeImportRoute =
     path: '/expose-import',
     getParentRoute: () => TransaktionenRoute,
   } as any)
-const TransaktionenListeRoute = TransaktionenListeRouteImport.update({
-  id: '/liste',
-  path: '/liste',
-  getParentRoute: () => TransaktionenRoute,
+const SalesforceCallbackRoute = SalesforceCallbackRouteImport.update({
+  id: '/salesforce/callback',
+  path: '/salesforce/callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const VerwaltungIndexRoute = VerwaltungIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => VerwaltungRoute,
+const MicrosoftCallbackRoute = MicrosoftCallbackRouteImport.update({
+  id: '/microsoft/callback',
+  path: '/microsoft/callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const VerwaltungEinheitenRoute = VerwaltungEinheitenRouteImport.update({
-  id: '/einheiten',
-  path: '/einheiten',
-  getParentRoute: () => VerwaltungRoute,
+const EinstellungenRollenRoute = EinstellungenRollenRouteImport.update({
+  id: '/rollen',
+  path: '/rollen',
+  getParentRoute: () => EinstellungenRoute,
 } as any)
-const VerwaltungGesellschaftenRoute =
-  VerwaltungGesellschaftenRouteImport.update({
-    id: '/gesellschaften',
-    path: '/gesellschaften',
-    getParentRoute: () => VerwaltungRoute,
+const EinstellungenIntegrationenRoute =
+  EinstellungenIntegrationenRouteImport.update({
+    id: '/integrationen',
+    path: '/integrationen',
+    getParentRoute: () => EinstellungenRoute,
   } as any)
-const VerwaltungMietverhaeltnisseRoute =
-  VerwaltungMietverhaeltnisseRouteImport.update({
-    id: '/mietverhaeltnisse',
-    path: '/mietverhaeltnisse',
-    getParentRoute: () => VerwaltungRoute,
-  } as any)
-const VerwaltungNebenkostenRoute = VerwaltungNebenkostenRouteImport.update({
-  id: '/nebenkosten',
-  path: '/nebenkosten',
-  getParentRoute: () => VerwaltungRoute,
+const EinstellungenBenutzerRoute = EinstellungenBenutzerRouteImport.update({
+  id: '/benutzer',
+  path: '/benutzer',
+  getParentRoute: () => EinstellungenRoute,
 } as any)
-const VerwaltungObjekteRoute = VerwaltungObjekteRouteImport.update({
-  id: '/objekte',
-  path: '/objekte',
-  getParentRoute: () => VerwaltungRoute,
+const EinstellungenAuditRoute = EinstellungenAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => EinstellungenRoute,
 } as any)
-const VerwaltungSollstellungRoute = VerwaltungSollstellungRouteImport.update({
-  id: '/sollstellung',
-  path: '/sollstellung',
-  getParentRoute: () => VerwaltungRoute,
+const DokumentePruefungRoute = DokumentePruefungRouteImport.update({
+  id: '/pruefung',
+  path: '/pruefung',
+  getParentRoute: () => DokumenteRoute,
 } as any)
-const VerwaltungZahlungenRoute = VerwaltungZahlungenRouteImport.update({
-  id: '/zahlungen',
-  path: '/zahlungen',
-  getParentRoute: () => VerwaltungRoute,
+const DokumentePruefordnerRoute = DokumentePruefordnerRouteImport.update({
+  id: '/pruefordner',
+  path: '/pruefordner',
+  getParentRoute: () => DokumenteRoute,
 } as any)
-const TransaktionenExposeImportIndexRoute =
-  TransaktionenExposeImportIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => TransaktionenExposeImportRoute,
-  } as any)
-const TransaktionenExposeImportSalesforceRoute =
-  TransaktionenExposeImportSalesforceRouteImport.update({
-    id: '/salesforce',
-    path: '/salesforce',
-    getParentRoute: () => TransaktionenExposeImportRoute,
-  } as any)
-const VerwaltungObjekteIndexRoute = VerwaltungObjekteIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => VerwaltungObjekteRoute,
-} as any)
-const VerwaltungObjekteIdRoute = VerwaltungObjekteIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => VerwaltungObjekteRoute,
+const DokumenteAblageRoute = DokumenteAblageRouteImport.update({
+  id: '/ablage',
+  path: '/ablage',
+  getParentRoute: () => DokumenteRoute,
 } as any)
 const VerwaltungSollstellungIndexRoute =
   VerwaltungSollstellungIndexRouteImport.update({
@@ -234,11 +218,33 @@ const VerwaltungSollstellungIndexRoute =
     path: '/',
     getParentRoute: () => VerwaltungSollstellungRoute,
   } as any)
+const VerwaltungObjekteIndexRoute = VerwaltungObjekteIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VerwaltungObjekteRoute,
+} as any)
+const TransaktionenExposeImportIndexRoute =
+  TransaktionenExposeImportIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => TransaktionenExposeImportRoute,
+  } as any)
 const VerwaltungSollstellungIdRoute =
   VerwaltungSollstellungIdRouteImport.update({
     id: '/$id',
     path: '/$id',
     getParentRoute: () => VerwaltungSollstellungRoute,
+  } as any)
+const VerwaltungObjekteIdRoute = VerwaltungObjekteIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => VerwaltungObjekteRoute,
+} as any)
+const TransaktionenExposeImportSalesforceRoute =
+  TransaktionenExposeImportSalesforceRouteImport.update({
+    id: '/salesforce',
+    path: '/salesforce',
+    getParentRoute: () => TransaktionenExposeImportRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -254,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/verwaltung': typeof VerwaltungRouteWithChildren
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
+  '/dokumente/pruefung': typeof DokumentePruefungRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -289,6 +296,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
+  '/dokumente/pruefung': typeof DokumentePruefungRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -326,6 +334,7 @@ export interface FileRoutesById {
   '/verwaltung': typeof VerwaltungRouteWithChildren
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
+  '/dokumente/pruefung': typeof DokumentePruefungRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -367,6 +376,7 @@ export interface FileRouteTypes {
     | '/verwaltung'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
+    | '/dokumente/pruefung'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -402,6 +412,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
+    | '/dokumente/pruefung'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -438,6 +449,7 @@ export interface FileRouteTypes {
     | '/verwaltung'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
+    | '/dokumente/pruefung'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -482,60 +494,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/anmelden': {
-      id: '/anmelden'
-      path: '/anmelden'
-      fullPath: '/anmelden'
-      preLoaderRoute: typeof AnmeldenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/datenschutz': {
-      id: '/datenschutz'
-      path: '/datenschutz'
-      fullPath: '/datenschutz'
-      preLoaderRoute: typeof DatenschutzRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dokumente': {
-      id: '/dokumente'
-      path: '/dokumente'
-      fullPath: '/dokumente'
-      preLoaderRoute: typeof DokumenteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/einladung': {
-      id: '/einladung'
-      path: '/einladung'
-      fullPath: '/einladung'
-      preLoaderRoute: typeof EinladungRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/einstellungen': {
-      id: '/einstellungen'
-      path: '/einstellungen'
-      fullPath: '/einstellungen'
-      preLoaderRoute: typeof EinstellungenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/passwort-zuruecksetzen': {
-      id: '/passwort-zuruecksetzen'
-      path: '/passwort-zuruecksetzen'
-      fullPath: '/passwort-zuruecksetzen'
-      preLoaderRoute: typeof PasswortZuruecksetzenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
+    '/verwaltung': {
+      id: '/verwaltung'
+      path: '/verwaltung'
+      fullPath: '/verwaltung'
+      preLoaderRoute: typeof VerwaltungRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/transaktionen': {
@@ -545,103 +508,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TransaktionenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/verwaltung': {
-      id: '/verwaltung'
-      path: '/verwaltung'
-      fullPath: '/verwaltung'
-      preLoaderRoute: typeof VerwaltungRouteImport
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dokumente/': {
-      id: '/dokumente/'
-      path: '/'
-      fullPath: '/dokumente/'
-      preLoaderRoute: typeof DokumenteIndexRouteImport
-      parentRoute: typeof DokumenteRoute
-    }
-    '/dokumente/ablage': {
-      id: '/dokumente/ablage'
-      path: '/ablage'
-      fullPath: '/dokumente/ablage'
-      preLoaderRoute: typeof DokumenteAblageRouteImport
-      parentRoute: typeof DokumenteRoute
-    }
-    '/dokumente/pruefordner': {
-      id: '/dokumente/pruefordner'
-      path: '/pruefordner'
-      fullPath: '/dokumente/pruefordner'
-      preLoaderRoute: typeof DokumentePruefordnerRouteImport
-      parentRoute: typeof DokumenteRoute
-    }
-    '/einstellungen/': {
-      id: '/einstellungen/'
-      path: '/'
-      fullPath: '/einstellungen/'
-      preLoaderRoute: typeof EinstellungenIndexRouteImport
-      parentRoute: typeof EinstellungenRoute
-    }
-    '/einstellungen/audit': {
-      id: '/einstellungen/audit'
-      path: '/audit'
-      fullPath: '/einstellungen/audit'
-      preLoaderRoute: typeof EinstellungenAuditRouteImport
-      parentRoute: typeof EinstellungenRoute
-    }
-    '/einstellungen/benutzer': {
-      id: '/einstellungen/benutzer'
-      path: '/benutzer'
-      fullPath: '/einstellungen/benutzer'
-      preLoaderRoute: typeof EinstellungenBenutzerRouteImport
-      parentRoute: typeof EinstellungenRoute
-    }
-    '/einstellungen/integrationen': {
-      id: '/einstellungen/integrationen'
-      path: '/integrationen'
-      fullPath: '/einstellungen/integrationen'
-      preLoaderRoute: typeof EinstellungenIntegrationenRouteImport
-      parentRoute: typeof EinstellungenRoute
-    }
-    '/einstellungen/rollen': {
-      id: '/einstellungen/rollen'
-      path: '/rollen'
-      fullPath: '/einstellungen/rollen'
-      preLoaderRoute: typeof EinstellungenRollenRouteImport
-      parentRoute: typeof EinstellungenRoute
-    }
-    '/microsoft/callback': {
-      id: '/microsoft/callback'
-      path: '/microsoft/callback'
-      fullPath: '/microsoft/callback'
-      preLoaderRoute: typeof MicrosoftCallbackRouteImport
+    '/passwort-zuruecksetzen': {
+      id: '/passwort-zuruecksetzen'
+      path: '/passwort-zuruecksetzen'
+      fullPath: '/passwort-zuruecksetzen'
+      preLoaderRoute: typeof PasswortZuruecksetzenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/salesforce/callback': {
-      id: '/salesforce/callback'
-      path: '/salesforce/callback'
-      fullPath: '/salesforce/callback'
-      preLoaderRoute: typeof SalesforceCallbackRouteImport
+    '/einstellungen': {
+      id: '/einstellungen'
+      path: '/einstellungen'
+      fullPath: '/einstellungen'
+      preLoaderRoute: typeof EinstellungenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/transaktionen/': {
-      id: '/transaktionen/'
+    '/einladung': {
+      id: '/einladung'
+      path: '/einladung'
+      fullPath: '/einladung'
+      preLoaderRoute: typeof EinladungRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dokumente': {
+      id: '/dokumente'
+      path: '/dokumente'
+      fullPath: '/dokumente'
+      preLoaderRoute: typeof DokumenteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/datenschutz': {
+      id: '/datenschutz'
+      path: '/datenschutz'
+      fullPath: '/datenschutz'
+      preLoaderRoute: typeof DatenschutzRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/anmelden': {
+      id: '/anmelden'
+      path: '/anmelden'
+      fullPath: '/anmelden'
+      preLoaderRoute: typeof AnmeldenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
       path: '/'
-      fullPath: '/transaktionen/'
-      preLoaderRoute: typeof TransaktionenIndexRouteImport
-      parentRoute: typeof TransaktionenRoute
-    }
-    '/transaktionen/expose-import': {
-      id: '/transaktionen/expose-import'
-      path: '/expose-import'
-      fullPath: '/transaktionen/expose-import'
-      preLoaderRoute: typeof TransaktionenExposeImportRouteImport
-      parentRoute: typeof TransaktionenRoute
-    }
-    '/transaktionen/liste': {
-      id: '/transaktionen/liste'
-      path: '/liste'
-      fullPath: '/transaktionen/liste'
-      preLoaderRoute: typeof TransaktionenListeRouteImport
-      parentRoute: typeof TransaktionenRoute
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/verwaltung/': {
       id: '/verwaltung/'
@@ -650,39 +571,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerwaltungIndexRouteImport
       parentRoute: typeof VerwaltungRoute
     }
-    '/verwaltung/einheiten': {
-      id: '/verwaltung/einheiten'
-      path: '/einheiten'
-      fullPath: '/verwaltung/einheiten'
-      preLoaderRoute: typeof VerwaltungEinheitenRouteImport
-      parentRoute: typeof VerwaltungRoute
+    '/transaktionen/': {
+      id: '/transaktionen/'
+      path: '/'
+      fullPath: '/transaktionen/'
+      preLoaderRoute: typeof TransaktionenIndexRouteImport
+      parentRoute: typeof TransaktionenRoute
     }
-    '/verwaltung/gesellschaften': {
-      id: '/verwaltung/gesellschaften'
-      path: '/gesellschaften'
-      fullPath: '/verwaltung/gesellschaften'
-      preLoaderRoute: typeof VerwaltungGesellschaftenRouteImport
-      parentRoute: typeof VerwaltungRoute
+    '/einstellungen/': {
+      id: '/einstellungen/'
+      path: '/'
+      fullPath: '/einstellungen/'
+      preLoaderRoute: typeof EinstellungenIndexRouteImport
+      parentRoute: typeof EinstellungenRoute
     }
-    '/verwaltung/mietverhaeltnisse': {
-      id: '/verwaltung/mietverhaeltnisse'
-      path: '/mietverhaeltnisse'
-      fullPath: '/verwaltung/mietverhaeltnisse'
-      preLoaderRoute: typeof VerwaltungMietverhaeltnisseRouteImport
-      parentRoute: typeof VerwaltungRoute
+    '/dokumente/': {
+      id: '/dokumente/'
+      path: '/'
+      fullPath: '/dokumente/'
+      preLoaderRoute: typeof DokumenteIndexRouteImport
+      parentRoute: typeof DokumenteRoute
     }
-    '/verwaltung/nebenkosten': {
-      id: '/verwaltung/nebenkosten'
-      path: '/nebenkosten'
-      fullPath: '/verwaltung/nebenkosten'
-      preLoaderRoute: typeof VerwaltungNebenkostenRouteImport
-      parentRoute: typeof VerwaltungRoute
-    }
-    '/verwaltung/objekte': {
-      id: '/verwaltung/objekte'
-      path: '/objekte'
-      fullPath: '/verwaltung/objekte'
-      preLoaderRoute: typeof VerwaltungObjekteRouteImport
+    '/verwaltung/zahlungen': {
+      id: '/verwaltung/zahlungen'
+      path: '/zahlungen'
+      fullPath: '/verwaltung/zahlungen'
+      preLoaderRoute: typeof VerwaltungZahlungenRouteImport
       parentRoute: typeof VerwaltungRoute
     }
     '/verwaltung/sollstellung': {
@@ -692,40 +606,117 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerwaltungSollstellungRouteImport
       parentRoute: typeof VerwaltungRoute
     }
-    '/verwaltung/zahlungen': {
-      id: '/verwaltung/zahlungen'
-      path: '/zahlungen'
-      fullPath: '/verwaltung/zahlungen'
-      preLoaderRoute: typeof VerwaltungZahlungenRouteImport
+    '/verwaltung/objekte': {
+      id: '/verwaltung/objekte'
+      path: '/objekte'
+      fullPath: '/verwaltung/objekte'
+      preLoaderRoute: typeof VerwaltungObjekteRouteImport
       parentRoute: typeof VerwaltungRoute
     }
-    '/transaktionen/expose-import/': {
-      id: '/transaktionen/expose-import/'
-      path: '/'
-      fullPath: '/transaktionen/expose-import/'
-      preLoaderRoute: typeof TransaktionenExposeImportIndexRouteImport
-      parentRoute: typeof TransaktionenExposeImportRoute
+    '/verwaltung/nebenkosten': {
+      id: '/verwaltung/nebenkosten'
+      path: '/nebenkosten'
+      fullPath: '/verwaltung/nebenkosten'
+      preLoaderRoute: typeof VerwaltungNebenkostenRouteImport
+      parentRoute: typeof VerwaltungRoute
     }
-    '/transaktionen/expose-import/salesforce': {
-      id: '/transaktionen/expose-import/salesforce'
-      path: '/salesforce'
-      fullPath: '/transaktionen/expose-import/salesforce'
-      preLoaderRoute: typeof TransaktionenExposeImportSalesforceRouteImport
-      parentRoute: typeof TransaktionenExposeImportRoute
+    '/verwaltung/mietverhaeltnisse': {
+      id: '/verwaltung/mietverhaeltnisse'
+      path: '/mietverhaeltnisse'
+      fullPath: '/verwaltung/mietverhaeltnisse'
+      preLoaderRoute: typeof VerwaltungMietverhaeltnisseRouteImport
+      parentRoute: typeof VerwaltungRoute
     }
-    '/verwaltung/objekte/': {
-      id: '/verwaltung/objekte/'
-      path: '/'
-      fullPath: '/verwaltung/objekte/'
-      preLoaderRoute: typeof VerwaltungObjekteIndexRouteImport
-      parentRoute: typeof VerwaltungObjekteRoute
+    '/verwaltung/gesellschaften': {
+      id: '/verwaltung/gesellschaften'
+      path: '/gesellschaften'
+      fullPath: '/verwaltung/gesellschaften'
+      preLoaderRoute: typeof VerwaltungGesellschaftenRouteImport
+      parentRoute: typeof VerwaltungRoute
     }
-    '/verwaltung/objekte/$id': {
-      id: '/verwaltung/objekte/$id'
-      path: '/$id'
-      fullPath: '/verwaltung/objekte/$id'
-      preLoaderRoute: typeof VerwaltungObjekteIdRouteImport
-      parentRoute: typeof VerwaltungObjekteRoute
+    '/verwaltung/einheiten': {
+      id: '/verwaltung/einheiten'
+      path: '/einheiten'
+      fullPath: '/verwaltung/einheiten'
+      preLoaderRoute: typeof VerwaltungEinheitenRouteImport
+      parentRoute: typeof VerwaltungRoute
+    }
+    '/transaktionen/liste': {
+      id: '/transaktionen/liste'
+      path: '/liste'
+      fullPath: '/transaktionen/liste'
+      preLoaderRoute: typeof TransaktionenListeRouteImport
+      parentRoute: typeof TransaktionenRoute
+    }
+    '/transaktionen/expose-import': {
+      id: '/transaktionen/expose-import'
+      path: '/expose-import'
+      fullPath: '/transaktionen/expose-import'
+      preLoaderRoute: typeof TransaktionenExposeImportRouteImport
+      parentRoute: typeof TransaktionenRoute
+    }
+    '/salesforce/callback': {
+      id: '/salesforce/callback'
+      path: '/salesforce/callback'
+      fullPath: '/salesforce/callback'
+      preLoaderRoute: typeof SalesforceCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/microsoft/callback': {
+      id: '/microsoft/callback'
+      path: '/microsoft/callback'
+      fullPath: '/microsoft/callback'
+      preLoaderRoute: typeof MicrosoftCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/einstellungen/rollen': {
+      id: '/einstellungen/rollen'
+      path: '/rollen'
+      fullPath: '/einstellungen/rollen'
+      preLoaderRoute: typeof EinstellungenRollenRouteImport
+      parentRoute: typeof EinstellungenRoute
+    }
+    '/einstellungen/integrationen': {
+      id: '/einstellungen/integrationen'
+      path: '/integrationen'
+      fullPath: '/einstellungen/integrationen'
+      preLoaderRoute: typeof EinstellungenIntegrationenRouteImport
+      parentRoute: typeof EinstellungenRoute
+    }
+    '/einstellungen/benutzer': {
+      id: '/einstellungen/benutzer'
+      path: '/benutzer'
+      fullPath: '/einstellungen/benutzer'
+      preLoaderRoute: typeof EinstellungenBenutzerRouteImport
+      parentRoute: typeof EinstellungenRoute
+    }
+    '/einstellungen/audit': {
+      id: '/einstellungen/audit'
+      path: '/audit'
+      fullPath: '/einstellungen/audit'
+      preLoaderRoute: typeof EinstellungenAuditRouteImport
+      parentRoute: typeof EinstellungenRoute
+    }
+    '/dokumente/pruefung': {
+      id: '/dokumente/pruefung'
+      path: '/pruefung'
+      fullPath: '/dokumente/pruefung'
+      preLoaderRoute: typeof DokumentePruefungRouteImport
+      parentRoute: typeof DokumenteRoute
+    }
+    '/dokumente/pruefordner': {
+      id: '/dokumente/pruefordner'
+      path: '/pruefordner'
+      fullPath: '/dokumente/pruefordner'
+      preLoaderRoute: typeof DokumentePruefordnerRouteImport
+      parentRoute: typeof DokumenteRoute
+    }
+    '/dokumente/ablage': {
+      id: '/dokumente/ablage'
+      path: '/ablage'
+      fullPath: '/dokumente/ablage'
+      preLoaderRoute: typeof DokumenteAblageRouteImport
+      parentRoute: typeof DokumenteRoute
     }
     '/verwaltung/sollstellung/': {
       id: '/verwaltung/sollstellung/'
@@ -734,6 +725,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerwaltungSollstellungIndexRouteImport
       parentRoute: typeof VerwaltungSollstellungRoute
     }
+    '/verwaltung/objekte/': {
+      id: '/verwaltung/objekte/'
+      path: '/'
+      fullPath: '/verwaltung/objekte/'
+      preLoaderRoute: typeof VerwaltungObjekteIndexRouteImport
+      parentRoute: typeof VerwaltungObjekteRoute
+    }
+    '/transaktionen/expose-import/': {
+      id: '/transaktionen/expose-import/'
+      path: '/'
+      fullPath: '/transaktionen/expose-import/'
+      preLoaderRoute: typeof TransaktionenExposeImportIndexRouteImport
+      parentRoute: typeof TransaktionenExposeImportRoute
+    }
     '/verwaltung/sollstellung/$id': {
       id: '/verwaltung/sollstellung/$id'
       path: '/$id'
@@ -741,18 +746,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerwaltungSollstellungIdRouteImport
       parentRoute: typeof VerwaltungSollstellungRoute
     }
+    '/verwaltung/objekte/$id': {
+      id: '/verwaltung/objekte/$id'
+      path: '/$id'
+      fullPath: '/verwaltung/objekte/$id'
+      preLoaderRoute: typeof VerwaltungObjekteIdRouteImport
+      parentRoute: typeof VerwaltungObjekteRoute
+    }
+    '/transaktionen/expose-import/salesforce': {
+      id: '/transaktionen/expose-import/salesforce'
+      path: '/salesforce'
+      fullPath: '/transaktionen/expose-import/salesforce'
+      preLoaderRoute: typeof TransaktionenExposeImportSalesforceRouteImport
+      parentRoute: typeof TransaktionenExposeImportRoute
+    }
   }
 }
 
 interface DokumenteRouteChildren {
   DokumenteAblageRoute: typeof DokumenteAblageRoute
   DokumentePruefordnerRoute: typeof DokumentePruefordnerRoute
+  DokumentePruefungRoute: typeof DokumentePruefungRoute
   DokumenteIndexRoute: typeof DokumenteIndexRoute
 }
 
 const DokumenteRouteChildren: DokumenteRouteChildren = {
   DokumenteAblageRoute: DokumenteAblageRoute,
   DokumentePruefordnerRoute: DokumentePruefordnerRoute,
+  DokumentePruefungRoute: DokumentePruefungRoute,
   DokumenteIndexRoute: DokumenteIndexRoute,
 }
 
@@ -885,3 +906,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

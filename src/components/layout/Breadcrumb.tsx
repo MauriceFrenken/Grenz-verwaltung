@@ -15,6 +15,7 @@ const LABELS: Record<string, string> = {
   "/dokumente": "Dokumente",
   "/dokumente/ablage": "Dokumentenablage",
   "/dokumente/pruefordner": "Postfach",
+  "/dokumente/pruefung": "Dokument prüfen",
   "/transaktionen": "Transaktionen",
   "/transaktionen/liste": "Offene Exposés",
   "/transaktionen/expose-import": "Exposé-Import",
