@@ -66,8 +66,8 @@ function AnalyseStatus({
 }) {
   const { nachricht, eintrag } = zeile;
 
-  if (!nachricht.pdfAnhang) {
-    return <span className="text-text-subtle">Kein PDF</span>;
+  if (!nachricht.primaerAnhang) {
+    return <span className="text-text-subtle">Kein Anhang</span>;
   }
   if (!eintrag || eintrag.status === "neu") {
     return (

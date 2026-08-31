@@ -28,6 +28,8 @@ export type GraphNachricht = {
   anhangArt: GraphAnhangArt;
   /** Erster PDF-Anhang der Nachricht (Exposé-Kandidat). */
   pdfAnhang: GraphAnhangMeta | null;
+  /** Primärer Datei-Anhang: PDF > Bild > erste Datei. */
+  primaerAnhang: GraphAnhangMeta | null;
   vorschau: string | null;
   webLink: string | null;
 };
@@ -198,6 +200,18 @@ function mapAnhangMeta(roh: RohAnhangMeta): GraphAnhangMeta {
   };
 }
 
+function waehlePrimaerAnhang(
+  anhaenge: RohAnhangMeta[],
+): GraphAnhangMeta | null {
+  const dateien = anhaenge.filter((a) => !a.isInline && a.id);
+  const pdf = dateien.find(istPdfAnhang);
+  if (pdf) return mapAnhangMeta(pdf);
+  const bild = dateien.find(istBildAnhang);
+  if (bild) return mapAnhangMeta(bild);
+  const erste = dateien[0];
+  return erste ? mapAnhangMeta(erste) : null;
+}
+
 function mapNachricht(roh: RohNachricht): GraphNachricht | null {
   if (!roh.id) return null;
   const anhaenge = (roh.attachments ?? []).filter((a) => !a.isInline);
@@ -212,6 +226,7 @@ function mapNachricht(roh: RohNachricht): GraphNachricht | null {
     hatAnhaenge: roh.hasAttachments === true,
     anhangArt: anhangArtAus(anhaenge),
     pdfAnhang: pdf ? mapAnhangMeta(pdf) : null,
+    primaerAnhang: waehlePrimaerAnhang(anhaenge),
     vorschau: roh.bodyPreview ?? null,
     webLink: roh.webLink ?? null,
   };

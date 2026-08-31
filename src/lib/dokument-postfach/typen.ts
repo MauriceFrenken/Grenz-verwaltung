@@ -37,14 +37,17 @@ export type DokumentPosteingangSyncErgebnis = {
   offen: number;
 };
 
-export type DokumentPosteingangMitPdf = {
+export type DokumentPosteingangMitAnhang = {
   eintrag: DokumentPosteingangEintrag;
-  pdf: {
+  anhang: {
     dateiname: string;
     mimeType: string;
     base64: string;
   };
 };
+
+/** @deprecated Alias */
+export type DokumentPosteingangMitPdf = DokumentPosteingangMitAnhang;
 
 export type DokumentAblegenErgebnis = {
   abgelegt: boolean;

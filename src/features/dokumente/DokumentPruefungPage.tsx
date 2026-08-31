@@ -44,7 +44,19 @@ type HighlightState = { page: number; quote: string; hint?: string } | null;
 
 const AUSWAHL_LEER = "__none__";
 
+type AnhangVorschauArt = "pdf" | "bild" | "sonstiges";
+
 const pruefungRoute = getRouteApi("/dokumente/pruefung");
+
+function anhangArtAus(mimeType: string, dateiname: string): AnhangVorschauArt {
+  const mime = mimeType.toLowerCase();
+  const name = dateiname.toLowerCase();
+  if (mime.includes("pdf") || name.endsWith(".pdf")) return "pdf";
+  if (mime.startsWith("image/") || /\.(jpe?g|png|gif|webp|tiff?|bmp)$/i.test(name)) {
+    return "bild";
+  }
+  return "sonstiges";
+}
 
 function leereFelder(): FelderState {
   const ids = [...DOKUMENT_ABLAGE_FELDER, ...DOKUMENT_RECHNUNG_FELDER];
@@ -130,6 +142,8 @@ export function DokumentPruefungPage() {
   const [ordnerId, setOrdnerId] = useState<string | null>(null);
   const [ordnerPfad, setOrdnerPfad] = useState<string | null>(null);
 
+  const [anhangArt, setAnhangArt] = useState<AnhangVorschauArt>("pdf");
+  const [dateiname, setDateiname] = useState("");
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [pdfMeta, setPdfMeta] = useState<ExtractedPdfForChat | null>(null);
   const [pdfSeite, setPdfSeite] = useState(1);
@@ -165,19 +179,28 @@ export function DokumentPruefungPage() {
     [],
   );
 
-  const pdfDateiUebernehmen = useCallback(async (datei: File) => {
+  const anhangUebernehmen = useCallback(async (datei: File, art: AnhangVorschauArt) => {
     if (objectUrlRef.current) {
       URL.revokeObjectURL(objectUrlRef.current);
     }
     const url = URL.createObjectURL(datei);
     objectUrlRef.current = url;
     setObjectUrl(url);
-
-    const extracted = await extractPdfForChat(datei);
-    setPdfMeta(extracted);
+    setAnhangArt(art);
+    setDateiname(datei.name);
+    setPdfMeta(null);
     setPdfSeite(1);
     setHighlight(null);
-    return extracted;
+
+    if (art !== "pdf") return null;
+
+    try {
+      const extracted = await extractPdfForChat(datei);
+      setPdfMeta(extracted);
+      return extracted;
+    } catch {
+      return null;
+    }
   }, []);
 
   useEffect(() => {
@@ -190,7 +213,7 @@ export function DokumentPruefungPage() {
     void (async () => {
       setLaedtPdf(true);
       try {
-        const [{ eintrag: geladen, pdf }, gs, obj] = await Promise.all([
+        const [{ eintrag: geladen, anhang }, gs, obj] = await Promise.all([
           import("@/lib/dokument-postfach/server-fn").then((m) =>
             m.dokumentPosteingangEintragFn({
               data: { supabaseAccessToken: token, eintragId },
@@ -210,12 +233,17 @@ export function DokumentPruefungPage() {
         setOrdnerId(geladen.ablageOrdnerId);
         setOrdnerPfad(geladen.ablageOrdnerPfad);
 
-        const datei = base64ZuFile(pdf.base64, pdf.dateiname, pdf.mimeType);
-        const extracted = await pdfDateiUebernehmen(datei);
-        if (cancelled || !extracted) return;
+        const art = anhangArtAus(anhang.mimeType, anhang.dateiname);
+        const datei = base64ZuFile(
+          anhang.base64,
+          anhang.dateiname,
+          anhang.mimeType,
+        );
+        const extracted = await anhangUebernehmen(datei, art);
+        if (cancelled) return;
 
         if (geladen.felder) {
-          ergebnisUebernehmen(geladen.felder, extracted.pages);
+          ergebnisUebernehmen(geladen.felder, extracted?.pages ?? null);
         }
       } catch (err) {
         if (cancelled) return;
@@ -233,7 +261,7 @@ export function DokumentPruefungPage() {
     return () => {
       cancelled = true;
     };
-  }, [ergebnisUebernehmen, pdfDateiUebernehmen, postfachSuche, token]);
+  }, [anhangUebernehmen, ergebnisUebernehmen, postfachSuche, token]);
 
   useEffect(() => {
     return () => {
@@ -356,7 +384,20 @@ export function DokumentPruefungPage() {
           {laedtPdf ? (
             <div className="flex h-full items-center justify-center gap-2 text-text-muted">
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-              <span>PDF wird geladen…</span>
+              <span>Anhang wird geladen…</span>
+            </div>
+          ) : anhangArt === "bild" && objectUrl ? (
+            <div className="flex h-full items-center justify-center overflow-auto bg-surface-muted/30 p-4">
+              <img
+                src={objectUrl}
+                alt={dateiname || "Anhang"}
+                className="max-h-full max-w-full object-contain"
+              />
+            </div>
+          ) : anhangArt === "sonstiges" ? (
+            <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-muted/30 p-8 text-center text-text-muted">
+              <p className="font-medium text-heading">{dateiname || "Anhang"}</p>
+              <p className="text-sm">Keine Vorschau für diesen Dateityp.</p>
             </div>
           ) : (
             <PdfSourceViewer
@@ -452,15 +493,6 @@ export function DokumentPruefungPage() {
                 }));
               }}
             />
-          ) : null}
-
-          {felder.zuordnungBegruendung?.value ? (
-            <div className="border border-hairline bg-surface-muted/30 p-4">
-              <span className="label-caps text-text-muted">KI-Begründung</span>
-              <p className="mt-2 text-sm text-heading">
-                {felder.zuordnungBegruendung.value}
-              </p>
-            </div>
           ) : null}
 
           {sichtbareFelder.map((id) => (

@@ -9,7 +9,7 @@ import {
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
 import { microsoftCallerAusJwt, createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
 
-import { extrahierePdfText } from "../postfach/pdf-text";
+import { baueAnhangAnalyseKontext } from "./anhang-kontext";
 import {
   findeGesellschaftId,
   findeObjektId,
@@ -31,7 +31,7 @@ import {
 } from "./store";
 import type { DokumentPosteingangSyncErgebnis } from "./typen";
 
-const MAX_PDF_BYTES = 25 * 1024 * 1024;
+const MAX_ANHANG_BYTES = 25 * 1024 * 1024;
 
 function fehlerText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -43,7 +43,7 @@ async function analysiereEintrag(
 ): Promise<void> {
   try {
     if (!row.anhang_id) {
-      throw new Error("Kein PDF-Anhang an der Mail gefunden.");
+      throw new Error("Kein Anhang an der Mail gefunden.");
     }
 
     const anhang = await graphAnhangBinary(
@@ -56,16 +56,21 @@ async function analysiereEintrag(
     if (bytes.byteLength === 0) {
       throw new Error("Der Anhang enthält keine Daten.");
     }
-    if (bytes.byteLength > MAX_PDF_BYTES) {
-      throw new Error("PDF ist größer als 25 MB und wurde nicht analysiert.");
+    if (bytes.byteLength > MAX_ANHANG_BYTES) {
+      throw new Error("Anhang ist größer als 25 MB und wurde nicht analysiert.");
     }
 
-    const pdf = await extrahierePdfText(bytes);
-    if (!pdf.modelContext.trim()) {
-      throw new Error(
-        "Aus dem PDF ließ sich kein Text lesen (vermutlich ein Scan ohne Texterkennung).",
-      );
-    }
+    const kontext = await baueAnhangAnalyseKontext({
+      name: anhang.name || row.anhang_name || "Dokument",
+      contentType: anhang.contentType ?? row.anhang_content_type,
+      bytes,
+      mail: {
+        betreff: row.betreff,
+        absenderName: row.absender_name,
+        absenderMail: row.absender_mail,
+        emailText: row.email_text,
+      },
+    });
 
     const [stammdatenKontext, onedriveKontext] = await Promise.all([
       ladeStammdatenKontext(),
@@ -73,8 +78,10 @@ async function analysiereEintrag(
     ]);
 
     const ergebnis = await handleAnalyzeDokumentRequest({
-      documentTitle: row.anhang_name ?? "Dokument",
-      modelContext: pdf.modelContext,
+      documentTitle: kontext.titel,
+      mailKontext: kontext.mailKontext,
+      modelContext: kontext.modelContext,
+      vision: kontext.vision,
       stammdatenKontext,
       onedriveKontext,
     });

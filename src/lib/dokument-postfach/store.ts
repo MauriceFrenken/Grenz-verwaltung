@@ -37,13 +37,14 @@ export type DokumentPosteingangRow = {
   ablage_ordner_pfad: string | null;
   abgelegt_am: string | null;
   abgelegt_onedrive_id: string | null;
+  email_text: string | null;
 };
 
 const SPALTEN =
   "id,postfach,graph_nachricht_id,internet_message_id,betreff,absender_name," +
   "absender_mail,eingegangen_am,web_link,anhang_id,anhang_name,anhang_content_type," +
   "anhang_groesse,status,ist_rechnung,felder,analyse_fehler,analysiert_am," +
-  "gesellschaft_id,objekt_id,ablage_ordner_id,ablage_ordner_pfad,abgelegt_am,abgelegt_onedrive_id";
+  "gesellschaft_id,objekt_id,ablage_ordner_id,ablage_ordner_pfad,abgelegt_am,abgelegt_onedrive_id,email_text";
 
 function fehler(kontext: string, message: string): Error {
   return new Error(`${kontext}: ${message}`);
@@ -77,7 +78,7 @@ export async function eintraegeAnlegen(
   nachrichten: DokumentPosteingangNachricht[],
 ): Promise<void> {
   const neu = nachrichten
-    .filter((n) => n.pdfAnhang?.id)
+    .filter((n) => n.primaerAnhang?.id)
     .map((n) => ({
       postfach: n.postfach,
       graph_nachricht_id: n.id,
@@ -87,10 +88,11 @@ export async function eintraegeAnlegen(
       absender_mail: n.absenderMail,
       eingegangen_am: n.eingegangenAm,
       web_link: n.webLink,
-      anhang_id: n.pdfAnhang?.id ?? null,
-      anhang_name: n.pdfAnhang?.name ?? null,
-      anhang_content_type: n.pdfAnhang?.contentType ?? null,
-      anhang_groesse: n.pdfAnhang?.groesse ?? null,
+      email_text: n.vorschau,
+      anhang_id: n.primaerAnhang?.id ?? null,
+      anhang_name: n.primaerAnhang?.name ?? null,
+      anhang_content_type: n.primaerAnhang?.contentType ?? null,
+      anhang_groesse: n.primaerAnhang?.groesse ?? null,
     }));
 
   if (neu.length === 0) return;

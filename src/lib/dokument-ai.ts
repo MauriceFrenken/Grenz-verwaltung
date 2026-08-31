@@ -20,7 +20,6 @@ export type DokumentAnalyseFelder = {
   gesellschaftName: DokumentFeldQuelle;
   objektBezeichnung: DokumentFeldQuelle;
   ordnerPfad: DokumentFeldQuelle;
-  zuordnungBegruendung: DokumentFeldQuelle;
   rechnungsnummer: DokumentFeldQuelle;
   rechnungsdatum: DokumentFeldQuelle;
   rechnungsbetrag: DokumentFeldQuelle;
@@ -36,7 +35,6 @@ export const DOKUMENT_FELD_IDS = [
   "gesellschaftName",
   "objektBezeichnung",
   "ordnerPfad",
-  "zuordnungBegruendung",
   "rechnungsnummer",
   "rechnungsdatum",
   "rechnungsbetrag",
@@ -54,7 +52,6 @@ export const DOKUMENT_ABLAGE_FELDER: DokumentFeldId[] = [
   "gesellschaftName",
   "objektBezeichnung",
   "ordnerPfad",
-  "zuordnungBegruendung",
 ];
 
 export const DOKUMENT_RECHNUNG_FELDER: DokumentFeldId[] = [
@@ -68,7 +65,6 @@ export const DOKUMENT_RECHNUNG_FELDER: DokumentFeldId[] = [
   "zahlungsempfaengerAdresse",
   "rechnungssteller",
   "rechnungsstellerAdresse",
-  "zuordnungBegruendung",
 ];
 
 export const DOKUMENT_FELD_LABELS: Record<DokumentFeldId, string> = {
@@ -76,7 +72,6 @@ export const DOKUMENT_FELD_LABELS: Record<DokumentFeldId, string> = {
   gesellschaftName: "Gesellschaft",
   objektBezeichnung: "Objekt",
   ordnerPfad: "Zielordner",
-  zuordnungBegruendung: "Begründung",
   rechnungsnummer: "Rechnungsnummer",
   rechnungsdatum: "Rechnungsdatum",
   rechnungsbetrag: "Rechnungsbetrag",
@@ -87,9 +82,15 @@ export const DOKUMENT_FELD_LABELS: Record<DokumentFeldId, string> = {
   rechnungsstellerAdresse: "Adresse Rechnungssteller",
 };
 
+export type DokumentVisionBlock =
+  | { art: "pdf"; base64: string }
+  | { art: "image"; mediaType: string; base64: string };
+
 export type AnalyzeDokumentRequest = {
   documentTitle?: string;
-  modelContext: string;
+  mailKontext?: string;
+  modelContext?: string;
+  vision?: DokumentVisionBlock[];
   stammdatenKontext: string;
   onedriveKontext: string;
 };
@@ -97,7 +98,6 @@ export type AnalyzeDokumentRequest = {
 export type AnalyzeDokumentResponse = {
   istRechnung: boolean;
   istRechnungKonfidenz: number;
-  begruendung: string;
   felder: DokumentAnalyseFelder;
 };
 
@@ -185,8 +185,6 @@ function parseAntwort(text: string): AnalyzeDokumentResponse {
       typeof parsed.istRechnungKonfidenz === "number"
         ? Math.min(1, Math.max(0, parsed.istRechnungKonfidenz))
         : 0,
-    begruendung:
-      typeof parsed.begruendung === "string" ? parsed.begruendung.trim() : "",
     felder,
   };
 }
@@ -200,6 +198,29 @@ function feldSchema(): string {
   ].join("\n");
 }
 
+function visionZuApi(
+  block: DokumentVisionBlock,
+): Record<string, unknown> {
+  if (block.art === "pdf") {
+    return {
+      type: "document",
+      source: {
+        type: "base64",
+        media_type: "application/pdf",
+        data: block.base64,
+      },
+    };
+  }
+  return {
+    type: "image",
+    source: {
+      type: "base64",
+      media_type: block.mediaType,
+      data: block.base64,
+    },
+  };
+}
+
 export async function handleAnalyzeDokumentRequest(
   input: AnalyzeDokumentRequest,
 ): Promise<AnalyzeDokumentResponse> {
@@ -209,7 +230,13 @@ export async function handleAnalyzeDokumentRequest(
   }
 
   const titel = input.documentTitle?.trim() || "Dokument";
-  const kontext = input.modelContext.slice(0, 120_000);
+  const kontext = (input.modelContext ?? "").slice(0, 120_000);
+  const mailKontext = (input.mailKontext ?? "").trim();
+  const vision = input.vision ?? [];
+
+  if (!kontext.trim() && vision.length === 0 && !mailKontext) {
+    throw new Error("Kein Analyse-Kontext für dieses Dokument.");
+  }
 
   const systemPrompt = `Du analysierst eingehende Geschäftsdokumente für die FRENKEN-Gruppe.
 
@@ -223,23 +250,22 @@ Regeln:
 - Nutze die Stammdaten-Liste für Gesellschafts- und Objektzuordnung.
 - Nutze die OneDrive-Ordnerliste für den konkreten Zielordner (bestehende Unterordner bevorzugen).
 - ordnerPfad: vollständiger relativer Pfad ab Gesellschafts-Root, z. B. "02_FRENKEN IMMOBILIEN GMBH/02_Finanzen" oder "02_FRENKEN IMMOBILIEN GMBH/05_Immobilien/02_Bestand/IM-2026-001_Duesseldorf_Musterstrasse/03_Finanzen"
-- zuordnungBegruendung: kurze Begründung auf Deutsch, warum Gesellschaft/Objekt/Ordner gewählt wurden.
 - Bei Rechnungen: zahlungsempfaenger = an wen gezahlt wird (FRENKEN-Gesellschaft), rechnungssteller = Aussteller.
 - rechnungsbetrag: nur Zahl mit Dezimalpunkt, keine Währung.
 - waehrung: z. B. EUR.
 - Nur Informationen aus dem Dokument — nichts erfinden. Bei Unsicherheit: value null, konfidenz niedrig.
+- Bei Scans/Bildern ohne Text: verbatimQuote darf null sein.
+- Nutze auch E-Mail-Betreff, Absender und Mail-Text für die Zuordnung.
 
 Antworte NUR mit JSON:
 {
   "istRechnung": <boolean>,
   "istRechnungKonfidenz": <0.0-1.0>,
-  "begruendung": "<kurz auf Deutsch>",
   "felder": {
     "dokumentart": { ${feldSchema()} },
     "gesellschaftName": { ${feldSchema()} },
     "objektBezeichnung": { ${feldSchema()} },
     "ordnerPfad": { ${feldSchema()} },
-    "zuordnungBegruendung": { ${feldSchema()} },
     "rechnungsnummer": { ${feldSchema()} },
     "rechnungsdatum": { ${feldSchema()} },
     "rechnungsbetrag": { ${feldSchema()} },
@@ -258,9 +284,13 @@ ${input.stammdatenKontext}
 
 === ONEDRIVE (bestehende Ordner) ===
 ${input.onedriveKontext}
+${mailKontext ? `\n=== E-MAIL ===\n${mailKontext}\n` : ""}
+${kontext ? `\n=== KONTEXT ===\n${kontext}` : ""}`;
 
-=== DOKUMENTTEXT ===
-${kontext}`;
+  const userContent: Array<Record<string, unknown>> = [
+    { type: "text", text: userPrompt },
+    ...vision.map(visionZuApi),
+  ];
 
   const res = await fetch(ANTHROPIC_MESSAGES_URL, {
     method: "POST",
@@ -274,7 +304,7 @@ ${kontext}`;
       max_tokens: 4096,
       temperature: 0,
       system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
+      messages: [{ role: "user", content: userContent }],
     }),
   });
 

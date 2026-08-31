@@ -1,17 +1,17 @@
 /**
- * Einzelner Dokument-Posteingang-Eintrag inkl. PDF. Server-only.
+ * Einzelner Dokument-Posteingang-Eintrag inkl. Anhang. Server-only.
  */
 import { graphAnhangInhalt } from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
 import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
 
 import { leseEintrag, zuEintrag } from "./store";
-import type { DokumentPosteingangMitPdf } from "./typen";
+import type { DokumentPosteingangMitAnhang } from "./typen";
 
 export async function dokumentPosteingangEintragLaden(input: {
   supabaseAccessToken: string;
   eintragId: string;
-}): Promise<DokumentPosteingangMitPdf> {
+}): Promise<DokumentPosteingangMitAnhang> {
   await microsoftCallerAusJwt(input.supabaseAccessToken);
 
   const id = input.eintragId?.trim();
@@ -19,7 +19,7 @@ export async function dokumentPosteingangEintragLaden(input: {
 
   const row = await leseEintrag(id);
   if (!row.anhang_id) {
-    throw new Error("Zu dieser Mail ist kein PDF-Anhang gespeichert.");
+    throw new Error("Zu dieser Mail ist kein Anhang gespeichert.");
   }
 
   const { accessToken } = await microsoftAccessToken();
@@ -30,11 +30,14 @@ export async function dokumentPosteingangEintragLaden(input: {
     row.anhang_id,
   );
 
+  const mimeType =
+    anhang.contentType || row.anhang_content_type || "application/octet-stream";
+
   return {
     eintrag: zuEintrag(row),
-    pdf: {
-      dateiname: anhang.name || row.anhang_name || "Dokument.pdf",
-      mimeType: anhang.contentType || "application/pdf",
+    anhang: {
+      dateiname: anhang.name || row.anhang_name || "Dokument",
+      mimeType,
       base64: anhang.contentBytes ?? "",
     },
   };
