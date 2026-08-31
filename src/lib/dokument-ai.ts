@@ -119,6 +119,16 @@ export type OrdnerWahlSchrittResponse = {
   konfidenz: number;
 };
 
+export type GesellschaftRootWahlRequest = {
+  gesellschaftName: string;
+  gesellschaftKuerzel?: string | null;
+  gesellschaftId?: string | null;
+  rootOrdner: string[];
+  documentTitle?: string;
+  mailKontext?: string;
+  modelContext?: string;
+};
+
 export type DokumentTyp = "rechnung" | "dokument" | "expose";
 
 export type AnalyzeDokumentResponse = {
@@ -388,6 +398,82 @@ ${kontext ? `\n=== KONTEXT ===\n${kontext}` : ""}`;
   return parseAntwort(text);
 }
 
+function parseOrdnerWahlJson(
+  text: string,
+  erlaubteNamen: string[],
+  minKonfidenz = 0.35,
+): OrdnerWahlSchrittResponse {
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    return { gewaehlterOrdner: null, konfidenz: 0 };
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+  const raw =
+    typeof parsed.gewaehlterOrdner === "string"
+      ? parsed.gewaehlterOrdner.trim()
+      : null;
+  const gewaehlterOrdner =
+    raw && erlaubteNamen.includes(raw) ? raw : null;
+  const konfidenz =
+    typeof parsed.konfidenz === "number"
+      ? Math.min(1, Math.max(0, parsed.konfidenz))
+      : gewaehlterOrdner
+        ? 0.5
+        : 0;
+
+  if (gewaehlterOrdner && konfidenz < minKonfidenz) {
+    return { gewaehlterOrdner: null, konfidenz };
+  }
+
+  return { gewaehlterOrdner, konfidenz };
+}
+
+/** KI wählt den passenden OneDrive-Oberordner zur identifizierten Gesellschaft. */
+export async function waehleGesellschaftRootOrdner(
+  input: GesellschaftRootWahlRequest,
+): Promise<OrdnerWahlSchrittResponse> {
+  if (input.rootOrdner.length === 0) {
+    return { gewaehlterOrdner: null, konfidenz: 0 };
+  }
+
+  if (input.rootOrdner.length === 1) {
+    return { gewaehlterOrdner: input.rootOrdner[0]!, konfidenz: 1 };
+  }
+
+  const systemPrompt = `Du ordnest eine Gesellschaft aus den FRENKEN-Stammdaten dem passenden OneDrive-Oberordner zu.
+
+${ABLAGESTRUKTUR}
+
+Regeln:
+- Wähle genau einen Ordnernamen aus der Liste (exakte Schreibweise).
+- Die Gesellschaft kommt aus Stammdaten — der Ordnername kann anders formatiert sein (z. B. Präfix 05_, Großschreibung).
+- MTF Capital GmbH ≠ FRENKEN Capital Management GmbH — ähnliche Wörter sind verschiedene Gesellschaften.
+- Nur Ordner aus der Liste wählen.
+
+Antworte NUR mit JSON:
+{
+  "gewaehlterOrdner": "<exakter Name aus Liste>",
+  "konfidenz": <0.0-1.0>
+}`;
+
+  const ordnerListe = input.rootOrdner.map((n) => `- ${n}`).join("\n");
+  const kuerzel = input.gesellschaftKuerzel?.trim();
+  const kontext = (input.modelContext ?? "").slice(0, 4_000);
+  const mail = (input.mailKontext ?? "").slice(0, 1_500);
+
+  const userPrompt = `Gesellschaft (Stammdaten): ${input.gesellschaftName}${kuerzel ? ` (Kürzel: ${kuerzel})` : ""}${input.gesellschaftId ? `\nID: ${input.gesellschaftId}` : ""}
+
+Verfügbare OneDrive-Oberordner:
+${ordnerListe}
+${input.documentTitle ? `\nDokument: ${input.documentTitle}` : ""}
+${mail ? `\nE-Mail:\n${mail}` : ""}
+${kontext ? `\nDokumentauszug:\n${kontext}` : ""}`;
+
+  const text = await anthropicNachricht(systemPrompt, userPrompt, [], 256);
+  return parseOrdnerWahlJson(text, input.rootOrdner, 0.4);
+}
+
 export async function waehleUnterordnerSchritt(
   input: OrdnerWahlSchrittRequest,
 ): Promise<OrdnerWahlSchrittResponse> {
@@ -432,30 +518,7 @@ ${mail ? `\nE-Mail:\n${mail}` : ""}
 ${kontext ? `\nDokumentauszug:\n${kontext}` : ""}`;
 
   const text = await anthropicNachricht(systemPrompt, userPrompt, [], 512);
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    return { gewaehlterOrdner: null, konfidenz: 0 };
-  }
-
-  const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-  const raw =
-    typeof parsed.gewaehlterOrdner === "string"
-      ? parsed.gewaehlterOrdner.trim()
-      : null;
-  const gewaehlterOrdner =
-    raw && input.unterordner.includes(raw) ? raw : null;
-  const konfidenz =
-    typeof parsed.konfidenz === "number"
-      ? Math.min(1, Math.max(0, parsed.konfidenz))
-      : gewaehlterOrdner
-        ? 0.5
-        : 0;
-
-  if (gewaehlterOrdner && konfidenz < 0.35) {
-    return { gewaehlterOrdner: null, konfidenz };
-  }
-
-  return { gewaehlterOrdner, konfidenz };
+  return parseOrdnerWahlJson(text, input.unterordner);
 }
 
 export function hatAnalyseWerte(felder: DokumentAnalyseFelder | null): boolean {
