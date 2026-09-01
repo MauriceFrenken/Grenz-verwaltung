@@ -2,6 +2,15 @@
  * Server-only Dokumenten-KI: Rechnungserkennung, Ablagevorschlag, Rechnungsfelder.
  * Niemals aus Client-Code importieren (nur Typen sind client-safe).
  */
+import {
+  KI_MAX_DOKUMENT_ZEICHEN,
+  KI_MAX_EINGABE_TOKENS,
+  KI_MAX_MAIL_ZEICHEN,
+  KI_MAX_STAMMDATEN_ZEICHEN,
+  kuerzeTextFuerKi,
+  schaetzeTextTokens,
+  schaetzeVisionTokens,
+} from "@/lib/ki-kontext";
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 const MODEL = "claude-haiku-4-5";
@@ -278,6 +287,27 @@ function visionZuApi(
   };
 }
 
+function begrenzeVisionFuerPrompt(
+  vision: DokumentVisionBlock[],
+  textTokenBudget: number,
+): DokumentVisionBlock[] {
+  if (vision.length === 0) return vision;
+
+  const restBudget = KI_MAX_EINGABE_TOKENS - textTokenBudget;
+  if (restBudget <= 0) return [];
+
+  let aktuell = vision;
+  while (aktuell.length > 0 && schaetzeVisionTokens(aktuell) > restBudget) {
+    const ohnePdf = aktuell.filter((block) => block.art !== "pdf");
+    if (ohnePdf.length < aktuell.length) {
+      aktuell = ohnePdf;
+      continue;
+    }
+    aktuell = aktuell.slice(0, -1);
+  }
+  return aktuell;
+}
+
 async function anthropicNachricht(
   system: string,
   userText: string,
@@ -335,9 +365,19 @@ export async function handleAnalyzeDokumentRequest(
   input: AnalyzeDokumentRequest,
 ): Promise<AnalyzeDokumentResponse> {
   const titel = input.documentTitle?.trim() || "Dokument";
-  const kontext = (input.modelContext ?? "").slice(0, 120_000);
-  const mailKontext = (input.mailKontext ?? "").trim();
-  const vision = input.vision ?? [];
+  const kontext = kuerzeTextFuerKi(
+    input.modelContext ?? "",
+    KI_MAX_DOKUMENT_ZEICHEN,
+  );
+  const mailKontext = kuerzeTextFuerKi(
+    (input.mailKontext ?? "").trim(),
+    KI_MAX_MAIL_ZEICHEN,
+  );
+  const stammdatenKontext = kuerzeTextFuerKi(
+    input.stammdatenKontext,
+    KI_MAX_STAMMDATEN_ZEICHEN,
+  );
+  let vision = input.vision ?? [];
 
   if (!kontext.trim() && vision.length === 0 && !mailKontext) {
     throw new Error("Kein Analyse-Kontext für dieses Dokument.");
@@ -390,9 +430,13 @@ Antworte NUR mit JSON:
   const userPrompt = `Dokument: ${titel}
 
 === STAMMDATEN (Gesellschaften & Objekte) ===
-${input.stammdatenKontext}
+${stammdatenKontext}
 ${mailKontext ? `\n=== E-MAIL ===\n${mailKontext}\n` : ""}
 ${kontext ? `\n=== KONTEXT ===\n${kontext}` : ""}`;
+
+  const textTokenSchaetzung =
+    schaetzeTextTokens(systemPrompt) + schaetzeTextTokens(userPrompt);
+  vision = begrenzeVisionFuerPrompt(vision, textTokenSchaetzung);
 
   const text = await anthropicNachricht(systemPrompt, userPrompt, vision);
   return parseAntwort(text);
@@ -458,8 +502,8 @@ Antworte NUR mit JSON:
 
   const ordnerListe = input.rootOrdner.map((n) => `- ${n}`).join("\n");
   const kuerzel = input.gesellschaftKuerzel?.trim();
-  const kontext = (input.modelContext ?? "").slice(0, 4_000);
-  const mail = (input.mailKontext ?? "").slice(0, 1_500);
+  const kontext = kuerzeTextFuerKi(input.modelContext ?? "", 4_000);
+  const mail = kuerzeTextFuerKi(input.mailKontext ?? "", 1_500);
 
   const userPrompt = `Gesellschaft (Stammdaten): ${input.gesellschaftName}${kuerzel ? ` (Kürzel: ${kuerzel})` : ""}${input.gesellschaftId ? `\nID: ${input.gesellschaftId}` : ""}
 
@@ -502,8 +546,8 @@ Antworte NUR mit JSON:
 }`;
 
   const ordnerListe = input.unterordner.map((n) => `- ${n}`).join("\n");
-  const kontext = (input.modelContext ?? "").slice(0, 8_000);
-  const mail = (input.mailKontext ?? "").slice(0, 2_000);
+  const kontext = kuerzeTextFuerKi(input.modelContext ?? "", 8_000);
+  const mail = kuerzeTextFuerKi(input.mailKontext ?? "", 2_000);
 
   const userPrompt = `Dokument: ${input.documentTitle ?? "Dokument"}
 Typ: ${input.dokumentTyp}
