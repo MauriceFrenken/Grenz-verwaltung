@@ -56,24 +56,26 @@ export async function baueAnhangAnalyseKontext(input: {
     input.contentType ? `Dateityp: ${input.contentType}` : null,
   ].filter(Boolean);
 
-  const extraktion = await extrahiereAnhangText({
-    name: titel,
-    contentType: input.contentType,
-    bytes: input.bytes,
-  });
-
+  // unpdf/pdf.js entleert den ArrayBuffer — Base64 vor der Textextraktion erzeugen.
+  const bytes = new Uint8Array(input.bytes);
+  const visionMoeglich = bytes.byteLength <= MAX_VISION_BYTES;
   const vision: DokumentVisionBlock[] = [];
-  const visionMoeglich = input.bytes.byteLength <= MAX_VISION_BYTES;
 
   if (istPdfDatei(titel, input.contentType) && visionMoeglich) {
-    vision.push({ art: "pdf", base64: bytesZuBase64(input.bytes) });
+    vision.push({ art: "pdf", base64: bytesZuBase64(bytes) });
   } else if (istBildDatei(titel, input.contentType) && visionMoeglich) {
     vision.push({
       art: "image",
       mediaType: bildMediaType(titel, input.contentType),
-      base64: bytesZuBase64(input.bytes),
+      base64: bytesZuBase64(bytes),
     });
   }
+
+  const extraktion = await extrahiereAnhangText({
+    name: titel,
+    contentType: input.contentType,
+    bytes,
+  });
 
   const dokumentTextHinweis = (() => {
     if (extraktion.text) {
