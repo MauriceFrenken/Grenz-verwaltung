@@ -349,7 +349,7 @@ export function DokumentPruefungPage() {
                 disabled={laedtPdf || speichert || eintrag?.status === "abgelegt"}
                 onClick={buchen}
               >
-                Buchen
+                zu DATEV
               </Button>
             </PermissionGate>
           ) : (

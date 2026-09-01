@@ -475,7 +475,7 @@ export function PostfachPage() {
                     disabled={laedtZeile}
                     onClick={() => eintrag && void direktAusfuehren(eintrag)}
                   >
-                    Buchen
+                    zu DATEV
                   </Button>
                 </PermissionGate>
               ) : (
