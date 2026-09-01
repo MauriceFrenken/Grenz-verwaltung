@@ -1,4 +1,4 @@
-import { Link, useMatches } from "@tanstack/react-router";
+import { Link, useMatches, useRouterState } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 
 const LABELS: Record<string, string> = {
@@ -27,11 +27,23 @@ const LABELS: Record<string, string> = {
   "/einstellungen/audit": "Audit-Trail",
 };
 
+const POSTFACH_PFAD = "/dokumente/pruefordner";
+const PRUEFUNG_PFAD = "/dokumente/pruefung";
+
 export function Breadcrumb() {
   const matches = useMatches();
-  const segmente = matches
+  const pathname = useRouterState({ select: (s) => s.location.pathname.replace(/\/$/, "") });
+
+  let segmente = matches
     .map((m) => m.pathname.replace(/\/$/, "") || "/")
     .filter((path, idx, arr) => arr.indexOf(path) === idx);
+
+  if (pathname === PRUEFUNG_PFAD && !segmente.includes(POSTFACH_PFAD)) {
+    const idx = segmente.indexOf(PRUEFUNG_PFAD);
+    if (idx !== -1) {
+      segmente = [...segmente.slice(0, idx), POSTFACH_PFAD, ...segmente.slice(idx)];
+    }
+  }
 
   return (
     <nav aria-label="Brotkrumen" className="flex items-center gap-1 text-xs text-text-muted">
