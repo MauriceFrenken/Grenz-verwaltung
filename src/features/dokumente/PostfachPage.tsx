@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Loader2, MoreVertical, RefreshCw } from "lucide-react";
+import { Building2, FileText, Loader2, MoreVertical, Receipt, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -22,14 +22,132 @@ import { istTamAusFeldern } from "@/lib/trade-any-machine";
 
 const MAX_ANALYSE_RUNDEN = 50;
 
+type DokumentTypAnzeige = "rechnung" | "expose" | "dokument" | "unbekannt";
+
+function dokumentTypAnzeige(
+  eintrag: DokumentPosteingangEintrag | null,
+): DokumentTypAnzeige {
+  if (!eintrag || eintrag.status === "neu") return "unbekannt";
+  if (eintrag.dokumentTyp === "rechnung" || eintrag.istRechnung) return "rechnung";
+  if (eintrag.dokumentTyp === "expose") return "expose";
+  if (eintrag.dokumentTyp === "dokument") return "dokument";
+  if (eintrag.status === "analysiert") return "dokument";
+  return "unbekannt";
+}
+
 function typLabel(eintrag: DokumentPosteingangEintrag | null): string {
-  if (!eintrag || eintrag.status === "neu") return "–";
-  if (eintrag.dokumentTyp === "rechnung") return "Rechnung";
-  if (eintrag.dokumentTyp === "expose") return "Exposé";
-  if (eintrag.dokumentTyp === "dokument") return "Dokument";
-  if (eintrag.istRechnung) return "Rechnung";
-  if (eintrag.status === "analysiert") return "Dokument";
+  const typ = dokumentTypAnzeige(eintrag);
+  if (typ === "rechnung") return "Rechnung";
+  if (typ === "expose") return "Exposé";
+  if (typ === "dokument") return "Dokument";
   return "–";
+}
+
+function TypIcon({ eintrag }: { eintrag: DokumentPosteingangEintrag }) {
+  const typ = dokumentTypAnzeige(eintrag);
+  const label = typLabel(eintrag);
+
+  if (eintrag.status === "neu") {
+    return (
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center text-text-muted"
+        title="Analyse läuft"
+        aria-label="Analyse läuft"
+      >
+        <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} aria-hidden />
+      </span>
+    );
+  }
+
+  const Icon =
+    typ === "rechnung" ? Receipt : typ === "expose" ? Building2 : typ === "dokument" ? FileText : null;
+
+  if (!Icon) {
+    return (
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center text-text-muted"
+        aria-hidden
+      >
+        –
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="flex h-8 w-8 shrink-0 items-center justify-center text-text-muted"
+      title={label}
+      aria-label={label}
+    >
+      <Icon className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+    </span>
+  );
+}
+
+function normalisierePfadSegment(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function findePfadSegmentIndex(
+  teile: string[],
+  suchtext: string,
+  abIndex = 0,
+): number {
+  const norm = normalisierePfadSegment(suchtext);
+  if (!norm) return -1;
+
+  for (let i = abIndex; i < teile.length; i++) {
+    const segment = normalisierePfadSegment(teile[i]);
+    if (!segment) continue;
+    if (segment === norm || segment.includes(norm) || norm.includes(segment)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function ablagePfadKurz(
+  pfad: string,
+  gesellschaftName: string | null | undefined,
+  objektName: string | null | undefined,
+): string {
+  const teile = pfad
+    .split("/")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  if (teile.length === 0) return pfad;
+
+  const gsName = gesellschaftName?.trim();
+  if (!gsName) return pfad;
+
+  const gsIdx = findePfadSegmentIndex(teile, gsName);
+  if (gsIdx < 0) return pfad;
+
+  const prefix = gsIdx > 0 ? ".." : "";
+  let restStart = gsIdx + 1;
+  const objName = objektName?.trim();
+
+  if (!objName) {
+    const rest = teile.slice(restStart).join("/");
+    if (prefix && rest) return `${prefix}/.../${rest}`;
+    if (prefix) return `${prefix}/...`;
+    if (rest) return `.../${rest}`;
+    return "...";
+  }
+
+  const objIdx = findePfadSegmentIndex(teile, objName, restStart);
+  if (objIdx >= 0) {
+    restStart = objIdx + 1;
+  }
+
+  const rest = teile.slice(restStart).join("/");
+  if (!rest) return prefix || "–";
+  return prefix ? `${prefix}/${rest}` : rest;
 }
 
 function istRechnungEintrag(eintrag: DokumentPosteingangEintrag | null): boolean {
@@ -89,7 +207,15 @@ function ablageBetragText(eintrag: DokumentPosteingangEintrag | null): string {
     return waehrung ? `${betrag} ${waehrung}` : betrag;
   }
 
-  return ablagePfad(eintrag) || "–";
+  const pfad = ablagePfad(eintrag);
+  if (!pfad) return "–";
+
+  const gs = gesellschaftText(eintrag);
+  const obj = objektText(eintrag);
+  const gsName = gs !== "–" ? gs : null;
+  const objName = obj !== "–" ? obj : null;
+
+  return ablagePfadKurz(pfad, gsName, objName);
 }
 
 function absenderText(eintrag: DokumentPosteingangEintrag): string {
@@ -336,9 +462,15 @@ export function PostfachPage() {
 
   const spalten: Column<DokumentPosteingangEintrag>[] = [
     {
+      key: "typ",
+      header: "",
+      className: "w-12 min-w-[3rem] px-2",
+      render: (e) => <TypIcon eintrag={e} />,
+    },
+    {
       key: "datei",
-      header: "Datei",
-      className: "w-[16%]",
+      header: "Dateiname",
+      className: "min-w-[14rem] max-w-[20rem]",
       render: (e) => (
         <ZellText
           text={e.anhangName || "–"}
@@ -347,9 +479,52 @@ export function PostfachPage() {
       ),
     },
     {
+      key: "gesellschaft",
+      header: "Gesellschaft",
+      className: "min-w-[11rem] max-w-[16rem]",
+      render: (e) => (
+        <ZellText text={gesellschaftText(e)} className="text-foreground" />
+      ),
+    },
+    {
+      key: "objekt",
+      header: "Objekt",
+      className: "min-w-[11rem] max-w-[16rem]",
+      render: (e) => (
+        <ZellText text={objektText(e)} className="text-foreground" />
+      ),
+    },
+    {
+      key: "ablageBetrag",
+      header: "Betrag / Ablage",
+      className: "min-w-[12rem] max-w-[18rem]",
+      render: (e) => {
+        const text = ablageBetragText(e);
+        const vollerPfad = ablagePfad(e);
+        return (
+          <ZellText
+            text={text}
+            className="text-foreground"
+            title={vollerPfad && text !== vollerPfad ? vollerPfad : undefined}
+          />
+        );
+      },
+    },
+    {
+      key: "betreff",
+      header: "Betreff",
+      className: "min-w-[12rem] max-w-[18rem]",
+      render: (e) => (
+        <ZellText
+          text={e.betreff || "(kein Betreff)"}
+          className="text-foreground"
+        />
+      ),
+    },
+    {
       key: "absender",
       header: "Absender",
-      className: "w-[11%]",
+      className: "min-w-[11rem] max-w-[16rem]",
       render: (e) => (
         <ZellText
           text={absenderText(e)}
@@ -359,51 +534,12 @@ export function PostfachPage() {
       ),
     },
     {
-      key: "betreff",
-      header: "Betreff",
-      className: "w-[15%]",
-      render: (e) => (
-        <ZellText
-          text={e.betreff || "(kein Betreff)"}
-          className="text-foreground"
-        />
-      ),
-    },
-    {
-      key: "typ",
-      header: "Typ",
-      className: "w-[8%]",
-      render: (e) => <ZellText text={typLabel(e)} className="text-heading" />,
-    },
-    {
-      key: "gesellschaft",
-      header: "Gesellschaft",
-      className: "w-[11%]",
-      render: (e) => (
-        <ZellText text={gesellschaftText(e)} className="text-foreground" />
-      ),
-    },
-    {
-      key: "objekt",
-      header: "Objekt",
-      className: "w-[11%]",
-      render: (e) => (
-        <ZellText text={objektText(e)} className="text-foreground" />
-      ),
-    },
-    {
-      key: "ablageBetrag",
-      header: "Ablage / Betrag",
-      className: "w-[12%]",
-      render: (e) => (
-        <ZellText text={ablageBetragText(e)} className="text-foreground" />
-      ),
-    },
-    {
       key: "check",
       header: "",
       align: "right",
-      className: "w-[4.5rem] px-2",
+      sticky: "right",
+      stickyBreitePx: 88,
+      className: "w-[5.5rem] min-w-[5.5rem] px-2",
       render: (eintrag) => {
         const pruefbar = kannPruefen(eintrag);
         const laedtZeile = aktionId === eintrag?.id;
@@ -437,7 +573,9 @@ export function PostfachPage() {
       key: "aktion",
       header: "",
       align: "right",
-      className: "w-[7rem] px-2",
+      sticky: "right",
+      stickyBreitePx: 120,
+      className: "w-[7.5rem] min-w-[7.5rem] px-2",
       render: (eintrag) => {
         const bereit = istBereit(eintrag);
         const laedtZeile = aktionId === eintrag?.id;
@@ -533,7 +671,9 @@ export function PostfachPage() {
       key: "menu",
       header: "",
       align: "right",
-      className: "w-10 pl-2 pr-3",
+      sticky: "right",
+      stickyBreitePx: 48,
+      className: "w-12 min-w-[3rem] pl-2 pr-3",
       render: (eintrag) => {
         const laedtZeile = aktionId === eintrag?.id;
         const kannWiederholen = Boolean(
@@ -613,7 +753,7 @@ export function PostfachPage() {
         <DataTable
           spalten={spalten}
           zeilen={eintraege}
-          festLayout
+          scrollX
           isLoading={laedt}
           isEmpty={!laedt && !fehler && eintraege.length === 0}
           emptyTitel="Keine Anhänge im Postfach"
