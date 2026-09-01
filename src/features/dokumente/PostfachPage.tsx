@@ -72,31 +72,70 @@ function typLabel(eintrag: DokumentPosteingangEintrag | null): string {
   return "–";
 }
 
-function AnalyseStatus({ zeile }: { zeile: Zeile }) {
-  const { eintrag } = zeile;
+function istRechnungEintrag(eintrag: DokumentPosteingangEintrag | null): boolean {
+  return eintrag?.dokumentTyp === "rechnung" || Boolean(eintrag?.istRechnung);
+}
 
-  if (!eintrag || eintrag.status === "neu") {
-    return (
-      <span className="inline-flex items-center gap-2 text-text-muted">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} aria-hidden />
-        KI-Analyse
-      </span>
-    );
+function ZellText({
+  text,
+  title,
+  className,
+}: {
+  text: string | null | undefined;
+  title?: string;
+  className?: string;
+}) {
+  const wert = text?.trim() || "–";
+  const tooltip = title?.trim() || (wert !== "–" ? wert : undefined);
+  return (
+    <span
+      className={cn("block min-w-0 truncate", className)}
+      title={tooltip}
+    >
+      {wert}
+    </span>
+  );
+}
+
+function gesellschaftText(eintrag: DokumentPosteingangEintrag | null): string {
+  if (!eintrag || eintrag.status === "neu") return "–";
+  return eintrag.felder?.gesellschaftName?.value?.trim() || "–";
+}
+
+function objektText(eintrag: DokumentPosteingangEintrag | null): string {
+  if (!eintrag || eintrag.status === "neu") return "–";
+  return eintrag.felder?.objektBezeichnung?.value?.trim() || "–";
+}
+
+function ablageBetragText(eintrag: DokumentPosteingangEintrag | null): string {
+  if (!eintrag || eintrag.status === "neu") return "–";
+
+  if (istRechnungEintrag(eintrag)) {
+    const betrag = eintrag.felder?.rechnungsbetrag?.value?.trim();
+    if (!betrag) return "–";
+    const waehrung = eintrag.felder?.waehrung?.value?.trim();
+    return waehrung ? `${betrag} ${waehrung}` : betrag;
   }
-  if (eintrag.status === "fehler") {
-    return (
-      <span className="text-destructive" title={eintrag.analyseFehler ?? undefined}>
-        Analyse fehlgeschlagen
-      </span>
-    );
+
+  if (eintrag.dokumentTyp === "dokument" || eintrag.dokumentTyp === null) {
+    const pfad =
+      eintrag.ablageOrdnerPfad?.trim() ||
+      eintrag.felder?.ordnerPfad?.value?.trim();
+    return pfad || "–";
   }
-  if (eintrag.status === "abgelegt") {
-    return <span className="text-text-muted">Abgelegt</span>;
-  }
-  if (eintrag.status === "gebucht") {
-    return <span className="text-text-muted">Gebucht</span>;
-  }
-  return <span className="font-medium text-heading">{typLabel(eintrag)}</span>;
+
+  return "–";
+}
+
+function absenderText(nachricht: Zeile["nachricht"]): string {
+  return nachricht.absenderName || nachricht.absenderMail || "–";
+}
+
+function absenderTitel(nachricht: Zeile["nachricht"]): string | undefined {
+  const name = nachricht.absenderName?.trim();
+  const mail = nachricht.absenderMail?.trim();
+  if (name && mail && name !== mail) return `${name} (${mail})`;
+  return name || mail || undefined;
 }
 
 function kannPruefen(
@@ -341,182 +380,200 @@ export function PostfachPage() {
     {
       key: "absender",
       header: "Absender",
-      className: "max-w-[10rem]",
+      className: "max-w-[8rem]",
       render: (z) => (
-        <span className="truncate block" title={z.nachricht.absenderMail ?? undefined}>
-          {z.nachricht.absenderName || z.nachricht.absenderMail || "–"}
-        </span>
+        <ZellText
+          text={absenderText(z.nachricht)}
+          className="text-foreground"
+          title={absenderTitel(z.nachricht)}
+        />
       ),
     },
     {
       key: "betreff",
       header: "Betreff",
-      className: "max-w-0 w-full",
+      className: "max-w-[11rem]",
       render: (z) => (
-        <span className="truncate block font-medium text-heading">
-          {z.nachricht.betreff || "(kein Betreff)"}
-        </span>
+        <ZellText
+          text={z.nachricht.betreff || "(kein Betreff)"}
+          className="font-medium text-heading"
+        />
       ),
     },
     {
       key: "typ",
       header: "Typ",
       className: "w-24",
+      render: (z) => <ZellText text={typLabel(z.eintrag)} className="text-heading" />,
+    },
+    {
+      key: "gesellschaft",
+      header: "Gesellschaft",
+      className: "max-w-[9rem]",
       render: (z) => (
-        <span className="text-heading">{typLabel(z.eintrag)}</span>
+        <ZellText text={gesellschaftText(z.eintrag)} className="text-foreground" />
       ),
     },
     {
-      key: "status",
-      header: "KI-Status",
-      className: "w-36",
-      render: (z) => <AnalyseStatus zeile={z} />,
+      key: "objekt",
+      header: "Objekt",
+      className: "max-w-[9rem]",
+      render: (z) => (
+        <ZellText text={objektText(z.eintrag)} className="text-foreground" />
+      ),
+    },
+    {
+      key: "ablageBetrag",
+      header: "Ablage / Betrag",
+      className: "max-w-[10rem]",
+      render: (z) => (
+        <ZellText text={ablageBetragText(z.eintrag)} className="text-foreground" />
+      ),
+    },
+    {
+      key: "check",
+      header: "",
+      align: "right",
+      className: "w-[4.5rem] px-2",
+      render: (z) => {
+        const eintrag = z.eintrag;
+        const pruefbar = kannPruefen(eintrag);
+        const laedtZeile = aktionId === eintrag?.id;
+        const istExpose = eintrag?.dokumentTyp === "expose";
+        const bereit = istBereit(eintrag);
+
+        if (istExpose && bereit) return null;
+
+        return (
+          <PermissionGate
+            berechtigung="aktion.dokumente.pruefordner.pruefen"
+            skeletonClassName="w-16"
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full border-foreground text-foreground"
+              disabled={!pruefbar || laedtZeile}
+              onClick={() => eintrag && pruefen(eintrag)}
+            >
+              Check
+            </Button>
+          </PermissionGate>
+        );
+      },
+    },
+    {
+      key: "analyse",
+      header: "",
+      align: "right",
+      className: "w-10 px-2",
+      render: (z) => {
+        const eintrag = z.eintrag;
+        const laedtZeile = aktionId === eintrag?.id;
+        const kannWiederholen = Boolean(
+          eintrag &&
+            (eintrag.status === "analysiert" || eintrag.status === "fehler"),
+        );
+
+        if (!kannWiederholen) return null;
+
+        return (
+          <PermissionGate
+            berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen"
+            skeletonClassName="w-8"
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 shrink-0 border-foreground text-foreground"
+              disabled={laedtZeile}
+              aria-label="KI-Analyse wiederholen"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (eintrag) void analyseWiederholen(eintrag);
+              }}
+            >
+              {laedtZeile ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />
+              )}
+            </Button>
+          </PermissionGate>
+        );
+      },
     },
     {
       key: "aktion",
       header: "",
       align: "right",
-      className: "w-[1%] whitespace-nowrap",
+      className: "w-[6.5rem] pl-2 pr-4",
       render: (z) => {
         const eintrag = z.eintrag;
-        const pruefbar = kannPruefen(eintrag);
         const bereit = istBereit(eintrag);
         const laedtZeile = aktionId === eintrag?.id;
-        const kannWiederholen = Boolean(
-          eintrag &&
-          (eintrag.status === "analysiert" || eintrag.status === "fehler"),
-        );
         const istExpose = eintrag?.dokumentTyp === "expose";
-        const istRechnung =
-          eintrag?.dokumentTyp === "rechnung" || Boolean(eintrag?.istRechnung);
+        const istRechnung = istRechnungEintrag(eintrag);
 
-        if (istExpose && bereit) {
+        if (!bereit || !eintrag) return null;
+
+        if (istExpose) {
           return (
-            <div className="flex items-center justify-end gap-1.5">
-              {kannWiederholen ? (
-                <PermissionGate
-                  berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen"
-                  skeletonClassName="w-8"
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 shrink-0 border-foreground text-foreground"
-                    disabled={laedtZeile}
-                    aria-label="KI-Analyse wiederholen"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (eintrag) void analyseWiederholen(eintrag);
-                    }}
-                  >
-                    {laedtZeile ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-                    ) : (
-                      <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    )}
-                  </Button>
-                </PermissionGate>
-              ) : null}
-              <PermissionGate
-                berechtigung="aktion.dokumente.pruefordner.exposes_verschieben"
-                skeletonClassName="w-24"
+            <PermissionGate
+              berechtigung="aktion.dokumente.pruefordner.exposes_verschieben"
+              skeletonClassName="w-24"
+            >
+              <Button
+                size="sm"
+                className="w-full bg-primary text-primary-foreground hover:bg-heading"
+                disabled={laedtZeile}
+                onClick={() =>
+                  void zuExposesVerschieben(
+                    eintrag,
+                    z.nachricht.id,
+                    z.nachricht.postfach,
+                  )
+                }
               >
-                <Button
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-heading"
-                  disabled={laedtZeile}
-                  onClick={() =>
-                    eintrag &&
-                    void zuExposesVerschieben(
-                      eintrag,
-                      z.nachricht.id,
-                      z.nachricht.postfach,
-                    )
-                  }
-                >
-                  Zu Exposés
-                </Button>
-              </PermissionGate>
-            </div>
+                Zu Exposés
+              </Button>
+            </PermissionGate>
           );
         }
 
-        return (
-          <div className="flex items-center justify-end gap-1.5">
+        if (istRechnung) {
+          return (
             <PermissionGate
-              berechtigung="aktion.dokumente.pruefordner.pruefen"
+              berechtigung="aktion.dokumente.pruefordner.buchen"
               skeletonClassName="w-16"
             >
               <Button
                 size="sm"
-                variant="outline"
-                className="border-foreground text-foreground"
-                disabled={!pruefbar || laedtZeile}
-                onClick={() => eintrag && pruefen(eintrag)}
+                className="w-full bg-primary text-primary-foreground hover:bg-heading"
+                disabled={laedtZeile}
+                onClick={() => void direktAusfuehren(eintrag)}
               >
-                Check
+                zu DATEV
               </Button>
             </PermissionGate>
+          );
+        }
 
-            {kannWiederholen ? (
-              <PermissionGate
-                berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen"
-                skeletonClassName="w-8"
-              >
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 border-foreground text-foreground"
-                  disabled={laedtZeile}
-                  aria-label="KI-Analyse wiederholen"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (eintrag) void analyseWiederholen(eintrag);
-                  }}
-                >
-                  {laedtZeile ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-                  ) : (
-                    <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  )}
-                </Button>
-              </PermissionGate>
-            ) : null}
-
-            {bereit ? (
-              istRechnung ? (
-                <PermissionGate
-                  berechtigung="aktion.dokumente.pruefordner.buchen"
-                  skeletonClassName="w-16"
-                >
-                  <Button
-                    size="sm"
-                    className="bg-primary text-primary-foreground hover:bg-heading"
-                    disabled={laedtZeile}
-                    onClick={() => eintrag && void direktAusfuehren(eintrag)}
-                  >
-                    zu DATEV
-                  </Button>
-                </PermissionGate>
-              ) : (
-                <PermissionGate
-                  berechtigung="aktion.dokumente.pruefordner.ablegen"
-                  skeletonClassName="w-16"
-                >
-                  <Button
-                    size="sm"
-                    className="bg-primary text-primary-foreground hover:bg-heading"
-                    disabled={laedtZeile}
-                    onClick={() => eintrag && void direktAusfuehren(eintrag)}
-                  >
-                    Ablegen
-                  </Button>
-                </PermissionGate>
-              )
-            ) : null}
-          </div>
+        return (
+          <PermissionGate
+            berechtigung="aktion.dokumente.pruefordner.ablegen"
+            skeletonClassName="w-16"
+          >
+            <Button
+              size="sm"
+              className="w-full bg-primary text-primary-foreground hover:bg-heading"
+              disabled={laedtZeile}
+              onClick={() => void direktAusfuehren(eintrag)}
+            >
+              Ablegen
+            </Button>
+          </PermissionGate>
         );
       },
     },
