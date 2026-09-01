@@ -21,6 +21,8 @@ interface DataTableProps<T> {
   emptyAktion?: ReactNode;
   onRowClick?: (row: T) => void;
   rowKey: (row: T) => string;
+  /** Feste Tabellenbreite ohne horizontales Scrollen — Spaltenbreiten über Column.className */
+  festLayout?: boolean;
 }
 
 export function DataTable<T>({
@@ -33,11 +35,17 @@ export function DataTable<T>({
   emptyAktion,
   onRowClick,
   rowKey,
+  festLayout = false,
 }: DataTableProps<T>) {
   return (
     <div className="border border-hairline bg-surface">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+      <div className={festLayout ? "overflow-hidden" : "overflow-x-auto"}>
+        <table
+          className={cn(
+            "w-full border-collapse text-sm",
+            festLayout && "table-fixed",
+          )}
+        >
           <thead>
             <tr className="hairline-b">
               {spalten.map((s) => (
@@ -47,6 +55,7 @@ export function DataTable<T>({
                     "label-caps whitespace-nowrap px-4 py-3 text-left text-text-muted",
                     s.align === "right" && "text-right",
                     s.align === "center" && "text-center",
+                    festLayout && s.className,
                   )}
                 >
                   {s.header}

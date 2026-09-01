@@ -5,6 +5,7 @@ import {
   FileText,
   Image,
   Loader2,
+  MoreVertical,
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +15,12 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { hatAnalyseWerte } from "@/lib/dokument-postfach/client";
 import type { DokumentPosteingangEintrag } from "@/lib/dokument-postfach/typen";
@@ -380,7 +387,7 @@ export function PostfachPage() {
     {
       key: "absender",
       header: "Absender",
-      className: "max-w-[8rem]",
+      className: "w-[11%]",
       render: (z) => (
         <ZellText
           text={absenderText(z.nachricht)}
@@ -392,7 +399,7 @@ export function PostfachPage() {
     {
       key: "betreff",
       header: "Betreff",
-      className: "max-w-[11rem]",
+      className: "w-[19%]",
       render: (z) => (
         <ZellText
           text={z.nachricht.betreff || "(kein Betreff)"}
@@ -403,13 +410,13 @@ export function PostfachPage() {
     {
       key: "typ",
       header: "Typ",
-      className: "w-24",
+      className: "w-[8%]",
       render: (z) => <ZellText text={typLabel(z.eintrag)} className="text-heading" />,
     },
     {
       key: "gesellschaft",
       header: "Gesellschaft",
-      className: "max-w-[9rem]",
+      className: "w-[12%]",
       render: (z) => (
         <ZellText text={gesellschaftText(z.eintrag)} className="text-foreground" />
       ),
@@ -417,7 +424,7 @@ export function PostfachPage() {
     {
       key: "objekt",
       header: "Objekt",
-      className: "max-w-[9rem]",
+      className: "w-[12%]",
       render: (z) => (
         <ZellText text={objektText(z.eintrag)} className="text-foreground" />
       ),
@@ -425,155 +432,128 @@ export function PostfachPage() {
     {
       key: "ablageBetrag",
       header: "Ablage / Betrag",
-      className: "max-w-[10rem]",
+      className: "w-[14%]",
       render: (z) => (
         <ZellText text={ablageBetragText(z.eintrag)} className="text-foreground" />
       ),
     },
     {
-      key: "check",
+      key: "aktionen",
       header: "",
       align: "right",
-      className: "w-[4.5rem] px-2",
+      className: "w-[12.5rem] pl-2 pr-3",
       render: (z) => {
         const eintrag = z.eintrag;
         const pruefbar = kannPruefen(eintrag);
         const laedtZeile = aktionId === eintrag?.id;
         const istExpose = eintrag?.dokumentTyp === "expose";
         const bereit = istBereit(eintrag);
-
-        if (istExpose && bereit) return null;
-
-        return (
-          <PermissionGate
-            berechtigung="aktion.dokumente.pruefordner.pruefen"
-            skeletonClassName="w-16"
-          >
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full border-foreground text-foreground"
-              disabled={!pruefbar || laedtZeile}
-              onClick={() => eintrag && pruefen(eintrag)}
-            >
-              Check
-            </Button>
-          </PermissionGate>
-        );
-      },
-    },
-    {
-      key: "analyse",
-      header: "",
-      align: "right",
-      className: "w-10 px-2",
-      render: (z) => {
-        const eintrag = z.eintrag;
-        const laedtZeile = aktionId === eintrag?.id;
         const kannWiederholen = Boolean(
           eintrag &&
             (eintrag.status === "analysiert" || eintrag.status === "fehler"),
         );
-
-        if (!kannWiederholen) return null;
+        const zeigeCheck = !(istExpose && bereit);
 
         return (
-          <PermissionGate
-            berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen"
-            skeletonClassName="w-8"
-          >
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 shrink-0 border-foreground text-foreground"
-              disabled={laedtZeile}
-              aria-label="KI-Analyse wiederholen"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (eintrag) void analyseWiederholen(eintrag);
-              }}
-            >
-              {laedtZeile ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+          <div className="flex items-center justify-end gap-1.5">
+            {zeigeCheck ? (
+              <PermissionGate
+                berechtigung="aktion.dokumente.pruefordner.pruefen"
+                skeletonClassName="w-14"
+              >
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 shrink-0 border-foreground px-2.5 text-foreground"
+                  disabled={!pruefbar || laedtZeile}
+                  onClick={() => eintrag && pruefen(eintrag)}
+                >
+                  Check
+                </Button>
+              </PermissionGate>
+            ) : null}
+
+            {bereit && eintrag ? (
+              istExpose ? (
+                <PermissionGate
+                  berechtigung="aktion.dokumente.pruefordner.exposes_verschieben"
+                  skeletonClassName="w-20"
+                >
+                  <Button
+                    size="sm"
+                    className="h-8 shrink-0 bg-primary px-2.5 text-primary-foreground hover:bg-heading"
+                    disabled={laedtZeile}
+                    onClick={() =>
+                      void zuExposesVerschieben(
+                        eintrag,
+                        z.nachricht.id,
+                        z.nachricht.postfach,
+                      )
+                    }
+                  >
+                    Zu Exposés
+                  </Button>
+                </PermissionGate>
+              ) : istRechnungEintrag(eintrag) ? (
+                <PermissionGate
+                  berechtigung="aktion.dokumente.pruefordner.buchen"
+                  skeletonClassName="w-20"
+                >
+                  <Button
+                    size="sm"
+                    className="h-8 shrink-0 bg-primary px-2.5 text-primary-foreground hover:bg-heading"
+                    disabled={laedtZeile}
+                    onClick={() => void direktAusfuehren(eintrag)}
+                  >
+                    zu DATEV
+                  </Button>
+                </PermissionGate>
               ) : (
-                <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />
-              )}
-            </Button>
-          </PermissionGate>
-        );
-      },
-    },
-    {
-      key: "aktion",
-      header: "",
-      align: "right",
-      className: "w-[6.5rem] pl-2 pr-4",
-      render: (z) => {
-        const eintrag = z.eintrag;
-        const bereit = istBereit(eintrag);
-        const laedtZeile = aktionId === eintrag?.id;
-        const istExpose = eintrag?.dokumentTyp === "expose";
-        const istRechnung = istRechnungEintrag(eintrag);
+                <PermissionGate
+                  berechtigung="aktion.dokumente.pruefordner.ablegen"
+                  skeletonClassName="w-16"
+                >
+                  <Button
+                    size="sm"
+                    className="h-8 shrink-0 bg-primary px-2.5 text-primary-foreground hover:bg-heading"
+                    disabled={laedtZeile}
+                    onClick={() => void direktAusfuehren(eintrag)}
+                  >
+                    Ablegen
+                  </Button>
+                </PermissionGate>
+              )
+            ) : null}
 
-        if (!bereit || !eintrag) return null;
-
-        if (istExpose) {
-          return (
-            <PermissionGate
-              berechtigung="aktion.dokumente.pruefordner.exposes_verschieben"
-              skeletonClassName="w-24"
-            >
-              <Button
-                size="sm"
-                className="w-full bg-primary text-primary-foreground hover:bg-heading"
-                disabled={laedtZeile}
-                onClick={() =>
-                  void zuExposesVerschieben(
-                    eintrag,
-                    z.nachricht.id,
-                    z.nachricht.postfach,
-                  )
-                }
-              >
-                Zu Exposés
-              </Button>
-            </PermissionGate>
-          );
-        }
-
-        if (istRechnung) {
-          return (
-            <PermissionGate
-              berechtigung="aktion.dokumente.pruefordner.buchen"
-              skeletonClassName="w-16"
-            >
-              <Button
-                size="sm"
-                className="w-full bg-primary text-primary-foreground hover:bg-heading"
-                disabled={laedtZeile}
-                onClick={() => void direktAusfuehren(eintrag)}
-              >
-                zu DATEV
-              </Button>
-            </PermissionGate>
-          );
-        }
-
-        return (
-          <PermissionGate
-            berechtigung="aktion.dokumente.pruefordner.ablegen"
-            skeletonClassName="w-16"
-          >
-            <Button
-              size="sm"
-              className="w-full bg-primary text-primary-foreground hover:bg-heading"
-              disabled={laedtZeile}
-              onClick={() => void direktAusfuehren(eintrag)}
-            >
-              Ablegen
-            </Button>
-          </PermissionGate>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-foreground"
+                  disabled={laedtZeile}
+                  aria-label="Weitere Aktionen"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                {kannWiederholen ? (
+                  <PermissionGate berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen">
+                    <DropdownMenuItem
+                      disabled={laedtZeile}
+                      onClick={() => eintrag && void analyseWiederholen(eintrag)}
+                    >
+                      <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
+                      KI-Neustart
+                    </DropdownMenuItem>
+                  </PermissionGate>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
@@ -617,6 +597,7 @@ export function PostfachPage() {
         <DataTable
           spalten={spalten}
           zeilen={zeilen}
+          festLayout
           isLoading={laedt}
           isEmpty={!laedt && !fehler && zeilen.length === 0}
           emptyTitel="Keine Nachrichten mit Anhang"
