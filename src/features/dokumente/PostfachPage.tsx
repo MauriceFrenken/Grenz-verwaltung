@@ -28,9 +28,19 @@ type Zeile = {
   eintrag: DokumentPosteingangEintrag | null;
 };
 
-function AnhangIcon({ art }: { art: GraphAnhangArt }) {
+function AnhangIcon({
+  art,
+  dateiname,
+}: {
+  art: GraphAnhangArt;
+  dateiname?: string | null;
+}) {
   const Icon =
-    art === "pdf" || art === "office" ? FileText : art === "bild" ? Image : FileQuestion;
+    art === "pdf" || art === "office" || art === "datei"
+      ? FileText
+      : art === "bild"
+        ? Image
+        : FileQuestion;
   const label =
     art === "pdf"
       ? "PDF"
@@ -38,7 +48,9 @@ function AnhangIcon({ art }: { art: GraphAnhangArt }) {
         ? "Office"
         : art === "bild"
           ? "Bild"
-          : "Kein Anhang";
+          : art === "datei"
+            ? dateiname?.trim() || "Datei"
+            : "Kein Anhang";
   return (
     <span
       className="flex h-8 w-8 shrink-0 items-center justify-center text-text-muted"
@@ -61,11 +73,8 @@ function typLabel(eintrag: DokumentPosteingangEintrag | null): string {
 }
 
 function AnalyseStatus({ zeile }: { zeile: Zeile }) {
-  const { nachricht, eintrag } = zeile;
+  const { eintrag } = zeile;
 
-  if (!nachricht.primaerAnhang) {
-    return <span className="text-text-subtle">Kein Anhang</span>;
-  }
   if (!eintrag || eintrag.status === "neu") {
     return (
       <span className="inline-flex items-center gap-2 text-text-muted">
@@ -315,7 +324,12 @@ export function PostfachPage() {
       key: "anhang",
       header: "",
       className: "w-10 pr-0",
-      render: (z) => <AnhangIcon art={z.nachricht.anhangArt} />,
+      render: (z) => (
+        <AnhangIcon
+          art={z.nachricht.anhangArt}
+          dateiname={z.nachricht.primaerAnhang?.name}
+        />
+      ),
     },
     {
       key: "absender",

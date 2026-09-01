@@ -6,8 +6,8 @@ export type GraphPostfachInfo = {
   anzahlNachrichten: number | null;
 };
 
-/** Primärer Anhangstyp für Listen-Icons (PDF vor Office vor Bild). */
-export type GraphAnhangArt = "pdf" | "office" | "bild" | "keins";
+/** Primärer Anhangstyp für Listen-Icons (PDF vor Office vor Bild vor sonstiger Datei). */
+export type GraphAnhangArt = "pdf" | "office" | "bild" | "datei" | "keins";
 
 /** Anhang-Metadaten aus der Nachrichtenliste — ohne Inhalt. */
 export type GraphAnhangMeta = {
@@ -199,10 +199,16 @@ function istBildAnhang(a: RohAnhangMeta): boolean {
   );
 }
 
+function istDateiAnhang(a: RohAnhangMeta): boolean {
+  return !a.isInline && Boolean(a.id);
+}
+
 function anhangArtAus(anhaenge: RohAnhangMeta[]): GraphAnhangArt {
-  if (anhaenge.some(istPdfAnhang)) return "pdf";
-  if (anhaenge.some(istOfficeAnhang)) return "office";
-  if (anhaenge.some(istBildAnhang)) return "bild";
+  const dateien = anhaenge.filter(istDateiAnhang);
+  if (dateien.some(istPdfAnhang)) return "pdf";
+  if (dateien.some(istOfficeAnhang)) return "office";
+  if (dateien.some(istBildAnhang)) return "bild";
+  if (dateien.length > 0) return "datei";
   return "keins";
 }
 
@@ -277,7 +283,7 @@ export async function graphPosteingangNachrichten(
     .filter((n): n is GraphNachricht => n !== null);
 
   return optionen.nurMitAnhang
-    ? nachrichten.filter((n) => n.hatAnhaenge)
+    ? nachrichten.filter((n) => n.primaerAnhang !== null)
     : nachrichten;
 }
 

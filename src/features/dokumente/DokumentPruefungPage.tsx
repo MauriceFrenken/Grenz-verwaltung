@@ -333,8 +333,6 @@ export function DokumentPruefungPage() {
         nebenTitel={
           eintrag?.status === "abgelegt" ? (
             <span className="text-xs text-text-muted">Abgelegt</span>
-          ) : istRechnung ? (
-            <span className="text-xs font-medium text-heading">Rechnung</span>
           ) : null
         }
         aktionen={

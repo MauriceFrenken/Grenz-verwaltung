@@ -40,9 +40,19 @@ function formatEingangsdatum(iso: string | null): string {
   }
 }
 
-function AnhangIcon({ art }: { art: GraphAnhangArt }) {
+function AnhangIcon({
+  art,
+  dateiname,
+}: {
+  art: GraphAnhangArt;
+  dateiname?: string | null;
+}) {
   const Icon =
-    art === "pdf" || art === "office" ? FileText : art === "bild" ? Image : FileQuestion;
+    art === "pdf" || art === "office" || art === "datei"
+      ? FileText
+      : art === "bild"
+        ? Image
+        : FileQuestion;
   const label =
     art === "pdf"
       ? "PDF"
@@ -50,7 +60,9 @@ function AnhangIcon({ art }: { art: GraphAnhangArt }) {
         ? "Office"
         : art === "bild"
           ? "Bild"
-          : "Kein Anhang";
+          : art === "datei"
+            ? dateiname?.trim() || "Datei"
+            : "Kein Anhang";
   return (
     <span
       className="flex h-8 w-8 shrink-0 items-center justify-center text-text-muted"
@@ -330,7 +342,12 @@ export function TransaktionslistePage() {
       key: "anhang",
       header: "",
       className: "w-10 pr-0",
-      render: (z) => <AnhangIcon art={z.nachricht.anhangArt} />,
+      render: (z) => (
+        <AnhangIcon
+          art={z.nachricht.anhangArt}
+          dateiname={z.nachricht.primaerAnhang?.name}
+        />
+      ),
     },
     {
       key: "absender",
