@@ -8,6 +8,7 @@ import {
   dokumentPosteingangSynchronisieren,
 } from "./sync";
 import { dokumentPosteingangZuExposesVerschieben } from "./verschieben";
+import { dokumentPosteingangZuTam } from "./zu-tam";
 
 export const dokumentPosteingangSyncFn = createServerFn({ method: "POST" })
   .validator(
@@ -65,3 +66,10 @@ export const dokumentPosteingangZuExposesVerschiebenFn = createServerFn({
       data as { supabaseAccessToken: string; eintragId: string },
   )
   .handler(async ({ data }) => dokumentPosteingangZuExposesVerschieben(data));
+
+export const dokumentPosteingangZuTamFn = createServerFn({ method: "POST" })
+  .validator(
+    (data: unknown) =>
+      data as { supabaseAccessToken: string; eintragId: string },
+  )
+  .handler(async ({ data }) => dokumentPosteingangZuTam(data));

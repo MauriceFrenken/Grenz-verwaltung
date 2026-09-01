@@ -29,6 +29,11 @@ import { base64ZuFile } from "@/lib/postfach/client";
 import { verwaltungApi } from "@/api/verwaltung";
 import type { Gesellschaft, Objekt } from "@/types";
 import { cn } from "@/lib/utils";
+import {
+  istTamAusFeldern,
+  istTamGesellschaft,
+  TRADE_ANY_MACHINE_NAME,
+} from "@/lib/trade-any-machine";
 
 import { PdfSourceViewer } from "../transaktionen/expose-import/PdfSourceViewer";
 import {
@@ -154,7 +159,7 @@ export function DokumentPruefungPage() {
 
   const gefilterteObjekte = gesellschaftId
     ? objekte.filter((o) => o.gesellschaftId === gesellschaftId)
-    : objekte;
+    : [];
 
   const ergebnisUebernehmen = useCallback(
     (
@@ -312,6 +317,29 @@ export function DokumentPruefungPage() {
     toast.info("Buchen wird in einem späteren Schritt implementiert.");
   }
 
+  async function zuTam() {
+    if (!eintrag) return;
+    setSpeichert(true);
+    try {
+      const { dokumentPosteingangZuTamFn } = await import(
+        "@/lib/dokument-postfach/server-fn"
+      );
+      await dokumentPosteingangZuTamFn({
+        data: { supabaseAccessToken: token, eintragId: eintrag.id },
+      });
+      toast.info("Zu TAM wird in einem späteren Schritt implementiert.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Weiterleitung fehlgeschlagen.");
+    } finally {
+      setSpeichert(false);
+    }
+  }
+
+  const istTam =
+    istTamAusFeldern(eintrag?.felder ?? null) ||
+    istTamGesellschaft(felder.gesellschaftName?.value) ||
+    istTamGesellschaft(felder.zahlungsempfaenger?.value);
+
   const quelleOeffnen = (id: DokumentKiFeldId) => {
     const quelle = felder[id]?.quelle;
     if (!quelle?.verbatimQuote) return;
@@ -336,7 +364,21 @@ export function DokumentPruefungPage() {
           ) : null
         }
         aktionen={
-          istRechnung ? (
+          istTam ? (
+            <PermissionGate
+              berechtigung="aktion.dokumente.pruefordner.zu_tam"
+              skeletonClassName="w-24"
+            >
+              <Button
+                size="sm"
+                className="bg-primary text-primary-foreground hover:bg-heading"
+                disabled={laedtPdf || speichert || eintrag?.status === "abgelegt"}
+                onClick={() => void zuTam()}
+              >
+                zu TAM
+              </Button>
+            </PermissionGate>
+          ) : istRechnung ? (
             <PermissionGate
               berechtigung="aktion.dokumente.pruefordner.buchen"
               skeletonClassName="w-24"
@@ -412,6 +454,10 @@ export function DokumentPruefungPage() {
         <aside className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain lg:w-[340px] lg:flex-none xl:w-[400px]">
           <div className="flex flex-col gap-2 border border-hairline bg-surface-muted/40 p-4">
             <span className="label-caps text-text-muted">Zuordnung</span>
+            {istTam ? (
+              <p className="text-sm text-heading">{TRADE_ANY_MACHINE_NAME}</p>
+            ) : (
+              <>
             <Select
               value={gesellschaftId || AUSWAHL_LEER}
               onValueChange={(v) => {
@@ -443,6 +489,7 @@ export function DokumentPruefungPage() {
               </SelectContent>
             </Select>
             <Select
+              disabled={!gesellschaftId}
               value={objektId || AUSWAHL_LEER}
               onValueChange={(v) => {
                 const id = v === AUSWAHL_LEER ? "" : v;
@@ -471,9 +518,11 @@ export function DokumentPruefungPage() {
                 ))}
               </SelectContent>
             </Select>
+              </>
+            )}
           </div>
 
-          {!istRechnung ? (
+          {!istRechnung && !istTam ? (
             <OrdnerAuswahl
               token={token}
               gewaehlterOrdnerId={ordnerId}

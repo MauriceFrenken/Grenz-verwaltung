@@ -9,13 +9,17 @@ import {
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
 import { microsoftCallerAusJwt, createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
 
+import {
+  istTamAusFeldern,
+  istTamGesellschaft,
+  TRADE_ANY_MACHINE_NAME,
+} from "@/lib/trade-any-machine";
+
 import { baueAnhangAnalyseKontext } from "./anhang-kontext";
 import {
   ermittleZielordnerIterativ,
   findeGesellschaftId,
-  findeObjektId,
-  findeObjektIdStaerkste,
-  hatObjektZuordnung,
+  findeObjektIdAusKontext,
   ladeStammdatenKontext,
 } from "./ablage-kontext";
 import {
@@ -96,42 +100,42 @@ async function analysiereEintrag(
         .select("id,bezeichnung,gesellschaft_id,strasse,ort"),
     ]);
 
-    const objektFeld = ergebnis.felder.objektBezeichnung;
-    const objektText = objektFeld.value;
-    const objektRelevant = hatObjektZuordnung(
-      objektText,
-      objektFeld.konfidenz,
-    );
+    ergebnis.felder.objektBezeichnung = {
+      ...ergebnis.felder.objektBezeichnung,
+      value: null,
+    };
 
-    let objektId: string | null = null;
-    if (objektRelevant) {
-      objektId =
-        findeObjektIdStaerkste(objektText, objekte ?? []) ??
-        findeObjektId(
-          objektText,
-          findeGesellschaftId(
-            ergebnis.felder.gesellschaftName.value,
-            gesellschaften ?? [],
-          ),
-          objekte ?? [],
-        );
-    } else {
+    const istTam = istTamAusFeldern(ergebnis.felder);
+
+    if (istTam) {
+      ergebnis.felder.gesellschaftName = {
+        ...ergebnis.felder.gesellschaftName,
+        value: TRADE_ANY_MACHINE_NAME,
+      };
       ergebnis.felder.objektBezeichnung = {
-        ...objektFeld,
+        ...ergebnis.felder.objektBezeichnung,
         value: null,
       };
     }
 
-    const gematchtesObjekt =
-      objekte?.find((o) => o.id === objektId) ?? null;
+    const gesellschaftId = istTam
+      ? null
+      : findeGesellschaftId(
+          ergebnis.felder.gesellschaftName.value,
+          gesellschaften ?? [],
+        );
 
-    let gesellschaftId = gematchtesObjekt?.gesellschaft_id ?? null;
-    if (!gesellschaftId) {
-      gesellschaftId = findeGesellschaftId(
-        ergebnis.felder.gesellschaftName.value,
-        gesellschaften ?? [],
+    let objektId: string | null = null;
+    if (gesellschaftId && ergebnis.dokumentTyp !== "expose" && !istTam) {
+      objektId = findeObjektIdAusKontext(
+        [kontext.modelContext, kontext.mailKontext],
+        gesellschaftId,
+        objekte ?? [],
       );
     }
+
+    const gematchtesObjekt =
+      objekte?.find((o) => o.id === objektId) ?? null;
 
     const gesellschaftName =
       gesellschaften?.find((g) => g.id === gesellschaftId)?.name ??
@@ -155,16 +159,18 @@ async function analysiereEintrag(
     let ablageOrdnerPfad: string | null = null;
 
     if (
+      !istTam &&
       ergebnis.dokumentTyp !== "expose" &&
       gesellschaftId &&
-      gesellschaftName
+      gesellschaftName &&
+      !istTamGesellschaft(gesellschaftName)
     ) {
       const ziel = await ermittleZielordnerIterativ(
         accessToken,
         {
           gesellschaftId,
           gesellschaftName,
-          objektBezeichnung: gematchtesObjekt?.bezeichnung ?? objektText,
+          objektBezeichnung: gematchtesObjekt?.bezeichnung ?? null,
           dokumentTyp: ergebnis.dokumentTyp,
           documentTitle: kontext.titel,
           mailKontext: kontext.mailKontext,

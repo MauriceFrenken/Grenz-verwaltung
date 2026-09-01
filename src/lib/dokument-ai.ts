@@ -390,16 +390,16 @@ Schritt 1: Klassifiziere den Anhang in genau einen Typ:
 - "expose": Immobilien-Exposé / Verkaufsunterlage (Objektbeschreibung, Kaufpreis, Miete, Maklerangebot, Objektdaten, Grundriss, Energieausweis als Exposé-PDF)
 - "dokument": sonstige Geschäftsdokumente (Verträge, Korrespondenz, Protokolle, Versicherungen, …)
 
-Schritt 2a (rechnung): Extrahiere Rechnungsfelder; Gesellschaft/Objekt aus STAMMDATEN.
-Schritt 2b (dokument): Gesellschaft und ggf. Objekt aus STAMMDATEN — Zielordner wird serverseitig ermittelt.
-Schritt 2c (expose): Objektadresse falls erkennbar.
+Schritt 2a (rechnung): Extrahiere Rechnungsfelder; Gesellschaft aus STAMMDATEN.
+Schritt 2b (dokument): Gesellschaft aus STAMMDATEN — Zielordner wird serverseitig ermittelt.
+Schritt 2c (expose): keine Zuordnung zu Stammdaten-Objekten.
 
 ${ABLAGESTRUKTUR}
 
 Regeln:
-- gesellschaftName und objektBezeichnung NUR aus STAMMDATEN.
-- objektBezeichnung: null wenn das Dokument nur die Gesellschaft betrifft (z. B. Versicherung, Bank, Holding, Personal, allgemeine Finanzen) — kein konkretes Grundstück/Objekt im Text.
-- objektBezeichnung: nur setzen wenn Adresse, Grundstück oder Objekt im Dokument klar genannt ist.
+- gesellschaftName aus STAMMDATEN (FRENKEN-Gesellschaften). Ausnahme: eindeutig an TradeAnyMachine GmbH (TAM) adressiert → gesellschaftName exakt "TradeAnyMachine GmbH" (steht nicht in Stammdaten).
+- objektBezeichnung: immer null — Objekte (Immobilien der Gesellschaften) werden serverseitig zugeordnet, nicht von der KI.
+- Adressen, Maschinen, Fahrzeuge oder Objekte aus Exposés/Verkaufsunterlagen sind KEINE Stammdaten-Objekte.
 - ordnerPfad: immer null lassen (wird separat über OneDrive ermittelt).
 - Bei Rechnungen: zahlungsempfaenger = an wen gezahlt wird (FRENKEN-Gesellschaft), rechnungssteller = Aussteller.
 - rechnungsbetrag: nur Zahl mit Dezimalpunkt, keine Währung.
@@ -429,7 +429,7 @@ Antworte NUR mit JSON:
 
   const userPrompt = `Dokument: ${titel}
 
-=== STAMMDATEN (Gesellschaften & Objekte) ===
+=== STAMMDATEN (Gesellschaften) ===
 ${stammdatenKontext}
 ${mailKontext ? `\n=== E-MAIL ===\n${mailKontext}\n` : ""}
 ${kontext ? `\n=== KONTEXT ===\n${kontext}` : ""}`;

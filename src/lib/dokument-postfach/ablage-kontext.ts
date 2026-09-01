@@ -101,32 +101,20 @@ function scoreObjektMatch(
   return score;
 }
 
+/** Nur Gesellschaften — Objekte werden serverseitig pro Gesellschaft gematcht (spart KI-Tokens). */
 export async function ladeStammdatenKontext(): Promise<string> {
   const admin = createServiceRoleClient();
 
-  const [{ data: gesellschaften }, { data: objekte }] = await Promise.all([
-    admin.from("v_gesellschaften").select("id,name,kuerzel").order("id"),
-    admin
-      .from("v_objekte")
-      .select("id,bezeichnung,gesellschaft_id,gesellschaft_name,strasse,ort")
-      .order("id"),
-  ]);
+  const { data: gesellschaften } = await admin
+    .from("v_gesellschaften")
+    .select("id,name,kuerzel")
+    .order("id");
 
   const gsLines = (gesellschaften ?? []).map(
     (g) => `- ${g.id}: ${g.name} (${g.kuerzel})`,
   );
-  const objLines = (objekte ?? []).map(
-    (o) =>
-      `- ${o.id}: ${o.bezeichnung} | ${o.gesellschaft_name ?? o.gesellschaft_id} | ${o.strasse ?? ""}, ${o.ort ?? ""}`,
-  );
 
-  return [
-    "Gesellschaften:",
-    ...gsLines,
-    "",
-    "Objekte:",
-    ...objLines,
-  ].join("\n");
+  return ["Gesellschaften:", ...gsLines].join("\n");
 }
 
 /** Gesellschafts-Root in OneDrive — KI wählt aus den Oberordnern. */
@@ -323,7 +311,6 @@ export function findeGesellschaftId(
   return best && best.score >= 4 ? best.id : null;
 }
 
-/** Objekt zuerst global per Adresse/Straße matchen — nicht von (falscher) Gesellschaft abhängig. */
 export function findeObjektIdStaerkste(
   bezeichnung: string | null | undefined,
   objekte: Array<{
@@ -338,13 +325,16 @@ export function findeObjektIdStaerkste(
   const such = (bezeichnung ?? "").trim();
   if (!such) return null;
 
+  const kandidaten = gesellschaftId
+    ? objekte.filter((o) => o.gesellschaft_id === gesellschaftId)
+    : objekte;
+  if (kandidaten.length === 0) return null;
+
   const tokens = ordnerSuchTokens({ objektBezeichnung: such });
   let best: { id: string; score: number } | null = null;
 
-  for (const o of objekte) {
-    let score = scoreObjektMatch(o, such, tokens);
-    if (gesellschaftId && o.gesellschaft_id === gesellschaftId) score *= 1.15;
-
+  for (const o of kandidaten) {
+    const score = scoreObjektMatch(o, such, tokens);
     if (score > 0 && (!best || score > best.score)) {
       best = { id: o.id, score };
     }
@@ -353,6 +343,28 @@ export function findeObjektIdStaerkste(
   const strassenToken = tokens.find((t) => t.length >= 6);
   const minScore = strassenToken ? 8 : 5;
   return best && best.score >= minScore ? best.id : null;
+}
+
+/** Objekt nur innerhalb einer Gesellschaft — aus Dokument-/Mail-Kontext. */
+export function findeObjektIdAusKontext(
+  texte: Array<string | null | undefined>,
+  gesellschaftId: string,
+  objekte: Array<{
+    id: string;
+    bezeichnung: string;
+    gesellschaft_id: string;
+    strasse?: string | null;
+    ort?: string | null;
+  }>,
+): string | null {
+  const gsObjekte = objekte.filter((o) => o.gesellschaft_id === gesellschaftId);
+  if (gsObjekte.length === 0) return null;
+
+  for (const text of texte) {
+    const id = findeObjektIdStaerkste(text, gsObjekte, gesellschaftId);
+    if (id) return id;
+  }
+  return null;
 }
 
 export function findeObjektId(

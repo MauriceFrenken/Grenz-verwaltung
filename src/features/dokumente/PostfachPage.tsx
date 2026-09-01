@@ -31,6 +31,7 @@ import {
   istPdfDatei,
 } from "@/lib/postfach/dateityp";
 import { cn } from "@/lib/utils";
+import { istTamAusFeldern } from "@/lib/trade-any-machine";
 
 const MAX_ANALYSE_RUNDEN = 50;
 
@@ -169,6 +170,7 @@ function kannPruefen(
 function istBereit(eintrag: DokumentPosteingangEintrag | null): eintrag is DokumentPosteingangEintrag {
   if (!eintrag || eintrag.status !== "analysiert") return false;
   if (eintrag.dokumentTyp === "expose") return true;
+  if (istTamAusFeldern(eintrag.felder)) return true;
   return hatAnalyseWerte(eintrag.felder);
 }
 
@@ -334,6 +336,29 @@ export function PostfachPage() {
     [token],
   );
 
+  const zuTam = useCallback(
+    async (eintrag: DokumentPosteingangEintrag) => {
+      setAktionId(eintrag.id);
+      try {
+        const { dokumentPosteingangZuTamFn } = await import(
+          "@/lib/dokument-postfach/server-fn"
+        );
+        await dokumentPosteingangZuTamFn({
+          data: { supabaseAccessToken: token, eintragId: eintrag.id },
+        });
+        toast.info("Zu TAM wird in einem späteren Schritt implementiert.");
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : "Weiterleitung fehlgeschlagen.",
+          { duration: 12_000 },
+        );
+      } finally {
+        setAktionId(null);
+      }
+    },
+    [token],
+  );
+
   const zuExposesVerschieben = useCallback(
     async (eintrag: DokumentPosteingangEintrag, nachrichtId: string, postfach: string) => {
       setAktionId(eintrag.id);
@@ -485,6 +510,7 @@ export function PostfachPage() {
         const bereit = istBereit(eintrag);
         const laedtZeile = aktionId === eintrag?.id;
         const istExpose = eintrag?.dokumentTyp === "expose";
+        const istTam = Boolean(eintrag && istTamAusFeldern(eintrag.felder));
 
         if (!bereit || !eintrag) {
           return <span className="block h-8" aria-hidden />;
@@ -509,6 +535,24 @@ export function PostfachPage() {
                 }
               >
                 Zu Exposés
+              </Button>
+            </PermissionGate>
+          );
+        }
+
+        if (istTam) {
+          return (
+            <PermissionGate
+              berechtigung="aktion.dokumente.pruefordner.zu_tam"
+              skeletonClassName="w-full"
+            >
+              <Button
+                size="sm"
+                className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
+                disabled={laedtZeile}
+                onClick={() => void zuTam(eintrag)}
+              >
+                zu TAM
               </Button>
             </PermissionGate>
           );
