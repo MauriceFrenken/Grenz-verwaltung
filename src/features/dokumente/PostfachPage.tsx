@@ -99,6 +99,13 @@ function AnalyseStatus({ zeile }: { zeile: Zeile }) {
   return <span className="font-medium text-heading">{typLabel(eintrag)}</span>;
 }
 
+function kannPruefen(
+  eintrag: DokumentPosteingangEintrag | null,
+): eintrag is DokumentPosteingangEintrag {
+  if (!eintrag) return false;
+  return eintrag.status === "analysiert" || eintrag.status === "fehler";
+}
+
 function istBereit(eintrag: DokumentPosteingangEintrag | null): eintrag is DokumentPosteingangEintrag {
   if (!eintrag || eintrag.status !== "analysiert") return false;
   if (eintrag.dokumentTyp === "expose") return true;
@@ -372,6 +379,7 @@ export function PostfachPage() {
       className: "w-[1%] whitespace-nowrap",
       render: (z) => {
         const eintrag = z.eintrag;
+        const pruefbar = kannPruefen(eintrag);
         const bereit = istBereit(eintrag);
         const laedtZeile = aktionId === eintrag?.id;
         const kannWiederholen = Boolean(
@@ -444,7 +452,7 @@ export function PostfachPage() {
                 size="sm"
                 variant="outline"
                 className="border-foreground text-foreground"
-                disabled={!bereit || laedtZeile}
+                disabled={!pruefbar || laedtZeile}
                 onClick={() => eintrag && pruefen(eintrag)}
               >
                 Check
