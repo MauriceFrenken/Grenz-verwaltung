@@ -463,14 +463,14 @@ export function PostfachPage() {
   const spalten: Column<DokumentPosteingangEintrag>[] = [
     {
       key: "typ",
-      header: "",
+      header: "Typ",
       className: "w-12 min-w-[3rem] px-2",
       render: (e) => <TypIcon eintrag={e} />,
     },
     {
       key: "datei",
       header: "Dateiname",
-      className: "min-w-[14rem] max-w-[20rem]",
+      className: "min-w-[10rem] max-w-[14rem]",
       render: (e) => (
         <ZellText
           text={e.anhangName || "–"}
