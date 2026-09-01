@@ -215,7 +215,10 @@ export function PostfachPage() {
           ),
         );
         if (aktualisiert.status === "fehler") {
-          toast.error("KI-Analyse erneut fehlgeschlagen.");
+          toast.error("KI-Analyse fehlgeschlagen.", {
+            description: aktualisiert.analyseFehler ?? undefined,
+            duration: 12_000,
+          });
         } else {
           toast.success("KI-Analyse abgeschlossen.");
         }
