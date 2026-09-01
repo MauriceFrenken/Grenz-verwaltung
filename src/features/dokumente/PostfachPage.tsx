@@ -29,8 +29,16 @@ type Zeile = {
 };
 
 function AnhangIcon({ art }: { art: GraphAnhangArt }) {
-  const Icon = art === "pdf" ? FileText : art === "bild" ? Image : FileQuestion;
-  const label = art === "pdf" ? "PDF" : art === "bild" ? "Bild" : "Kein Anhang";
+  const Icon =
+    art === "pdf" || art === "office" ? FileText : art === "bild" ? Image : FileQuestion;
+  const label =
+    art === "pdf"
+      ? "PDF"
+      : art === "office"
+        ? "Office"
+        : art === "bild"
+          ? "Bild"
+          : "Kein Anhang";
   return (
     <span
       className="flex h-8 w-8 shrink-0 items-center justify-center text-text-muted"

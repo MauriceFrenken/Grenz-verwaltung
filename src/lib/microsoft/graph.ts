@@ -6,8 +6,8 @@ export type GraphPostfachInfo = {
   anzahlNachrichten: number | null;
 };
 
-/** Primärer Anhangstyp für Listen-Icons (PDF vor Bild). */
-export type GraphAnhangArt = "pdf" | "bild" | "keins";
+/** Primärer Anhangstyp für Listen-Icons (PDF vor Office vor Bild). */
+export type GraphAnhangArt = "pdf" | "office" | "bild" | "keins";
 
 /** Anhang-Metadaten aus der Nachrichtenliste — ohne Inhalt. */
 export type GraphAnhangMeta = {
@@ -28,7 +28,7 @@ export type GraphNachricht = {
   anhangArt: GraphAnhangArt;
   /** Erster PDF-Anhang der Nachricht (Exposé-Kandidat). */
   pdfAnhang: GraphAnhangMeta | null;
-  /** Primärer Datei-Anhang: PDF > Bild > erste Datei. */
+  /** Primärer Datei-Anhang: PDF > Office > Bild > erste Datei. */
   primaerAnhang: GraphAnhangMeta | null;
   vorschau: string | null;
   webLink: string | null;
@@ -177,6 +177,20 @@ function istPdfAnhang(a: RohAnhangMeta): boolean {
   return ct.includes("pdf") || name.endsWith(".pdf");
 }
 
+function istOfficeAnhang(a: RohAnhangMeta): boolean {
+  const ct = (a.contentType ?? "").toLowerCase();
+  const name = (a.name ?? "").toLowerCase();
+  return (
+    ct.includes("wordprocessingml") ||
+    ct.includes("msword") ||
+    ct.includes("spreadsheetml") ||
+    ct.includes("ms-excel") ||
+    ct.includes("presentationml") ||
+    ct.includes("ms-powerpoint") ||
+    /\.(docx?|xlsx?|pptx?|odt|ods|odp)$/i.test(name)
+  );
+}
+
 function istBildAnhang(a: RohAnhangMeta): boolean {
   const ct = (a.contentType ?? "").toLowerCase();
   const name = (a.name ?? "").toLowerCase();
@@ -187,6 +201,7 @@ function istBildAnhang(a: RohAnhangMeta): boolean {
 
 function anhangArtAus(anhaenge: RohAnhangMeta[]): GraphAnhangArt {
   if (anhaenge.some(istPdfAnhang)) return "pdf";
+  if (anhaenge.some(istOfficeAnhang)) return "office";
   if (anhaenge.some(istBildAnhang)) return "bild";
   return "keins";
 }
@@ -206,6 +221,8 @@ function waehlePrimaerAnhang(
   const dateien = anhaenge.filter((a) => !a.isInline && a.id);
   const pdf = dateien.find(istPdfAnhang);
   if (pdf) return mapAnhangMeta(pdf);
+  const office = dateien.find(istOfficeAnhang);
+  if (office) return mapAnhangMeta(office);
   const bild = dateien.find(istBildAnhang);
   if (bild) return mapAnhangMeta(bild);
   const erste = dateien[0];
