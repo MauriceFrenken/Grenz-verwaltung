@@ -438,122 +438,156 @@ export function PostfachPage() {
       ),
     },
     {
-      key: "aktionen",
+      key: "check",
       header: "",
       align: "right",
-      className: "w-[12.5rem] pl-2 pr-3",
+      className: "w-[4.5rem] px-2",
       render: (z) => {
         const eintrag = z.eintrag;
         const pruefbar = kannPruefen(eintrag);
         const laedtZeile = aktionId === eintrag?.id;
         const istExpose = eintrag?.dokumentTyp === "expose";
         const bereit = istBereit(eintrag);
+        const zeigeCheck = !(istExpose && bereit);
+
+        if (!zeigeCheck) {
+          return <span className="block h-8" aria-hidden />;
+        }
+
+        return (
+          <PermissionGate
+            berechtigung="aktion.dokumente.pruefordner.pruefen"
+            skeletonClassName="w-full"
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 w-full border-foreground text-foreground"
+              disabled={!pruefbar || laedtZeile}
+              onClick={() => eintrag && pruefen(eintrag)}
+            >
+              Check
+            </Button>
+          </PermissionGate>
+        );
+      },
+    },
+    {
+      key: "aktion",
+      header: "",
+      align: "right",
+      className: "w-[7rem] px-2",
+      render: (z) => {
+        const eintrag = z.eintrag;
+        const bereit = istBereit(eintrag);
+        const laedtZeile = aktionId === eintrag?.id;
+        const istExpose = eintrag?.dokumentTyp === "expose";
+
+        if (!bereit || !eintrag) {
+          return <span className="block h-8" aria-hidden />;
+        }
+
+        if (istExpose) {
+          return (
+            <PermissionGate
+              berechtigung="aktion.dokumente.pruefordner.exposes_verschieben"
+              skeletonClassName="w-full"
+            >
+              <Button
+                size="sm"
+                className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
+                disabled={laedtZeile}
+                onClick={() =>
+                  void zuExposesVerschieben(
+                    eintrag,
+                    z.nachricht.id,
+                    z.nachricht.postfach,
+                  )
+                }
+              >
+                Zu Exposés
+              </Button>
+            </PermissionGate>
+          );
+        }
+
+        if (istRechnungEintrag(eintrag)) {
+          return (
+            <PermissionGate
+              berechtigung="aktion.dokumente.pruefordner.buchen"
+              skeletonClassName="w-full"
+            >
+              <Button
+                size="sm"
+                className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
+                disabled={laedtZeile}
+                onClick={() => void direktAusfuehren(eintrag)}
+              >
+                zu DATEV
+              </Button>
+            </PermissionGate>
+          );
+        }
+
+        return (
+          <PermissionGate
+            berechtigung="aktion.dokumente.pruefordner.ablegen"
+            skeletonClassName="w-full"
+          >
+            <Button
+              size="sm"
+              className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
+              disabled={laedtZeile}
+              onClick={() => void direktAusfuehren(eintrag)}
+            >
+              Ablegen
+            </Button>
+          </PermissionGate>
+        );
+      },
+    },
+    {
+      key: "menu",
+      header: "",
+      align: "right",
+      className: "w-10 pl-2 pr-3",
+      render: (z) => {
+        const eintrag = z.eintrag;
+        const laedtZeile = aktionId === eintrag?.id;
         const kannWiederholen = Boolean(
           eintrag &&
             (eintrag.status === "analysiert" || eintrag.status === "fehler"),
         );
-        const zeigeCheck = !(istExpose && bereit);
 
         return (
-          <div className="flex items-center justify-end gap-1.5">
-            {zeigeCheck ? (
-              <PermissionGate
-                berechtigung="aktion.dokumente.pruefordner.pruefen"
-                skeletonClassName="w-14"
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-foreground"
+                disabled={laedtZeile}
+                aria-label="Weitere Aktionen"
+                onClick={(e) => e.stopPropagation()}
               >
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 shrink-0 border-foreground px-2.5 text-foreground"
-                  disabled={!pruefbar || laedtZeile}
-                  onClick={() => eintrag && pruefen(eintrag)}
-                >
-                  Check
-                </Button>
-              </PermissionGate>
-            ) : null}
-
-            {bereit && eintrag ? (
-              istExpose ? (
-                <PermissionGate
-                  berechtigung="aktion.dokumente.pruefordner.exposes_verschieben"
-                  skeletonClassName="w-20"
-                >
-                  <Button
-                    size="sm"
-                    className="h-8 shrink-0 bg-primary px-2.5 text-primary-foreground hover:bg-heading"
+                <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              {kannWiederholen ? (
+                <PermissionGate berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen">
+                  <DropdownMenuItem
                     disabled={laedtZeile}
-                    onClick={() =>
-                      void zuExposesVerschieben(
-                        eintrag,
-                        z.nachricht.id,
-                        z.nachricht.postfach,
-                      )
-                    }
+                    onClick={() => eintrag && void analyseWiederholen(eintrag)}
                   >
-                    Zu Exposés
-                  </Button>
+                    <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
+                    KI-Neustart
+                  </DropdownMenuItem>
                 </PermissionGate>
-              ) : istRechnungEintrag(eintrag) ? (
-                <PermissionGate
-                  berechtigung="aktion.dokumente.pruefordner.buchen"
-                  skeletonClassName="w-20"
-                >
-                  <Button
-                    size="sm"
-                    className="h-8 shrink-0 bg-primary px-2.5 text-primary-foreground hover:bg-heading"
-                    disabled={laedtZeile}
-                    onClick={() => void direktAusfuehren(eintrag)}
-                  >
-                    zu DATEV
-                  </Button>
-                </PermissionGate>
-              ) : (
-                <PermissionGate
-                  berechtigung="aktion.dokumente.pruefordner.ablegen"
-                  skeletonClassName="w-16"
-                >
-                  <Button
-                    size="sm"
-                    className="h-8 shrink-0 bg-primary px-2.5 text-primary-foreground hover:bg-heading"
-                    disabled={laedtZeile}
-                    onClick={() => void direktAusfuehren(eintrag)}
-                  >
-                    Ablegen
-                  </Button>
-                </PermissionGate>
-              )
-            ) : null}
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-foreground"
-                  disabled={laedtZeile}
-                  aria-label="Weitere Aktionen"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                {kannWiederholen ? (
-                  <PermissionGate berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen">
-                    <DropdownMenuItem
-                      disabled={laedtZeile}
-                      onClick={() => eintrag && void analyseWiederholen(eintrag)}
-                    >
-                      <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
-                      KI-Neustart
-                    </DropdownMenuItem>
-                  </PermissionGate>
-                ) : null}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },
