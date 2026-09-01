@@ -76,8 +76,9 @@ export function zuEintrag(row: DokumentPosteingangRow): DokumentPosteingangEintr
     absenderName: row.absender_name,
     absenderMail: row.absender_mail,
     eingegangenAm: row.eingegangen_am,
-    anhangName: row.anhang_name,
-    anhangGroesse: row.anhang_groesse,
+  anhangName: row.anhang_name,
+  anhangContentType: row.anhang_content_type,
+  anhangGroesse: row.anhang_groesse,
     status: row.status,
     dokumentTyp: zuDokumentTyp(row),
     istRechnung: row.ist_rechnung,
@@ -95,29 +96,55 @@ export function zuEintrag(row: DokumentPosteingangRow): DokumentPosteingangEintr
 export async function eintraegeAnlegen(
   nachrichten: DokumentPosteingangNachricht[],
 ): Promise<void> {
-  const neu = nachrichten
-    .filter((n) => n.primaerAnhang?.id)
-    .map((n) => ({
-      postfach: n.postfach,
-      graph_nachricht_id: n.id,
-      internet_message_id: n.internetMessageId,
-      betreff: n.betreff,
-      absender_name: n.absenderName,
-      absender_mail: n.absenderMail,
-      eingegangen_am: n.eingegangenAm,
-      web_link: n.webLink,
-      email_text: n.vorschau,
-      anhang_id: n.primaerAnhang?.id ?? null,
-      anhang_name: n.primaerAnhang?.name ?? null,
-      anhang_content_type: n.primaerAnhang?.contentType ?? null,
-      anhang_groesse: n.primaerAnhang?.groesse ?? null,
-    }));
+  const neu: Array<{
+    postfach: string;
+    graph_nachricht_id: string;
+    internet_message_id: string | null;
+    betreff: string | null;
+    absender_name: string | null;
+    absender_mail: string | null;
+    eingegangen_am: string | null;
+    web_link: string | null;
+    email_text: string | null;
+    anhang_id: string;
+    anhang_name: string | null;
+    anhang_content_type: string | null;
+    anhang_groesse: number | null;
+  }> = [];
+
+  for (const n of nachrichten) {
+    const anhaenge =
+      n.anhaenge.length > 0
+        ? n.anhaenge
+        : n.primaerAnhang?.id
+          ? [n.primaerAnhang]
+          : [];
+
+    for (const anhang of anhaenge) {
+      if (!anhang.id) continue;
+      neu.push({
+        postfach: n.postfach,
+        graph_nachricht_id: n.id,
+        internet_message_id: n.internetMessageId,
+        betreff: n.betreff,
+        absender_name: n.absenderName,
+        absender_mail: n.absenderMail,
+        eingegangen_am: n.eingegangenAm,
+        web_link: n.webLink,
+        email_text: n.vorschau,
+        anhang_id: anhang.id,
+        anhang_name: anhang.name ?? null,
+        anhang_content_type: anhang.contentType ?? null,
+        anhang_groesse: anhang.groesse ?? null,
+      });
+    }
+  }
 
   if (neu.length === 0) return;
 
   const admin = createServiceRoleClient();
   const { error } = await admin.from(TABELLE).upsert(neu, {
-    onConflict: "postfach,graph_nachricht_id",
+    onConflict: "postfach,graph_nachricht_id,anhang_id",
     ignoreDuplicates: true,
   });
 
@@ -139,7 +166,9 @@ export async function leseEintraege(
     .from(TABELLE)
     .select(SPALTEN)
     .in("postfach", postfaecher)
-    .in("graph_nachricht_id", ids);
+    .in("graph_nachricht_id", ids)
+    .order("eingegangen_am", { ascending: false })
+    .order("anhang_name", { ascending: true });
 
   if (error) {
     throw fehler("Dokument-Posteingang konnte nicht gelesen werden", error.message);
@@ -294,6 +323,25 @@ export async function loescheEintrag(id: string): Promise<void> {
   const { error } = await admin.from(TABELLE).delete().eq("id", id);
   if (error) {
     throw fehler("Dokument-Posteingang-Eintrag konnte nicht gelöscht werden", error.message);
+  }
+}
+
+export async function loescheEintraegeFuerNachricht(
+  postfach: string,
+  graphNachrichtId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from(TABELLE)
+    .delete()
+    .eq("postfach", postfach)
+    .eq("graph_nachricht_id", graphNachrichtId);
+
+  if (error) {
+    throw fehler(
+      "Dokument-Posteingang-Einträge konnten nicht gelöscht werden",
+      error.message,
+    );
   }
 }
 

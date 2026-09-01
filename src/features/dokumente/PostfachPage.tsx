@@ -24,16 +24,25 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { hatAnalyseWerte } from "@/lib/dokument-postfach/client";
 import type { DokumentPosteingangEintrag } from "@/lib/dokument-postfach/typen";
-import type { DokumentPosteingangNachricht } from "@/lib/microsoft/ablage";
 import type { GraphAnhangArt } from "@/lib/microsoft/graph";
+import {
+  istBildDatei,
+  istOfficeDatei,
+  istPdfDatei,
+} from "@/lib/postfach/dateityp";
 import { cn } from "@/lib/utils";
 
 const MAX_ANALYSE_RUNDEN = 50;
 
-type Zeile = {
-  nachricht: DokumentPosteingangNachricht;
-  eintrag: DokumentPosteingangEintrag | null;
-};
+function anhangArtAusEintrag(eintrag: DokumentPosteingangEintrag): GraphAnhangArt {
+  const name = eintrag.anhangName ?? "";
+  const contentType = eintrag.anhangContentType;
+  if (!name.trim()) return "keins";
+  if (istPdfDatei(name, contentType)) return "pdf";
+  if (istOfficeDatei(name, contentType)) return "office";
+  if (istBildDatei(name, contentType)) return "bild";
+  return "datei";
+}
 
 function AnhangIcon({
   art,
@@ -114,6 +123,18 @@ function objektText(eintrag: DokumentPosteingangEintrag | null): string {
   return eintrag.felder?.objektBezeichnung?.value?.trim() || "–";
 }
 
+function ablagePfad(eintrag: DokumentPosteingangEintrag | null): string | null {
+  if (!eintrag || eintrag.status === "neu") return null;
+  if (eintrag.dokumentTyp !== "dokument" && eintrag.dokumentTyp !== null) {
+    return null;
+  }
+  return (
+    eintrag.ablageOrdnerPfad?.trim() ||
+    eintrag.felder?.ordnerPfad?.value?.trim() ||
+    null
+  );
+}
+
 function ablageBetragText(eintrag: DokumentPosteingangEintrag | null): string {
   if (!eintrag || eintrag.status === "neu") return "–";
 
@@ -124,23 +145,16 @@ function ablageBetragText(eintrag: DokumentPosteingangEintrag | null): string {
     return waehrung ? `${betrag} ${waehrung}` : betrag;
   }
 
-  if (eintrag.dokumentTyp === "dokument" || eintrag.dokumentTyp === null) {
-    const pfad =
-      eintrag.ablageOrdnerPfad?.trim() ||
-      eintrag.felder?.ordnerPfad?.value?.trim();
-    return pfad || "–";
-  }
-
-  return "–";
+  return ablagePfad(eintrag) || "–";
 }
 
-function absenderText(nachricht: Zeile["nachricht"]): string {
-  return nachricht.absenderName || nachricht.absenderMail || "–";
+function absenderText(eintrag: DokumentPosteingangEintrag): string {
+  return eintrag.absenderName || eintrag.absenderMail || "–";
 }
 
-function absenderTitel(nachricht: Zeile["nachricht"]): string | undefined {
-  const name = nachricht.absenderName?.trim();
-  const mail = nachricht.absenderMail?.trim();
+function absenderTitel(eintrag: DokumentPosteingangEintrag): string | undefined {
+  const name = eintrag.absenderName?.trim();
+  const mail = eintrag.absenderMail?.trim();
   if (name && mail && name !== mail) return `${name} (${mail})`;
   return name || mail || undefined;
 }
@@ -170,7 +184,7 @@ export function PostfachPage() {
       `${s.location.pathname}:${s.location.href}`,
   });
 
-  const [zeilen, setZeilen] = useState<Zeile[]>([]);
+  const [eintraege, setEintraege] = useState<DokumentPosteingangEintrag[]>([]);
   const [laedt, setLaedt] = useState(true);
   const [analyseLaeuft, setAnalyseLaeuft] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -179,7 +193,7 @@ export function PostfachPage() {
 
   useEffect(() => {
     if (!token) {
-      setZeilen([]);
+      setEintraege([]);
       setFehler(null);
       setLaedt(false);
       return;
@@ -188,21 +202,6 @@ export function PostfachPage() {
     let cancelled = false;
     setLaedt(true);
     setFehler(null);
-
-    const uebernehmen = (
-      nachrichten: DokumentPosteingangNachricht[],
-      eintraege: DokumentPosteingangEintrag[],
-    ) => {
-      const nachId = new Map(
-        eintraege.map((e) => [`${e.postfach}:${e.graphNachrichtId}`, e]),
-      );
-      setZeilen(
-        nachrichten.map((n) => ({
-          nachricht: n,
-          eintrag: nachId.get(`${n.postfach}:${n.id}`) ?? null,
-        })),
-      );
-    };
 
     void (async () => {
       try {
@@ -214,7 +213,7 @@ export function PostfachPage() {
           data: { supabaseAccessToken: token, maxAnalysen: 0 },
         });
         if (cancelled) return;
-        uebernehmen(erst.nachrichten, erst.eintraege);
+        setEintraege(erst.eintraege);
         setLaedt(false);
 
         let offen = erst.offen;
@@ -225,22 +224,18 @@ export function PostfachPage() {
           });
           if (cancelled) return;
           if (weiter.eintraege.length > 0) {
-            setZeilen((prev) =>
-              prev.map((z) => {
-                const update = weiter.eintraege.find(
-                  (e) =>
-                    e.graphNachrichtId === z.nachricht.id &&
-                    e.postfach === z.nachricht.postfach,
-                );
-                return update ? { ...z, eintrag: update } : z;
-              }),
+            const aktualisiert = new Map(
+              weiter.eintraege.map((e) => [e.id, e]),
+            );
+            setEintraege((prev) =>
+              prev.map((e) => aktualisiert.get(e.id) ?? e),
             );
           }
           offen = weiter.offen;
         }
       } catch (e) {
         if (cancelled) return;
-        setZeilen([]);
+        setEintraege([]);
         setFehler(
           e instanceof Error ? e.message : "Postfach konnte nicht geladen werden.",
         );
@@ -277,12 +272,8 @@ export function PostfachPage() {
         const aktualisiert = await dokumentPosteingangAnalyseWiederholenFn({
           data: { supabaseAccessToken: token, eintragId: eintrag.id },
         });
-        setZeilen((prev) =>
-          prev.map((z) =>
-            z.eintrag?.id === aktualisiert.id
-              ? { ...z, eintrag: aktualisiert }
-              : z,
-          ),
+        setEintraege((prev) =>
+          prev.map((e) => (e.id === aktualisiert.id ? aktualisiert : e)),
         );
         if (aktualisiert.status === "fehler") {
           toast.error("KI-Analyse fehlgeschlagen.", {
@@ -320,18 +311,15 @@ export function PostfachPage() {
           return;
         }
         toast.success(`Abgelegt: ${ergebnis.ordnerPfad}`);
-        setZeilen((prev) =>
-          prev.map((z) =>
-            z.eintrag?.id === eintrag.id
+        setEintraege((prev) =>
+          prev.map((e) =>
+            e.id === eintrag.id
               ? {
-                  ...z,
-                  eintrag: {
-                    ...z.eintrag,
-                    status: "abgelegt" as const,
-                    abgelegtAm: new Date().toISOString(),
-                  },
+                  ...e,
+                  status: "abgelegt" as const,
+                  abgelegtAm: new Date().toISOString(),
                 }
-              : z,
+              : e,
           ),
         );
       } catch (e) {
@@ -356,8 +344,14 @@ export function PostfachPage() {
         const { zielPostfach } = await dokumentPosteingangZuExposesVerschiebenFn({
           data: { supabaseAccessToken: token, eintragId: eintrag.id },
         });
-        setZeilen((prev) =>
-          prev.filter((z) => `${z.nachricht.postfach}:${z.nachricht.id}` !== `${postfach}:${nachrichtId}`),
+        setEintraege((prev) =>
+          prev.filter(
+            (e) =>
+              !(
+                e.postfach === postfach &&
+                e.graphNachrichtId === nachrichtId
+              ),
+          ),
         );
         toast.success(`Nach Exposés verschoben (${zielPostfach}).`);
       } catch (e) {
@@ -372,15 +366,26 @@ export function PostfachPage() {
     [token],
   );
 
-  const spalten: Column<Zeile>[] = [
+  const spalten: Column<DokumentPosteingangEintrag>[] = [
     {
       key: "anhang",
       header: "",
       className: "w-10 pr-0",
-      render: (z) => (
+      render: (e) => (
         <AnhangIcon
-          art={z.nachricht.anhangArt}
-          dateiname={z.nachricht.primaerAnhang?.name}
+          art={anhangArtAusEintrag(e)}
+          dateiname={e.anhangName}
+        />
+      ),
+    },
+    {
+      key: "datei",
+      header: "Datei",
+      className: "w-[14%]",
+      render: (e) => (
+        <ZellText
+          text={e.anhangName || "–"}
+          className="font-medium text-heading"
         />
       ),
     },
@@ -388,22 +393,22 @@ export function PostfachPage() {
       key: "absender",
       header: "Absender",
       className: "w-[11%]",
-      render: (z) => (
+      render: (e) => (
         <ZellText
-          text={absenderText(z.nachricht)}
+          text={absenderText(e)}
           className="text-foreground"
-          title={absenderTitel(z.nachricht)}
+          title={absenderTitel(e)}
         />
       ),
     },
     {
       key: "betreff",
       header: "Betreff",
-      className: "w-[19%]",
-      render: (z) => (
+      className: "w-[15%]",
+      render: (e) => (
         <ZellText
-          text={z.nachricht.betreff || "(kein Betreff)"}
-          className="font-medium text-heading"
+          text={e.betreff || "(kein Betreff)"}
+          className="text-foreground"
         />
       ),
     },
@@ -411,30 +416,30 @@ export function PostfachPage() {
       key: "typ",
       header: "Typ",
       className: "w-[8%]",
-      render: (z) => <ZellText text={typLabel(z.eintrag)} className="text-heading" />,
+      render: (e) => <ZellText text={typLabel(e)} className="text-heading" />,
     },
     {
       key: "gesellschaft",
       header: "Gesellschaft",
-      className: "w-[12%]",
-      render: (z) => (
-        <ZellText text={gesellschaftText(z.eintrag)} className="text-foreground" />
+      className: "w-[11%]",
+      render: (e) => (
+        <ZellText text={gesellschaftText(e)} className="text-foreground" />
       ),
     },
     {
       key: "objekt",
       header: "Objekt",
-      className: "w-[12%]",
-      render: (z) => (
-        <ZellText text={objektText(z.eintrag)} className="text-foreground" />
+      className: "w-[11%]",
+      render: (e) => (
+        <ZellText text={objektText(e)} className="text-foreground" />
       ),
     },
     {
       key: "ablageBetrag",
       header: "Ablage / Betrag",
-      className: "w-[14%]",
-      render: (z) => (
-        <ZellText text={ablageBetragText(z.eintrag)} className="text-foreground" />
+      className: "w-[12%]",
+      render: (e) => (
+        <ZellText text={ablageBetragText(e)} className="text-foreground" />
       ),
     },
     {
@@ -442,8 +447,7 @@ export function PostfachPage() {
       header: "",
       align: "right",
       className: "w-[4.5rem] px-2",
-      render: (z) => {
-        const eintrag = z.eintrag;
+      render: (eintrag) => {
         const pruefbar = kannPruefen(eintrag);
         const laedtZeile = aktionId === eintrag?.id;
         const istExpose = eintrag?.dokumentTyp === "expose";
@@ -477,8 +481,7 @@ export function PostfachPage() {
       header: "",
       align: "right",
       className: "w-[7rem] px-2",
-      render: (z) => {
-        const eintrag = z.eintrag;
+      render: (eintrag) => {
         const bereit = istBereit(eintrag);
         const laedtZeile = aktionId === eintrag?.id;
         const istExpose = eintrag?.dokumentTyp === "expose";
@@ -500,8 +503,8 @@ export function PostfachPage() {
                 onClick={() =>
                   void zuExposesVerschieben(
                     eintrag,
-                    z.nachricht.id,
-                    z.nachricht.postfach,
+                    eintrag.graphNachrichtId,
+                    eintrag.postfach,
                   )
                 }
               >
@@ -529,6 +532,10 @@ export function PostfachPage() {
           );
         }
 
+        if (!ablagePfad(eintrag)) {
+          return <span className="block h-8" aria-hidden />;
+        }
+
         return (
           <PermissionGate
             berechtigung="aktion.dokumente.pruefordner.ablegen"
@@ -551,8 +558,7 @@ export function PostfachPage() {
       header: "",
       align: "right",
       className: "w-10 pl-2 pr-3",
-      render: (z) => {
-        const eintrag = z.eintrag;
+      render: (eintrag) => {
         const laedtZeile = aktionId === eintrag?.id;
         const kannWiederholen = Boolean(
           eintrag &&
@@ -569,12 +575,12 @@ export function PostfachPage() {
                 className="h-8 w-8 shrink-0 text-foreground"
                 disabled={laedtZeile}
                 aria-label="Weitere Aktionen"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(ev) => ev.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuContent align="end" onClick={(ev) => ev.stopPropagation()}>
               {kannWiederholen ? (
                 <PermissionGate berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen">
                   <DropdownMenuItem
@@ -630,12 +636,12 @@ export function PostfachPage() {
         ) : null}
         <DataTable
           spalten={spalten}
-          zeilen={zeilen}
+          zeilen={eintraege}
           festLayout
           isLoading={laedt}
-          isEmpty={!laedt && !fehler && zeilen.length === 0}
-          emptyTitel="Keine Nachrichten mit Anhang"
-          rowKey={(z) => `${z.nachricht.postfach}:${z.nachricht.id}`}
+          isEmpty={!laedt && !fehler && eintraege.length === 0}
+          emptyTitel="Keine Anhänge im Postfach"
+          rowKey={(e) => e.id}
         />
       </PageWrapper>
     </>

@@ -10,7 +10,7 @@ import {
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
 import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
 
-import { leseEintrag, loescheEintrag } from "./store";
+import { leseEintrag, loescheEintraegeFuerNachricht } from "./store";
 
 export async function dokumentPosteingangZuExposesVerschieben(input: {
   supabaseAccessToken: string;
@@ -40,7 +40,7 @@ export async function dokumentPosteingangZuExposesVerschieben(input: {
     row.graph_nachricht_id,
   );
 
-  await loescheEintrag(id);
+  await loescheEintraegeFuerNachricht(row.postfach, row.graph_nachricht_id);
 
   return { zielPostfach };
 }

@@ -30,6 +30,8 @@ export type GraphNachricht = {
   pdfAnhang: GraphAnhangMeta | null;
   /** Primärer Datei-Anhang: PDF > Office > Bild > erste Datei. */
   primaerAnhang: GraphAnhangMeta | null;
+  /** Alle Nicht-Inline-Dateianhänge der Nachricht. */
+  anhaenge: GraphAnhangMeta[];
   vorschau: string | null;
   webLink: string | null;
 };
@@ -237,8 +239,11 @@ function waehlePrimaerAnhang(
 
 function mapNachricht(roh: RohNachricht): GraphNachricht | null {
   if (!roh.id) return null;
-  const anhaenge = (roh.attachments ?? []).filter((a) => !a.isInline);
-  const pdf = anhaenge.find(istPdfAnhang);
+  const rohAnhaenge = (roh.attachments ?? []).filter((a) => !a.isInline);
+  const dateiAnhaenge = rohAnhaenge
+    .filter((a) => Boolean(a.id))
+    .map(mapAnhangMeta);
+  const pdf = rohAnhaenge.find(istPdfAnhang);
   return {
     id: roh.id,
     internetMessageId: roh.internetMessageId ?? null,
@@ -247,9 +252,10 @@ function mapNachricht(roh: RohNachricht): GraphNachricht | null {
     absenderMail: roh.from?.emailAddress?.address?.toLowerCase() ?? null,
     eingegangenAm: roh.receivedDateTime ?? null,
     hatAnhaenge: roh.hasAttachments === true,
-    anhangArt: anhangArtAus(anhaenge),
+    anhangArt: anhangArtAus(rohAnhaenge),
     pdfAnhang: pdf ? mapAnhangMeta(pdf) : null,
-    primaerAnhang: waehlePrimaerAnhang(anhaenge),
+    primaerAnhang: waehlePrimaerAnhang(rohAnhaenge),
+    anhaenge: dateiAnhaenge,
     vorschau: roh.bodyPreview ?? null,
     webLink: roh.webLink ?? null,
   };
@@ -283,7 +289,7 @@ export async function graphPosteingangNachrichten(
     .filter((n): n is GraphNachricht => n !== null);
 
   return optionen.nurMitAnhang
-    ? nachrichten.filter((n) => n.primaerAnhang !== null)
+    ? nachrichten.filter((n) => n.anhaenge.length > 0)
     : nachrichten;
 }
 

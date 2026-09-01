@@ -17,6 +17,7 @@ export type DokumentPosteingangEintrag = {
   absenderMail: string | null;
   eingegangenAm: string | null;
   anhangName: string | null;
+  anhangContentType: string | null;
   anhangGroesse: number | null;
   status: DokumentPosteingangStatus;
   dokumentTyp: DokumentTyp | null;

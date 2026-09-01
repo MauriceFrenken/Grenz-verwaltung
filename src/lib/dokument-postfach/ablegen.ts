@@ -2,7 +2,7 @@
  * Dokument aus Postfach in OneDrive ablegen. Server-only.
  */
 import type { DokumentAnalyseFelder } from "@/lib/dokument-ai";
-import { microsoftAnhaengeNachOneDriveAblegen } from "@/lib/microsoft/ablage";
+import { microsoftAnhangNachOneDriveAblegen } from "@/lib/microsoft/ablage";
 import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
 
 import { leseEintrag, markiereAbgelegt, speicherePruefung } from "./store";
@@ -29,6 +29,9 @@ export async function dokumentPosteingangAblegen(input: {
   if (row.status === "abgelegt") {
     throw new Error("Dieses Dokument wurde bereits abgelegt.");
   }
+  if (!row.anhang_id?.trim()) {
+    throw new Error("Zu diesem Eintrag ist kein Anhang gespeichert.");
+  }
 
   const felder = input.felder ?? row.felder;
   if (!felder) {
@@ -44,17 +47,15 @@ export async function dokumentPosteingangAblegen(input: {
       istRechnung: input.istRechnung ?? row.ist_rechnung ?? false,
   });
 
-  const ergebnis = await microsoftAnhaengeNachOneDriveAblegen({
+  const ergebnis = await microsoftAnhangNachOneDriveAblegen({
     supabaseAccessToken: input.supabaseAccessToken,
     nachrichtId: row.graph_nachricht_id,
+    anhangId: row.anhang_id,
     postfach: row.postfach,
     parentItemId: ordnerId,
   });
 
-  const hochgeladen = ergebnis.hochgeladen[0];
-  if (!hochgeladen) {
-    throw new Error("Datei konnte nicht hochgeladen werden.");
-  }
+  const hochgeladen = ergebnis.hochgeladen;
 
   await markiereAbgelegt(id, {
     onedriveId: hochgeladen.id,

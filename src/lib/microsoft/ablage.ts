@@ -147,6 +147,63 @@ function dokumentPostfachAufloesen(postfach?: string | null): string {
   return gewaehlt;
 }
 
+export type EinzelAnhangAblegenErgebnis = {
+  postfach: string;
+  onedriveUser: string;
+  hochgeladen: { name: string; id: string; webUrl: string | null };
+};
+
+/** Einen Nicht-Inline-Anhang nach OneDrive (Root oder Ordner) ablegen. */
+export async function microsoftAnhangNachOneDriveAblegen(input: {
+  supabaseAccessToken: string;
+  nachrichtId: string;
+  anhangId: string;
+  postfach?: string | null;
+  /** Optional: Zielordner in OneDrive. */
+  parentItemId?: string | null;
+}): Promise<EinzelAnhangAblegenErgebnis> {
+  await microsoftCallerAusJwt(input.supabaseAccessToken);
+  if (!input.nachrichtId?.trim()) {
+    throw new Error("nachrichtId ist erforderlich.");
+  }
+  if (!input.anhangId?.trim()) {
+    throw new Error("anhangId ist erforderlich.");
+  }
+
+  const { accessToken } = await microsoftAccessToken();
+  const postfach = dokumentPostfachAufloesen(input.postfach);
+  const onedriveUser = microsoftOneDriveUser();
+  const nachrichtId = input.nachrichtId.trim();
+  const anhangId = input.anhangId.trim();
+
+  const binary = await graphAnhangBinary(
+    accessToken,
+    postfach,
+    nachrichtId,
+    anhangId,
+  );
+  const item = await graphDriveDateiHochladen(
+    accessToken,
+    onedriveUser,
+    binary.name,
+    binary.bytes,
+    {
+      parentItemId: input.parentItemId,
+      contentType: binary.contentType,
+    },
+  );
+
+  return {
+    postfach,
+    onedriveUser,
+    hochgeladen: {
+      name: item.name,
+      id: item.id,
+      webUrl: item.webUrl,
+    },
+  };
+}
+
 /** Alle Nicht-Inline-Anhänge einer Mail nach OneDrive (Root) ablegen. */
 export async function microsoftAnhaengeNachOneDriveAblegen(input: {
   supabaseAccessToken: string;
