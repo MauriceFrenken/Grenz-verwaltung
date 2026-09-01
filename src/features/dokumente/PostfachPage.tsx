@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import {
-  FileQuestion,
-  FileText,
-  Image,
-  Loader2,
-  MoreVertical,
-  RefreshCw,
-} from "lucide-react";
+import { Loader2, MoreVertical, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -24,60 +17,10 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { hatAnalyseWerte } from "@/lib/dokument-postfach/client";
 import type { DokumentPosteingangEintrag } from "@/lib/dokument-postfach/typen";
-import type { GraphAnhangArt } from "@/lib/microsoft/graph";
-import {
-  istBildDatei,
-  istOfficeDatei,
-  istPdfDatei,
-} from "@/lib/postfach/dateityp";
 import { cn } from "@/lib/utils";
 import { istTamAusFeldern } from "@/lib/trade-any-machine";
 
 const MAX_ANALYSE_RUNDEN = 50;
-
-function anhangArtAusEintrag(eintrag: DokumentPosteingangEintrag): GraphAnhangArt {
-  const name = eintrag.anhangName ?? "";
-  const contentType = eintrag.anhangContentType;
-  if (!name.trim()) return "keins";
-  if (istPdfDatei(name, contentType)) return "pdf";
-  if (istOfficeDatei(name, contentType)) return "office";
-  if (istBildDatei(name, contentType)) return "bild";
-  return "datei";
-}
-
-function AnhangIcon({
-  art,
-  dateiname,
-}: {
-  art: GraphAnhangArt;
-  dateiname?: string | null;
-}) {
-  const Icon =
-    art === "pdf" || art === "office" || art === "datei"
-      ? FileText
-      : art === "bild"
-        ? Image
-        : FileQuestion;
-  const label =
-    art === "pdf"
-      ? "PDF"
-      : art === "office"
-        ? "Office"
-        : art === "bild"
-          ? "Bild"
-          : art === "datei"
-            ? dateiname?.trim() || "Datei"
-            : "Kein Anhang";
-  return (
-    <span
-      className="flex h-8 w-8 shrink-0 items-center justify-center text-text-muted"
-      title={label}
-      aria-label={label}
-    >
-      <Icon className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-    </span>
-  );
-}
 
 function typLabel(eintrag: DokumentPosteingangEintrag | null): string {
   if (!eintrag || eintrag.status === "neu") return "–";
@@ -393,20 +336,9 @@ export function PostfachPage() {
 
   const spalten: Column<DokumentPosteingangEintrag>[] = [
     {
-      key: "anhang",
-      header: "",
-      className: "w-10 pr-0",
-      render: (e) => (
-        <AnhangIcon
-          art={anhangArtAusEintrag(e)}
-          dateiname={e.anhangName}
-        />
-      ),
-    },
-    {
       key: "datei",
       header: "Datei",
-      className: "w-[14%]",
+      className: "w-[16%]",
       render: (e) => (
         <ZellText
           text={e.anhangName || "–"}
