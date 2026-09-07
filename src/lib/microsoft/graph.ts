@@ -449,6 +449,20 @@ export async function graphPosteingangUnterordner(
     if (id) return id;
   }
 
+  // Deutscher Standardordner „Archiv“ oft nur als well-known folder erreichbar
+  if (/^archiv$/i.test(anzeigename.trim())) {
+    try {
+      const wellKnown = await graphGet<{ id?: string }>(
+        `${basis}/mailFolders/archive?$select=id`,
+        accessToken,
+        postfach,
+      );
+      if (wellKnown.id) return wellKnown.id;
+    } catch {
+      /* weiter zum Fehler unten */
+    }
+  }
+
   throw new Error(
     `Ordner „${anzeigename}“ wurde im Postfach nicht gefunden. Bitte manuell anlegen.`,
   );
@@ -470,6 +484,220 @@ export async function graphNachrichtVerschieben(
   return verschoben.id ?? nachrichtId;
 }
 
+function normalisiereMailOrdnerName(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function mailOrdnerNameScore(gesucht: string, vorhanden: string): number {
+  const a = normalisiereMailOrdnerName(gesucht);
+  const b = normalisiereMailOrdnerName(vorhanden);
+  if (!a || !b) return 0;
+  if (a === b) return 100;
+  if (a.includes(b) || b.includes(a)) return 90;
+
+  const ta = a.split(" ").filter((t) => t.length > 2);
+  const tb = b.split(" ").filter((t) => t.length > 2);
+  if (ta.length === 0 || tb.length === 0) return 0;
+
+  let treffer = 0;
+  for (const t of ta) {
+    const prefix = t.slice(0, Math.min(5, t.length));
+    if (tb.some((u) => u === t || u.startsWith(prefix) || t.startsWith(u.slice(0, 5)))) {
+      treffer += 1;
+    }
+  }
+  return Math.round((treffer / ta.length) * 80);
+}
+
+/**
+ * Findet den Gesellschafts-Unterordner im Posteingang (exakt, sonst fuzzy —
+ * z. B. Tippfehler „Invesment“ vs. „Investment“).
+ */
+export async function graphPosteingangGesellschaftsOrdner(
+  accessToken: string,
+  postfach: string,
+  gesellschaftName: string,
+): Promise<{ id: string; name: string }> {
+  const name = gesellschaftName.trim();
+  if (!name) {
+    throw new Error("Gesellschaftsname für den Postfach-Ordner fehlt.");
+  }
+
+  try {
+    const id = await graphPosteingangUnterordner(accessToken, postfach, name);
+    return { id, name };
+  } catch {
+    /* fuzzy */
+  }
+
+  const basis = `/users/${encodeURIComponent(postfach)}`;
+  const params = new URLSearchParams({
+    $select: "id,displayName",
+    $top: "200",
+  });
+  const data = await graphGet<{
+    value?: Array<{ id?: string; displayName?: string }>;
+  }>(`${basis}/mailFolders/inbox/childFolders?${params.toString()}`, accessToken, postfach);
+
+  let best: { id: string; name: string; score: number } | null = null;
+  for (const roh of data.value ?? []) {
+    if (!roh.id || !roh.displayName) continue;
+    const score = mailOrdnerNameScore(name, roh.displayName);
+    if (!best || score > best.score) {
+      best = { id: roh.id, name: roh.displayName, score };
+    }
+  }
+
+  if (!best || best.score < 50) {
+    throw new Error(
+      `Ordner „${name}“ wurde im Posteingang von ${postfach} nicht gefunden. Bitte manuell anlegen.`,
+    );
+  }
+  return { id: best.id, name: best.name };
+}
+
+/** Inline-Anhang in sendMail — Graph-Limit ca. 3 MB. */
+const GRAPH_INLINE_MAIL_ATTACHMENT_MAX = 3 * 1024 * 1024;
+
+function mailSendZugriffFehler(postfach: string, cause: unknown): Error {
+  const basis =
+    cause instanceof Error ? cause.message : String(cause);
+  if (/Access is denied|ErrorAccessDenied|403/i.test(basis)) {
+    return new Error(
+      `Kein Versand aus ${postfach}: In Entra fehlt die Application-Permission „Mail.Send“ (Admin Consent). ${basis}`,
+    );
+  }
+  return cause instanceof Error ? cause : new Error(basis);
+}
+
+/**
+ * Sendet eine neue Mail mit genau einem Dateianhang (DATEV / TAM).
+ * Benötigt Application-Permission Mail.Send.
+ */
+export async function graphAnhangAlsMailSenden(
+  accessToken: string,
+  postfach: string,
+  input: {
+    an: string;
+    betreff: string;
+    text?: string;
+    dateiname: string;
+    contentType: string | null;
+    bytes: Uint8Array;
+  },
+): Promise<void> {
+  const an = input.an.trim();
+  if (!an) throw new Error("Empfänger-Adresse fehlt.");
+  if (input.bytes.byteLength === 0) {
+    throw new Error("Anhang ist leer und kann nicht versendet werden.");
+  }
+
+  const dateiname = graphDriveDateinameSaeubern(input.dateiname);
+  const contentType = input.contentType || "application/octet-stream";
+  const betreff = input.betreff.trim() || dateiname;
+  const text = input.text ?? "";
+  const basis = `/users/${encodeURIComponent(postfach)}`;
+
+  try {
+    if (input.bytes.byteLength <= GRAPH_INLINE_MAIL_ATTACHMENT_MAX) {
+      const contentBytes = Buffer.from(
+        input.bytes.buffer,
+        input.bytes.byteOffset,
+        input.bytes.byteLength,
+      ).toString("base64");
+
+      await graphPost(
+        `${basis}/sendMail`,
+        accessToken,
+        {
+          message: {
+            subject: betreff,
+            body: { contentType: "Text", content: text },
+            toRecipients: [{ emailAddress: { address: an } }],
+            attachments: [
+              {
+                "@odata.type": "#microsoft.graph.fileAttachment",
+                name: dateiname,
+                contentType,
+                contentBytes,
+              },
+            ],
+          },
+          saveToSentItems: true,
+        },
+        postfach,
+      );
+      return;
+    }
+
+    const draft = await graphPost<{ id?: string }>(
+      `${basis}/messages`,
+      accessToken,
+      {
+        subject: betreff,
+        body: { contentType: "Text", content: text },
+        toRecipients: [{ emailAddress: { address: an } }],
+      },
+      postfach,
+    );
+    if (!draft.id) {
+      throw new Error("Entwurf für den Versand konnte nicht angelegt werden.");
+    }
+
+    const session = await graphPost<{ uploadUrl?: string }>(
+      `${basis}/messages/${encodeURIComponent(draft.id)}/attachments/createUploadSession`,
+      accessToken,
+      {
+        AttachmentItem: {
+          attachmentType: "file",
+          name: dateiname,
+          size: input.bytes.byteLength,
+          contentType,
+        },
+      },
+      postfach,
+    );
+    if (!session.uploadUrl) {
+      throw new Error("Upload-Session für den Mail-Anhang konnte nicht gestartet werden.");
+    }
+
+    const total = input.bytes.byteLength;
+    const chunkSize = 320 * 1024 * 10;
+    let offset = 0;
+    while (offset < total) {
+      const ende = Math.min(offset + chunkSize, total);
+      const chunk = input.bytes.subarray(offset, ende);
+      const res = await fetch(session.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Length": String(chunk.byteLength),
+          "Content-Range": `bytes ${offset}-${ende - 1}/${total}`,
+        },
+        body: new Uint8Array(chunk),
+      });
+      const json: unknown = await res.json().catch(() => ({}));
+      if (!res.ok && res.status !== 201 && res.status !== 200) {
+        throw graphFehler(res.status, json as GraphFehlerJson, postfach);
+      }
+      offset = ende;
+    }
+
+    await graphPost(
+      `${basis}/messages/${encodeURIComponent(draft.id)}/send`,
+      accessToken,
+      {},
+      postfach,
+    );
+  } catch (err) {
+    throw mailSendZugriffFehler(postfach, err);
+  }
+}
+
 /** Posteingangs-Ordner-ID eines Postfachs. */
 export async function graphPosteingangOrdnerId(
   accessToken: string,
@@ -486,20 +714,65 @@ export async function graphPosteingangOrdnerId(
   return data.id;
 }
 
-/** Kopiert eine Nachricht in einen Ordner (auch anderes Postfach). */
+/**
+ * Kopiert eine Nachricht in einen Ordner.
+ * Gleicher Postfach: Graph `/copy`.
+ * Anderes Postfach: MIME-Export + Base64-Import (Graph `/copy` kann keine
+ * Ordner-IDs fremder Mailboxen — ErrorInvalidMailboxItemId).
+ */
 export async function graphNachrichtKopieren(
   accessToken: string,
   quellPostfach: string,
   nachrichtId: string,
   zielOrdnerId: string,
+  zielPostfach?: string,
 ): Promise<string> {
-  const kopie = await graphPost<{ id?: string }>(
-    `/users/${encodeURIComponent(quellPostfach)}/messages/${encodeURIComponent(nachrichtId)}/copy`,
-    accessToken,
-    { destinationId: zielOrdnerId },
-    quellPostfach,
+  const quell = quellPostfach.trim();
+  const ziel = (zielPostfach ?? quellPostfach).trim();
+  const gleicheMailbox = quell.toLowerCase() === ziel.toLowerCase();
+
+  if (gleicheMailbox) {
+    const kopie = await graphPost<{ id?: string }>(
+      `/users/${encodeURIComponent(quell)}/messages/${encodeURIComponent(nachrichtId)}/copy`,
+      accessToken,
+      { destinationId: zielOrdnerId },
+      quell,
+    );
+    return kopie.id ?? "";
+  }
+
+  const mimeRes = await fetch(
+    `${GRAPH_BASIS}/users/${encodeURIComponent(quell)}/messages/${encodeURIComponent(nachrichtId)}/$value`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
   );
-  return kopie.id ?? "";
+  if (!mimeRes.ok) {
+    const json: unknown = await mimeRes.json().catch(() => ({}));
+    throw graphFehler(mimeRes.status, json as GraphFehlerJson, quell);
+  }
+  const mimeBase64 = Buffer.from(await mimeRes.arrayBuffer()).toString("base64");
+
+  const importRes = await fetch(
+    `${GRAPH_BASIS}/users/${encodeURIComponent(ziel)}/mailFolders/${encodeURIComponent(zielOrdnerId)}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "text/plain",
+      },
+      body: mimeBase64,
+    },
+  );
+  const importJson: unknown = await importRes.json().catch(() => ({}));
+  if (!importRes.ok) {
+    throw graphFehler(importRes.status, importJson as GraphFehlerJson, ziel);
+  }
+  const id = (importJson as { id?: string }).id;
+  if (!id) {
+    throw new Error(
+      `Kopie nach ${ziel} fehlgeschlagen: Graph lieferte keine Nachrichten-ID.`,
+    );
+  }
+  return id;
 }
 
 async function graphDelete(

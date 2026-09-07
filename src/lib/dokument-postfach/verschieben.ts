@@ -32,6 +32,7 @@ export async function dokumentPosteingangZuExposesVerschieben(input: {
     row.postfach,
     row.graph_nachricht_id,
     zielOrdnerId,
+    zielPostfach,
   );
 
   await graphNachrichtLoeschen(

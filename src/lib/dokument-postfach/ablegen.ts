@@ -1,10 +1,12 @@
 /**
- * Dokument aus Postfach in OneDrive ablegen. Server-only.
+ * Dokument aus Postfach in OneDrive ablegen und ggf. Mail in
+ * Gesellschafts-Unterordner verschieben. Server-only.
  */
 import type { DokumentAnalyseFelder } from "@/lib/dokument-ai";
 import { microsoftAnhangNachOneDriveAblegen } from "@/lib/microsoft/ablage";
 import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
 
+import { schliesseNachrichtAbWennFertig } from "./mail-abschluss";
 import { leseEintrag, markiereAbgelegt, speicherePruefung } from "./store";
 import type { DokumentAblegenErgebnis } from "./typen";
 
@@ -26,7 +28,7 @@ export async function dokumentPosteingangAblegen(input: {
   if (!ordnerId) throw new Error("Zielordner ist erforderlich.");
 
   const row = await leseEintrag(id);
-  if (row.status === "abgelegt") {
+  if (row.status === "abgelegt" || row.status === "gebucht") {
     throw new Error("Dieses Dokument wurde bereits abgelegt.");
   }
   if (!row.anhang_id?.trim()) {
@@ -38,13 +40,23 @@ export async function dokumentPosteingangAblegen(input: {
     throw new Error("Keine Felddaten zum Speichern vorhanden.");
   }
 
+  const gesellschaftId = input.gesellschaftId ?? row.gesellschaft_id;
+  const objektId = input.objektId ?? row.objekt_id;
+
+  const gsName =
+    felder.gesellschaftName?.value?.trim() ||
+    null;
+  if (!gesellschaftId && !gsName) {
+    throw new Error("Bitte zuerst eine Gesellschaft zuordnen.");
+  }
+
   await speicherePruefung(id, {
-      felder,
-      gesellschaftId: input.gesellschaftId ?? row.gesellschaft_id,
-      objektId: input.objektId ?? row.objekt_id,
-      ablageOrdnerId: ordnerId,
-      ablageOrdnerPfad: input.ordnerPfad.trim(),
-      istRechnung: input.istRechnung ?? row.ist_rechnung ?? false,
+    felder,
+    gesellschaftId,
+    objektId,
+    ablageOrdnerId: ordnerId,
+    ablageOrdnerPfad: input.ordnerPfad.trim(),
+    istRechnung: input.istRechnung ?? row.ist_rechnung ?? false,
   });
 
   const ergebnis = await microsoftAnhangNachOneDriveAblegen({
@@ -62,13 +74,21 @@ export async function dokumentPosteingangAblegen(input: {
     ordnerPfad: input.ordnerPfad.trim(),
     ordnerId,
     felder,
-    gesellschaftId: input.gesellschaftId ?? row.gesellschaft_id,
-    objektId: input.objektId ?? row.objekt_id,
+    gesellschaftId,
+    objektId,
+  });
+
+  const aktualisiert = await leseEintrag(id);
+  const abschluss = await schliesseNachrichtAbWennFertig({
+    postfach: row.postfach,
+    graphNachrichtId: row.graph_nachricht_id,
+    bevorzugterEintrag: aktualisiert,
   });
 
   return {
     abgelegt: true,
     onedriveId: hochgeladen.id,
     ordnerPfad: input.ordnerPfad.trim(),
+    ...abschluss,
   };
 }

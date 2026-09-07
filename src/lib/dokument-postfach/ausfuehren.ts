@@ -1,14 +1,23 @@
 /**
- * KI-Vorschlag direkt ausführen (Ablegen / Buchen). Server-only.
+ * KI-Vorschlag direkt ausführen (Ablegen / DATEV / TAM). Server-only.
  */
 import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
+import { istTamAusFeldern } from "@/lib/trade-any-machine";
 
 import { dokumentPosteingangAblegen } from "./ablegen";
+import { dokumentPosteingangBuchen } from "./buchen";
 import { leseEintrag } from "./store";
+import type {
+  DokumentAblegenErgebnis,
+  DokumentBuchenErgebnis,
+  DokumentTamErgebnis,
+} from "./typen";
+import { dokumentPosteingangZuTam } from "./zu-tam";
 
 export type DokumentSchnellAusfuehrenErgebnis =
-  | { aktion: "abgelegt"; ordnerPfad: string }
-  | { aktion: "buchen"; platzhalter: true };
+  | ({ aktion: "abgelegt" } & DokumentAblegenErgebnis)
+  | ({ aktion: "gebucht" } & DokumentBuchenErgebnis)
+  | ({ aktion: "tam" } & DokumentTamErgebnis);
 
 export async function dokumentPosteingangSchnellAusfuehren(input: {
   supabaseAccessToken: string;
@@ -28,8 +37,25 @@ export async function dokumentPosteingangSchnellAusfuehren(input: {
     throw new Error("Exposés bitte über „Zu Exposés“ verschieben.");
   }
 
+  if (istTamAusFeldern(row.felder)) {
+    const ergebnis = await dokumentPosteingangZuTam({
+      supabaseAccessToken: input.supabaseAccessToken,
+      eintragId: id,
+    });
+    return { aktion: "tam", ...ergebnis };
+  }
+
   if (row.ist_rechnung || row.dokument_typ === "rechnung") {
-    return { aktion: "buchen", platzhalter: true };
+    const ergebnis = await dokumentPosteingangBuchen({
+      supabaseAccessToken: input.supabaseAccessToken,
+      eintragId: id,
+      gesellschaftId: row.gesellschaft_id,
+      objektId: row.objekt_id,
+      felder: row.felder,
+      ordnerItemId: row.ablage_ordner_id,
+      ordnerPfad: row.ablage_ordner_pfad,
+    });
+    return { aktion: "gebucht", ...ergebnis };
   }
 
   if (!row.ablage_ordner_id?.trim() || !row.ablage_ordner_pfad?.trim()) {
@@ -49,5 +75,5 @@ export async function dokumentPosteingangSchnellAusfuehren(input: {
     istRechnung: false,
   });
 
-  return { aktion: "abgelegt", ordnerPfad: ergebnis.ordnerPfad };
+  return { aktion: "abgelegt", ...ergebnis };
 }

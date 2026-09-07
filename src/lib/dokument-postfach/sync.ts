@@ -2,10 +2,12 @@
  * Dokument-Postfach synchronisieren und KI-Analyse. Server-only.
  */
 import { handleAnalyzeDokumentRequest } from "@/lib/dokument-ai";
-import { graphAnhangBinary } from "@/lib/microsoft/graph";
 import {
   microsoftDokumentPosteingangLesen,
+  istAblageRootOrdner,
+  microsoftOneDriveUser,
 } from "@/lib/microsoft/ablage";
+import { graphAnhangBinary, graphDriveRootKinder } from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
 import { microsoftCallerAusJwt, createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
 
@@ -20,6 +22,7 @@ import {
   ermittleZielordnerIterativ,
   findeEingangsrechnungenOrdner,
   findeGesellschaftId,
+  findeGesellschaftRootDeterministisch,
   findeObjektIdAusKontext,
   ladeStammdatenKontext,
 } from "./ablage-kontext";
@@ -174,8 +177,25 @@ async function analysiereEintrag(
           };
         }
       }
+    } else if (istTam) {
+      const benutzer = microsoftOneDriveUser();
+      const root = await graphDriveRootKinder(accessToken, benutzer);
+      const kandidaten = root.filter(
+        (item) => item.istOrdner && istAblageRootOrdner(item.name),
+      );
+      const treffer = findeGesellschaftRootDeterministisch(
+        kandidaten,
+        TRADE_ANY_MACHINE_NAME,
+      );
+      if (treffer) {
+        ablageOrdnerId = treffer.id;
+        ablageOrdnerPfad = treffer.name;
+        ergebnis.felder.ordnerPfad = {
+          ...ergebnis.felder.ordnerPfad,
+          value: treffer.name,
+        };
+      }
     } else if (
-      !istTam &&
       ergebnis.dokumentTyp !== "expose" &&
       gesellschaftId &&
       gesellschaftName &&

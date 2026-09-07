@@ -420,22 +420,51 @@ export function PostfachPage() {
         const ergebnis = await dokumentPosteingangSchnellAusfuehrenFn({
           data: { supabaseAccessToken: token, eintragId: eintrag.id },
         });
-        if (ergebnis.aktion === "buchen") {
-          toast.info("Buchen wird in einem späteren Schritt implementiert.");
+
+        if (ergebnis.mailVerschoben) {
+          setEintraege((prev) =>
+            prev.filter(
+              (e) =>
+                !(
+                  e.postfach === ergebnis.postfach &&
+                  e.graphNachrichtId === ergebnis.graphNachrichtId
+                ),
+            ),
+          );
+          const ordnerHinweis = ergebnis.mailOrdner
+            ? ` · Postfach → ${ergebnis.mailOrdner}`
+            : "";
+          if (ergebnis.aktion === "gebucht") {
+            toast.success(`Zu DATEV: ${ergebnis.ordnerPfad}${ordnerHinweis}`);
+          } else if (ergebnis.aktion === "tam") {
+            toast.success(`Zu TAM: ${ergebnis.ordnerPfad}${ordnerHinweis}`);
+          } else {
+            toast.success(`Abgelegt: ${ergebnis.ordnerPfad}${ordnerHinweis}`);
+          }
           return;
         }
-        toast.success(`Abgelegt: ${ergebnis.ordnerPfad}`);
+
+        const status =
+          ergebnis.aktion === "gebucht" ? ("gebucht" as const) : ("abgelegt" as const);
         setEintraege((prev) =>
           prev.map((e) =>
             e.id === eintrag.id
               ? {
                   ...e,
-                  status: "abgelegt" as const,
+                  status,
                   abgelegtAm: new Date().toISOString(),
+                  ablageOrdnerPfad: ergebnis.ordnerPfad,
                 }
               : e,
           ),
         );
+        if (ergebnis.aktion === "gebucht") {
+          toast.success(`Zu DATEV: ${ergebnis.ordnerPfad}`);
+        } else if (ergebnis.aktion === "tam") {
+          toast.success(`Zu TAM: ${ergebnis.ordnerPfad}`);
+        } else {
+          toast.success(`Abgelegt: ${ergebnis.ordnerPfad}`);
+        }
       } catch (e) {
         toast.error(
           e instanceof Error ? e.message : "Aktion fehlgeschlagen.",
@@ -455,10 +484,40 @@ export function PostfachPage() {
         const { dokumentPosteingangZuTamFn } = await import(
           "@/lib/dokument-postfach/server-fn"
         );
-        await dokumentPosteingangZuTamFn({
+        const ergebnis = await dokumentPosteingangZuTamFn({
           data: { supabaseAccessToken: token, eintragId: eintrag.id },
         });
-        toast.info("Zu TAM wird in einem späteren Schritt implementiert.");
+
+        if (ergebnis.mailVerschoben) {
+          setEintraege((prev) =>
+            prev.filter(
+              (e) =>
+                !(
+                  e.postfach === ergebnis.postfach &&
+                  e.graphNachrichtId === ergebnis.graphNachrichtId
+                ),
+            ),
+          );
+          toast.success(
+            `Zu TAM: ${ergebnis.ordnerPfad}${
+              ergebnis.mailOrdner ? ` · Postfach → ${ergebnis.mailOrdner}` : ""
+            }`,
+          );
+        } else {
+          setEintraege((prev) =>
+            prev.map((e) =>
+              e.id === eintrag.id
+                ? {
+                    ...e,
+                    status: "abgelegt" as const,
+                    abgelegtAm: new Date().toISOString(),
+                    ablageOrdnerPfad: ergebnis.ordnerPfad,
+                  }
+                : e,
+            ),
+          );
+          toast.success(`Zu TAM: ${ergebnis.ordnerPfad}`);
+        }
       } catch (e) {
         toast.error(
           e instanceof Error ? e.message : "Weiterleitung fehlgeschlagen.",

@@ -54,8 +54,30 @@ export type DokumentPosteingangMitAnhang = {
 /** @deprecated Alias */
 export type DokumentPosteingangMitPdf = DokumentPosteingangMitAnhang;
 
+export type DokumentMailAbschluss = {
+  /** Mail wurde in den Gesellschafts-Unterordner verschoben (alle Anhänge erledigt). */
+  mailVerschoben: boolean;
+  mailOrdner: string | null;
+  postfach: string;
+  graphNachrichtId: string;
+};
+
 export type DokumentAblegenErgebnis = {
   abgelegt: boolean;
   onedriveId: string;
   ordnerPfad: string;
-};
+} & DokumentMailAbschluss;
+
+export type DokumentBuchenErgebnis = {
+  gebucht: boolean;
+  onedriveId: string;
+  ordnerPfad: string;
+  datevPostfach: string;
+} & DokumentMailAbschluss;
+
+export type DokumentTamErgebnis = {
+  abgelegt: boolean;
+  onedriveId: string;
+  ordnerPfad: string;
+  weitergeleitetAn: string;
+} & DokumentMailAbschluss;

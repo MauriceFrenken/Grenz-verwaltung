@@ -318,6 +318,65 @@ export async function markiereAbgelegt(
   }
 }
 
+export async function markiereGebucht(
+  id: string,
+  input: {
+    onedriveId: string;
+    ordnerPfad: string;
+    ordnerId: string;
+    felder: DokumentAnalyseFelder;
+    gesellschaftId: string | null;
+    objektId: string | null;
+  },
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from(TABELLE)
+    .update({
+      status: "gebucht",
+      ist_rechnung: true,
+      abgelegt_am: new Date().toISOString(),
+      abgelegt_onedrive_id: input.onedriveId,
+      ablage_ordner_id: input.ordnerId,
+      ablage_ordner_pfad: input.ordnerPfad,
+      felder: input.felder,
+      gesellschaft_id: input.gesellschaftId,
+      objekt_id: input.objektId,
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw fehler("Gebucht-Status konnte nicht gespeichert werden", error.message);
+  }
+}
+
+const ERLEDIGTE_STATUS: DokumentPosteingangStatus[] = ["abgelegt", "gebucht"];
+
+export function istEintragErledigt(status: DokumentPosteingangStatus): boolean {
+  return ERLEDIGTE_STATUS.includes(status);
+}
+
+export async function leseEintraegeFuerNachricht(
+  postfach: string,
+  graphNachrichtId: string,
+): Promise<DokumentPosteingangRow[]> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from(TABELLE)
+    .select(SPALTEN)
+    .eq("postfach", postfach)
+    .eq("graph_nachricht_id", graphNachrichtId)
+    .order("anhang_name", { ascending: true });
+
+  if (error) {
+    throw fehler(
+      "Dokument-Posteingang-Geschwister konnten nicht gelesen werden",
+      error.message,
+    );
+  }
+  return (data as unknown as DokumentPosteingangRow[]) ?? [];
+}
+
 export async function loescheEintrag(id: string): Promise<void> {
   const admin = createServiceRoleClient();
   const { error } = await admin.from(TABELLE).delete().eq("id", id);

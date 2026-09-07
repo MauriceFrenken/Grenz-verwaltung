@@ -292,7 +292,7 @@ export function DokumentPruefungPage() {
       const { dokumentPosteingangAblegenFn } = await import(
         "@/lib/dokument-postfach/server-fn"
       );
-      await dokumentPosteingangAblegenFn({
+      const ergebnis = await dokumentPosteingangAblegenFn({
         data: {
           supabaseAccessToken: token,
           eintragId: eintrag.id,
@@ -304,7 +304,11 @@ export function DokumentPruefungPage() {
           istRechnung,
         },
       });
-      toast.success("Dokument abgelegt.");
+      toast.success(
+        ergebnis.mailVerschoben && ergebnis.mailOrdner
+          ? `Abgelegt · Postfach → ${ergebnis.mailOrdner}`
+          : "Dokument abgelegt.",
+      );
       await navigate({ to: "/dokumente/pruefordner" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Ablegen fehlgeschlagen.");
@@ -313,8 +317,40 @@ export function DokumentPruefungPage() {
     }
   }
 
-  function buchen() {
-    toast.info("Buchen wird in einem späteren Schritt implementiert.");
+  async function buchen() {
+    if (!eintrag) return;
+    if (!gesellschaftId) {
+      toast.error("Bitte eine Gesellschaft wählen.");
+      return;
+    }
+
+    setSpeichert(true);
+    try {
+      const { dokumentPosteingangBuchenFn } = await import(
+        "@/lib/dokument-postfach/server-fn"
+      );
+      const ergebnis = await dokumentPosteingangBuchenFn({
+        data: {
+          supabaseAccessToken: token,
+          eintragId: eintrag.id,
+          ordnerItemId: ordnerId,
+          ordnerPfad,
+          gesellschaftId,
+          objektId: objektId || null,
+          felder: felderAlsJson(),
+        },
+      });
+      toast.success(
+        ergebnis.mailVerschoben && ergebnis.mailOrdner
+          ? `Zu DATEV · Postfach → ${ergebnis.mailOrdner}`
+          : "Zu DATEV erledigt.",
+      );
+      await navigate({ to: "/dokumente/pruefordner" });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Zu DATEV fehlgeschlagen.");
+    } finally {
+      setSpeichert(false);
+    }
   }
 
   async function zuTam() {
@@ -324,10 +360,21 @@ export function DokumentPruefungPage() {
       const { dokumentPosteingangZuTamFn } = await import(
         "@/lib/dokument-postfach/server-fn"
       );
-      await dokumentPosteingangZuTamFn({
-        data: { supabaseAccessToken: token, eintragId: eintrag.id },
+      const ergebnis = await dokumentPosteingangZuTamFn({
+        data: {
+          supabaseAccessToken: token,
+          eintragId: eintrag.id,
+          ordnerItemId: ordnerId,
+          ordnerPfad,
+          felder: felderAlsJson(),
+        },
       });
-      toast.info("Zu TAM wird in einem späteren Schritt implementiert.");
+      toast.success(
+        ergebnis.mailVerschoben && ergebnis.mailOrdner
+          ? `Zu TAM · Postfach → ${ergebnis.mailOrdner}`
+          : "Zu TAM erledigt.",
+      );
+      await navigate({ to: "/dokumente/pruefordner" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Weiterleitung fehlgeschlagen.");
     } finally {
@@ -359,8 +406,10 @@ export function DokumentPruefungPage() {
       <PageHeader
         titel={istRechnung ? "Rechnung prüfen" : "Dokument prüfen"}
         nebenTitel={
-          eintrag?.status === "abgelegt" ? (
-            <span className="text-xs text-text-muted">Abgelegt</span>
+          eintrag?.status === "abgelegt" || eintrag?.status === "gebucht" ? (
+            <span className="text-xs text-text-muted">
+              {eintrag.status === "gebucht" ? "Gebucht" : "Abgelegt"}
+            </span>
           ) : null
         }
         aktionen={
@@ -372,7 +421,12 @@ export function DokumentPruefungPage() {
               <Button
                 size="sm"
                 className="bg-primary text-primary-foreground hover:bg-heading"
-                disabled={laedtPdf || speichert || eintrag?.status === "abgelegt"}
+                disabled={
+                  laedtPdf ||
+                  speichert ||
+                  eintrag?.status === "abgelegt" ||
+                  eintrag?.status === "gebucht"
+                }
                 onClick={() => void zuTam()}
               >
                 zu TAM
@@ -386,8 +440,14 @@ export function DokumentPruefungPage() {
               <Button
                 size="sm"
                 className="bg-primary text-primary-foreground hover:bg-heading"
-                disabled={laedtPdf || speichert || eintrag?.status === "abgelegt"}
-                onClick={buchen}
+                disabled={
+                  laedtPdf ||
+                  speichert ||
+                  !gesellschaftId ||
+                  eintrag?.status === "abgelegt" ||
+                  eintrag?.status === "gebucht"
+                }
+                onClick={() => void buchen()}
               >
                 zu DATEV
               </Button>
@@ -401,7 +461,11 @@ export function DokumentPruefungPage() {
                 size="sm"
                 className="bg-primary text-primary-foreground hover:bg-heading"
                 disabled={
-                  laedtPdf || speichert || !ordnerId || eintrag?.status === "abgelegt"
+                  laedtPdf ||
+                  speichert ||
+                  !ordnerId ||
+                  eintrag?.status === "abgelegt" ||
+                  eintrag?.status === "gebucht"
                 }
                 onClick={() => void ablegen()}
               >
@@ -522,7 +586,7 @@ export function DokumentPruefungPage() {
             )}
           </div>
 
-          {!istRechnung && !istTam ? (
+          {!istRechnung ? (
             <OrdnerAuswahl
               token={token}
               gewaehlterOrdnerId={ordnerId}

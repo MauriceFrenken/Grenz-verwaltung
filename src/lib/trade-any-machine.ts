@@ -2,6 +2,9 @@
 
 export const TRADE_ANY_MACHINE_NAME = "TradeAnyMachine GmbH";
 
+/** Zieladresse für den TAM-Weiterleitungs-Workflow. */
+export const TRADE_ANY_MACHINE_MAIL = "mail@sellanymachine.com";
+
 function normalisiere(text: string): string {
   return text
     .toLowerCase()
@@ -18,6 +21,10 @@ export function istTamGesellschaft(name: string | null | undefined): boolean {
   return (
     norm.includes("tradeanymachine") ||
     norm.includes("trade any machine") ||
+    norm.includes("sellanymachine") ||
+    norm.includes("sell any machine") ||
+    norm.includes("buyanymachine") ||
+    norm.includes("buy any machine") ||
     norm === "tam" ||
     norm.includes("tam gmbh")
   );

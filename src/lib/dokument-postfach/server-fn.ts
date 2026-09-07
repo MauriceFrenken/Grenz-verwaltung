@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { dokumentPosteingangArchivieren } from "./archivieren";
 import { dokumentPosteingangSchnellAusfuehren } from "./ausfuehren";
 import { dokumentPosteingangAblegen } from "./ablegen";
+import { dokumentPosteingangBuchen } from "./buchen";
 import { dokumentPosteingangEintragLaden } from "./eintrag";
 import {
   dokumentPosteingangAnalyseWiederholen,
@@ -48,7 +49,38 @@ export const dokumentPosteingangAblegenFn = createServerFn({ method: "POST" })
         istRechnung?: boolean;
       },
   )
-  .handler(async ({ data }) => dokumentPosteingangAblegen(data));
+  .handler(async ({ data }) =>
+    dokumentPosteingangAblegen({
+      ...data,
+      felder: data.felder as
+        | import("@/lib/dokument-ai").DokumentAnalyseFelder
+        | null
+        | undefined,
+    }),
+  );
+
+export const dokumentPosteingangBuchenFn = createServerFn({ method: "POST" })
+  .validator(
+    (data: unknown) =>
+      data as {
+        supabaseAccessToken: string;
+        eintragId: string;
+        ordnerItemId?: string | null;
+        ordnerPfad?: string | null;
+        gesellschaftId?: string | null;
+        objektId?: string | null;
+        felder?: unknown;
+      },
+  )
+  .handler(async ({ data }) =>
+    dokumentPosteingangBuchen({
+      ...data,
+      felder: data.felder as
+        | import("@/lib/dokument-ai").DokumentAnalyseFelder
+        | null
+        | undefined,
+    }),
+  );
 
 export const dokumentPosteingangSchnellAusfuehrenFn = createServerFn({
   method: "POST",
@@ -80,6 +112,20 @@ export const dokumentPosteingangArchivierenFn = createServerFn({
 export const dokumentPosteingangZuTamFn = createServerFn({ method: "POST" })
   .validator(
     (data: unknown) =>
-      data as { supabaseAccessToken: string; eintragId: string },
+      data as {
+        supabaseAccessToken: string;
+        eintragId: string;
+        ordnerItemId?: string | null;
+        ordnerPfad?: string | null;
+        felder?: unknown;
+      },
   )
-  .handler(async ({ data }) => dokumentPosteingangZuTam(data));
+  .handler(async ({ data }) =>
+    dokumentPosteingangZuTam({
+      ...data,
+      felder: data.felder as
+        | import("@/lib/dokument-ai").DokumentAnalyseFelder
+        | null
+        | undefined,
+    }),
+  );
