@@ -139,32 +139,38 @@ function ablagePfadKurz(
     .filter(Boolean);
   if (teile.length === 0) return pfad;
 
+  // Immer vom Pfadende her kürzen — letzter Ordner bleibt lesbar.
+  const mitEllipsis = (segmente: string[]) => {
+    if (segmente.length === 0) return "–";
+    if (segmente.length === teile.length) return segmente.join("/");
+    return `…/${segmente.join("/")}`;
+  };
+
   const gsName = gesellschaftName?.trim();
-  if (!gsName) return pfad;
+  if (!gsName) {
+    return teile.length <= 3 ? teile.join("/") : mitEllipsis(teile.slice(-3));
+  }
 
   const gsIdx = findePfadSegmentIndex(teile, gsName);
-  if (gsIdx < 0) return pfad;
+  if (gsIdx < 0) {
+    return teile.length <= 3 ? teile.join("/") : mitEllipsis(teile.slice(-3));
+  }
 
-  const prefix = gsIdx > 0 ? ".." : "";
   let restStart = gsIdx + 1;
   const objName = objektName?.trim();
-
-  if (!objName) {
-    const rest = teile.slice(restStart).join("/");
-    if (prefix && rest) return `${prefix}/.../${rest}`;
-    if (prefix) return `${prefix}/...`;
-    if (rest) return `.../${rest}`;
-    return "...";
+  if (objName) {
+    const objIdx = findePfadSegmentIndex(teile, objName, restStart);
+    if (objIdx >= 0) restStart = objIdx + 1;
   }
 
-  const objIdx = findePfadSegmentIndex(teile, objName, restStart);
-  if (objIdx >= 0) {
-    restStart = objIdx + 1;
+  const rest = teile.slice(restStart);
+  if (rest.length === 0) {
+    // Nur Gesellschaft/Objekt — letzten relevanten Ordner zeigen
+    return mitEllipsis(teile.slice(Math.max(0, teile.length - 2)));
   }
-
-  const rest = teile.slice(restStart).join("/");
-  if (!rest) return prefix || "–";
-  return prefix ? `${prefix}/${rest}` : rest;
+  // Nach Objekt: Unterordner ab dem Ende; bei sehr langen Resten die letzten 3
+  if (rest.length <= 3) return mitEllipsis(rest);
+  return mitEllipsis(rest.slice(-3));
 }
 
 function istRechnungEintrag(eintrag: DokumentPosteingangEintrag | null): boolean {
@@ -175,13 +181,31 @@ function ZellText({
   text,
   title,
   className,
+  /** Bei langen Pfaden das Ende sichtbar halten (letzter Ordner). */
+  truncateFrom = "end",
 }: {
   text: string | null | undefined;
   title?: string;
   className?: string;
+  truncateFrom?: "end" | "start";
 }) {
   const wert = text?.trim() || "–";
   const tooltip = title?.trim() || (wert !== "–" ? wert : undefined);
+
+  if (truncateFrom === "start") {
+    return (
+      <span
+        className={cn(
+          "block min-w-0 overflow-hidden whitespace-nowrap text-left [direction:rtl]",
+          className,
+        )}
+        title={tooltip}
+      >
+        <span className="[direction:ltr] [unicode-bidi:plaintext]">{wert}</span>
+      </span>
+    );
+  }
+
   return (
     <span
       className={cn("block min-w-0 truncate", className)}
@@ -649,7 +673,8 @@ export function PostfachPage() {
           <ZellText
             text={text}
             className="text-foreground"
-            title={vollerPfad && text !== vollerPfad ? vollerPfad : undefined}
+            truncateFrom="start"
+            title={vollerPfad ?? undefined}
           />
         );
       },
