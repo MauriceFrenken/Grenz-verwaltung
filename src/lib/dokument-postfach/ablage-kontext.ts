@@ -6,15 +6,19 @@ import {
   waehleUnterordnerSchritt,
   type DokumentTyp,
 } from "@/lib/dokument-ai";
+import { MICROSOFT_EINGANGSRECHNUNGEN_PFAD } from "@/lib/microsoft/config";
 import {
   graphDriveItemKinder,
+  graphDriveOrdnerAnlegen,
   graphDriveRootKinder,
+  type GraphDriveItem,
 } from "@/lib/microsoft/graph";
 import {
   istAblageRootOrdner,
   microsoftOneDriveUser,
 } from "@/lib/microsoft/ablage";
 import { createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
+import { istTamGesellschaft } from "@/lib/trade-any-machine";
 
 const MAX_ORDNER_TIEFE = 8;
 const OBJEKT_KONFIDENZ_SCHWELLE = 0.45;
@@ -156,6 +160,102 @@ export async function findeGesellschaftRootOrdner(
   if (!treffer) return null;
 
   return { id: treffer.id, pfad: treffer.name };
+}
+
+/**
+ * Gesellschafts-Root ohne KI — feste Zuordnung über Namensmarker
+ * (Holding → …-Maurice, TAM → SellAnyMachine, …).
+ */
+export function findeGesellschaftRootDeterministisch(
+  rootOrdner: Array<Pick<GraphDriveItem, "id" | "name">>,
+  gesellschaftName: string,
+): { id: string; name: string } | null {
+  const g = normalisiereSuchtext(gesellschaftName);
+  if (!g || rootOrdner.length === 0) return null;
+
+  const scored = rootOrdner.map((root) => {
+    const r = normalisiereSuchtext(root.name);
+    let score = 0;
+
+    if (istTamGesellschaft(gesellschaftName) || g.includes("sell any machine")) {
+      if (/(?:sell|trade)\s*any\s*machine/.test(r)) score = 100;
+    } else if (g.includes("holding") && r.includes("holding")) {
+      score = r.includes("maurice") ? 100 : 40;
+    } else if (g.includes("immobilien") && r.includes("immobilien")) {
+      score = 100;
+    } else if (g.includes("investment") && r.includes("investment")) {
+      score = 100;
+    } else if (/\bmtf\b/.test(g) && /\bmtf\b/.test(r)) {
+      score = 100;
+    } else if (
+      g.includes("capital") &&
+      r.includes("capital") &&
+      !/\bmtf\b/.test(g) &&
+      !/\bmtf\b/.test(r)
+    ) {
+      score = 100;
+    } else if (g === r || g.includes(r) || r.includes(g)) {
+      score = Math.min(80, Math.min(g.length, r.length));
+    }
+
+    return { root, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored[0];
+  if (!best || best.score < 50) return null;
+  return { id: best.root.id, name: best.root.name };
+}
+
+async function stelleDriveUnterordnerSicher(
+  accessToken: string,
+  benutzer: string,
+  parentId: string,
+  name: string,
+): Promise<GraphDriveItem> {
+  const kinder = await graphDriveItemKinder(accessToken, benutzer, parentId);
+  const lower = name.trim().toLowerCase();
+  const vorhanden = kinder.find(
+    (k) => k.istOrdner && k.name.trim().toLowerCase() === lower,
+  );
+  if (vorhanden) return vorhanden;
+  return graphDriveOrdnerAnlegen(accessToken, benutzer, parentId, name.trim());
+}
+
+/**
+ * Fester Rechnungspfad: {Gesellschaft-Root}/02_Finanzen/01_Buchhaltung/Eingangsrechnungen.
+ * Ordner werden bei Bedarf angelegt — keine KI-Ordnerwahl.
+ */
+export async function findeEingangsrechnungenOrdner(
+  accessToken: string,
+  gesellschaftName: string,
+): Promise<{ id: string; pfad: string } | null> {
+  const benutzer = microsoftOneDriveUser();
+  const root = await graphDriveRootKinder(accessToken, benutzer);
+  const kandidaten = root.filter(
+    (item) => item.istOrdner && istAblageRootOrdner(item.name),
+  );
+  const gesellschaftRoot = findeGesellschaftRootDeterministisch(
+    kandidaten,
+    gesellschaftName,
+  );
+  if (!gesellschaftRoot) return null;
+
+  let aktuell = gesellschaftRoot;
+  const pfadTeile = [gesellschaftRoot.name];
+
+  for (const segment of MICROSOFT_EINGANGSRECHNUNGEN_PFAD) {
+    const kind = await stelleDriveUnterordnerSicher(
+      accessToken,
+      benutzer,
+      aktuell.id,
+      segment,
+    );
+    aktuell = { id: kind.id, name: kind.name };
+    pfadTeile.push(kind.name);
+  }
+
+  return { id: aktuell.id, pfad: pfadTeile.join("/") };
 }
 
 /**

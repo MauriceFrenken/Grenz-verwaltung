@@ -636,6 +636,30 @@ export async function graphDriveItemKinder(
   );
 }
 
+/** Legt einen Unterordner an (schlägt fehl, wenn der Name schon existiert). */
+export async function graphDriveOrdnerAnlegen(
+  accessToken: string,
+  benutzer: string,
+  parentItemId: string,
+  name: string,
+): Promise<GraphDriveItem> {
+  const roh = await graphPost<RohDriveItem>(
+    `/users/${encodeURIComponent(benutzer)}/drive/items/${encodeURIComponent(parentItemId)}/children`,
+    accessToken,
+    {
+      name: name.trim(),
+      folder: {},
+      "@microsoft.graph.conflictBehavior": "fail",
+    },
+    benutzer,
+  );
+  const item = mapDriveItem(roh);
+  if (!item) {
+    throw new Error(`Ordner „${name}“ konnte nicht angelegt werden.`);
+  }
+  return item;
+}
+
 const GRAPH_SIMPLE_UPLOAD_MAX = 4 * 1024 * 1024;
 
 /** Unzulässige Zeichen in OneDrive-Dateinamen ersetzen. */

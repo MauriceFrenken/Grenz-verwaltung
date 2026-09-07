@@ -19,6 +19,16 @@ export const MICROSOFT_DOKUMENT_POSTEINGANG_SEIT = "2025-08-20T00:00:00Z";
 export const MICROSOFT_ONEDRIVE_USER = "m.frenken@frenken-immobilien.com";
 
 /**
+ * Fester Ablagepfad für Rechnungen unter dem Gesellschafts-Root
+ * (ohne KI-Ordnerwahl).
+ */
+export const MICROSOFT_EINGANGSRECHNUNGEN_PFAD = [
+  "02_Finanzen",
+  "01_Buchhaltung",
+  "Eingangsrechnungen",
+] as const;
+
+/**
  * Erlaubte Root-Ordner (Kundenliste). Zahlen in der Liste waren nur Nummerierung —
  * Match über Gesellschaftsnamen; „Digitalisierung“ und Systemordner bleiben draußen.
  * Holding: nur die „-Maurice“-Variante (ohne Maurice wird ausgeblendet).

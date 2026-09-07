@@ -18,6 +18,7 @@ import {
 import { baueAnhangAnalyseKontext } from "./anhang-kontext";
 import {
   ermittleZielordnerIterativ,
+  findeEingangsrechnungenOrdner,
   findeGesellschaftId,
   findeObjektIdAusKontext,
   ladeStammdatenKontext,
@@ -158,7 +159,22 @@ async function analysiereEintrag(
     let ablageOrdnerId: string | null = null;
     let ablageOrdnerPfad: string | null = null;
 
-    if (
+    if (ergebnis.dokumentTyp === "rechnung") {
+      const zielName = istTam
+        ? TRADE_ANY_MACHINE_NAME
+        : gesellschaftName.trim() || null;
+      if (zielName) {
+        const ziel = await findeEingangsrechnungenOrdner(accessToken, zielName);
+        if (ziel) {
+          ablageOrdnerId = ziel.id;
+          ablageOrdnerPfad = ziel.pfad;
+          ergebnis.felder.ordnerPfad = {
+            ...ergebnis.felder.ordnerPfad,
+            value: ziel.pfad,
+          };
+        }
+      }
+    } else if (
       !istTam &&
       ergebnis.dokumentTyp !== "expose" &&
       gesellschaftId &&
@@ -209,15 +225,23 @@ export async function dokumentPosteingangAnalyseWiederholen(input: {
   const { accessToken } = await microsoftAccessToken();
 
   const row = await leseEintrag(input.eintragId);
-  if (row.status !== "fehler" && row.status !== "analysiert") {
+  if (
+    row.status !== "neu" &&
+    row.status !== "fehler" &&
+    row.status !== "analysiert"
+  ) {
     throw new Error(
-      "Nur analysierte oder fehlgeschlagene Einträge können erneut analysiert werden.",
+      "Nur offene, analysierte oder fehlgeschlagene Einträge können analysiert werden.",
     );
   }
 
-  await setzeStatusNeu(row.id);
-  const neu = await leseEintrag(row.id);
-  await analysiereEintrag(accessToken, neu);
+  // Bereits analysiert / Fehler: Status zurücksetzen, dann erneut laufen lassen.
+  // Status „neu“: gezielt genau diese Mail analysieren (ohne Warteschlange).
+  if (row.status !== "neu") {
+    await setzeStatusNeu(row.id);
+  }
+  const bereit = await leseEintrag(row.id);
+  await analysiereEintrag(accessToken, bereit);
   return zuEintrag(await leseEintrag(row.id));
 }
 

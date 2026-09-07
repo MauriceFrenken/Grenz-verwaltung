@@ -204,9 +204,7 @@ function objektText(eintrag: DokumentPosteingangEintrag | null): string {
 
 function ablagePfad(eintrag: DokumentPosteingangEintrag | null): string | null {
   if (!eintrag || eintrag.status === "neu") return null;
-  if (eintrag.dokumentTyp !== "dokument" && eintrag.dokumentTyp !== null) {
-    return null;
-  }
+  if (eintrag.dokumentTyp === "expose") return null;
   return (
     eintrag.ablageOrdnerPfad?.trim() ||
     eintrag.felder?.ordnerPfad?.value?.trim() ||
@@ -214,15 +212,8 @@ function ablagePfad(eintrag: DokumentPosteingangEintrag | null): string | null {
   );
 }
 
-function ablageBetragText(eintrag: DokumentPosteingangEintrag | null): string {
+function ablagePfadText(eintrag: DokumentPosteingangEintrag | null): string {
   if (!eintrag || eintrag.status === "neu") return "–";
-
-  if (istRechnungEintrag(eintrag)) {
-    const betrag = eintrag.felder?.rechnungsbetrag?.value?.trim();
-    if (!betrag) return "–";
-    const waehrung = eintrag.felder?.waehrung?.value?.trim();
-    return waehrung ? `${betrag} ${waehrung}` : betrag;
-  }
 
   const pfad = ablagePfad(eintrag);
   if (!pfad) return "–";
@@ -381,6 +372,7 @@ export function PostfachPage() {
 
   const analyseWiederholen = useCallback(
     async (eintrag: DokumentPosteingangEintrag) => {
+      const warNeu = eintrag.status === "neu";
       setAktionId(eintrag.id);
       try {
         const { dokumentPosteingangAnalyseWiederholenFn } = await import(
@@ -392,6 +384,9 @@ export function PostfachPage() {
         setEintraege((prev) =>
           prev.map((e) => (e.id === aktualisiert.id ? aktualisiert : e)),
         );
+        if (warNeu && aktualisiert.status !== "neu") {
+          setOffen((n) => Math.max(0, n - 1));
+        }
         if (aktualisiert.status === "fehler") {
           toast.error("KI-Analyse fehlgeschlagen.", {
             description: aktualisiert.analyseFehler ?? undefined,
@@ -404,7 +399,9 @@ export function PostfachPage() {
         toast.error(
           e instanceof Error
             ? e.message
-            : "KI-Analyse konnte nicht wiederholt werden.",
+            : warNeu
+              ? "KI-Analyse fehlgeschlagen."
+              : "KI-Analyse konnte nicht wiederholt werden.",
         );
       } finally {
         setAktionId(null);
@@ -541,11 +538,11 @@ export function PostfachPage() {
       ),
     },
     {
-      key: "ablageBetrag",
-      header: "Betrag / Ablage",
+      key: "ablage",
+      header: "Ablage",
       className: "min-w-[12rem] max-w-[18rem]",
       render: (e) => {
-        const text = ablageBetragText(e);
+        const text = ablagePfadText(e);
         const vollerPfad = ablagePfad(e);
         return (
           <ZellText
@@ -722,6 +719,8 @@ export function PostfachPage() {
       className: "w-12 min-w-[3rem] pl-2 pr-3",
       render: (eintrag) => {
         const laedtZeile = aktionId === eintrag?.id;
+        const menueGesperrt = laedtZeile || analyseLaeuft;
+        const kannAnalysieren = Boolean(eintrag && eintrag.status === "neu");
         const kannWiederholen = Boolean(
           eintrag &&
             (eintrag.status === "analysiert" || eintrag.status === "fehler"),
@@ -735,7 +734,7 @@ export function PostfachPage() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0 text-foreground"
-                disabled={laedtZeile}
+                disabled={menueGesperrt}
                 aria-label="Weitere Aktionen"
                 onClick={(ev) => ev.stopPropagation()}
               >
@@ -743,10 +742,21 @@ export function PostfachPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(ev) => ev.stopPropagation()}>
+              {kannAnalysieren ? (
+                <PermissionGate berechtigung="aktion.dokumente.posteingang.analysieren">
+                  <DropdownMenuItem
+                    disabled={menueGesperrt}
+                    onClick={() => eintrag && void analyseWiederholen(eintrag)}
+                  >
+                    <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
+                    KI-Analyse
+                  </DropdownMenuItem>
+                </PermissionGate>
+              ) : null}
               {kannWiederholen ? (
                 <PermissionGate berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen">
                   <DropdownMenuItem
-                    disabled={laedtZeile}
+                    disabled={menueGesperrt}
                     onClick={() => eintrag && void analyseWiederholen(eintrag)}
                   >
                     <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
