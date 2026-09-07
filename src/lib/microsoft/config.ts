@@ -22,7 +22,8 @@ export const MICROSOFT_ONEDRIVE_USER = "m.frenken@frenken-immobilien.com";
  * Erlaubte Root-Ordner (Kundenliste). Zahlen in der Liste waren nur Nummerierung —
  * Match über Gesellschaftsnamen; „Digitalisierung“ und Systemordner bleiben draußen.
  * Holding: nur die „-Maurice“-Variante (ohne Maurice wird ausgeblendet).
- * Archiv nur falls vorhanden. TradeAnyMachine als eigener Root.
+ * Archiv nur falls vorhanden.
+ * TAM-Root auf OneDrive heißt „SellAnyMachine“ (nicht TradeAnyMachine).
  */
 export const MICROSOFT_ABLAGE_ROOT_MUSTER: RegExp[] = [
   /FRENKEN[_\s.-]*HOLDING.*MAURICE/i,
@@ -30,7 +31,7 @@ export const MICROSOFT_ABLAGE_ROOT_MUSTER: RegExp[] = [
   /FRENKEN[_\s.-]*INVESTMENT/i,
   /FRENKEN[_\s.-]*CAPITAL/i,
   /MTF[_\s.-]*CAPITAL/i,
-  /TRADE[_\s.-]*ANY[_\s.-]*MACHINE/i,
+  /(?:SELL|TRADE)[_\s.-]*ANY[_\s.-]*MACHINE/i,
   /(?:^|[_\s.-])ARCHIV(?:$|[_\s.-])/i,
 ];
 
