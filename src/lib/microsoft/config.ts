@@ -21,18 +21,20 @@ export const MICROSOFT_ONEDRIVE_USER = "m.frenken@frenken-immobilien.com";
 /**
  * Erlaubte Root-Ordner (Kundenliste). Zahlen in der Liste waren nur Nummerierung —
  * Match über Gesellschaftsnamen; „Digitalisierung“ und Systemordner bleiben draußen.
- * Holding: beide Varianten inkl. „- maurice“. Archiv nur falls vorhanden.
+ * Holding: nur die „-Maurice“-Variante (ohne Maurice wird ausgeblendet).
+ * Archiv nur falls vorhanden. TradeAnyMachine als eigener Root.
  */
 export const MICROSOFT_ABLAGE_ROOT_MUSTER: RegExp[] = [
-  /FRENKEN[_\s.-]*HOLDING/i,
+  /FRENKEN[_\s.-]*HOLDING.*MAURICE/i,
   /FRENKEN[_\s.-]*IMMOBILIEN/i,
   /FRENKEN[_\s.-]*INVESTMENT/i,
   /FRENKEN[_\s.-]*CAPITAL/i,
   /MTF[_\s.-]*CAPITAL/i,
+  /TRADE[_\s.-]*ANY[_\s.-]*MACHINE/i,
   /(?:^|[_\s.-])ARCHIV(?:$|[_\s.-])/i,
 ];
 
-/** Explizit ausgeschlossene Root-Namen (trotz HOLDING-Treffer o. Ä.). */
+/** Explizit ausgeschlossene Root-Namen (trotz Muster-Treffer o. Ä.). */
 export const MICROSOFT_ABLAGE_ROOT_AUSSCHLUSS: RegExp[] = [
   /DIGITALISIERUNG/i,
 ];
