@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Building2, FileText, Loader2, MoreVertical, Receipt, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -43,18 +43,35 @@ function typLabel(eintrag: DokumentPosteingangEintrag | null): string {
   return "–";
 }
 
-function TypIcon({ eintrag }: { eintrag: DokumentPosteingangEintrag }) {
+function TypIcon({
+  eintrag,
+  analyseLaeuft,
+}: {
+  eintrag: DokumentPosteingangEintrag;
+  analyseLaeuft: boolean;
+}) {
   const typ = dokumentTypAnzeige(eintrag);
   const label = typLabel(eintrag);
 
   if (eintrag.status === "neu") {
+    if (analyseLaeuft) {
+      return (
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center text-text-muted"
+          title="Analyse läuft"
+          aria-label="Analyse läuft"
+        >
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} aria-hidden />
+        </span>
+      );
+    }
     return (
       <span
         className="flex h-8 w-8 shrink-0 items-center justify-center text-text-muted"
-        title="Analyse läuft"
-        aria-label="Analyse läuft"
+        title="Noch nicht analysiert"
+        aria-label="Noch nicht analysiert"
       >
-        <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} aria-hidden />
+        –
       </span>
     );
   }
@@ -258,19 +275,24 @@ export function PostfachPage() {
   const [eintraege, setEintraege] = useState<DokumentPosteingangEintrag[]>([]);
   const [laedt, setLaedt] = useState(true);
   const [analyseLaeuft, setAnalyseLaeuft] = useState(false);
+  const [offen, setOffen] = useState(0);
   const [fehler, setFehler] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [aktionId, setAktionId] = useState<string | null>(null);
+  const analyseAbbruchRef = useRef(false);
 
   useEffect(() => {
     if (!token) {
       setEintraege([]);
+      setOffen(0);
       setFehler(null);
       setLaedt(false);
       return;
     }
 
     let cancelled = false;
+    analyseAbbruchRef.current = true;
+    setAnalyseLaeuft(false);
     setLaedt(true);
     setFehler(null);
 
@@ -285,43 +307,67 @@ export function PostfachPage() {
         });
         if (cancelled) return;
         setEintraege(erst.eintraege);
-        setLaedt(false);
-
-        let offen = erst.offen;
-        for (let runde = 0; offen > 0 && runde < MAX_ANALYSE_RUNDEN; runde++) {
-          setAnalyseLaeuft(true);
-          const weiter = await dokumentPosteingangSyncFn({
-            data: { supabaseAccessToken: token, maxAnalysen: 1 },
-          });
-          if (cancelled) return;
-          if (weiter.eintraege.length > 0) {
-            const aktualisiert = new Map(
-              weiter.eintraege.map((e) => [e.id, e]),
-            );
-            setEintraege((prev) =>
-              prev.map((e) => aktualisiert.get(e.id) ?? e),
-            );
-          }
-          offen = weiter.offen;
-        }
+        setOffen(erst.offen);
       } catch (e) {
         if (cancelled) return;
         setEintraege([]);
+        setOffen(0);
         setFehler(
           e instanceof Error ? e.message : "Postfach konnte nicht geladen werden.",
         );
       } finally {
-        if (!cancelled) {
-          setLaedt(false);
-          setAnalyseLaeuft(false);
-        }
+        if (!cancelled) setLaedt(false);
       }
     })();
 
     return () => {
       cancelled = true;
+      analyseAbbruchRef.current = true;
     };
   }, [token, besuchKey, reloadKey]);
+
+  const starteAnalyse = useCallback(async () => {
+    if (!token || analyseLaeuft) return;
+
+    analyseAbbruchRef.current = false;
+    setAnalyseLaeuft(true);
+    setFehler(null);
+
+    try {
+      const { dokumentPosteingangSyncFn } = await import(
+        "@/lib/dokument-postfach/server-fn"
+      );
+
+      let nochOffen = offen;
+      for (let runde = 0; runde < MAX_ANALYSE_RUNDEN; runde++) {
+        if (analyseAbbruchRef.current) return;
+        if (runde > 0 && nochOffen <= 0) break;
+
+        const weiter = await dokumentPosteingangSyncFn({
+          data: { supabaseAccessToken: token, maxAnalysen: 1 },
+        });
+        if (analyseAbbruchRef.current) return;
+
+        if (weiter.eintraege.length > 0) {
+          const aktualisiert = new Map(weiter.eintraege.map((e) => [e.id, e]));
+          setEintraege((prev) =>
+            prev.map((e) => aktualisiert.get(e.id) ?? e),
+          );
+        }
+        nochOffen = weiter.offen;
+        setOffen(nochOffen);
+        if (nochOffen <= 0) break;
+      }
+    } catch (e) {
+      if (analyseAbbruchRef.current) return;
+      toast.error(
+        e instanceof Error ? e.message : "KI-Analyse fehlgeschlagen.",
+        { duration: 12_000 },
+      );
+    } finally {
+      if (!analyseAbbruchRef.current) setAnalyseLaeuft(false);
+    }
+  }, [token, analyseLaeuft, offen]);
 
   const pruefen = useCallback(
     (eintrag: DokumentPosteingangEintrag) => {
@@ -465,7 +511,7 @@ export function PostfachPage() {
       key: "typ",
       header: "Typ",
       className: "w-12 min-w-[3rem] px-2",
-      render: (e) => <TypIcon eintrag={e} />,
+      render: (e) => <TypIcon eintrag={e} analyseLaeuft={analyseLaeuft} />,
     },
     {
       key: "datei",
@@ -728,20 +774,36 @@ export function PostfachPage() {
           ) : undefined
         }
         aktionen={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="border-foreground text-foreground"
-            disabled={laedt || !token}
-            onClick={() => setReloadKey((k) => k + 1)}
-            aria-label="Aktualisieren"
-          >
-            <RefreshCw
-              className={cn("h-4 w-4", laedt && "animate-spin")}
-              strokeWidth={1.5}
-            />
-          </Button>
+          <>
+            <PermissionGate berechtigung="aktion.dokumente.posteingang.analysieren">
+              <Button
+                type="button"
+                size="sm"
+                className="bg-primary text-primary-foreground hover:bg-heading"
+                disabled={laedt || analyseLaeuft || !token || offen <= 0}
+                onClick={() => void starteAnalyse()}
+              >
+                {analyseLaeuft ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.5} />
+                ) : null}
+                KI-Analyse
+              </Button>
+            </PermissionGate>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="border-foreground text-foreground"
+              disabled={laedt || analyseLaeuft || !token}
+              onClick={() => setReloadKey((k) => k + 1)}
+              aria-label="Aktualisieren"
+            >
+              <RefreshCw
+                className={cn("h-4 w-4", laedt && "animate-spin")}
+                strokeWidth={1.5}
+              />
+            </Button>
+          </>
         }
       />
       <PageWrapper>

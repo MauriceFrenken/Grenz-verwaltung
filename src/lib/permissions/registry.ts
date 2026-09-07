@@ -55,7 +55,7 @@ export const AKTIONS_BERECHTIGUNGEN = [
   { id: "aktion.dokumente.pruefordner.zu_tam", label: "Zu TAM weiterleiten", seite: "seite.dokumente.pruefordner", gruppe: "Dokumente" },
   { id: "aktion.dokumente.outlook.verbinden", label: "Outlook verbinden", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },
   { id: "aktion.dokumente.kategorien.verwalten", label: "Kategorien verwalten", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },
-  { id: "aktion.dokumente.posteingang.analysieren", label: "KI-Analyse starten", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },
+  { id: "aktion.dokumente.posteingang.analysieren", label: "KI-Analyse starten", seite: "seite.dokumente.pruefordner", gruppe: "Dokumente" },
   { id: "aktion.dokumente.ablage.bearbeiten", label: "Abgelegtes Dokument bearbeiten", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },
   { id: "aktion.transaktionen.liste.pruefen", label: "Exposé prüfen (Check)", seite: "seite.transaktionen.liste", gruppe: "Transaktionen" },
   { id: "aktion.transaktionen.liste.exportieren", label: "Exposé direkt exportieren", seite: "seite.transaktionen.liste", gruppe: "Transaktionen" },
