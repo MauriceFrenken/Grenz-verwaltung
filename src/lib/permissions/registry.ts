@@ -52,6 +52,7 @@ export const AKTIONS_BERECHTIGUNGEN = [
   { id: "aktion.dokumente.pruefordner.analyse_wiederholen", label: "KI-Analyse wiederholen", seite: "seite.dokumente.pruefordner", gruppe: "Dokumente" },
   { id: "aktion.dokumente.pruefordner.buchen", label: "Rechnung buchen", seite: "seite.dokumente.pruefung", gruppe: "Dokumente" },
   { id: "aktion.dokumente.pruefordner.exposes_verschieben", label: "Zu Exposés verschieben", seite: "seite.dokumente.pruefordner", gruppe: "Dokumente" },
+  { id: "aktion.dokumente.pruefordner.archivieren", label: "Mail archivieren", seite: "seite.dokumente.pruefordner", gruppe: "Dokumente" },
   { id: "aktion.dokumente.pruefordner.zu_tam", label: "Zu TAM weiterleiten", seite: "seite.dokumente.pruefordner", gruppe: "Dokumente" },
   { id: "aktion.dokumente.outlook.verbinden", label: "Outlook verbinden", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },
   { id: "aktion.dokumente.kategorien.verwalten", label: "Kategorien verwalten", seite: "seite.dokumente.ablage", gruppe: "Dokumente" },

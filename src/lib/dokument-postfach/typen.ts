@@ -1,6 +1,9 @@
 import type { DokumentAnalyseFelder, DokumentTyp } from "@/lib/dokument-ai";
 import type { DokumentPosteingangNachricht } from "@/lib/microsoft/ablage";
 
+/** Unterordner (Posteingang oder Postfach-Root), in den archivierte Mails wandern. */
+export const ARCHIV_ORDNER = "Archiv";
+
 export type DokumentPosteingangStatus =
   | "neu"
   | "analysiert"

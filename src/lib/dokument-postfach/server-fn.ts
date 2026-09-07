@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import { dokumentPosteingangArchivieren } from "./archivieren";
 import { dokumentPosteingangSchnellAusfuehren } from "./ausfuehren";
 import { dokumentPosteingangAblegen } from "./ablegen";
 import { dokumentPosteingangEintragLaden } from "./eintrag";
@@ -66,6 +67,15 @@ export const dokumentPosteingangZuExposesVerschiebenFn = createServerFn({
       data as { supabaseAccessToken: string; eintragId: string },
   )
   .handler(async ({ data }) => dokumentPosteingangZuExposesVerschieben(data));
+
+export const dokumentPosteingangArchivierenFn = createServerFn({
+  method: "POST",
+})
+  .validator(
+    (data: unknown) =>
+      data as { supabaseAccessToken: string; eintragId: string },
+  )
+  .handler(async ({ data }) => dokumentPosteingangArchivieren(data));
 
 export const dokumentPosteingangZuTamFn = createServerFn({ method: "POST" })
   .validator(

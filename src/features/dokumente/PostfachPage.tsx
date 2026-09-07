@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Building2, FileText, Loader2, MoreVertical, Receipt, RefreshCw } from "lucide-react";
+import { Archive, Building2, FileText, Loader2, MoreVertical, Receipt, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -503,6 +503,48 @@ export function PostfachPage() {
     [token],
   );
 
+  const archivieren = useCallback(
+    async (eintrag: DokumentPosteingangEintrag) => {
+      setAktionId(eintrag.id);
+      try {
+        const { dokumentPosteingangArchivierenFn } = await import(
+          "@/lib/dokument-postfach/server-fn"
+        );
+        const ergebnis = await dokumentPosteingangArchivierenFn({
+          data: { supabaseAccessToken: token, eintragId: eintrag.id },
+        });
+        let entferntNeu = 0;
+        setEintraege((prev) => {
+          entferntNeu = prev.filter(
+            (e) =>
+              e.postfach === ergebnis.postfach &&
+              e.graphNachrichtId === ergebnis.graphNachrichtId &&
+              e.status === "neu",
+          ).length;
+          return prev.filter(
+            (e) =>
+              !(
+                e.postfach === ergebnis.postfach &&
+                e.graphNachrichtId === ergebnis.graphNachrichtId
+              ),
+          );
+        });
+        if (entferntNeu > 0) {
+          setOffen((n) => Math.max(0, n - entferntNeu));
+        }
+        toast.success("Archiviert.");
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : "Archivieren fehlgeschlagen.",
+          { duration: 12_000 },
+        );
+      } finally {
+        setAktionId(null);
+      }
+    },
+    [token],
+  );
+
   const spalten: Column<DokumentPosteingangEintrag>[] = [
     {
       key: "typ",
@@ -761,6 +803,17 @@ export function PostfachPage() {
                   >
                     <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
                     KI-Neustart
+                  </DropdownMenuItem>
+                </PermissionGate>
+              ) : null}
+              {eintrag ? (
+                <PermissionGate berechtigung="aktion.dokumente.pruefordner.archivieren">
+                  <DropdownMenuItem
+                    disabled={menueGesperrt}
+                    onClick={() => void archivieren(eintrag)}
+                  >
+                    <Archive className="h-4 w-4" strokeWidth={1.5} />
+                    Archiv
                   </DropdownMenuItem>
                 </PermissionGate>
               ) : null}
