@@ -23,6 +23,10 @@ function segment(raw: string | null | undefined, maxLen = 48): string | null {
   return t.length > maxLen ? t.slice(0, maxLen).trim() : t;
 }
 
+function titelSegment(raw: string | null | undefined): string | null {
+  return segment(raw, 96);
+}
+
 function datumSegment(raw: string | null | undefined): string | null {
   const t = (raw ?? "").trim();
   if (!t) return null;
@@ -70,16 +74,21 @@ export function baueAblageDateiname(input: {
   } else {
     const datum = new Date().toISOString().slice(0, 10);
     teile.push(datum);
-    teile.push(
-      dokumentKurztyp({
-        betreff: input.betreff,
-        anhangName: input.originalName,
-      }),
-    );
+    const kiTitel = titelSegment(f?.dokumentTitel?.value);
+    if (kiTitel) {
+      teile.push(kiTitel);
+    } else {
+      teile.push(
+        dokumentKurztyp({
+          betreff: input.betreff,
+          anhangName: input.originalName,
+        }),
+      );
+    }
     const gs = segment(f?.gesellschaftName?.value);
-    if (gs) teile.push(gs);
+    if (gs && !kiTitel?.toLowerCase().includes(gs.toLowerCase())) teile.push(gs);
     const obj = segment(f?.objektBezeichnung?.value);
-    if (obj) teile.push(obj);
+    if (obj && !kiTitel?.toLowerCase().includes(obj.toLowerCase())) teile.push(obj);
   }
 
   const basis =

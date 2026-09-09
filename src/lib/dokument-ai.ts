@@ -27,6 +27,7 @@ export type DokumentFeldQuelle = {
 export type DokumentAnalyseFelder = {
   /** Legacy — wird nicht mehr von der KI befüllt */
   dokumentart?: DokumentFeldQuelle;
+  dokumentTitel: DokumentFeldQuelle;
   gesellschaftName: DokumentFeldQuelle;
   objektBezeichnung: DokumentFeldQuelle;
   ordnerPfad: DokumentFeldQuelle;
@@ -42,6 +43,7 @@ export type DokumentAnalyseFelder = {
 
 /** Felder, die die KI extrahiert (ohne Dokumentart — spart Tokens). */
 export const DOKUMENT_KI_FELD_IDS = [
+  "dokumentTitel",
   "gesellschaftName",
   "objektBezeichnung",
   "ordnerPfad",
@@ -87,6 +89,7 @@ export const DOKUMENT_RECHNUNG_FELDER: DokumentKiFeldId[] = [
 ];
 
 export const DOKUMENT_FELD_LABELS: Record<DokumentKiFeldId, string> = {
+  dokumentTitel: "Dokumenttitel",
   gesellschaftName: "Gesellschaft",
   objektBezeichnung: "Objekt",
   ordnerPfad: "Zielordner",
@@ -398,6 +401,7 @@ Schritt 2c (expose): keine Zuordnung zu Stammdaten-Objekten.
 ${ABLAGESTRUKTUR}
 
 Regeln:
+- dokumentTitel: nur für allgemeine Dokumente einen kurzen, präzisen Dateinamen-Titel aus dem Inhalt bilden (z. B. "Nachtrag Wohngebäudeversicherung Alt-Pempelfort 7" oder "Versicherungsbestätigung Alt-Pempelfort 7"). Keine Dateiendung, kein Datum, keine internen IDs erfinden. Für Rechnungen und Exposés null.
 - gesellschaftName = die im Dokument adressierte / empfangende FRENKEN-Gesellschaft (Briefempfänger, Vertragspartner), exakt aus STAMMDATEN. Nicht der Absender/Versicherer/Rechnungssteller.
 - Spezifische Marker nutzen (Immobilien, Holding, Investment, Capital, MTF). „Frenken“ allein reicht nicht — Holding nur wenn klar Holding ohne Objektbezug.
 - Objektadresse im Dokument (Straße/Ort) → zugehörige Objekt-Gesellschaft (meist Immobilien), nicht Holding.
@@ -417,6 +421,7 @@ Antworte NUR mit JSON:
   "dokumentTyp": "rechnung" | "dokument" | "expose",
   "dokumentTypKonfidenz": <0.0-1.0>,
   "felder": {
+    "dokumentTitel": { ${feldSchema()} },
     "gesellschaftName": { ${feldSchema()} },
     "objektBezeichnung": { ${feldSchema()} },
     "ordnerPfad": { ${feldSchema()} },
@@ -571,6 +576,7 @@ ${kontext ? `\nDokumentauszug:\n${kontext}` : ""}`;
 export function hatAnalyseWerte(felder: DokumentAnalyseFelder | null): boolean {
   if (!felder) return false;
   const relevant: DokumentKiFeldId[] = [
+    "dokumentTitel",
     "ordnerPfad",
     "gesellschaftName",
     "objektBezeichnung",
