@@ -25,17 +25,19 @@ function betragText(eintrag: DokumentPosteingangEintrag): string {
 function Karte({
   eintrag,
   disabled,
+  laedt,
   onDragStart,
 }: {
   eintrag: DokumentPosteingangEintrag;
   disabled: boolean;
+  laedt: boolean;
   onDragStart: (id: string) => void;
 }) {
   return (
     <div
-      draggable={!disabled}
+      draggable={!disabled && !laedt}
       onDragStart={(e) => {
-        if (disabled) {
+        if (disabled || laedt) {
           e.preventDefault();
           return;
         }
@@ -44,11 +46,21 @@ function Karte({
         onDragStart(eintrag.id);
       }}
       className={cn(
-        "border border-hairline bg-surface p-3 text-left",
-        !disabled && "cursor-grab active:cursor-grabbing",
-        disabled && "opacity-60",
+        "relative border border-hairline bg-surface p-3 text-left",
+        !disabled && !laedt && "cursor-grab active:cursor-grabbing",
+        (disabled || laedt) && "opacity-70",
       )}
+      aria-busy={laedt || undefined}
     >
+      {laedt ? (
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center bg-surface/80"
+          role="status"
+          aria-label="Wird an DATEV gesendet"
+        >
+          <Loader2 className="h-5 w-5 animate-spin text-heading" strokeWidth={1.5} />
+        </div>
+      ) : null}
       <p className="line-clamp-2 text-sm font-medium text-heading">
         {eintrag.felder?.rechnungssteller?.value?.trim() ||
           eintrag.anhangName ||
@@ -59,14 +71,16 @@ function Karte({
         {eintrag.felder?.gesellschaftName?.value?.trim() || "–"}
       </p>
       <p className="mt-1 text-xs text-text-subtle">{betragText(eintrag)}</p>
-      <Link
-        to="/dokumente/pruefung"
-        search={{ postfach: eintrag.id }}
-        className="mt-2 inline-block text-xs text-text-muted underline-offset-2 hover:underline"
-        onClick={(e) => e.stopPropagation()}
-      >
-        Prüfen
-      </Link>
+      {!laedt ? (
+        <Link
+          to="/dokumente/pruefung"
+          search={{ postfach: eintrag.id }}
+          className="mt-2 inline-block text-xs text-text-muted underline-offset-2 hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Prüfen
+        </Link>
+      ) : null}
     </div>
   );
 }
@@ -120,7 +134,8 @@ function Spalte({
           <Karte
             key={e.id}
             eintrag={e}
-            disabled={busyId === e.id || status === "erledigt"}
+            disabled={busyId !== null && busyId !== e.id}
+            laedt={busyId === e.id}
             onDragStart={onDragStart}
           />
         ))}
@@ -168,8 +183,11 @@ export function RechnungsfreigabePage() {
     ) as Record<DokumentFreigabeStatus, DokumentPosteingangEintrag[]>;
 
     for (const e of eintraege) {
-      const s = e.freigabeStatus ?? "neu";
-      map[s]?.push(e);
+      let s = e.freigabeStatus ?? "neu";
+      if (s === "freigegeben") s = "in_pruefung";
+      if (s === "erledigt") continue;
+      if (!map[s]) continue;
+      map[s].push(e);
     }
     return map;
   }, [eintraege]);
@@ -178,6 +196,7 @@ export function RechnungsfreigabePage() {
     async (ziel: DokumentFreigabeStatus, eintragId: string) => {
       const aktuell = eintraege.find((e) => e.id === eintragId);
       if (!aktuell) return;
+      if (busyId) return;
       const von = aktuell.freigabeStatus ?? "neu";
       if (von === ziel) return;
       if (von === "erledigt") return;
@@ -187,7 +206,7 @@ export function RechnungsfreigabePage() {
           toast.error("Keine Berechtigung für DATEV.");
           return;
         }
-      } else if (ziel === "erledigt") {
+      } else if (ziel === "erledigt" || ziel === "freigegeben") {
         return;
       } else if (!kannVerschieben) {
         toast.error("Keine Berechtigung zum Verschieben.");
@@ -195,6 +214,13 @@ export function RechnungsfreigabePage() {
       }
 
       setBusyId(eintragId);
+      // Sofort in Zielspalte zeigen (bei DATEV mit Spinner), erst bei Erfolg entfernen
+      setEintraege((prev) =>
+        prev.map((e) =>
+          e.id === eintragId ? { ...e, freigabeStatus: ziel } : e,
+        ),
+      );
+
       try {
         const { dokumentRechnungsfreigabeVerschiebenFn } = await import(
           "@/lib/dokument-postfach/server-fn"
@@ -207,22 +233,27 @@ export function RechnungsfreigabePage() {
           },
         });
 
-        setEintraege((prev) => {
-          const ohne = prev.filter((e) => e.id !== eintragId);
-          return [...ohne, ergebnis.eintrag];
-        });
-
-        if (ergebnis.gebucht) {
+        if (ergebnis.entfernt) {
+          setEintraege((prev) => prev.filter((e) => e.id !== eintragId));
           toast.success(`Zu DATEV: ${ergebnis.gebucht.ordnerPfad}`);
+        } else {
+          setEintraege((prev) =>
+            prev.map((e) => (e.id === eintragId ? ergebnis.eintrag : e)),
+          );
         }
       } catch (e) {
+        // Bei Fehler: Karte zurück in die Ausgangsspalte
+        setEintraege((prev) =>
+          prev.map((e) =>
+            e.id === eintragId ? { ...e, freigabeStatus: von } : e,
+          ),
+        );
         toast.error(e instanceof Error ? e.message : "Verschieben fehlgeschlagen.");
-        void laden();
       } finally {
         setBusyId(null);
       }
     },
-    [eintraege, kannDatev, kannVerschieben, laden, token],
+    [busyId, eintraege, kannDatev, kannVerschieben, token],
   );
 
   return (
@@ -250,13 +281,13 @@ export function RechnungsfreigabePage() {
           <div className="flex gap-3 overflow-x-auto pb-2">
             {FREIGABE_STATUS_SPALTEN.map((status) => {
               const dropErlaubt =
-                status !== "erledigt" &&
+                busyId === null &&
                 (status === "an_datev" ? kannDatev : kannVerschieben);
               return (
                 <Spalte
                   key={status}
                   status={status}
-                  eintraege={nachSpalte[status]}
+                  eintraege={nachSpalte[status] ?? []}
                   dropErlaubt={dropErlaubt}
                   busyId={busyId}
                   onDrop={(s, id) => void verschieben(s, id)}

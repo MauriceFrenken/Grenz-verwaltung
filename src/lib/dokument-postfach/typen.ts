@@ -15,22 +15,21 @@ export type DokumentPosteingangStatus =
 export type DokumentFreigabeStatus =
   | "neu"
   | "in_pruefung"
-  | "freigegeben"
+  | "freigegeben" // legacy DB — wird als in_pruefung behandelt
   | "an_datev"
   | "erledigt";
 
+/** Sichtbare Board-Spalten (ohne Freigegeben/Erledigt). */
 export const FREIGABE_STATUS_SPALTEN: DokumentFreigabeStatus[] = [
   "neu",
   "in_pruefung",
-  "freigegeben",
   "an_datev",
-  "erledigt",
 ];
 
 export const FREIGABE_STATUS_LABELS: Record<DokumentFreigabeStatus, string> = {
-  neu: "Neu",
+  neu: "Offen",
   in_pruefung: "In Prüfung",
-  freigegeben: "Freigegeben",
+  freigegeben: "In Prüfung",
   an_datev: "An DATEV",
   erledigt: "Erledigt",
 };

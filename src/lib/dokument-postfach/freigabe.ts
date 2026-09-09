@@ -18,11 +18,7 @@ import type {
   DokumentPosteingangEintrag,
 } from "./typen";
 
-const VERSCHIEBBARE: DokumentFreigabeStatus[] = [
-  "neu",
-  "in_pruefung",
-  "freigegeben",
-];
+const VERSCHIEBBARE: DokumentFreigabeStatus[] = ["neu", "in_pruefung"];
 
 function istRechnung(row: {
   dokument_typ: string | null;
@@ -31,18 +27,14 @@ function istRechnung(row: {
   return row.dokument_typ === "rechnung" || row.ist_rechnung === true;
 }
 
+/** Board-Status: Freigegeben → In Prüfung; Erledigt nicht auf dem Board. */
 function normalisiereFreigabe(
   raw: string | null | undefined,
   status: string,
-): DokumentFreigabeStatus {
-  if (status === "gebucht") return "erledigt";
-  if (
-    raw === "neu" ||
-    raw === "in_pruefung" ||
-    raw === "freigegeben" ||
-    raw === "an_datev" ||
-    raw === "erledigt"
-  ) {
+): DokumentFreigabeStatus | null {
+  if (status === "gebucht" || raw === "erledigt") return null;
+  if (raw === "freigegeben") return "in_pruefung";
+  if (raw === "neu" || raw === "in_pruefung" || raw === "an_datev") {
     return raw;
   }
   return "neu";
@@ -53,24 +45,20 @@ export async function dokumentRechnungsfreigabeLaden(input: {
 }): Promise<DokumentPosteingangEintrag[]> {
   await microsoftCallerAusJwt(input.supabaseAccessToken);
   const rows = await leseRechnungsfreigabe();
-
   const offen: DokumentPosteingangEintrag[] = [];
-  const erledigt: DokumentPosteingangEintrag[] = [];
 
   for (const r of rows) {
     if (!istRechnung(r)) continue;
-    const eintrag: DokumentPosteingangEintrag = {
+    if (r.status === "gebucht") continue;
+    const freigabeStatus = normalisiereFreigabe(r.freigabe_status, r.status);
+    if (!freigabeStatus || freigabeStatus === "erledigt") continue;
+    offen.push({
       ...zuEintrag(r),
-      freigabeStatus: normalisiereFreigabe(r.freigabe_status, r.status),
-    };
-    if (r.status === "gebucht" || r.freigabe_status === "erledigt") {
-      erledigt.push(eintrag);
-    } else {
-      offen.push(eintrag);
-    }
+      freigabeStatus,
+    });
   }
 
-  return [...offen, ...erledigt.slice(0, 40)];
+  return offen;
 }
 
 export async function dokumentRechnungsfreigabeZaehlen(input: {
@@ -80,14 +68,19 @@ export async function dokumentRechnungsfreigabeZaehlen(input: {
   return { offen: await zaehleOffeneRechnungsfreigabe() };
 }
 
+export type FreigabeVerschiebenErgebnis =
+  | { entfernt: false; eintrag: DokumentPosteingangEintrag }
+  | {
+      entfernt: true;
+      eintragId: string;
+      gebucht: DokumentBuchenErgebnis;
+    };
+
 export async function dokumentRechnungsfreigabeVerschieben(input: {
   supabaseAccessToken: string;
   eintragId: string;
   freigabeStatus: DokumentFreigabeStatus;
-}): Promise<
-  | { eintrag: DokumentPosteingangEintrag; gebucht?: undefined }
-  | { eintrag: DokumentPosteingangEintrag; gebucht: DokumentBuchenErgebnis }
-> {
+}): Promise<FreigabeVerschiebenErgebnis> {
   await microsoftCallerAusJwt(input.supabaseAccessToken);
 
   const id = input.eintragId?.trim();
@@ -102,8 +95,8 @@ export async function dokumentRechnungsfreigabeVerschieben(input: {
     throw new Error("Diese Rechnung ist bereits erledigt.");
   }
 
-  if (ziel === "erledigt") {
-    throw new Error("Erledigt wird nur nach erfolgreichem DATEV-Versand gesetzt.");
+  if (ziel === "erledigt" || ziel === "freigegeben") {
+    throw new Error("Ungültiger Freigabe-Status.");
   }
 
   if (ziel === "an_datev") {
@@ -116,20 +109,14 @@ export async function dokumentRechnungsfreigabeVerschieben(input: {
         objektId: row.objekt_id,
         felder: row.felder,
       });
-      const aktualisiert = await leseEintrag(id);
-      return {
-        eintrag: {
-          ...zuEintrag(aktualisiert),
-          freigabeStatus: "erledigt",
-        },
-        gebucht,
-      };
+      // Nach Buchung + Mail-Abschluss ist der Eintrag oft gelöscht — vom Board entfernen
+      return { entfernt: true, eintragId: id, gebucht };
     } catch (err) {
+      const zurueck =
+        normalisiereFreigabe(row.freigabe_status, row.status) ?? "in_pruefung";
       await setzeFreigabeStatus(
         id,
-        normalisiereFreigabe(row.freigabe_status, row.status) === "an_datev"
-          ? "in_pruefung"
-          : normalisiereFreigabe(row.freigabe_status, row.status),
+        zurueck === "an_datev" ? "in_pruefung" : zurueck,
       );
       throw err;
     }
@@ -142,6 +129,7 @@ export async function dokumentRechnungsfreigabeVerschieben(input: {
   await setzeFreigabeStatus(id, ziel);
   const aktualisiert = await leseEintrag(id);
   return {
+    entfernt: false,
     eintrag: {
       ...zuEintrag(aktualisiert),
       freigabeStatus: ziel,
