@@ -52,8 +52,6 @@ export async function dokumentPosteingangSchnellAusfuehren(input: {
       gesellschaftId: row.gesellschaft_id,
       objektId: row.objekt_id,
       felder: row.felder,
-      ordnerItemId: row.ablage_ordner_id,
-      ordnerPfad: row.ablage_ordner_pfad,
     });
     return { aktion: "gebucht", ...ergebnis };
   }

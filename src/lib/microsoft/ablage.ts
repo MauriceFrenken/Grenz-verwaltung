@@ -161,6 +161,8 @@ export async function microsoftAnhangNachOneDriveAblegen(input: {
   postfach?: string | null;
   /** Optional: Zielordner in OneDrive. */
   parentItemId?: string | null;
+  /** Optional: Zieldateiname (sonst Originalname des Anhangs). */
+  dateiname?: string | null;
 }): Promise<EinzelAnhangAblegenErgebnis> {
   await microsoftCallerAusJwt(input.supabaseAccessToken);
   if (!input.nachrichtId?.trim()) {
@@ -182,10 +184,12 @@ export async function microsoftAnhangNachOneDriveAblegen(input: {
     nachrichtId,
     anhangId,
   );
+  const uploadName =
+    input.dateiname?.trim() || binary.name || "Dokument.pdf";
   const item = await graphDriveDateiHochladen(
     accessToken,
     onedriveUser,
-    binary.name,
+    uploadName,
     binary.bytes,
     {
       parentItemId: input.parentItemId,

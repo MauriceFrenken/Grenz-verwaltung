@@ -6,10 +6,26 @@ import type { DokumentPosteingangNachricht } from "@/lib/microsoft/ablage";
 import { createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
 
 import type {
+  DokumentFreigabeStatus,
   DokumentPosteingangEintrag,
   DokumentPosteingangStatus,
 } from "./typen";
 import type { DokumentTyp } from "@/lib/dokument-ai";
+
+const FREIGABE_WERTE: DokumentFreigabeStatus[] = [
+  "neu",
+  "in_pruefung",
+  "freigegeben",
+  "an_datev",
+  "erledigt",
+];
+
+function zuFreigabeStatus(raw: string | null | undefined): DokumentFreigabeStatus | null {
+  if (!raw) return null;
+  return FREIGABE_WERTE.includes(raw as DokumentFreigabeStatus)
+    ? (raw as DokumentFreigabeStatus)
+    : null;
+}
 
 function zuDokumentTyp(row: DokumentPosteingangRow): DokumentTyp | null {
   if (
@@ -43,6 +59,7 @@ export type DokumentPosteingangRow = {
   anhang_content_type: string | null;
   anhang_groesse: number | null;
   status: DokumentPosteingangStatus;
+  freigabe_status: string | null;
   ist_rechnung: boolean | null;
   dokument_typ: string | null;
   felder: DokumentAnalyseFelder | null;
@@ -52,6 +69,7 @@ export type DokumentPosteingangRow = {
   objekt_id: string | null;
   ablage_ordner_id: string | null;
   ablage_ordner_pfad: string | null;
+  ablage_dateiname: string | null;
   abgelegt_am: string | null;
   abgelegt_onedrive_id: string | null;
   email_text: string | null;
@@ -60,8 +78,9 @@ export type DokumentPosteingangRow = {
 const SPALTEN =
   "id,postfach,graph_nachricht_id,internet_message_id,betreff,absender_name," +
   "absender_mail,eingegangen_am,web_link,anhang_id,anhang_name,anhang_content_type," +
-  "anhang_groesse,status,ist_rechnung,dokument_typ,felder,analyse_fehler,analysiert_am," +
-  "gesellschaft_id,objekt_id,ablage_ordner_id,ablage_ordner_pfad,abgelegt_am,abgelegt_onedrive_id,email_text";
+  "anhang_groesse,status,freigabe_status,ist_rechnung,dokument_typ,felder,analyse_fehler,analysiert_am," +
+  "gesellschaft_id,objekt_id,ablage_ordner_id,ablage_ordner_pfad,ablage_dateiname," +
+  "abgelegt_am,abgelegt_onedrive_id,email_text";
 
 function fehler(kontext: string, message: string): Error {
   return new Error(`${kontext}: ${message}`);
@@ -80,6 +99,7 @@ export function zuEintrag(row: DokumentPosteingangRow): DokumentPosteingangEintr
     anhangContentType: row.anhang_content_type,
     anhangGroesse: row.anhang_groesse,
     status: row.status,
+    freigabeStatus: zuFreigabeStatus(row.freigabe_status),
     dokumentTyp: zuDokumentTyp(row),
     istRechnung: row.ist_rechnung,
     felder: row.felder,
@@ -89,6 +109,7 @@ export function zuEintrag(row: DokumentPosteingangRow): DokumentPosteingangEintr
     objektId: row.objekt_id,
     ablageOrdnerId: row.ablage_ordner_id,
     ablageOrdnerPfad: row.ablage_ordner_pfad,
+    ablageDateiname: row.ablage_dateiname,
     abgelegtAm: row.abgelegt_am,
   };
 }
@@ -174,7 +195,7 @@ export async function leseEintraege(
     throw fehler("Dokument-Posteingang konnte nicht gelesen werden", error.message);
   }
 
-  return (data as DokumentPosteingangRow[]) ?? [];
+  return (data as unknown as DokumentPosteingangRow[]) ?? [];
 }
 
 export async function leseEintrag(id: string): Promise<DokumentPosteingangRow> {
@@ -189,7 +210,7 @@ export async function leseEintrag(id: string): Promise<DokumentPosteingangRow> {
     throw fehler("Dokument-Posteingang-Eintrag konnte nicht gelesen werden", error.message);
   }
   if (!data) throw new Error("Dokument-Posteingang-Eintrag nicht gefunden.");
-  return data as DokumentPosteingangRow;
+  return data as unknown as DokumentPosteingangRow;
 }
 
 export async function speichereAnalyse(
@@ -203,13 +224,15 @@ export async function speichereAnalyse(
     ablageOrdnerPfad: string | null;
   },
 ): Promise<void> {
+  const istRechnung = input.dokumentTyp === "rechnung";
   const admin = createServiceRoleClient();
   const { error } = await admin
     .from(TABELLE)
     .update({
       status: "analysiert",
       dokument_typ: input.dokumentTyp,
-      ist_rechnung: input.dokumentTyp === "rechnung",
+      ist_rechnung: istRechnung,
+      freigabe_status: istRechnung ? "neu" : null,
       felder: input.felder,
       gesellschaft_id: input.gesellschaftId,
       objekt_id: input.objektId,
@@ -296,6 +319,7 @@ export async function markiereAbgelegt(
     felder: DokumentAnalyseFelder;
     gesellschaftId: string | null;
     objektId: string | null;
+    ablageDateiname?: string | null;
   },
 ): Promise<void> {
   const admin = createServiceRoleClient();
@@ -307,6 +331,7 @@ export async function markiereAbgelegt(
       abgelegt_onedrive_id: input.onedriveId,
       ablage_ordner_id: input.ordnerId,
       ablage_ordner_pfad: input.ordnerPfad,
+      ablage_dateiname: input.ablageDateiname ?? null,
       felder: input.felder,
       gesellschaft_id: input.gesellschaftId,
       objekt_id: input.objektId,
@@ -327,6 +352,7 @@ export async function markiereGebucht(
     felder: DokumentAnalyseFelder;
     gesellschaftId: string | null;
     objektId: string | null;
+    ablageDateiname?: string | null;
   },
 ): Promise<void> {
   const admin = createServiceRoleClient();
@@ -335,10 +361,12 @@ export async function markiereGebucht(
     .update({
       status: "gebucht",
       ist_rechnung: true,
+      freigabe_status: "erledigt",
       abgelegt_am: new Date().toISOString(),
       abgelegt_onedrive_id: input.onedriveId,
       ablage_ordner_id: input.ordnerId,
       ablage_ordner_pfad: input.ordnerPfad,
+      ablage_dateiname: input.ablageDateiname ?? null,
       felder: input.felder,
       gesellschaft_id: input.gesellschaftId,
       objekt_id: input.objektId,
@@ -348,6 +376,53 @@ export async function markiereGebucht(
   if (error) {
     throw fehler("Gebucht-Status konnte nicht gespeichert werden", error.message);
   }
+}
+
+export async function setzeFreigabeStatus(
+  id: string,
+  freigabeStatus: DokumentFreigabeStatus,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from(TABELLE)
+    .update({ freigabe_status: freigabeStatus })
+    .eq("id", id);
+
+  if (error) {
+    throw fehler("Freigabe-Status konnte nicht gespeichert werden", error.message);
+  }
+}
+
+export async function leseRechnungsfreigabe(): Promise<DokumentPosteingangRow[]> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from(TABELLE)
+    .select(SPALTEN)
+    .or("dokument_typ.eq.rechnung,ist_rechnung.eq.true")
+    .order("eingegangen_am", { ascending: false, nullsFirst: false });
+
+  if (error) {
+    throw fehler("Rechnungsfreigabe konnte nicht geladen werden", error.message);
+  }
+  return (data as unknown as DokumentPosteingangRow[]) ?? [];
+}
+
+export async function zaehleOffeneRechnungsfreigabe(): Promise<number> {
+  const admin = createServiceRoleClient();
+  const { count, error } = await admin
+    .from(TABELLE)
+    .select("id", { count: "exact", head: true })
+    .or("dokument_typ.eq.rechnung,ist_rechnung.eq.true")
+    .neq("status", "gebucht")
+    .not("freigabe_status", "eq", "erledigt");
+
+  if (error) {
+    throw fehler(
+      "Offene Rechnungsfreigaben konnten nicht gezählt werden",
+      error.message,
+    );
+  }
+  return count ?? 0;
 }
 
 const ERLEDIGTE_STATUS: DokumentPosteingangStatus[] = ["abgelegt", "gebucht"];

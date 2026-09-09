@@ -11,6 +11,30 @@ export type DokumentPosteingangStatus =
   | "abgelegt"
   | "gebucht";
 
+/** Kanban-Spalten für Rechnungsfreigabe (nur Rechnungen). */
+export type DokumentFreigabeStatus =
+  | "neu"
+  | "in_pruefung"
+  | "freigegeben"
+  | "an_datev"
+  | "erledigt";
+
+export const FREIGABE_STATUS_SPALTEN: DokumentFreigabeStatus[] = [
+  "neu",
+  "in_pruefung",
+  "freigegeben",
+  "an_datev",
+  "erledigt",
+];
+
+export const FREIGABE_STATUS_LABELS: Record<DokumentFreigabeStatus, string> = {
+  neu: "Neu",
+  in_pruefung: "In Prüfung",
+  freigegeben: "Freigegeben",
+  an_datev: "An DATEV",
+  erledigt: "Erledigt",
+};
+
 export type DokumentPosteingangEintrag = {
   id: string;
   postfach: string;
@@ -23,6 +47,7 @@ export type DokumentPosteingangEintrag = {
   anhangContentType: string | null;
   anhangGroesse: number | null;
   status: DokumentPosteingangStatus;
+  freigabeStatus: DokumentFreigabeStatus | null;
   dokumentTyp: DokumentTyp | null;
   istRechnung: boolean | null;
   felder: DokumentAnalyseFelder | null;
@@ -32,6 +57,7 @@ export type DokumentPosteingangEintrag = {
   objektId: string | null;
   ablageOrdnerId: string | null;
   ablageOrdnerPfad: string | null;
+  ablageDateiname: string | null;
   abgelegtAm: string | null;
 };
 

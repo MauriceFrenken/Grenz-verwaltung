@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Archive, Building2, FileText, Loader2, MoreVertical, Receipt, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -177,6 +177,11 @@ function istRechnungEintrag(eintrag: DokumentPosteingangEintrag | null): boolean
   return eintrag?.dokumentTyp === "rechnung" || Boolean(eintrag?.istRechnung);
 }
 
+/** Erkannte Rechnungen laufen über Rechnungsfreigabe-Kanban, nicht im Postfach. */
+function istPostfachEintrag(eintrag: DokumentPosteingangEintrag): boolean {
+  return !istRechnungEintrag(eintrag);
+}
+
 function ZellText({
   text,
   title,
@@ -295,6 +300,11 @@ export function PostfachPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [aktionId, setAktionId] = useState<string | null>(null);
   const analyseAbbruchRef = useRef(false);
+
+  const postfachZeilen = useMemo(
+    () => eintraege.filter(istPostfachEintrag),
+    [eintraege],
+  );
 
   useEffect(() => {
     if (!token) {
@@ -800,16 +810,19 @@ export function PostfachPage() {
         if (istRechnungEintrag(eintrag)) {
           return (
             <PermissionGate
-              berechtigung="aktion.dokumente.pruefordner.buchen"
+              berechtigung="aktion.dokumente.rechnungsfreigabe.verschieben"
               skeletonClassName="w-full"
             >
               <Button
                 size="sm"
-                className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
+                variant="outline"
+                className="h-8 w-full border-foreground text-foreground"
                 disabled={laedtZeile}
-                onClick={() => void direktAusfuehren(eintrag)}
+                onClick={() =>
+                  void navigate({ to: "/dokumente/rechnungsfreigabe" })
+                }
               >
-                zu DATEV
+                Freigabe
               </Button>
             </PermissionGate>
           );
@@ -961,10 +974,10 @@ export function PostfachPage() {
         ) : null}
         <DataTable
           spalten={spalten}
-          zeilen={eintraege}
+          zeilen={postfachZeilen}
           scrollX
           isLoading={laedt}
-          isEmpty={!laedt && !fehler && eintraege.length === 0}
+          isEmpty={!laedt && !fehler && postfachZeilen.length === 0}
           emptyTitel="Keine Anhänge im Postfach"
           rowKey={(e) => e.id}
         />

@@ -24,6 +24,7 @@ import {
   findeGesellschaftId,
   findeGesellschaftRootDeterministisch,
   findeObjektIdAusKontext,
+  findeObjektIdGlobalAusKontext,
   ladeStammdatenKontext,
 } from "./ablage-kontext";
 import {
@@ -122,17 +123,38 @@ async function analysiereEintrag(
       };
     }
 
-    const gesellschaftId = istTam
-      ? null
-      : findeGesellschaftId(
-          ergebnis.felder.gesellschaftName.value,
-          gesellschaften ?? [],
-        );
+    const kontextTexte = [kontext.modelContext, kontext.mailKontext];
 
+    // Objektadresse zuerst (z. B. Alt-Pempelfort) — korrigiert falsche Holding-Zuordnung
+    let gesellschaftId: string | null = null;
     let objektId: string | null = null;
-    if (gesellschaftId && ergebnis.dokumentTyp !== "expose" && !istTam) {
+
+    if (!istTam && ergebnis.dokumentTyp !== "expose") {
+      const globalObjekt = findeObjektIdGlobalAusKontext(
+        kontextTexte,
+        objekte ?? [],
+      );
+      if (globalObjekt) {
+        objektId = globalObjekt.objektId;
+        gesellschaftId = globalObjekt.gesellschaftId;
+      }
+    }
+
+    if (!gesellschaftId && !istTam) {
+      gesellschaftId = findeGesellschaftId(
+        ergebnis.felder.gesellschaftName.value,
+        gesellschaften ?? [],
+      );
+    }
+
+    if (
+      !objektId &&
+      gesellschaftId &&
+      ergebnis.dokumentTyp !== "expose" &&
+      !istTam
+    ) {
       objektId = findeObjektIdAusKontext(
-        [kontext.modelContext, kontext.mailKontext],
+        kontextTexte,
         gesellschaftId,
         objekte ?? [],
       );
@@ -141,12 +163,8 @@ async function analysiereEintrag(
     const gematchtesObjekt =
       objekte?.find((o) => o.id === objektId) ?? null;
 
-    const gesellschaftName =
-      gesellschaften?.find((g) => g.id === gesellschaftId)?.name ??
-      ergebnis.felder.gesellschaftName.value ??
-      "";
-
     if (gematchtesObjekt) {
+      gesellschaftId = gematchtesObjekt.gesellschaft_id;
       ergebnis.felder.gesellschaftName = {
         ...ergebnis.felder.gesellschaftName,
         value:
@@ -156,6 +174,18 @@ async function analysiereEintrag(
       ergebnis.felder.objektBezeichnung = {
         ...ergebnis.felder.objektBezeichnung,
         value: gematchtesObjekt.bezeichnung,
+      };
+    }
+
+    const gesellschaftName =
+      gesellschaften?.find((g) => g.id === gesellschaftId)?.name ??
+      ergebnis.felder.gesellschaftName.value ??
+      "";
+
+    if (gesellschaftName && !gematchtesObjekt) {
+      ergebnis.felder.gesellschaftName = {
+        ...ergebnis.felder.gesellschaftName,
+        value: gesellschaftName || ergebnis.felder.gesellschaftName.value,
       };
     }
 

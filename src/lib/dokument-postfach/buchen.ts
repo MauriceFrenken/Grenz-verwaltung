@@ -4,6 +4,7 @@
  */
 import type { DokumentAnalyseFelder } from "@/lib/dokument-ai";
 import { findeEingangsrechnungenOrdner } from "./ablage-kontext";
+import { baueAblageDateiname } from "./dateiname";
 import { microsoftAnhangNachOneDriveAblegen } from "@/lib/microsoft/ablage";
 import { graphAnhangAlsMailSenden, graphAnhangBinary } from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
@@ -51,6 +52,7 @@ async function ladeDatevUndName(gesellschaftId: string): Promise<{
 export async function dokumentPosteingangBuchen(input: {
   supabaseAccessToken: string;
   eintragId: string;
+  /** Ignoriert — Rechnungen landen immer in Eingangsrechnungen. */
   ordnerItemId?: string | null;
   ordnerPfad?: string | null;
   gesellschaftId?: string | null;
@@ -84,22 +86,25 @@ export async function dokumentPosteingangBuchen(input: {
   }
 
   const objektId = input.objektId ?? row.objekt_id;
-  let ordnerId = input.ordnerItemId?.trim() || row.ablage_ordner_id?.trim() || "";
-  let ordnerPfad =
-    input.ordnerPfad?.trim() || row.ablage_ordner_pfad?.trim() || "";
 
   const { accessToken } = await microsoftAccessToken();
 
-  if (!ordnerId || !ordnerPfad) {
-    const ziel = await findeEingangsrechnungenOrdner(accessToken, gesellschaftName);
-    if (!ziel) {
-      throw new Error(
-        `Eingangsrechnungen-Ordner für „${gesellschaftName}“ wurde nicht gefunden.`,
-      );
-    }
-    ordnerId = ziel.id;
-    ordnerPfad = ziel.pfad;
+  // Immer frisch auflösen — nie gespeicherte/manuelle Ordner (Ausgangsrechnungen etc.)
+  const ziel = await findeEingangsrechnungenOrdner(accessToken, gesellschaftName);
+  if (!ziel) {
+    throw new Error(
+      `Eingangsrechnungen-Ordner für „${gesellschaftName}“ wurde nicht gefunden.`,
+    );
   }
+  const ordnerId = ziel.id;
+  const ordnerPfad = ziel.pfad;
+
+  const dateiname = baueAblageDateiname({
+    felder,
+    dokumentTyp: "rechnung",
+    originalName: row.anhang_name,
+    betreff: row.betreff,
+  });
 
   await speicherePruefung(id, {
     felder,
@@ -116,6 +121,7 @@ export async function dokumentPosteingangBuchen(input: {
     anhangId: row.anhang_id,
     postfach: row.postfach,
     parentItemId: ordnerId,
+    dateiname,
   });
 
   const binary = await graphAnhangBinary(
@@ -127,9 +133,9 @@ export async function dokumentPosteingangBuchen(input: {
 
   await graphAnhangAlsMailSenden(accessToken, row.postfach, {
     an: datevPostfach,
-    betreff: row.betreff?.trim() || binary.name || "Rechnung",
+    betreff: row.betreff?.trim() || dateiname || "Rechnung",
     text: "",
-    dateiname: binary.name || row.anhang_name || "Rechnung.pdf",
+    dateiname,
     contentType: binary.contentType ?? row.anhang_content_type,
     bytes: binary.bytes,
   });
@@ -141,6 +147,7 @@ export async function dokumentPosteingangBuchen(input: {
     felder,
     gesellschaftId,
     objektId,
+    ablageDateiname: dateiname,
   });
 
   const aktualisiert = await leseEintrag(id);

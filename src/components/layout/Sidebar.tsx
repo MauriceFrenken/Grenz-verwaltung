@@ -9,6 +9,7 @@ import {
   Calculator,
   FolderOpen,
   ClipboardCheck,
+  Columns3,
   ScrollText,
   Inbox,
   FileText,
@@ -75,6 +76,7 @@ const sections: NavSection[] = [
     items: [
       { to: "/dokumente/ablage", label: "Dokumentenablage", icon: FolderOpen, berechtigung: "seite.dokumente.ablage" },
       { to: "/dokumente/pruefordner", label: "Postfach", icon: ClipboardCheck, berechtigung: "seite.dokumente.pruefordner" },
+      { to: "/dokumente/rechnungsfreigabe", label: "Rechnungsfreigabe", icon: Columns3, berechtigung: "seite.dokumente.rechnungsfreigabe" },
     ],
   },
   {

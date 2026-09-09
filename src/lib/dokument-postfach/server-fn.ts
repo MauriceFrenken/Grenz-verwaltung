@@ -6,11 +6,17 @@ import { dokumentPosteingangAblegen } from "./ablegen";
 import { dokumentPosteingangBuchen } from "./buchen";
 import { dokumentPosteingangEintragLaden } from "./eintrag";
 import {
+  dokumentRechnungsfreigabeLaden,
+  dokumentRechnungsfreigabeVerschieben,
+  dokumentRechnungsfreigabeZaehlen,
+} from "./freigabe";
+import {
   dokumentPosteingangAnalyseWiederholen,
   dokumentPosteingangSynchronisieren,
 } from "./sync";
 import { dokumentPosteingangZuExposesVerschieben } from "./verschieben";
 import { dokumentPosteingangZuTam } from "./zu-tam";
+import type { DokumentFreigabeStatus } from "./typen";
 
 export const dokumentPosteingangSyncFn = createServerFn({ method: "POST" })
   .validator(
@@ -129,3 +135,26 @@ export const dokumentPosteingangZuTamFn = createServerFn({ method: "POST" })
         | undefined,
     }),
   );
+
+export const dokumentRechnungsfreigabeLadenFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { supabaseAccessToken: string })
+  .handler(async ({ data }) => dokumentRechnungsfreigabeLaden(data));
+
+export const dokumentRechnungsfreigabeZaehlenFn = createServerFn({
+  method: "POST",
+})
+  .validator((data: unknown) => data as { supabaseAccessToken: string })
+  .handler(async ({ data }) => dokumentRechnungsfreigabeZaehlen(data));
+
+export const dokumentRechnungsfreigabeVerschiebenFn = createServerFn({
+  method: "POST",
+})
+  .validator(
+    (data: unknown) =>
+      data as {
+        supabaseAccessToken: string;
+        eintragId: string;
+        freigabeStatus: DokumentFreigabeStatus;
+      },
+  )
+  .handler(async ({ data }) => dokumentRechnungsfreigabeVerschieben(data));

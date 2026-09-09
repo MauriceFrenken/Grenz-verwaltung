@@ -6,6 +6,7 @@ import type { DokumentAnalyseFelder } from "@/lib/dokument-ai";
 import { microsoftAnhangNachOneDriveAblegen } from "@/lib/microsoft/ablage";
 import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
 
+import { baueAblageDateiname } from "./dateiname";
 import { schliesseNachrichtAbWennFertig } from "./mail-abschluss";
 import { leseEintrag, markiereAbgelegt, speicherePruefung } from "./store";
 import type { DokumentAblegenErgebnis } from "./typen";
@@ -50,6 +51,20 @@ export async function dokumentPosteingangAblegen(input: {
     throw new Error("Bitte zuerst eine Gesellschaft zuordnen.");
   }
 
+  const dokumentTyp =
+    input.istRechnung || row.ist_rechnung || row.dokument_typ === "rechnung"
+      ? "rechnung"
+      : row.dokument_typ === "expose"
+        ? "expose"
+        : "dokument";
+
+  const dateiname = baueAblageDateiname({
+    felder,
+    dokumentTyp,
+    originalName: row.anhang_name,
+    betreff: row.betreff,
+  });
+
   await speicherePruefung(id, {
     felder,
     gesellschaftId,
@@ -65,6 +80,7 @@ export async function dokumentPosteingangAblegen(input: {
     anhangId: row.anhang_id,
     postfach: row.postfach,
     parentItemId: ordnerId,
+    dateiname,
   });
 
   const hochgeladen = ergebnis.hochgeladen;
@@ -76,6 +92,7 @@ export async function dokumentPosteingangAblegen(input: {
     felder,
     gesellschaftId,
     objektId,
+    ablageDateiname: dateiname,
   });
 
   const aktualisiert = await leseEintrag(id);

@@ -121,7 +121,7 @@ export async function ladeStammdatenKontext(): Promise<string> {
   return ["Gesellschaften:", ...gsLines].join("\n");
 }
 
-/** Gesellschafts-Root in OneDrive — KI wählt aus den Oberordnern. */
+/** Gesellschafts-Root in OneDrive — zuerst deterministisch, sonst KI. */
 export async function findeGesellschaftRootOrdner(
   accessToken: string,
   input: {
@@ -143,6 +143,14 @@ export async function findeGesellschaftRootOrdner(
     (item) => item.istOrdner && istAblageRootOrdner(item.name),
   );
   if (kandidaten.length === 0) return null;
+
+  const deterministisch = findeGesellschaftRootDeterministisch(
+    kandidaten,
+    input.gesellschaftName || gs.name,
+  );
+  if (deterministisch) {
+    return { id: deterministisch.id, pfad: deterministisch.name };
+  }
 
   const wahl = await waehleGesellschaftRootOrdner({
     gesellschaftName: input.gesellschaftName || gs.name,
@@ -222,9 +230,63 @@ async function stelleDriveUnterordnerSicher(
   return graphDriveOrdnerAnlegen(accessToken, benutzer, parentId, name.trim());
 }
 
+function istEingangsrechnungenName(name: string): boolean {
+  const n = name.trim().toLowerCase();
+  if (n.includes("ausgang")) return false;
+  return n === "eingangsrechnungen" || n === "eingangsrechnung";
+}
+
+function istFinanzenZweigName(name: string): boolean {
+  const n = normalisiereSuchtext(name);
+  return (
+    n.includes("finanz") ||
+    n.includes("buchhalt") ||
+    n.includes("steuer") ||
+    n.includes("rechnung")
+  );
+}
+
 /**
- * Fester Rechnungspfad: {Gesellschaft-Root}/02_Finanzen/01_Buchhaltung/Eingangsrechnungen.
- * Ordner werden bei Bedarf angelegt — keine KI-Ordnerwahl.
+ * Unter dem Gesellschafts-Root nach exakt Eingangsrechnungen suchen
+ * (nie Ausgangsrechnungen). Begrenzt auf Finanzen-/Buchhaltungszweige.
+ */
+async function sucheEingangsrechnungenUnterRoot(
+  accessToken: string,
+  benutzer: string,
+  root: { id: string; name: string },
+): Promise<{ id: string; pfad: string } | null> {
+  const queue: Array<{ id: string; pfad: string; tiefe: number }> = [
+    { id: root.id, pfad: root.name, tiefe: 0 },
+  ];
+  const maxTiefe = 5;
+
+  while (queue.length > 0) {
+    const aktuell = queue.shift()!;
+    if (aktuell.tiefe >= maxTiefe) continue;
+
+    const kinder = await graphDriveItemKinder(accessToken, benutzer, aktuell.id);
+    for (const kind of kinder) {
+      if (!kind.istOrdner) continue;
+      const kindPfad = `${aktuell.pfad}/${kind.name}`;
+      if (istEingangsrechnungenName(kind.name)) {
+        return { id: kind.id, pfad: kindPfad };
+      }
+      if (
+        aktuell.tiefe < 3 &&
+        (aktuell.tiefe === 0 || istFinanzenZweigName(kind.name))
+      ) {
+        queue.push({ id: kind.id, pfad: kindPfad, tiefe: aktuell.tiefe + 1 });
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Fester Rechnungspfad: vorhandenes „Eingangsrechnungen“ unter Gesellschafts-Root,
+ * sonst {Root}/02_Finanzen/01_Buchhaltung/Eingangsrechnungen anlegen.
+ * Nie Ausgangsrechnungen — gespeicherte Fremdpfade werden nicht verwendet.
  */
 export async function findeEingangsrechnungenOrdner(
   accessToken: string,
@@ -241,10 +303,20 @@ export async function findeEingangsrechnungenOrdner(
   );
   if (!gesellschaftRoot) return null;
 
+  const gefunden = await sucheEingangsrechnungenUnterRoot(
+    accessToken,
+    benutzer,
+    gesellschaftRoot,
+  );
+  if (gefunden) return gefunden;
+
   let aktuell = gesellschaftRoot;
   const pfadTeile = [gesellschaftRoot.name];
 
   for (const segment of MICROSOFT_EINGANGSRECHNUNGEN_PFAD) {
+    if (/ausgang/i.test(segment)) {
+      throw new Error("Ungültiges Rechnungspfad-Segment.");
+    }
     const kind = await stelleDriveUnterordnerSicher(
       accessToken,
       benutzer,
@@ -253,6 +325,12 @@ export async function findeEingangsrechnungenOrdner(
     );
     aktuell = { id: kind.id, name: kind.name };
     pfadTeile.push(kind.name);
+  }
+
+  if (!istEingangsrechnungenName(aktuell.name)) {
+    throw new Error(
+      `Erwarteter Ordner „Eingangsrechnungen“, erhalten: „${aktuell.name}“.`,
+    );
   }
 
   return { id: aktuell.id, pfad: pfadTeile.join("/") };
@@ -396,19 +474,45 @@ export function findeGesellschaftId(
   );
   if (exakt) return exakt.id;
 
+  const markerBonus = (gn: string): number => {
+    let bonus = 0;
+    if (such.includes("immobilien") && gn.includes("immobilien")) bonus += 40;
+    if (such.includes("holding") && gn.includes("holding")) bonus += 40;
+    if (such.includes("investment") && gn.includes("investment")) bonus += 40;
+    if (such.includes("capital") && gn.includes("capital") && !/\bmtf\b/.test(such)) {
+      bonus += 35;
+    }
+    if (/\bmtf\b/.test(such) && /\bmtf\b/.test(gn)) bonus += 40;
+    return bonus;
+  };
+
   let best: { id: string; score: number } | null = null;
   for (const g of gesellschaften) {
     const gn = g.name.toLowerCase();
     let score = 0;
     if (such === gn) score = 100;
-    else if (such.includes(gn) || gn.includes(such)) score = Math.min(such.length, gn.length);
-    else if (such.includes(g.kuerzel.toLowerCase())) score = g.kuerzel.length;
+    else if (such.includes(gn) || gn.includes(such)) {
+      score = Math.min(such.length, gn.length);
+    } else if (such.includes(g.kuerzel.toLowerCase())) {
+      score = g.kuerzel.length + 10;
+    }
+
+    score += markerBonus(gn);
+
+    // Reines „Frenken“ ohne spezifischen Marker: Holding nicht bevorzugen
+    if (
+      score > 0 &&
+      /frenken/.test(such) &&
+      !/(immobilien|holding|investment|capital|mtf)/.test(such)
+    ) {
+      if (gn.includes("holding")) score = Math.min(score, 3);
+    }
 
     if (such.includes("frenken") && !gn.includes("frenken")) score *= 0.5;
     if (score > 0 && (!best || score > best.score)) best = { id: g.id, score };
   }
 
-  return best && best.score >= 4 ? best.id : null;
+  return best && best.score >= 8 ? best.id : null;
 }
 
 export function findeObjektIdStaerkste(
@@ -443,6 +547,37 @@ export function findeObjektIdStaerkste(
   const strassenToken = tokens.find((t) => t.length >= 6);
   const minScore = strassenToken ? 8 : 5;
   return best && best.score >= minScore ? best.id : null;
+}
+
+/** Objekt über alle Gesellschaften — Adresse korrigiert ggf. die Gesellschaft. */
+export function findeObjektIdGlobalAusKontext(
+  texte: Array<string | null | undefined>,
+  objekte: Array<{
+    id: string;
+    bezeichnung: string;
+    gesellschaft_id: string;
+    strasse?: string | null;
+    ort?: string | null;
+  }>,
+): { objektId: string; gesellschaftId: string } | null {
+  if (objekte.length === 0) return null;
+
+  let best: { id: string; gesellschaftId: string; score: number } | null = null;
+  for (const text of texte) {
+    const such = (text ?? "").trim();
+    if (!such) continue;
+    const tokens = ordnerSuchTokens({ objektBezeichnung: such });
+    for (const o of objekte) {
+      const score = scoreObjektMatch(o, such, tokens);
+      if (score > 0 && (!best || score > best.score)) {
+        best = { id: o.id, gesellschaftId: o.gesellschaft_id, score };
+      }
+    }
+  }
+
+  const minScore = 8;
+  if (!best || best.score < minScore) return null;
+  return { objektId: best.id, gesellschaftId: best.gesellschaftId };
 }
 
 /** Objekt nur innerhalb einer Gesellschaft — aus Dokument-/Mail-Kontext. */

@@ -153,29 +153,30 @@ export type AnalyzeDokumentResponse = {
 const ABLAGESTRUKTUR = `
 FRENKEN – Einheitliche Ablagestruktur (Zielordner):
 
-Oberste Ebene (Gesellschaften):
-- 01_FRENKEN HOLDING GMBH
-- 02_FRENKEN IMMOBILIEN GMBH
-- 03_FRENKEN INVESTMENT MANAGEMENT GMBH
-- 04_FRENKEN CAPITAL MANAGEMENT GMBH
-- 05_MTF CAPITAL GMBH
-- 99_ARCHIV
+Oberste Ebene (OneDrive-Roots, exakte Namen können leicht abweichen):
+- FRENKEN Holding … Maurice (nur die Maurice-Variante; nicht andere Holding-Ordner)
+- FRENKEN Immobilien …
+- FRENKEN Investment Management …
+- FRENKEN Capital Management …
+- MTF Capital …
+- SellAnyMachine / TradeAnyMachine
+- Archiv
 
-Je Gesellschaft:
+Je Gesellschaft typisch:
 - 01_Geschaeftsfuehrung
-- 02_Finanzen
+- 02_Finanzen (oder „Finanzen & Steuern“)
 - 03_Vertraege
 - 04_Personal
 - 05_Beteiligungen bzw. 05_Immobilien
 - 99_Archiv
 
-Immobilien (unter 05_Immobilien):
-- 01_Ankauf, 02_Bestand, 03_Verkauf, 04_Projekte
+Immobilien (unter 05_Immobilien): Bestand/Ankauf → Objektordner → Kategorie
+  (Stammdaten, Vertraege, Finanzen, Technik, Mieter, Versicherungen, Archiv)
 
-Einzelne Immobilie (Muster): IM-2026-001_Duesseldorf_Musterstrasse
-  - 01_Stammdaten, 02_Vertraege, 03_Finanzen, 04_Technik, 05_Mieter, 99_Archiv
-
-Gruppenweite Unterlagen (Holding): 01_Geschaeftsfuehrung, 02_Strategie, 03_Recht, 04_Versicherungen, 05_Banken, 99_Archiv
+Wichtig:
+- Dokumente mit Objektadresse (z. B. Alt-Pempelfort 7, Düsseldorf) → Immobilien-Root, NICHT Holding.
+- Versicherungen zu Wohngebäuden gehören zur Objekt-Gesellschaft (meist Immobilien), nicht Holding.
+- Holding nur für gruppenweite Themen ohne Objektbezug.
 `.trim();
 
 function getAnthropicKey(): string | null {
@@ -397,11 +398,14 @@ Schritt 2c (expose): keine Zuordnung zu Stammdaten-Objekten.
 ${ABLAGESTRUKTUR}
 
 Regeln:
-- gesellschaftName aus STAMMDATEN (FRENKEN-Gesellschaften). Ausnahme: eindeutig an TradeAnyMachine GmbH (TAM) adressiert → gesellschaftName exakt "TradeAnyMachine GmbH" (steht nicht in Stammdaten).
+- gesellschaftName = die im Dokument adressierte / empfangende FRENKEN-Gesellschaft (Briefempfänger, Vertragspartner), exakt aus STAMMDATEN. Nicht der Absender/Versicherer/Rechnungssteller.
+- Spezifische Marker nutzen (Immobilien, Holding, Investment, Capital, MTF). „Frenken“ allein reicht nicht — Holding nur wenn klar Holding ohne Objektbezug.
+- Objektadresse im Dokument (Straße/Ort) → zugehörige Objekt-Gesellschaft (meist Immobilien), nicht Holding.
+- Ausnahme: eindeutig an TradeAnyMachine GmbH (TAM) adressiert → gesellschaftName exakt "TradeAnyMachine GmbH" (steht nicht in Stammdaten).
 - objektBezeichnung: immer null — Objekte (Immobilien der Gesellschaften) werden serverseitig zugeordnet, nicht von der KI.
 - Adressen, Maschinen, Fahrzeuge oder Objekte aus Exposés/Verkaufsunterlagen sind KEINE Stammdaten-Objekte.
 - ordnerPfad: immer null lassen (wird separat über OneDrive ermittelt).
-- Bei Rechnungen: zahlungsempfaenger = an wen gezahlt wird (FRENKEN-Gesellschaft), rechnungssteller = Aussteller.
+- Bei Rechnungen (Eingangsrechnungen an FRENKEN): zahlungsempfaenger = FRENKEN-Gesellschaft an die gezahlt/adressiert wird, rechnungssteller = Aussteller/Lieferant.
 - rechnungsbetrag: nur Zahl mit Dezimalpunkt, keine Währung.
 - waehrung: z. B. EUR.
 - Nur Informationen aus dem Dokument — nichts erfinden. Bei Unsicherheit: value null, konfidenz niedrig.

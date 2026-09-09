@@ -333,8 +333,6 @@ export function DokumentPruefungPage() {
         data: {
           supabaseAccessToken: token,
           eintragId: eintrag.id,
-          ordnerItemId: ordnerId,
-          ordnerPfad,
           gesellschaftId,
           objektId: objektId || null,
           felder: felderAlsJson(),
@@ -345,7 +343,7 @@ export function DokumentPruefungPage() {
           ? `Zu DATEV · Postfach → ${ergebnis.mailOrdner}`
           : "Zu DATEV erledigt.",
       );
-      await navigate({ to: "/dokumente/pruefordner" });
+      await navigate({ to: "/dokumente/rechnungsfreigabe" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Zu DATEV fehlgeschlagen.");
     } finally {

@@ -1,13 +1,50 @@
+import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { Calendar } from "lucide-react";
+
 import { KpiCard } from "@/components/shared/KpiCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ContentSection, PageWrapper } from "@/components/layout/PageWrapper";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "lucide-react";
+import { useAuth, usePermissions } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 import { TeaserShell } from "./TeaserShell";
 
+function istMontagErinnerung(): boolean {
+  return new Date().getDay() === 1;
+}
+
 export function DashboardTeaser() {
+  const { session } = useAuth();
+  const { darfSeite } = usePermissions();
+  const token = session?.access_token ?? "";
+  const [offen, setOffen] = useState<number | null>(null);
+  const erinnerung = istMontagErinnerung();
+  const zeigtFreigabe = darfSeite("seite.dokumente.rechnungsfreigabe");
+
+  useEffect(() => {
+    if (!token || !zeigtFreigabe) return;
+    let abgebrochen = false;
+    void (async () => {
+      try {
+        const { dokumentRechnungsfreigabeZaehlenFn } = await import(
+          "@/lib/dokument-postfach/server-fn"
+        );
+        const { offen: anzahl } = await dokumentRechnungsfreigabeZaehlenFn({
+          data: { supabaseAccessToken: token },
+        });
+        if (!abgebrochen) setOffen(anzahl);
+      } catch {
+        if (!abgebrochen) setOffen(null);
+      }
+    })();
+    return () => {
+      abgebrochen = true;
+    };
+  }, [token, zeigtFreigabe]);
+
   return (
     <TeaserShell>
       <PageHeader
@@ -26,7 +63,28 @@ export function DashboardTeaser() {
         }
       />
       <PageWrapper>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {zeigtFreigabe ? (
+            <div
+              className={cn(
+                erinnerung && offen !== null && offen > 0 && "ring-1 ring-foreground",
+              )}
+            >
+              <KpiCard
+                label="Rechnungsfreigabe"
+                wert={offen === null ? "–" : String(offen)}
+                hilfetext={erinnerung ? "Wöchentliche Erinnerung" : undefined}
+                aktion={
+                  <Link
+                    to="/dokumente/rechnungsfreigabe"
+                    className="text-xs text-text-muted underline-offset-2 hover:underline"
+                  >
+                    Board
+                  </Link>
+                }
+              />
+            </div>
+          ) : null}
           <KpiCard label="Offene Rückstände" wert="–" />
           <KpiCard label="Fällige Sollstellungen" wert="–" />
           <KpiCard label="Dokumente zur Prüfung" wert="–" />
