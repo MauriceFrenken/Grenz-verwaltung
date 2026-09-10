@@ -37,6 +37,8 @@ export {
 export { salesforceFehlerText } from "./fehler";
 
 export {
+  anreichereAdressFelderWerte,
+  extrahierePlzStadtAusText,
   formatDetailAdresse,
   formatDetailAdresseFromTeile,
   formatObjektName,

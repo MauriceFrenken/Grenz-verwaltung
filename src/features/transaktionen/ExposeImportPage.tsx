@@ -28,6 +28,7 @@ import {
 } from "@/lib/expose-ai";
 import { base64ZuFile } from "@/lib/postfach/client";
 import {
+  anreichereAdressFelderWerte,
   istSalesforceVerbunden,
   formatObjektNameFromTeile,
   resolveAdressTeile,
@@ -342,6 +343,33 @@ export function ExposeImportPage() {
         }
       }
 
+      // Stadt/PLZ ggf. aus Straße-Zitat nachziehen — nötig für „Neues Objekt“ in SF.
+      const adresse = anreichereAdressFelderWerte(
+        {
+          objektadresse: neu.objektadresse.value,
+          stadt: neu.stadt.value,
+          plz: neu.plz.value,
+        },
+        [
+          neu.objektadresse.quelle?.verbatimQuote,
+          neu.stadt.quelle?.verbatimQuote,
+          neu.plz.quelle?.verbatimQuote,
+        ],
+      );
+      if (adresse.objektadresse && adresse.objektadresse !== neu.objektadresse.value) {
+        const warLeer = !neu.objektadresse.value.trim();
+        neu.objektadresse = { ...neu.objektadresse, value: adresse.objektadresse };
+        if (warLeer) erkannt++;
+      }
+      if (adresse.stadt && !neu.stadt.value) {
+        neu.stadt = { ...neu.stadt, value: adresse.stadt };
+        erkannt++;
+      }
+      if (adresse.plz && !neu.plz.value) {
+        neu.plz = { ...neu.plz, value: adresse.plz };
+        erkannt++;
+      }
+
       setFelder(neu);
 
       if (erstesMitQuelle) {
@@ -439,8 +467,8 @@ export function ExposeImportPage() {
   };
 
   const exportSalesforce = () => {
-    const adresse = felder.objektadresse.value.trim();
-    if (!adresse) {
+    const objektadresse = felder.objektadresse.value.trim();
+    if (!objektadresse) {
       toast.error(
         "Bitte zuerst Straße und Hausnummer setzen (per KI oder manuell).",
       );
@@ -456,6 +484,23 @@ export function ExposeImportPage() {
     const felderWerte = Object.fromEntries(
       EXPOSE_FELD_IDS.map((id) => [id, felder[id].value ?? ""]),
     ) as Record<ExposeFeldId, string>;
+
+    const angereichert = anreichereAdressFelderWerte(
+      {
+        objektadresse: felderWerte.objektadresse,
+        stadt: felderWerte.stadt,
+        plz: felderWerte.plz,
+      },
+      [
+        felder.objektadresse.quelle?.verbatimQuote,
+        felder.stadt.quelle?.verbatimQuote,
+        felder.plz.quelle?.verbatimQuote,
+      ],
+    );
+    felderWerte.objektadresse =
+      angereichert.objektadresse || felderWerte.objektadresse;
+    felderWerte.stadt = angereichert.stadt || felderWerte.stadt;
+    felderWerte.plz = angereichert.plz || felderWerte.plz;
 
     const draft = speichereExposeSalesforceDraft({
       dateiname,

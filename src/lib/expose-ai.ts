@@ -2,6 +2,8 @@
  * Server-only Exposé-Extraktion via Anthropic Claude Haiku.
  * Niemals aus Client-Code importieren (nur Typen sind client-safe).
  */
+import { anreichereAdressFelderWerte } from "@/lib/salesforce/address-format";
+
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 const MODEL = "claude-haiku-4-5";
@@ -182,6 +184,8 @@ function buildPrompt(): string {
     "- page: Dateiseite des PDF-Belegs; null wenn nur aus dem Dateinamen.",
     "- Nicht die Absender-/Maklerbüro-Adresse nehmen, wenn klar vom Objekt unterscheidbar.",
     "- Straße + Hausnummer sind Pflicht; Stadt und PLZ zusätzlich setzen, sobald erkennbar.",
+    "- Wenn die Adresszeile PLZ und Ort enthält, ALLE DREI Felder setzen — nie nur objektadresse.",
+    "- Auch bei unsicherer Zuordnung: stadt/plz trotzdem setzen, wenn klar im Adressblock der Immobilie.",
     "",
     "=== WICHTIG (übrige Felder) ===",
     "- Nur extrahieren, was eindeutig im Dokument steht — keine Vermutungen.",
@@ -391,6 +395,22 @@ function normalizeFeldWert(id: ExposeFeldId, value: string | null): string | nul
   }
 }
 
+/** Klar erkennbare Adresswerte trotz niedriger Konfidenz behalten. */
+function adressWertTrotzNiedrigerKonfidenz(
+  id: ExposeFeldId,
+  value: string | null,
+): boolean {
+  if (!value) return false;
+  if (id === "plz") return /^\d{5}$/.test(value);
+  if (id === "stadt") {
+    return value.length >= 2 && !/^\d+$/.test(value);
+  }
+  if (id === "objektadresse") {
+    return /\d/.test(value) && value.length >= 3;
+  }
+  return false;
+}
+
 function parseFeld(id: ExposeFeldId, raw: unknown): ExposeFeldQuelle {
   if (!raw || typeof raw !== "object") return leeresFeld();
   const o = raw as Record<string, unknown>;
@@ -416,6 +436,9 @@ function parseFeld(id: ExposeFeldId, raw: unknown): ExposeFeldQuelle {
       ? KONFIDENZ_SCHWELLE_ADRESSE
       : KONFIDENZ_SCHWELLE;
   if (konfidenz < schwelle) {
+    if (adressWertTrotzNiedrigerKonfidenz(id, value)) {
+      return { value, verbatimQuote, page, konfidenz };
+    }
     return { value: null, verbatimQuote, page, konfidenz };
   }
 
@@ -424,6 +447,47 @@ function parseFeld(id: ExposeFeldId, raw: unknown): ExposeFeldQuelle {
 
 function leereFelder(): ExposeFelder {
   return Object.fromEntries(EXPOSE_FELD_IDS.map((id) => [id, leeresFeld()])) as ExposeFelder;
+}
+
+/** Stadt/PLZ/Straße aus Werten + Zitaten nachziehen (wichtig für „Neues Objekt“). */
+function anreichereAdressfelder(fields: ExposeFelder): ExposeFelder {
+  const angereichert = anreichereAdressFelderWerte(
+    {
+      objektadresse: fields.objektadresse.value,
+      stadt: fields.stadt.value,
+      plz: fields.plz.value,
+    },
+    [
+      fields.objektadresse.verbatimQuote,
+      fields.stadt.verbatimQuote,
+      fields.plz.verbatimQuote,
+    ],
+  );
+
+  const next = { ...fields };
+  if (angereichert.objektadresse && !fields.objektadresse.value) {
+    next.objektadresse = {
+      ...fields.objektadresse,
+      value: angereichert.objektadresse,
+    };
+  } else if (
+    angereichert.objektadresse &&
+    fields.objektadresse.value &&
+    angereichert.objektadresse !== fields.objektadresse.value
+  ) {
+    // Volle Adresszeile → nur Straße + Hausnummer behalten
+    next.objektadresse = {
+      ...fields.objektadresse,
+      value: angereichert.objektadresse,
+    };
+  }
+  if (angereichert.stadt && !fields.stadt.value) {
+    next.stadt = { ...fields.stadt, value: angereichert.stadt };
+  }
+  if (angereichert.plz && !fields.plz.value) {
+    next.plz = { ...fields.plz, value: angereichert.plz };
+  }
+  return next;
 }
 
 function parseJsonResponse(raw: string): AnalyzeExposeResponse {
@@ -450,7 +514,7 @@ function parseJsonResponse(raw: string): AnalyzeExposeResponse {
     fields[id] = parseFeld(id, fieldsRaw[id]);
   }
 
-  return { fields };
+  return { fields: anreichereAdressfelder(fields) };
 }
 
 export async function handleAnalyzeExposeRequest(

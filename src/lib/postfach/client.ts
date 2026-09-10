@@ -4,6 +4,7 @@ import {
   type ExposeFelder,
   type ExposeFeldId,
 } from "@/lib/expose-ai";
+import { anreichereAdressFelderWerte } from "@/lib/salesforce/address-format";
 
 import { base64ZuBytes } from "./base64";
 
@@ -22,9 +23,26 @@ export function base64ZuFile(
 export function felderZuWerten(
   felder: ExposeFelder | null,
 ): Record<ExposeFeldId, string> {
-  return Object.fromEntries(
+  const werte = Object.fromEntries(
     EXPOSE_FELD_IDS.map((id) => [id, felder?.[id]?.value ?? ""]),
   ) as Record<ExposeFeldId, string>;
+
+  const adresse = anreichereAdressFelderWerte(
+    {
+      objektadresse: werte.objektadresse,
+      stadt: werte.stadt,
+      plz: werte.plz,
+    },
+    [
+      felder?.objektadresse?.verbatimQuote,
+      felder?.stadt?.verbatimQuote,
+      felder?.plz?.verbatimQuote,
+    ],
+  );
+  werte.objektadresse = adresse.objektadresse || werte.objektadresse;
+  werte.stadt = adresse.stadt || werte.stadt;
+  werte.plz = adresse.plz || werte.plz;
+  return werte;
 }
 
 export function hatWerte(felder: ExposeFelder | null): boolean {

@@ -12,6 +12,7 @@ import {
   MAX_EXPOSE_PDF_BYTES,
 } from "./content-version";
 import { mitRechteDiagnose } from "./describe";
+import { anreichereAdressFelderWerte } from "./address-format";
 import { buildRealEstatePayload, buildTransaktionPayload } from "./field-map";
 import { salesforceDataApiPath, salesforceRestJson } from "./query";
 import { resolveVerifiedSalesforceCredentials } from "./server-credentials";
@@ -123,25 +124,18 @@ async function updateRealEstate(
 }
 
 /**
- * Nach dem Anlegen Adressfelder explizit per PATCH setzen.
- * Manche Orgs/Flows lassen Street/City/ZIP beim Insert leer — Update greift dann.
+ * Nach dem Anlegen alle Exposé-Felder per PATCH nachsetzen.
+ * Manche Orgs/Flows lassen Felder (v. a. Street/City/ZIP) beim Insert leer —
+ * derselbe Write wie beim Aktualisieren eines bestehenden Objekts greift dann.
  */
-async function ensureAdressfelderNachCreate(
+async function ensureFelderNachCreate(
   accessToken: string,
   instanceUrl: string,
   realEstateId: string,
   felder: Partial<Record<ExposeFeldId, string>>,
 ): Promise<void> {
-  const full = buildRealEstatePayload(felder, { includeName: false });
-  const payload: Record<string, string | number> = {};
-  for (const key of [
-    "Street_Name__c",
-    "Street_Number__c",
-    "City__c",
-    "ZIP_Code__c",
-  ] as const) {
-    if (full[key] != null && full[key] !== "") payload[key] = full[key];
-  }
+  // Volle Payload inkl. Name — gleiche Werte, die der User im Exposé geprüft hat.
+  const payload = buildRealEstatePayload(felder, { includeName: true });
   if (Object.keys(payload).length === 0) return;
 
   await salesforceRestJson<void>(
@@ -255,12 +249,24 @@ export async function exportExposeToSalesforce(
   });
 
   const existingId = data.realEstateId?.trim() || null;
-  const felder = Object.fromEntries(
+  const felderRoh = Object.fromEntries(
     Object.entries(data.felder ?? {}).map(([k, v]) => [
       k,
       v == null ? "" : String(v),
     ]),
   ) as Partial<Record<ExposeFeldId, string>>;
+  // Stadt/PLZ aus Adresszeile nachziehen — sonst fehlen sie beim Anlegen.
+  const adresse = anreichereAdressFelderWerte({
+    objektadresse: felderRoh.objektadresse,
+    stadt: felderRoh.stadt,
+    plz: felderRoh.plz,
+  });
+  const felder: Partial<Record<ExposeFeldId, string>> = {
+    ...felderRoh,
+    objektadresse: adresse.objektadresse || felderRoh.objektadresse,
+    stadt: adresse.stadt || felderRoh.stadt,
+    plz: adresse.plz || felderRoh.plz,
+  };
   const postfachEintragId = data.postfachEintragId?.trim() || null;
 
   let realEstateId: string;
@@ -294,8 +300,8 @@ export async function exportExposeToSalesforce(
         creds.instanceUrl,
         felder,
       );
-      // Adressfelder nachziehen — Insert lässt Street/City/ZIP in manchen Orgs leer.
-      await ensureAdressfelderNachCreate(
+      // Geprüfte Exposé-Felder nachziehen — Insert lässt sie in manchen Orgs leer.
+      await ensureFelderNachCreate(
         creds.accessToken,
         creds.instanceUrl,
         realEstateId,
