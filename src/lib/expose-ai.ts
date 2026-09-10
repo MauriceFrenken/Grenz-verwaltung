@@ -2,7 +2,7 @@
  * Server-only Exposé-Extraktion via Anthropic Claude Haiku.
  * Niemals aus Client-Code importieren (nur Typen sind client-safe).
  */
-import { anreichereAdressFelderWerte } from "@/lib/salesforce/address-format";
+import { anreichereAdressFelderWerte } from "./salesforce/address-format";
 
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
