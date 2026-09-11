@@ -75,10 +75,21 @@ export function buildRealEstatePayload(
     plz: felder.plz,
   });
 
+  // Legacy-Textfelder (Matching / Listen / ältere Layouts)
   if (teile.street) out.Street_Name__c = teile.street;
   if (teile.number) out.Street_Number__c = teile.number;
   if (teile.city) out.City__c = teile.city;
   if (teile.zip) out.ZIP_Code__c = teile.zip;
+
+  // Compound Address__c (Lightning „Adresse“ inkl. Google Maps).
+  // Eigene API-Namen: Address__Street__s usw. — nicht Street_Name__c / City__c.
+  const strasseZeile = [teile.street, teile.number].filter(Boolean).join(" ");
+  if (strasseZeile) out.Address__Street__s = strasseZeile;
+  if (teile.city) out.Address__City__s = teile.city;
+  if (teile.zip) out.Address__PostalCode__s = teile.zip;
+  if (strasseZeile || teile.city || teile.zip) {
+    out.Address__CountryCode__s = "DE";
+  }
 
   if (opts?.includeName !== false) {
     const name = formatObjektNameFromTeile(teile);

@@ -125,8 +125,8 @@ async function updateRealEstate(
 
 /**
  * Nach dem Anlegen alle Exposé-Felder per PATCH nachsetzen.
- * Manche Orgs/Flows lassen Felder (v. a. Street/City/ZIP) beim Insert leer —
- * derselbe Write wie beim Aktualisieren eines bestehenden Objekts greift dann.
+ * Manche Orgs/Flows lassen Felder (Legacy-Adresse + Address__*) beim Insert
+ * leer — derselbe Write wie beim Aktualisieren greift dann.
  */
 async function ensureFelderNachCreate(
   accessToken: string,
