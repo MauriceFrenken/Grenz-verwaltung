@@ -10,7 +10,6 @@ import { useAuth, usePermissions } from "@/hooks/useAuth";
 import {
   FREIGABE_STATUS_LABELS,
   FREIGABE_STATUS_SPALTEN,
-  RECHNUNG_HISTORIE_TAGE,
   type DokumentFreigabeStatus,
   type DokumentPosteingangEintrag,
   type RechnungHistorieEintrag,
@@ -204,11 +203,6 @@ function Spalte({
       <div className="hairline-b flex items-center justify-between border-b border-hairline px-3 py-2">
         <h3 className="label-caps text-text-muted">
           {FREIGABE_STATUS_LABELS[status]}
-          {historie ? (
-            <span className="ml-2 normal-case tracking-normal text-text-subtle">
-              {RECHNUNG_HISTORIE_TAGE} Tage
-            </span>
-          ) : null}
         </h3>
         <span className="text-xs text-text-subtle">
           {eintraege.length + (historie?.length ?? 0)}
