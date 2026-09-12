@@ -105,15 +105,13 @@ export async function microsoftOneDriveKinderLesen(input: {
   return { benutzer, items };
 }
 
-/** Liest den Posteingang aller Dokument-Postfächer (Dokumente › Postfach). */
-export async function microsoftDokumentPosteingangLesen(input: {
-  supabaseAccessToken: string;
+/** Posteingang lesen (ohne User-Auth — für Cron / interne Aufrufe). */
+export async function microsoftDokumentPosteingangLesenIntern(input?: {
   anzahl?: number;
 }): Promise<{ postfaecher: string[]; nachrichten: DokumentPosteingangNachricht[] }> {
-  await microsoftCallerAusJwt(input.supabaseAccessToken);
   const { accessToken } = await microsoftAccessToken();
   const quellen = microsoftDokumentPosteingangQuellen();
-  const anzahl = input.anzahl ?? 50;
+  const anzahl = input?.anzahl ?? 50;
 
   const bloecke = await Promise.all(
     quellen.map(async ({ postfach, seit }) => {
@@ -128,6 +126,15 @@ export async function microsoftDokumentPosteingangLesen(input: {
 
   const nachrichten = dokumentPosteingangSortieren(bloecke.flat()).slice(0, anzahl);
   return { postfaecher: quellen.map((q) => q.postfach), nachrichten };
+}
+
+/** Liest den Posteingang aller Dokument-Postfächer (Dokumente › Postfach). */
+export async function microsoftDokumentPosteingangLesen(input: {
+  supabaseAccessToken: string;
+  anzahl?: number;
+}): Promise<{ postfaecher: string[]; nachrichten: DokumentPosteingangNachricht[] }> {
+  await microsoftCallerAusJwt(input.supabaseAccessToken);
+  return microsoftDokumentPosteingangLesenIntern({ anzahl: input.anzahl });
 }
 
 export type AblegenErgebnis = {

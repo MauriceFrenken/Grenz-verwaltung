@@ -4,6 +4,7 @@
 import { handleAnalyzeDokumentRequest } from "@/lib/dokument-ai";
 import {
   microsoftDokumentPosteingangLesen,
+  microsoftDokumentPosteingangLesenIntern,
   istAblageRootOrdner,
   microsoftOneDriveUser,
 } from "@/lib/microsoft/ablage";
@@ -47,10 +48,11 @@ function fehlerText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** @returns true bei Erfolg, false wenn der Eintrag als Fehler gespeichert wurde. */
 async function analysiereEintrag(
   accessToken: string,
   row: DokumentPosteingangRow,
-): Promise<void> {
+): Promise<boolean> {
   try {
     if (!row.anhang_id) {
       throw new Error("Kein Anhang an der Mail gefunden.");
@@ -262,8 +264,20 @@ async function analysiereEintrag(
       ablageOrdnerId,
       ablageOrdnerPfad,
     });
+    return true;
   } catch (err) {
-    await speichereAnalyseFehler(row.id, fehlerText(err));
+    try {
+      await speichereAnalyseFehler(row.id, fehlerText(err));
+    } catch (speicherErr) {
+      console.error(
+        "[dokument-postfach] Analysefehler konnte nicht gespeichert werden",
+        row.id,
+        speicherErr,
+      );
+      // Eintrag bleibt ggf. „neu“ → Aufrufer muss abbrechen, sonst Endlosschleife.
+      throw speicherErr;
+    }
+    return false;
   }
 }
 
@@ -335,5 +349,111 @@ export async function dokumentPosteingangSynchronisieren(input: {
     nachrichten,
     eintraege: rows.map(zuEintrag),
     offen: await zaehleOffene(),
+  };
+}
+
+/** Pro Cron-Aufruf max. so viele KI-Analysen (Timeout-Schutz). */
+const NACHTLAUF_MAX_ANALYSEN = 5;
+/**
+ * Mindestabstand zwischen Anthropic-Starts (~5 Requests/Minute).
+ * Dauert eine Analyse schon länger, wird nicht extra gewartet.
+ */
+const ANTHROPIC_MIN_ABSTAND_MS = 12_000;
+/** Nach so vielen Fehlern in Folge: Lauf stoppen (vermutlich systemisch). */
+const NACHTLAUF_MAX_FEHLER_IN_FOLGE = 3;
+/** Max. Selbst-Fortsetzungen nach dem ersten Cron-Trigger. */
+export const NACHTLAUF_MAX_RUNDEN = 25;
+
+function warteMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export type DokumentPosteingangNachtlaufErgebnis = {
+  analysiert: number;
+  fehlgeschlagen: number;
+  offen: number;
+  fortsetzen: boolean;
+  abgebrochen?: "zu_viele_fehler" | "persistenz";
+  inboxSyncFehler?: string;
+};
+
+/**
+ * Nachtlauf ohne User-JWT: Posteingang listen, dann nacheinander analysieren.
+ * Einzelne Eintrag-Fehler werden übersprungen; nach 3 Fehlern in Folge Stopp.
+ */
+export async function dokumentPosteingangNachtlauf(input?: {
+  /** Erste Runde: Inbox von Graph laden. Folgerunden: nur analysieren. */
+  inboxSync?: boolean;
+}): Promise<DokumentPosteingangNachtlaufErgebnis> {
+  const inboxSync = input?.inboxSync !== false;
+  let inboxSyncFehler: string | undefined;
+
+  if (inboxSync) {
+    try {
+      const { nachrichten } = await microsoftDokumentPosteingangLesenIntern({
+        anzahl: 50,
+      });
+      await eintraegeAnlegen(nachrichten);
+    } catch (err) {
+      inboxSyncFehler = fehlerText(err);
+      console.error("[dokument-postfach] Inbox-Sync im Nachtlauf", err);
+      // Bestehende „neu“-Einträge trotzdem analysieren.
+    }
+  }
+
+  const { accessToken } = await microsoftAccessToken();
+  let analysiert = 0;
+  let fehlgeschlagen = 0;
+  let fehlerInFolge = 0;
+  let naechsterStartErlaubt = 0;
+  let abgebrochen: DokumentPosteingangNachtlaufErgebnis["abgebrochen"];
+
+  for (let i = 0; i < NACHTLAUF_MAX_ANALYSEN; i++) {
+    const offen = await naechsteOffeneMail();
+    if (!offen) break;
+
+    const warte = naechsterStartErlaubt - Date.now();
+    if (warte > 0) await warteMs(warte);
+    naechsterStartErlaubt = Date.now() + ANTHROPIC_MIN_ABSTAND_MS;
+
+    let ok: boolean;
+    try {
+      ok = await analysiereEintrag(accessToken, offen);
+    } catch (err) {
+      console.error(
+        "[dokument-postfach] Unerwarteter Analysefehler",
+        offen.id,
+        err,
+      );
+      abgebrochen = "persistenz";
+      break;
+    }
+
+    if (ok) {
+      analysiert += 1;
+      fehlerInFolge = 0;
+    } else {
+      fehlgeschlagen += 1;
+      fehlerInFolge += 1;
+      console.error(
+        "[dokument-postfach] Analyse fehlgeschlagen, überspringe",
+        offen.id,
+        `(${fehlerInFolge}/${NACHTLAUF_MAX_FEHLER_IN_FOLGE} in Folge)`,
+      );
+      if (fehlerInFolge >= NACHTLAUF_MAX_FEHLER_IN_FOLGE) {
+        abgebrochen = "zu_viele_fehler";
+        break;
+      }
+    }
+  }
+
+  const nochOffen = await zaehleOffene();
+  return {
+    analysiert,
+    fehlgeschlagen,
+    offen: nochOffen,
+    fortsetzen: !abgebrochen && nochOffen > 0,
+    abgebrochen,
+    inboxSyncFehler,
   };
 }

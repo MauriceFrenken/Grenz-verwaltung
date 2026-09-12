@@ -42,6 +42,7 @@ import { Route as VerwaltungNebenkostenRouteImport } from './routes/verwaltung.n
 import { Route as VerwaltungObjekteRouteImport } from './routes/verwaltung.objekte'
 import { Route as VerwaltungSollstellungRouteImport } from './routes/verwaltung.sollstellung'
 import { Route as VerwaltungZahlungenRouteImport } from './routes/verwaltung.zahlungen'
+import { Route as ApiCronPostfachAnalyseRouteImport } from './routes/api.cron.postfach-analyse'
 import { Route as TransaktionenExposeImportIndexRouteImport } from './routes/transaktionen.expose-import.index'
 import { Route as TransaktionenExposeImportSalesforceRouteImport } from './routes/transaktionen.expose-import.salesforce'
 import { Route as VerwaltungObjekteIndexRouteImport } from './routes/verwaltung.objekte.index'
@@ -219,6 +220,11 @@ const VerwaltungZahlungenRoute = VerwaltungZahlungenRouteImport.update({
   path: '/zahlungen',
   getParentRoute: () => VerwaltungRoute,
 } as any)
+const ApiCronPostfachAnalyseRoute = ApiCronPostfachAnalyseRouteImport.update({
+  id: '/api/cron/postfach-analyse',
+  path: '/api/cron/postfach-analyse',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TransaktionenExposeImportIndexRoute =
   TransaktionenExposeImportIndexRouteImport.update({
     id: '/',
@@ -288,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/transaktionen/': typeof TransaktionenIndexRoute
   '/verwaltung/': typeof VerwaltungIndexRoute
+  '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
@@ -322,6 +329,7 @@ export interface FileRoutesByTo {
   '/einstellungen': typeof EinstellungenIndexRoute
   '/transaktionen': typeof TransaktionenIndexRoute
   '/verwaltung': typeof VerwaltungIndexRoute
+  '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
@@ -364,6 +372,7 @@ export interface FileRoutesById {
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/transaktionen/': typeof TransaktionenIndexRoute
   '/verwaltung/': typeof VerwaltungIndexRoute
+  '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
@@ -407,6 +416,7 @@ export interface FileRouteTypes {
     | '/einstellungen/'
     | '/transaktionen/'
     | '/verwaltung/'
+    | '/api/cron/postfach-analyse'
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/verwaltung/sollstellung/$id'
@@ -441,6 +451,7 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/transaktionen'
     | '/verwaltung'
+    | '/api/cron/postfach-analyse'
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/verwaltung/sollstellung/$id'
@@ -482,6 +493,7 @@ export interface FileRouteTypes {
     | '/einstellungen/'
     | '/transaktionen/'
     | '/verwaltung/'
+    | '/api/cron/postfach-analyse'
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/verwaltung/sollstellung/$id'
@@ -503,6 +515,7 @@ export interface RootRouteChildren {
   VerwaltungRoute: typeof VerwaltungRouteWithChildren
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
+  ApiCronPostfachAnalyseRoute: typeof ApiCronPostfachAnalyseRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -738,6 +751,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerwaltungZahlungenRouteImport
       parentRoute: typeof VerwaltungRoute
     }
+    '/api/cron/postfach-analyse': {
+      id: '/api/cron/postfach-analyse'
+      path: '/api/cron/postfach-analyse'
+      fullPath: '/api/cron/postfach-analyse'
+      preLoaderRoute: typeof ApiCronPostfachAnalyseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/transaktionen/expose-import/': {
       id: '/transaktionen/expose-import/'
       path: '/'
@@ -924,6 +944,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerwaltungRoute: VerwaltungRouteWithChildren,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
+  ApiCronPostfachAnalyseRoute: ApiCronPostfachAnalyseRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
