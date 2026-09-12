@@ -5,6 +5,7 @@
 import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
 
 import { dokumentPosteingangBuchen } from "./buchen";
+import { leseRechnungsHistorie } from "./rechnung-historie";
 import {
   leseEintrag,
   leseRechnungsfreigabe,
@@ -16,6 +17,7 @@ import type {
   DokumentBuchenErgebnis,
   DokumentFreigabeStatus,
   DokumentPosteingangEintrag,
+  DokumentRechnungsfreigabe,
 } from "./typen";
 
 const VERSCHIEBBARE: DokumentFreigabeStatus[] = ["neu", "in_pruefung"];
@@ -42,9 +44,12 @@ function normalisiereFreigabe(
 
 export async function dokumentRechnungsfreigabeLaden(input: {
   supabaseAccessToken: string;
-}): Promise<DokumentPosteingangEintrag[]> {
+}): Promise<DokumentRechnungsfreigabe> {
   await microsoftCallerAusJwt(input.supabaseAccessToken);
-  const rows = await leseRechnungsfreigabe();
+  const [rows, historie] = await Promise.all([
+    leseRechnungsfreigabe(),
+    leseRechnungsHistorie(),
+  ]);
   const offen: DokumentPosteingangEintrag[] = [];
 
   for (const r of rows) {
@@ -58,7 +63,7 @@ export async function dokumentRechnungsfreigabeLaden(input: {
     });
   }
 
-  return offen;
+  return { eintraege: offen, historie };
 }
 
 export async function dokumentRechnungsfreigabeZaehlen(input: {

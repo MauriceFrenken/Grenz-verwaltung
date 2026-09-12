@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -10,16 +10,53 @@ import { useAuth, usePermissions } from "@/hooks/useAuth";
 import {
   FREIGABE_STATUS_LABELS,
   FREIGABE_STATUS_SPALTEN,
+  RECHNUNG_HISTORIE_TAGE,
   type DokumentFreigabeStatus,
   type DokumentPosteingangEintrag,
+  type RechnungHistorieEintrag,
 } from "@/lib/dokument-postfach/typen";
 import { cn } from "@/lib/utils";
 
-function betragText(eintrag: DokumentPosteingangEintrag): string {
-  const betrag = eintrag.felder?.rechnungsbetrag?.value?.trim();
-  const waehrung = eintrag.felder?.waehrung?.value?.trim() || "EUR";
-  if (!betrag) return "–";
-  return `${betrag} ${waehrung}`;
+function betragText(
+  betrag: string | null | undefined,
+  waehrung: string | null | undefined,
+): string {
+  const wert = betrag?.trim();
+  if (!wert) return "–";
+  return `${wert} ${waehrung?.trim() || "EUR"}`;
+}
+
+function kurzDatum(iso: string | null): string {
+  if (!iso) return "–";
+  try {
+    return new Intl.DateTimeFormat("de-DE", { dateStyle: "short" }).format(
+      new Date(iso),
+    );
+  } catch {
+    return "–";
+  }
+}
+
+function DuplikatHinweis({ eintrag }: { eintrag: DokumentPosteingangEintrag }) {
+  const hinweis = eintrag.duplikatHinweis;
+  if (!hinweis?.treffer?.length) return null;
+
+  const treffer = hinweis.treffer[0];
+  const wann = kurzDatum(treffer.datum);
+
+  return (
+    <p
+      className="mt-2 flex items-start gap-1.5 border border-destructive/40 bg-destructive/5 px-2 py-1.5 text-xs text-destructive"
+      role="alert"
+    >
+      <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+      <span>
+        Nr. {hinweis.rechnungsnummer} schon am {wann}
+        {treffer.quelle === "datev" ? " an DATEV" : " eingegangen"}
+        {hinweis.treffer.length > 1 ? ` (+${hinweis.treffer.length - 1})` : ""}
+      </span>
+    </p>
+  );
 }
 
 function Karte({
@@ -70,7 +107,18 @@ function Karte({
       <p className="mt-1 text-xs text-text-muted">
         {eintrag.felder?.gesellschaftName?.value?.trim() || "–"}
       </p>
-      <p className="mt-1 text-xs text-text-subtle">{betragText(eintrag)}</p>
+      <p className="mt-1 text-xs text-text-subtle">
+        {betragText(
+          eintrag.felder?.rechnungsbetrag?.value,
+          eintrag.felder?.waehrung?.value,
+        )}
+      </p>
+      {eintrag.felder?.rechnungsnummer?.value?.trim() ? (
+        <p className="mt-0.5 text-xs text-text-subtle">
+          Nr. {eintrag.felder.rechnungsnummer.value.trim()}
+        </p>
+      ) : null}
+      <DuplikatHinweis eintrag={eintrag} />
       {!laedt ? (
         <Link
           to="/dokumente/pruefung"
@@ -85,9 +133,38 @@ function Karte({
   );
 }
 
+/** Bereits an DATEV gesendet — bleibt zur Kontrolle sichtbar, nicht verschiebbar. */
+function HistorieKarte({ eintrag }: { eintrag: RechnungHistorieEintrag }) {
+  return (
+    <div className="border border-hairline border-dashed bg-surface p-3 text-left">
+      <p className="line-clamp-2 text-sm font-medium text-heading">
+        {eintrag.rechnungssteller?.trim() ||
+          eintrag.anhangName ||
+          eintrag.betreff ||
+          "Rechnung"}
+      </p>
+      <p className="mt-1 text-xs text-text-muted">
+        {eintrag.gesellschaftName?.trim() || "–"}
+      </p>
+      <p className="mt-1 text-xs text-text-subtle">
+        {betragText(eintrag.rechnungsbetrag, eintrag.waehrung)}
+      </p>
+      {eintrag.rechnungsnummer?.trim() ? (
+        <p className="mt-0.5 text-xs text-text-subtle">
+          Nr. {eintrag.rechnungsnummer.trim()}
+        </p>
+      ) : null}
+      <p className="mt-2 text-xs text-text-muted">
+        Gesendet {kurzDatum(eintrag.anDatevAm)}
+      </p>
+    </div>
+  );
+}
+
 function Spalte({
   status,
   eintraege,
+  historie,
   dropErlaubt,
   busyId,
   onDrop,
@@ -95,6 +172,7 @@ function Spalte({
 }: {
   status: DokumentFreigabeStatus;
   eintraege: DokumentPosteingangEintrag[];
+  historie?: RechnungHistorieEintrag[];
   dropErlaubt: boolean;
   busyId: string | null;
   onDrop: (status: DokumentFreigabeStatus, eintragId: string) => void;
@@ -126,8 +204,15 @@ function Spalte({
       <div className="hairline-b flex items-center justify-between border-b border-hairline px-3 py-2">
         <h3 className="label-caps text-text-muted">
           {FREIGABE_STATUS_LABELS[status]}
+          {historie ? (
+            <span className="ml-2 normal-case tracking-normal text-text-subtle">
+              {RECHNUNG_HISTORIE_TAGE} Tage
+            </span>
+          ) : null}
         </h3>
-        <span className="text-xs text-text-subtle">{eintraege.length}</span>
+        <span className="text-xs text-text-subtle">
+          {eintraege.length + (historie?.length ?? 0)}
+        </span>
       </div>
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
         {eintraege.map((e) => (
@@ -139,6 +224,9 @@ function Spalte({
             onDragStart={onDragStart}
           />
         ))}
+        {historie?.map((h) => (
+          <HistorieKarte key={h.id} eintrag={h} />
+        ))}
       </div>
     </div>
   );
@@ -149,6 +237,7 @@ export function RechnungsfreigabePage() {
   const { darfAktion } = usePermissions();
   const token = session?.access_token ?? "";
   const [eintraege, setEintraege] = useState<DokumentPosteingangEintrag[]>([]);
+  const [historie, setHistorie] = useState<RechnungHistorieEintrag[]>([]);
   const [laedt, setLaedt] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -162,10 +251,11 @@ export function RechnungsfreigabePage() {
       const { dokumentRechnungsfreigabeLadenFn } = await import(
         "@/lib/dokument-postfach/server-fn"
       );
-      const liste = await dokumentRechnungsfreigabeLadenFn({
+      const daten = await dokumentRechnungsfreigabeLadenFn({
         data: { supabaseAccessToken: token },
       });
-      setEintraege(liste);
+      setEintraege(daten.eintraege);
+      setHistorie(daten.historie);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Laden fehlgeschlagen.");
     } finally {
@@ -235,6 +325,13 @@ export function RechnungsfreigabePage() {
 
         if (ergebnis.entfernt) {
           setEintraege((prev) => prev.filter((e) => e.id !== eintragId));
+          const gemerkt = ergebnis.gebucht.historie;
+          if (gemerkt) {
+            setHistorie((prev) => [
+              gemerkt,
+              ...prev.filter((h) => h.id !== gemerkt.id),
+            ]);
+          }
           toast.success(`Zu DATEV: ${ergebnis.gebucht.ordnerPfad}`);
         } else {
           setEintraege((prev) =>
@@ -288,6 +385,7 @@ export function RechnungsfreigabePage() {
                   key={status}
                   status={status}
                   eintraege={nachSpalte[status] ?? []}
+                  historie={status === "an_datev" ? historie : undefined}
                   dropErlaubt={dropErlaubt}
                   busyId={busyId}
                   onDrop={(s, id) => void verschieben(s, id)}

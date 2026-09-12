@@ -14,6 +14,7 @@ import {
 } from "@/lib/microsoft/supabase-admin";
 
 import { schliesseNachrichtAbWennFertig } from "./mail-abschluss";
+import { merkeRechnungInHistorie } from "./rechnung-historie";
 import {
   leseEintrag,
   markiereGebucht,
@@ -150,6 +151,18 @@ export async function dokumentPosteingangBuchen(input: {
     ablageDateiname: dateiname,
   });
 
+  // Vor dem Mail-Abschluss merken — dabei wird der Eintrag ggf. gelöscht.
+  const historie = await merkeRechnungInHistorie({
+    eintragId: id,
+    felder,
+    gesellschaftId,
+    gesellschaftName,
+    betreff: row.betreff,
+    anhangName: row.anhang_name,
+    ablageDateiname: dateiname,
+    ordnerPfad,
+  });
+
   const aktualisiert = await leseEintrag(id);
   const abschluss = await schliesseNachrichtAbWennFertig({
     postfach: row.postfach,
@@ -162,6 +175,7 @@ export async function dokumentPosteingangBuchen(input: {
     onedriveId: ergebnis.hochgeladen.id,
     ordnerPfad,
     datevPostfach,
+    historie,
     ...abschluss,
   };
 }

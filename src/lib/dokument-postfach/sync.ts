@@ -20,6 +20,10 @@ import {
 
 import { baueAnhangAnalyseKontext } from "./anhang-kontext";
 import {
+  loescheAlteRechnungsHistorie,
+  pruefeRechnungsDuplikat,
+} from "./rechnung-historie";
+import {
   ermittleZielordnerIterativ,
   findeEingangsrechnungenOrdner,
   findeGesellschaftId,
@@ -40,7 +44,10 @@ import {
   zuEintrag,
   type DokumentPosteingangRow,
 } from "./store";
-import type { DokumentPosteingangSyncErgebnis } from "./typen";
+import type {
+  DokumentPosteingangSyncErgebnis,
+  RechnungDuplikatHinweis,
+} from "./typen";
 
 const MAX_ANHANG_BYTES = 25 * 1024 * 1024;
 
@@ -256,6 +263,19 @@ async function analysiereEintrag(
       }
     }
 
+    let duplikatHinweis: RechnungDuplikatHinweis | null = null;
+    if (ergebnis.dokumentTyp === "rechnung") {
+      try {
+        duplikatHinweis = await pruefeRechnungsDuplikat({
+          rechnungsnummer: ergebnis.felder.rechnungsnummer?.value,
+          eintragId: row.id,
+        });
+      } catch (err) {
+        // Hinweis ist optional — Analyse darf daran nicht scheitern.
+        console.error("[dokument-postfach] Dublettenprüfung", row.id, err);
+      }
+    }
+
     await speichereAnalyse(row.id, {
       dokumentTyp: ergebnis.dokumentTyp,
       felder: ergebnis.felder,
@@ -263,6 +283,7 @@ async function analysiereEintrag(
       objektId,
       ablageOrdnerId,
       ablageOrdnerPfad,
+      duplikatHinweis,
     });
     return true;
   } catch (err) {
@@ -389,6 +410,12 @@ export async function dokumentPosteingangNachtlauf(input?: {
   let inboxSyncFehler: string | undefined;
 
   if (inboxSync) {
+    try {
+      await loescheAlteRechnungsHistorie();
+    } catch (err) {
+      console.error("[dokument-postfach] Rechnungshistorie aufräumen", err);
+    }
+
     try {
       const { nachrichten } = await microsoftDokumentPosteingangLesenIntern({
         anzahl: 50,

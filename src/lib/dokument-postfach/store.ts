@@ -9,6 +9,7 @@ import type {
   DokumentFreigabeStatus,
   DokumentPosteingangEintrag,
   DokumentPosteingangStatus,
+  RechnungDuplikatHinweis,
 } from "./typen";
 import type { DokumentTyp } from "@/lib/dokument-ai";
 
@@ -73,6 +74,7 @@ export type DokumentPosteingangRow = {
   abgelegt_am: string | null;
   abgelegt_onedrive_id: string | null;
   email_text: string | null;
+  duplikat_hinweis: RechnungDuplikatHinweis | null;
 };
 
 const SPALTEN =
@@ -80,7 +82,7 @@ const SPALTEN =
   "absender_mail,eingegangen_am,web_link,anhang_id,anhang_name,anhang_content_type," +
   "anhang_groesse,status,freigabe_status,ist_rechnung,dokument_typ,felder,analyse_fehler,analysiert_am," +
   "gesellschaft_id,objekt_id,ablage_ordner_id,ablage_ordner_pfad,ablage_dateiname," +
-  "abgelegt_am,abgelegt_onedrive_id,email_text";
+  "abgelegt_am,abgelegt_onedrive_id,email_text,duplikat_hinweis";
 
 function fehler(kontext: string, message: string): Error {
   return new Error(`${kontext}: ${message}`);
@@ -111,6 +113,7 @@ export function zuEintrag(row: DokumentPosteingangRow): DokumentPosteingangEintr
     ablageOrdnerPfad: row.ablage_ordner_pfad,
     ablageDateiname: row.ablage_dateiname,
     abgelegtAm: row.abgelegt_am,
+    duplikatHinweis: row.duplikat_hinweis,
   };
 }
 
@@ -222,6 +225,7 @@ export async function speichereAnalyse(
     objektId: string | null;
     ablageOrdnerId: string | null;
     ablageOrdnerPfad: string | null;
+    duplikatHinweis?: RechnungDuplikatHinweis | null;
   },
 ): Promise<void> {
   const istRechnung = input.dokumentTyp === "rechnung";
@@ -233,6 +237,7 @@ export async function speichereAnalyse(
       dokument_typ: input.dokumentTyp,
       ist_rechnung: istRechnung,
       freigabe_status: istRechnung ? "neu" : null,
+      duplikat_hinweis: input.duplikatHinweis ?? null,
       felder: input.felder,
       gesellschaft_id: input.gesellschaftId,
       objekt_id: input.objektId,

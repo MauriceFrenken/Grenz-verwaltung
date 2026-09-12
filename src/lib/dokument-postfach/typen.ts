@@ -34,6 +34,41 @@ export const FREIGABE_STATUS_LABELS: Record<DokumentFreigabeStatus, string> = {
   erledigt: "Erledigt",
 };
 
+/** Aufbewahrung der an DATEV gesendeten Rechnungen (Board + Dublettenprüfung). */
+export const RECHNUNG_HISTORIE_TAGE = 30;
+
+export type RechnungDuplikatTreffer = {
+  /** `datev`: bereits gesendet · `offen`: liegt noch auf dem Board. */
+  quelle: "datev" | "offen";
+  rechnungsnummer: string;
+  rechnungssteller: string | null;
+  rechnungsbetrag: string | null;
+  waehrung: string | null;
+  /** An DATEV gesendet am bzw. eingegangen am. */
+  datum: string | null;
+};
+
+export type RechnungDuplikatHinweis = {
+  rechnungsnummer: string;
+  geprueftAm: string;
+  treffer: RechnungDuplikatTreffer[];
+};
+
+/** An DATEV gesendete Rechnung — bleibt RECHNUNG_HISTORIE_TAGE sichtbar. */
+export type RechnungHistorieEintrag = {
+  id: string;
+  rechnungsnummer: string | null;
+  rechnungssteller: string | null;
+  rechnungsbetrag: string | null;
+  waehrung: string | null;
+  rechnungsdatum: string | null;
+  gesellschaftName: string | null;
+  betreff: string | null;
+  anhangName: string | null;
+  ablageDateiname: string | null;
+  anDatevAm: string;
+};
+
 export type DokumentPosteingangEintrag = {
   id: string;
   postfach: string;
@@ -58,6 +93,13 @@ export type DokumentPosteingangEintrag = {
   ablageOrdnerPfad: string | null;
   ablageDateiname: string | null;
   abgelegtAm: string | null;
+  duplikatHinweis: RechnungDuplikatHinweis | null;
+};
+
+export type DokumentRechnungsfreigabe = {
+  eintraege: DokumentPosteingangEintrag[];
+  /** In den letzten 30 Tagen an DATEV gesendet. */
+  historie: RechnungHistorieEintrag[];
 };
 
 export type DokumentPosteingangSyncErgebnis = {
@@ -98,6 +140,8 @@ export type DokumentBuchenErgebnis = {
   onedriveId: string;
   ordnerPfad: string;
   datevPostfach: string;
+  /** Karte für die Board-Spalte „An DATEV“ (null, wenn nicht gespeichert). */
+  historie: RechnungHistorieEintrag | null;
 } & DokumentMailAbschluss;
 
 export type DokumentTamErgebnis = {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { BookOpen, Loader2 } from "lucide-react";
+import { AlertTriangle, BookOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -52,6 +52,17 @@ const AUSWAHL_LEER = "__none__";
 type AnhangVorschauArt = "pdf" | "bild" | "sonstiges";
 
 const pruefungRoute = getRouteApi("/dokumente/pruefung");
+
+function formatDatum(iso: string | null): string {
+  if (!iso) return "–";
+  try {
+    return new Intl.DateTimeFormat("de-DE", { dateStyle: "short" }).format(
+      new Date(iso),
+    );
+  } catch {
+    return "–";
+  }
+}
 
 function anhangArtAus(mimeType: string, dateiname: string): AnhangVorschauArt {
   const mime = mimeType.toLowerCase();
@@ -380,6 +391,10 @@ export function DokumentPruefungPage() {
     }
   }
 
+  const duplikat = eintrag?.duplikatHinweis?.treffer?.length
+    ? eintrag.duplikatHinweis
+    : null;
+
   const istTam =
     istTamAusFeldern(eintrag?.felder ?? null) ||
     istTamGesellschaft(felder.gesellschaftName?.value) ||
@@ -514,6 +529,31 @@ export function DokumentPruefungPage() {
         </div>
 
         <aside className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain lg:w-[340px] lg:flex-none xl:w-[400px]">
+          {duplikat ? (
+            <div
+              className="flex gap-2 border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive"
+              role="alert"
+            >
+              <AlertTriangle
+                className="mt-0.5 h-4 w-4 shrink-0"
+                strokeWidth={1.5}
+              />
+              <div className="flex flex-col gap-1">
+                <span>Mögliche Dublette · Nr. {duplikat.rechnungsnummer}</span>
+                {duplikat.treffer.map((t, i) => (
+                  <span key={i} className="text-xs">
+                    {t.quelle === "datev" ? "An DATEV" : "Eingegangen"}{" "}
+                    {formatDatum(t.datum)}
+                    {t.rechnungssteller ? ` · ${t.rechnungssteller}` : ""}
+                    {t.rechnungsbetrag
+                      ? ` · ${t.rechnungsbetrag} ${t.waehrung || "EUR"}`
+                      : ""}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex flex-col gap-2 border border-hairline bg-surface-muted/40 p-4">
             <span className="label-caps text-text-muted">Zuordnung</span>
             {istTam ? (
