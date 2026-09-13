@@ -373,8 +373,6 @@ export async function dokumentPosteingangSynchronisieren(input: {
   };
 }
 
-/** Pro Cron-Aufruf max. so viele KI-Analysen (Timeout-Schutz). */
-const NACHTLAUF_MAX_ANALYSEN = 5;
 /**
  * Mindestabstand zwischen Anthropic-Starts (~5 Requests/Minute).
  * Dauert eine Analyse schon länger, wird nicht extra gewartet.
@@ -382,8 +380,18 @@ const NACHTLAUF_MAX_ANALYSEN = 5;
 const ANTHROPIC_MIN_ABSTAND_MS = 12_000;
 /** Nach so vielen Fehlern in Folge: Lauf stoppen (vermutlich systemisch). */
 const NACHTLAUF_MAX_FEHLER_IN_FOLGE = 3;
+/**
+ * Sicherheitslimit pro Invocation (zusätzlich zum Zeitbudget).
+ * Reicht für große Posteingänge; echte Grenze ist deadlineMs / maxDuration.
+ */
+const NACHTLAUF_MAX_ANALYSEN_PRO_LAUF = 200;
 /** Max. Selbst-Fortsetzungen nach dem ersten Cron-Trigger. */
-export const NACHTLAUF_MAX_RUNDEN = 25;
+export const NACHTLAUF_MAX_RUNDEN = 40;
+/**
+ * ~12,5 Min. unter maxDuration 800s — große Posteingänge in einer Invocation;
+ * Rest geht über Cron-Fortsetzung in die nächste Invocation.
+ */
+export const NACHTLAUF_DEFAULT_BUDGET_MS = 750_000;
 
 function warteMs(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -399,14 +407,22 @@ export type DokumentPosteingangNachtlaufErgebnis = {
 };
 
 /**
- * Nachtlauf ohne User-JWT: Posteingang listen, dann nacheinander analysieren.
+ * Nachtlauf ohne User-JWT: Posteingang listen, dann nacheinander analysieren
+ * bis keine offenen Mails mehr da sind oder das Zeitbudget endet.
  * Einzelne Eintrag-Fehler werden übersprungen; nach 3 Fehlern in Folge Stopp.
  */
 export async function dokumentPosteingangNachtlauf(input?: {
   /** Erste Runde: Inbox von Graph laden. Folgerunden: nur analysieren. */
   inboxSync?: boolean;
+  /**
+   * Absolute Deadline (Date.now()-ms). Danach keine neue Analyse mehr starten;
+   * Caller kann mit einer neuen Invocation fortsetzen.
+   */
+  deadlineMs?: number;
 }): Promise<DokumentPosteingangNachtlaufErgebnis> {
   const inboxSync = input?.inboxSync !== false;
+  const deadlineMs =
+    input?.deadlineMs ?? Date.now() + NACHTLAUF_DEFAULT_BUDGET_MS;
   let inboxSyncFehler: string | undefined;
 
   if (inboxSync) {
@@ -435,12 +451,17 @@ export async function dokumentPosteingangNachtlauf(input?: {
   let naechsterStartErlaubt = 0;
   let abgebrochen: DokumentPosteingangNachtlaufErgebnis["abgebrochen"];
 
-  for (let i = 0; i < NACHTLAUF_MAX_ANALYSEN; i++) {
+  for (let i = 0; i < NACHTLAUF_MAX_ANALYSEN_PRO_LAUF; i++) {
+    if (Date.now() >= deadlineMs) break;
+
     const offen = await naechsteOffeneMail();
     if (!offen) break;
 
     const warte = naechsterStartErlaubt - Date.now();
-    if (warte > 0) await warteMs(warte);
+    if (warte > 0) {
+      if (Date.now() + warte >= deadlineMs) break;
+      await warteMs(warte);
+    }
     naechsterStartErlaubt = Date.now() + ANTHROPIC_MIN_ABSTAND_MS;
 
     let ok: boolean;
