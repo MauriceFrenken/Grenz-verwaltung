@@ -23,11 +23,11 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
-  // Postfach-Nachtlauf: lange KI-Batches (Pro bis 800s). Extra-Keys gehen an nitro().
+  // Postfach-Nachtlauf: Hobby-Plan erlaubt max. 300s pro Function.
   nitro: {
     vercel: {
       functions: {
-        maxDuration: 800,
+        maxDuration: 300,
       },
     },
   } as { preset?: string },

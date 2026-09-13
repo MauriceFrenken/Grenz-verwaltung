@@ -388,10 +388,9 @@ const NACHTLAUF_MAX_ANALYSEN_PRO_LAUF = 200;
 /** Max. Selbst-Fortsetzungen nach dem ersten Cron-Trigger. */
 export const NACHTLAUF_MAX_RUNDEN = 40;
 /**
- * ~12,5 Min. unter maxDuration 800s — große Posteingänge in einer Invocation;
- * Rest geht über Cron-Fortsetzung in die nächste Invocation.
+ * ~4,5 Min. unter Hobby-maxDuration 300s — Rest geht über Folge-Invocations.
  */
-export const NACHTLAUF_DEFAULT_BUDGET_MS = 750_000;
+export const NACHTLAUF_DEFAULT_BUDGET_MS = 270_000;
 
 function warteMs(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
