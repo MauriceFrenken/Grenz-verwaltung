@@ -160,6 +160,12 @@ export function buildTransaktionPayload(
   const makler = trimOrEmpty(felder.makler);
   if (makler) out.Makler__c = makler;
 
+  const angebotspreis = trimOrEmpty(felder.angebotspreis);
+  if (angebotspreis) {
+    const n = parseNumber(angebotspreis);
+    if (n != null) out.Angebotspreis__c = n;
+  }
+
   const miete = trimOrEmpty(felder.jahresnettokaltmiete);
   if (miete) {
     const n = parseNumber(miete);

@@ -68,6 +68,12 @@ export const EXPOSE_FELD_DEFINITIONEN = [
   { id: "anzahlStellplaetze", label: "Anzahl Stellplätze", gruppe: "immobilie" as const, typ: "zahl" as const },
   { id: "makler", label: "Makler", gruppe: "transaktion" as const, typ: "text" as const },
   {
+    id: "angebotspreis",
+    label: "Angebotspreis",
+    gruppe: "transaktion" as const,
+    typ: "zahl" as const,
+  },
+  {
     id: "jahresnettokaltmiete",
     label: "Jahresnettokaltmiete",
     gruppe: "transaktion" as const,
@@ -132,6 +138,8 @@ const FELD_ANWEISUNGEN: Record<ExposeFeldId, string> = {
     "Anzahl Stellplätze / Parkplätze / Garagen. Nur die Zahl in value — keine Einheit.",
   makler:
     "Maklerfirma / Immobilienmakler (z. B. „Engel & Völkers“, „JLL“). Nur Firmenname — keine Telefonnummern oder E-Mails.",
+  angebotspreis:
+    "Angebotspreis / Kaufpreis / Verkaufspreis / Exposépreis der Immobilie (Asking Price). Nur die Zahl in value — kein €, EUR oder Währung. Bei Angaben in Mio. (z. B. „1,25 Mio.“) den vollen Euro-Betrag berechnen.",
   jahresnettokaltmiete:
     "Jahresnettokaltmiete / Jahreskaltmiete / Ist-Miete p.a. Nur die Zahl in value — kein €, EUR oder Währung. Bei Monatsmiete: Jahreswert berechnen (× 12).",
   objektzustand:
