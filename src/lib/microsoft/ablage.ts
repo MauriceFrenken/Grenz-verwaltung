@@ -12,8 +12,6 @@ import {
   graphDriveItemKinder,
   graphDriveRootKinder,
   graphNachrichtAnhaenge,
-  graphNachrichtAnhangMetas,
-  graphNachrichtAnhaengeAnwenden,
   graphPosteingangNachrichten,
   type GraphDriveItem,
   type GraphNachricht,
@@ -27,33 +25,6 @@ const driveKinderCache = new Map<
   string,
   { expires: number; items: GraphDriveItem[] }
 >();
-
-async function mapMitLimit<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  if (items.length === 0) return [];
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const idx = next;
-      next += 1;
-      results[idx] = await fn(items[idx]!);
-    }
-  }
-  const workers = Math.min(Math.max(limit, 1), items.length);
-  await Promise.all(Array.from({ length: workers }, () => worker()));
-  return results;
-}
-
-export function dokumentPosteingangSchluessel(
-  postfach: string,
-  graphNachrichtId: string,
-): string {
-  return `${postfach.toLowerCase()}|${graphNachrichtId}`;
-}
 
 function readEnv(name: string): string {
   if (typeof process === "undefined" || !process.env) return "";
@@ -157,98 +128,28 @@ export async function microsoftOneDriveKinderLesen(input: {
 }
 
 /**
- * Leichte Inbox-Liste ohne Anhang-`$expand` (schnell).
+ * Posteingang lesen (ohne User-Auth — für Cron / interne Aufrufe).
  */
-export async function microsoftDokumentPosteingangLeichtLesen(
-  anzahl = 50,
-): Promise<{ postfaecher: string[]; nachrichten: DokumentPosteingangNachricht[] }> {
+export async function microsoftDokumentPosteingangLesenIntern(input?: {
+  anzahl?: number;
+}): Promise<{ postfaecher: string[]; nachrichten: DokumentPosteingangNachricht[] }> {
   const { accessToken } = await microsoftAccessToken();
   const quellen = microsoftDokumentPosteingangQuellen();
-  const top = Math.min(Math.max(anzahl, 1), 100);
+  const anzahl = input?.anzahl ?? 50;
 
   const bloecke = await Promise.all(
     quellen.map(async ({ postfach, seit }) => {
       const liste = await graphPosteingangNachrichten(accessToken, postfach, {
-        anzahl: top,
+        anzahl,
         seit,
         nurMitAnhang: true,
-        mitAnhangMetas: false,
       });
       return liste.map((n) => ({ ...n, postfach }));
     }),
   );
 
-  return {
-    postfaecher: quellen.map((q) => q.postfach),
-    nachrichten: dokumentPosteingangSortieren(bloecke.flat()).slice(0, top),
-  };
-}
-
-/**
- * Lädt Anhang-Metadaten nur für unbekannte Nachrichten.
- * `bekannteNachrichtSchluessel`: `postfach|graphNachrichtId`.
- */
-export async function microsoftDokumentPosteingangAnreichern(
-  nachrichten: DokumentPosteingangNachricht[],
-  bekannteNachrichtSchluessel: Set<string>,
-): Promise<DokumentPosteingangNachricht[]> {
-  const neu = nachrichten.filter(
-    (n) =>
-      !bekannteNachrichtSchluessel.has(
-        dokumentPosteingangSchluessel(n.postfach, n.id),
-      ),
-  );
-  if (neu.length === 0) return nachrichten;
-
-  const { accessToken } = await microsoftAccessToken();
-  const angereichert = await mapMitLimit(neu, 4, async (n) => {
-    const metas = await graphNachrichtAnhangMetas(
-      accessToken,
-      n.postfach,
-      n.id,
-    );
-    return {
-      ...graphNachrichtAnhaengeAnwenden(n, metas),
-      postfach: n.postfach,
-    };
-  });
-  const byKey = new Map(
-    angereichert.map((n) => [
-      dokumentPosteingangSchluessel(n.postfach, n.id),
-      n,
-    ]),
-  );
-
-  return nachrichten
-    .map((n) => byKey.get(dokumentPosteingangSchluessel(n.postfach, n.id)) ?? n)
-    .filter((n) => {
-      if (
-        bekannteNachrichtSchluessel.has(
-          dokumentPosteingangSchluessel(n.postfach, n.id),
-        )
-      ) {
-        return true;
-      }
-      return n.anhaenge.length > 0;
-    });
-}
-
-/**
- * Posteingang lesen (ohne User-Auth — für Cron / Sync).
- * Leichte Graph-Liste; Anhang-Metas nur für unbekannte Mails.
- */
-export async function microsoftDokumentPosteingangLesenIntern(input?: {
-  anzahl?: number;
-  bekannteNachrichtSchluessel?: Set<string>;
-}): Promise<{ postfaecher: string[]; nachrichten: DokumentPosteingangNachricht[] }> {
-  const { postfaecher, nachrichten: leicht } =
-    await microsoftDokumentPosteingangLeichtLesen(input?.anzahl ?? 50);
-  const bekannt = input?.bekannteNachrichtSchluessel ?? new Set<string>();
-  const nachrichten = await microsoftDokumentPosteingangAnreichern(
-    leicht,
-    bekannt,
-  );
-  return { postfaecher, nachrichten };
+  const nachrichten = dokumentPosteingangSortieren(bloecke.flat()).slice(0, anzahl);
+  return { postfaecher: quellen.map((q) => q.postfach), nachrichten };
 }
 
 /** Liest den Posteingang aller Dokument-Postfächer (Dokumente › Postfach). */

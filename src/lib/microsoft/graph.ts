@@ -264,41 +264,18 @@ function mapNachricht(roh: RohNachricht): GraphNachricht | null {
 export async function graphPosteingangNachrichten(
   accessToken: string,
   postfach: string,
-  optionen: {
-    anzahl?: number;
-    seit?: string;
-    nurMitAnhang?: boolean;
-    /**
-     * Anhang-Metadaten per `$expand` mitsenden (teuer).
-     * Default false — Anhänge nur für neue Mails nachladen.
-     */
-    mitAnhangMetas?: boolean;
-  } = {},
+  optionen: { anzahl?: number; seit?: string; nurMitAnhang?: boolean } = {},
 ): Promise<GraphNachricht[]> {
   const anzahl = Math.min(Math.max(optionen.anzahl ?? 25, 1), 100);
-  const mitAnhangMetas = optionen.mitAnhangMetas === true;
   const params = new URLSearchParams({
     $select:
       "id,internetMessageId,subject,from,receivedDateTime,hasAttachments,bodyPreview,webLink",
+    $expand: "attachments($select=id,name,contentType,size,isInline)",
     $orderby: "receivedDateTime desc",
     $top: String(anzahl),
   });
-  if (mitAnhangMetas) {
-    params.set(
-      "$expand",
-      "attachments($select=id,name,contentType,size,isInline)",
-    );
-  }
-
-  const filterTeile: string[] = [];
   if (optionen.seit) {
-    filterTeile.push(`receivedDateTime ge ${optionen.seit}`);
-  }
-  if (optionen.nurMitAnhang) {
-    filterTeile.push("hasAttachments eq true");
-  }
-  if (filterTeile.length > 0) {
-    params.set("$filter", filterTeile.join(" and "));
+    params.set("$filter", `receivedDateTime ge ${optionen.seit}`);
   }
 
   const data = await graphGet<{ value?: RohNachricht[] }>(
@@ -311,55 +288,9 @@ export async function graphPosteingangNachrichten(
     .map(mapNachricht)
     .filter((n): n is GraphNachricht => n !== null);
 
-  if (!optionen.nurMitAnhang) return nachrichten;
-
-  // Mit Expand: echte Anhänge; ohne Expand: Graph-Filter + hasAttachments-Flag.
-  return nachrichten.filter((n) =>
-    mitAnhangMetas ? n.anhaenge.length > 0 : n.hatAnhaenge,
-  );
-}
-
-/** Anhang-Metadaten einer Nachricht — ohne `contentBytes`. */
-export async function graphNachrichtAnhangMetas(
-  accessToken: string,
-  postfach: string,
-  nachrichtId: string,
-): Promise<GraphAnhangMeta[]> {
-  const params = new URLSearchParams({
-    $select: "id,name,contentType,size,isInline",
-  });
-  const data = await graphGet<{ value?: RohAnhangMeta[] }>(
-    `/users/${encodeURIComponent(postfach)}/messages/${encodeURIComponent(nachrichtId)}/attachments?${params.toString()}`,
-    accessToken,
-    postfach,
-  );
-
-  return (data.value ?? [])
-    .filter((a) => istDateiAnhang(a))
-    .map(mapAnhangMeta);
-}
-
-/** Setzt Anhang-Metadaten auf eine Listen-Nachricht (nach nachgeladenem Expand). */
-export function graphNachrichtAnhaengeAnwenden(
-  nachricht: GraphNachricht,
-  anhaenge: GraphAnhangMeta[],
-): GraphNachricht {
-  const roh: RohAnhangMeta[] = anhaenge.map((a) => ({
-    id: a.id ?? undefined,
-    name: a.name,
-    contentType: a.contentType ?? undefined,
-    size: a.groesse,
-    isInline: false,
-  }));
-  const pdf = roh.find(istPdfAnhang);
-  return {
-    ...nachricht,
-    hatAnhaenge: roh.length > 0 || nachricht.hatAnhaenge,
-    anhangArt: anhangArtAus(roh),
-    pdfAnhang: pdf ? mapAnhangMeta(pdf) : null,
-    primaerAnhang: waehlePrimaerAnhang(roh),
-    anhaenge: roh.filter((a) => Boolean(a.id)).map(mapAnhangMeta),
-  };
+  return optionen.nurMitAnhang
+    ? nachrichten.filter((n) => n.anhaenge.length > 0)
+    : nachrichten;
 }
 
 export async function graphNachrichtAnhaenge(

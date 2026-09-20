@@ -8,8 +8,6 @@
 import { handleAnalyzeExposeRequest } from "@/lib/expose-ai";
 import {
   graphAnhangBinary,
-  graphNachrichtAnhangMetas,
-  graphNachrichtAnhaengeAnwenden,
   graphPosteingangNachrichten,
   type GraphNachricht,
 } from "@/lib/microsoft/graph";
@@ -23,7 +21,6 @@ import { microsoftPostfach } from "@/lib/microsoft/token-exchange";
 import { extrahierePdfText } from "./pdf-text";
 import {
   eintraegeAnlegen,
-  existierendeNachrichtIds,
   leseAktiveEintraege,
   leseEintrag,
   leseEintraege,
@@ -36,27 +33,6 @@ import type { PostfachEintrag, PostfachSyncErgebnis } from "./typen";
 
 const MAX_NACHRICHTEN = 50;
 const MAX_PDF_BYTES = 25 * 1024 * 1024;
-
-async function mapMitLimit<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  if (items.length === 0) return [];
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const idx = next;
-      next += 1;
-      results[idx] = await fn(items[idx]!);
-    }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, () => worker()),
-  );
-  return results;
-}
 
 /** DB-Zeile → GraphNachricht-Stub für die Listen-UI. */
 export function eintragAlsGraphNachricht(
@@ -260,61 +236,21 @@ export async function postfachSynchronisieren(input: {
     };
   }
 
-  // Leichte Inbox ohne $expand; Anhänge nur für neue Mails.
-  const leicht = await graphPosteingangNachrichten(accessToken, postfach, {
+  // Listen-Runde: Posteingang einmal laden und Einträge anlegen.
+  const nachrichten = await graphPosteingangNachrichten(accessToken, postfach, {
     anzahl: MAX_NACHRICHTEN,
-    nurMitAnhang: true,
-    mitAnhangMetas: false,
   });
-
-  const bekannt = await existierendeNachrichtIds(
-    postfach,
-    leicht.map((n) => n.id),
-  );
-
-  const neu = leicht.filter((n) => !bekannt.has(n.id));
-  const angereichert =
-    neu.length === 0
-      ? []
-      : await mapMitLimit(neu, 4, async (n) => {
-          const metas = await graphNachrichtAnhangMetas(
-            accessToken,
-            postfach,
-            n.id,
-          );
-          return graphNachrichtAnhaengeAnwenden(n, metas);
-        });
-
-  const byId = new Map(angereichert.map((n) => [n.id, n]));
-  const nachrichten = leicht
-    .map((n) => byId.get(n.id) ?? n)
-    .filter((n) => (bekannt.has(n.id) ? true : Boolean(n.pdfAnhang?.id)));
-
-  await eintraegeAnlegen(
-    postfach,
-    nachrichten.filter((n) => Boolean(n.pdfAnhang?.id)),
-  );
+  await eintraegeAnlegen(postfach, nachrichten);
 
   const rows = await leseEintraege(
     postfach,
     nachrichten.map((n) => n.id),
   );
-  const eintraege = rows.map(zuEintrag);
-  const eintragByGraphId = new Map(
-    eintraege.map((e) => [e.graphNachrichtId, e]),
-  );
-
-  // UI braucht pdfAnhang — für bekannte Mails ohne Expand aus der DB füllen.
-  const nachrichtenUi = nachrichten.map((n) => {
-    if (n.pdfAnhang) return n;
-    const eintrag = eintragByGraphId.get(n.id);
-    return eintrag ? eintragAlsGraphNachricht(eintrag) : n;
-  });
 
   return {
     postfach,
-    nachrichten: nachrichtenUi,
-    eintraege,
+    nachrichten,
+    eintraege: rows.map(zuEintrag),
     offen: await zaehleOffene(postfach),
   };
 }
@@ -374,31 +310,11 @@ export async function postfachNachtlauf(input?: {
   if (inboxSync) {
     try {
       const { accessToken } = await microsoftAccessToken();
-      const leicht = await graphPosteingangNachrichten(accessToken, postfach, {
-        anzahl: MAX_NACHRICHTEN,
-        nurMitAnhang: true,
-        mitAnhangMetas: false,
-      });
-      const bekannt = await existierendeNachrichtIds(
+      const nachrichten = await graphPosteingangNachrichten(
+        accessToken,
         postfach,
-        leicht.map((n) => n.id),
+        { anzahl: MAX_NACHRICHTEN },
       );
-      const neu = leicht.filter((n) => !bekannt.has(n.id));
-      const angereichert =
-        neu.length === 0
-          ? []
-          : await mapMitLimit(neu, 4, async (n) => {
-              const metas = await graphNachrichtAnhangMetas(
-                accessToken,
-                postfach,
-                n.id,
-              );
-              return graphNachrichtAnhaengeAnwenden(n, metas);
-            });
-      const byId = new Map(angereichert.map((n) => [n.id, n]));
-      const nachrichten = leicht
-        .map((n) => byId.get(n.id) ?? n)
-        .filter((n) => Boolean(n.pdfAnhang?.id));
       await eintraegeAnlegen(postfach, nachrichten);
     } catch (err) {
       inboxSyncFehler = fehlerText(err);
