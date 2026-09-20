@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Building2,
@@ -21,8 +22,17 @@ import {
 } from "lucide-react";
 
 import type { LucideIcon } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { prefetchGraphRoute } from "@/lib/graph-cache";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/ui";
+
+const GRAPH_PREFETCH_PFADE = new Set([
+  "/dokumente/ablage",
+  "/dokumente/pruefordner",
+  "/dokumente/rechnungsfreigabe",
+  "/transaktionen/liste",
+]);
 
 interface NavItem {
   to: string;
@@ -98,6 +108,15 @@ export function Sidebar() {
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const toggle = useUiStore((s) => s.toggleSidebar);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const queryClient = useQueryClient();
+  const { session, benutzer } = useAuth();
+  const token = session?.access_token ?? "";
+  const userId = benutzer?.id ?? "";
+
+  function prefetchWennGraph(to: string) {
+    if (!GRAPH_PREFETCH_PFADE.has(to) || !token || !userId) return;
+    prefetchGraphRoute(queryClient, token, userId, to);
+  }
 
   return (
     <aside
@@ -124,6 +143,8 @@ export function Sidebar() {
                   <li key={item.to}>
                     <Link
                       to={item.to}
+                      onMouseEnter={() => prefetchWennGraph(item.to)}
+                      onFocus={() => prefetchWennGraph(item.to)}
                       className={cn(
                         "relative flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-surface-muted",
                         aktiv && "bg-surface-muted font-semibold text-heading",

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, File, Folder, RefreshCw } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -6,6 +7,12 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  GRAPH_GC_MS,
+  GRAPH_STALE_MS,
+  graphKeys,
+  holeAblageKinder,
+} from "@/lib/graph-cache";
 import type { GraphDriveItem } from "@/lib/microsoft/graph";
 import { cn } from "@/lib/utils";
 
@@ -76,63 +83,35 @@ const SPALTEN: Column<GraphDriveItem>[] = [
 ];
 
 export function AblagePage() {
-  const { session } = useAuth();
+  const { session, benutzer } = useAuth();
   const token = session?.access_token ?? "";
-
+  const userId = benutzer?.id ?? "";
   const [pfad, setPfad] = useState<PfadSegment[]>([]);
-  const [items, setItems] = useState<GraphDriveItem[]>([]);
-  const [laedt, setLaedt] = useState(true);
-  const [fehler, setFehler] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
   const frischRef = useRef(false);
 
   const aktuellerOrdnerId = pfad.length > 0 ? pfad[pfad.length - 1]!.id : null;
+  const queryKey = graphKeys.ablage(userId, aktuellerOrdnerId);
 
-  useEffect(() => {
-    if (!token) {
-      setItems([]);
-      setFehler(null);
-      setLaedt(false);
-      return;
-    }
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const frisch = frischRef.current;
+      frischRef.current = false;
+      return holeAblageKinder(token, aktuellerOrdnerId, frisch);
+    },
+    enabled: Boolean(token && userId),
+    staleTime: GRAPH_STALE_MS,
+    gcTime: GRAPH_GC_MS,
+  });
 
-    let cancelled = false;
-    setLaedt(true);
-    setFehler(null);
-    const bypassCache = frischRef.current;
-    frischRef.current = false;
-
-    void (async () => {
-      try {
-        const { microsoftOneDriveKinderFn } = await import(
-          "@/lib/microsoft/server-fn"
-        );
-        const result = await microsoftOneDriveKinderFn({
-          data: {
-            supabaseAccessToken: token,
-            itemId: aktuellerOrdnerId,
-            frisch: bypassCache,
-          },
-        });
-        if (cancelled) return;
-        setItems(result.items);
-      } catch (e) {
-        if (cancelled) return;
-        setItems([]);
-        setFehler(
-          e instanceof Error
-            ? e.message
-            : "OneDrive konnte nicht geladen werden.",
-        );
-      } finally {
-        if (!cancelled) setLaedt(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token, aktuellerOrdnerId, reloadKey]);
+  const items = data?.items ?? [];
+  const laedt = isLoading && !data;
+  const fehler =
+    error instanceof Error
+      ? error.message
+      : error
+        ? "OneDrive konnte nicht geladen werden."
+        : null;
 
   function zuRoot() {
     setPfad([]);
@@ -162,15 +141,15 @@ export function AblagePage() {
             variant="outline"
             size="sm"
             className="border-foreground text-foreground"
-            disabled={laedt || !token}
+            disabled={isFetching || !token}
             onClick={() => {
               frischRef.current = true;
-              setReloadKey((k) => k + 1);
+              void refetch();
             }}
             aria-label="Aktualisieren"
           >
             <RefreshCw
-              className={cn("h-4 w-4", laedt && "animate-spin")}
+              className={cn("h-4 w-4", isFetching && "animate-spin")}
               strokeWidth={1.5}
             />
           </Button>

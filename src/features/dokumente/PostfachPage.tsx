@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { Archive, Building2, FileText, Loader2, MoreVertical, Receipt, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,7 +16,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { hatAnalyseWerte } from "@/lib/dokument-postfach/client";
-import type { DokumentPosteingangEintrag } from "@/lib/dokument-postfach/typen";
+import type {
+  DokumentPosteingangEintrag,
+  DokumentPosteingangSyncErgebnis,
+} from "@/lib/dokument-postfach/typen";
+import {
+  GRAPH_GC_MS,
+  GRAPH_STALE_MS,
+  graphKeys,
+  holeDokumentPosteingang,
+} from "@/lib/graph-cache";
 import { cn } from "@/lib/utils";
 import { istTamAusFeldern } from "@/lib/trade-any-machine";
 
@@ -280,102 +290,101 @@ function istBereit(eintrag: DokumentPosteingangEintrag | null): eintrag is Dokum
 }
 
 export function PostfachPage() {
-  const { session } = useAuth();
+  const { session, benutzer } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const token = session?.access_token ?? "";
+  const userId = benutzer?.id ?? "";
+  const queryKey = graphKeys.dokumentPosteingang(userId);
 
-  const besuchKey = useRouterState({
-    select: (s) =>
-      s.location.state.__TSR_key ??
-      s.location.state.key ??
-      `${s.location.pathname}:${s.location.href}`,
-  });
-
-  const [eintraege, setEintraege] = useState<DokumentPosteingangEintrag[]>([]);
-  const [laedt, setLaedt] = useState(true);
   const [analyseLaeuft, setAnalyseLaeuft] = useState(false);
-  const [offen, setOffen] = useState(0);
-  const [fehler, setFehler] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
   const [aktionId, setAktionId] = useState<string | null>(null);
   const analyseAbbruchRef = useRef(false);
+
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey,
+    queryFn: () =>
+      holeDokumentPosteingang(token, (snap) => {
+        queryClient.setQueryData(queryKey, snap);
+      }),
+    enabled: Boolean(token && userId),
+    staleTime: GRAPH_STALE_MS,
+    gcTime: GRAPH_GC_MS,
+  });
+
+  const eintraege = data?.eintraege ?? [];
+  const offen = data?.offen ?? 0;
+  const laedt = isLoading && !data;
+  const fehler =
+    error instanceof Error
+      ? error.message
+      : error
+        ? "Postfach konnte nicht geladen werden."
+        : null;
+
+  const setCache = useCallback(
+    (
+      updater: (
+        prev: DokumentPosteingangSyncErgebnis,
+      ) => DokumentPosteingangSyncErgebnis,
+    ) => {
+      queryClient.setQueryData<DokumentPosteingangSyncErgebnis>(
+        queryKey,
+        (prev) =>
+          updater(
+            prev ?? {
+              postfaecher: [],
+              nachrichten: [],
+              eintraege: [],
+              offen: 0,
+            },
+          ),
+      );
+    },
+    [queryClient, queryKey],
+  );
+
+  const setEintraege = useCallback(
+    (
+      next:
+        | DokumentPosteingangEintrag[]
+        | ((prev: DokumentPosteingangEintrag[]) => DokumentPosteingangEintrag[]),
+    ) => {
+      setCache((prev) => ({
+        ...prev,
+        eintraege: typeof next === "function" ? next(prev.eintraege) : next,
+      }));
+    },
+    [setCache],
+  );
+
+  const setOffen = useCallback(
+    (next: number | ((prev: number) => number)) => {
+      setCache((prev) => ({
+        ...prev,
+        offen: typeof next === "function" ? next(prev.offen) : next,
+      }));
+    },
+    [setCache],
+  );
 
   const postfachZeilen = useMemo(
     () => eintraege.filter(istPostfachEintrag),
     [eintraege],
   );
 
+  // Analyse abbrechen, wenn die Seite verlassen wird.
   useEffect(() => {
-    if (!token) {
-      setEintraege([]);
-      setOffen(0);
-      setFehler(null);
-      setLaedt(false);
-      return;
-    }
-
-    let cancelled = false;
-    analyseAbbruchRef.current = true;
-    setAnalyseLaeuft(false);
-    setLaedt(true);
-    setFehler(null);
-
-    void (async () => {
-      try {
-        const {
-          dokumentPosteingangLadenFn,
-          dokumentPosteingangSyncFn,
-        } = await import("@/lib/dokument-postfach/server-fn");
-
-        // 1) Sofort aus DB — ohne Graph.
-        const erst = await dokumentPosteingangLadenFn({
-          data: { supabaseAccessToken: token },
-        });
-        if (cancelled) return;
-        setEintraege(erst.eintraege);
-        setOffen(erst.offen);
-        setLaedt(false);
-
-        // 2) Graph-Sync im Hintergrund (leichte Inbox + nur neue Anhänge).
-        try {
-          const sync = await dokumentPosteingangSyncFn({
-            data: { supabaseAccessToken: token, maxAnalysen: 0 },
-          });
-          if (cancelled) return;
-          setEintraege(sync.eintraege);
-          setOffen(sync.offen);
-        } catch (syncErr) {
-          if (cancelled) return;
-          toast.error(
-            syncErr instanceof Error
-              ? syncErr.message
-              : "Postfach-Aktualisierung fehlgeschlagen.",
-            { duration: 8_000 },
-          );
-        }
-      } catch (e) {
-        if (cancelled) return;
-        setEintraege([]);
-        setOffen(0);
-        setFehler(
-          e instanceof Error ? e.message : "Postfach konnte nicht geladen werden.",
-        );
-        setLaedt(false);
-      }
-    })();
-
     return () => {
-      cancelled = true;
       analyseAbbruchRef.current = true;
     };
-  }, [token, besuchKey, reloadKey]);
+  }, []);
 
   const starteAnalyse = useCallback(async () => {
     if (!token || analyseLaeuft) return;
 
     analyseAbbruchRef.current = false;
     setAnalyseLaeuft(true);
-    setFehler(null);
 
     try {
       const { dokumentPosteingangSyncFn } = await import(
@@ -411,7 +420,7 @@ export function PostfachPage() {
     } finally {
       if (!analyseAbbruchRef.current) setAnalyseLaeuft(false);
     }
-  }, [token, analyseLaeuft, offen]);
+  }, [token, analyseLaeuft, offen, setEintraege, setOffen]);
 
   const pruefen = useCallback(
     (eintrag: DokumentPosteingangEintrag) => {
@@ -940,12 +949,12 @@ export function PostfachPage() {
               variant="outline"
               size="sm"
               className="border-foreground text-foreground"
-              disabled={laedt || analyseLaeuft || !token}
-              onClick={() => setReloadKey((k) => k + 1)}
+              disabled={(laedt || isFetching) || analyseLaeuft || !token}
+              onClick={() => void refetch()}
               aria-label="Aktualisieren"
             >
               <RefreshCw
-                className={cn("h-4 w-4", laedt && "animate-spin")}
+                className={cn("h-4 w-4", (laedt || isFetching) && "animate-spin")}
                 strokeWidth={1.5}
               />
             </Button>

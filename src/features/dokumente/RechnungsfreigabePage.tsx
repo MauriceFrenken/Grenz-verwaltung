@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -12,8 +13,15 @@ import {
   FREIGABE_STATUS_SPALTEN,
   type DokumentFreigabeStatus,
   type DokumentPosteingangEintrag,
+  type DokumentRechnungsfreigabe,
   type RechnungHistorieEintrag,
 } from "@/lib/dokument-postfach/typen";
+import {
+  GRAPH_GC_MS,
+  GRAPH_STALE_MS,
+  graphKeys,
+  holeRechnungsfreigabe,
+} from "@/lib/graph-cache";
 import { cn } from "@/lib/utils";
 
 function betragText(
@@ -234,35 +242,65 @@ function Spalte({
 }
 
 export function RechnungsfreigabePage() {
-  const { session } = useAuth();
+  const { session, benutzer } = useAuth();
   const token = session?.access_token ?? "";
-  const [eintraege, setEintraege] = useState<DokumentPosteingangEintrag[]>([]);
-  const [historie, setHistorie] = useState<RechnungHistorieEintrag[]>([]);
-  const [laedt, setLaedt] = useState(false);
+  const userId = benutzer?.id ?? "";
+  const queryClient = useQueryClient();
+  const queryKey = graphKeys.rechnungsfreigabe(userId);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const laden = useCallback(async () => {
-    if (!token) return;
-    setLaedt(true);
-    try {
-      const { dokumentRechnungsfreigabeLadenFn } = await import(
-        "@/lib/dokument-postfach/server-fn"
-      );
-      const daten = await dokumentRechnungsfreigabeLadenFn({
-        data: { supabaseAccessToken: token },
-      });
-      setEintraege(daten.eintraege);
-      setHistorie(daten.historie);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Laden fehlgeschlagen.");
-    } finally {
-      setLaedt(false);
-    }
-  }, [token]);
+  const { data, isFetching, refetch } = useQuery({
+    queryKey,
+    queryFn: () => holeRechnungsfreigabe(token),
+    enabled: Boolean(token && userId),
+    staleTime: GRAPH_STALE_MS,
+    gcTime: GRAPH_GC_MS,
+  });
 
-  useEffect(() => {
-    void laden();
-  }, [laden]);
+  const eintraege = data?.eintraege ?? [];
+  const historie = data?.historie ?? [];
+  const laedt = isFetching;
+
+  const setDaten = useCallback(
+    (
+      updater: (
+        prev: DokumentRechnungsfreigabe,
+      ) => DokumentRechnungsfreigabe,
+    ) => {
+      queryClient.setQueryData<DokumentRechnungsfreigabe>(queryKey, (prev) =>
+        updater(prev ?? { eintraege: [], historie: [] }),
+      );
+    },
+    [queryClient, queryKey],
+  );
+
+  const setEintraege = useCallback(
+    (
+      next:
+        | DokumentPosteingangEintrag[]
+        | ((prev: DokumentPosteingangEintrag[]) => DokumentPosteingangEintrag[]),
+    ) => {
+      setDaten((prev) => ({
+        ...prev,
+        eintraege: typeof next === "function" ? next(prev.eintraege) : next,
+      }));
+    },
+    [setDaten],
+  );
+
+  const setHistorie = useCallback(
+    (
+      next:
+        | RechnungHistorieEintrag[]
+        | ((prev: RechnungHistorieEintrag[]) => RechnungHistorieEintrag[]),
+    ) => {
+      setDaten((prev) => ({
+        ...prev,
+        historie: typeof next === "function" ? next(prev.historie) : next,
+      }));
+    },
+    [setDaten],
+  );
 
   const nachSpalte = useMemo(() => {
     const map = Object.fromEntries(
@@ -339,7 +377,7 @@ export function RechnungsfreigabePage() {
         setBusyId(null);
       }
     },
-    [busyId, eintraege, token],
+    [busyId, eintraege, token, setEintraege, setHistorie],
   );
 
   return (
@@ -352,7 +390,7 @@ export function RechnungsfreigabePage() {
             size="sm"
             className="border-foreground text-foreground"
             disabled={laedt || !token}
-            onClick={() => void laden()}
+            onClick={() => void refetch()}
           >
             {laedt ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" strokeWidth={1.5} />

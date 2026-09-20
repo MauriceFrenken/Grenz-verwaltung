@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { FileQuestion, FileText, Image, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -8,13 +9,19 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  GRAPH_GC_MS,
+  GRAPH_STALE_MS,
+  graphKeys,
+  holeExposePostfach,
+} from "@/lib/graph-cache";
 import type { GraphAnhangArt, GraphNachricht } from "@/lib/microsoft/graph";
 import { base64ZuBytes, felderZuWerten, hatWerte } from "@/lib/postfach/client";
 import {
   setzeCheckPdfPromise,
   speichereCheckHandoff,
 } from "@/lib/postfach/check-handoff";
-import type { PostfachEintrag } from "@/lib/postfach/typen";
+import type { PostfachEintrag, PostfachSyncErgebnis } from "@/lib/postfach/typen";
 import {
   istSalesforceVerbunden,
   speichereExposeSalesforceDraft,
@@ -134,101 +141,70 @@ function AnalyseStatus({
   return <span className="font-medium text-heading">Analysiert</span>;
 }
 
-export function TransaktionslistePage() {
-  const { session } = useAuth();
-  const navigate = useNavigate();
-  const token = session?.access_token ?? "";
-  /** Ändert sich bei jedem Öffnen der Route (inkl. Soft-Navigation / Reload). */
-  const besuchKey = useRouterState({
-    select: (s) =>
-      s.location.state.__TSR_key ??
-      s.location.state.key ??
-      `${s.location.pathname}:${s.location.href}`,
-  });
+function zuZeilen(daten: PostfachSyncErgebnis): Zeile[] {
+  const nachId = new Map(daten.eintraege.map((e) => [e.graphNachrichtId, e]));
+  return daten.nachrichten.map((n) => ({
+    nachricht: n,
+    eintrag: nachId.get(n.id) ?? null,
+  }));
+}
 
-  const [zeilen, setZeilen] = useState<Zeile[]>([]);
-  const [laedt, setLaedt] = useState(true);
-  const [analyseLaeuft, setAnalyseLaeuft] = useState(false);
-  const [fehler, setFehler] = useState<string | null>(null);
+export function TransaktionslistePage() {
+  const { session, benutzer } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const token = session?.access_token ?? "";
+  const userId = benutzer?.id ?? "";
+  const queryKey = graphKeys.exposePostfach(userId);
+
   const [aktionId, setAktionId] = useState<string | null>(null);
   const [wiederholenId, setWiederholenId] = useState<string | null>(null);
   const [sfConnectOpen, setSfConnectOpen] = useState(false);
 
-  useEffect(() => {
-    if (!token) {
-      setZeilen([]);
-      setFehler(null);
-      setLaedt(false);
-      return;
-    }
+  const { data, isLoading, error } = useQuery({
+    queryKey,
+    queryFn: () =>
+      holeExposePostfach(token, (snap) => {
+        queryClient.setQueryData(queryKey, snap);
+      }),
+    enabled: Boolean(token && userId),
+    staleTime: GRAPH_STALE_MS,
+    gcTime: GRAPH_GC_MS,
+  });
 
-    let cancelled = false;
-    setLaedt(true);
-    setFehler(null);
+  const zeilen = useMemo(() => (data ? zuZeilen(data) : []), [data]);
+  const laedt = isLoading && !data;
+  const fehler =
+    error instanceof Error
+      ? error.message
+      : error
+        ? "Postfach konnte nicht geladen werden."
+        : null;
 
-    const uebernehmen = (
-      nachrichten: GraphNachricht[],
-      eintraege: PostfachEintrag[],
-    ) => {
-      const nachId = new Map(eintraege.map((e) => [e.graphNachrichtId, e]));
-      setZeilen(
-        nachrichten.map((n) => ({
-          nachricht: n,
-          eintrag: nachId.get(n.id) ?? null,
-        })),
-      );
-    };
-
-    void (async () => {
-      try {
-        const { postfachLadenFn, postfachSyncFn } = await import(
-          "@/lib/postfach/server-fn"
-        );
-
-        // 1) Sofort aus DB — ohne Graph / ohne KI.
-        const erst = await postfachLadenFn({
-          data: { supabaseAccessToken: token },
-        });
-        if (cancelled) return;
-        uebernehmen(erst.nachrichten, erst.eintraege);
-        setLaedt(false);
-
-        // 2) Leichter Graph-Sync im Hintergrund.
-        try {
-          const sync = await postfachSyncFn({
-            data: { supabaseAccessToken: token, maxAnalysen: 0 },
-          });
-          if (cancelled) return;
-          uebernehmen(sync.nachrichten, sync.eintraege);
-        } catch (syncErr) {
-          if (cancelled) return;
-          toast.error(
-            syncErr instanceof Error
-              ? syncErr.message
-              : "Exposé-Postfach konnte nicht aktualisiert werden.",
-            { duration: 8_000 },
-          );
-        }
-      } catch (e) {
-        if (cancelled) return;
-        setZeilen([]);
-        setFehler(
-          e instanceof Error
-            ? e.message
-            : "Postfach konnte nicht geladen werden.",
-        );
-      } finally {
-        if (!cancelled) {
-          setLaedt(false);
-          setAnalyseLaeuft(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token, besuchKey]);
+  const setZeilen = useCallback(
+    (next: Zeile[] | ((prev: Zeile[]) => Zeile[])) => {
+      queryClient.setQueryData<PostfachSyncErgebnis>(queryKey, (prev) => {
+        const basis =
+          prev ??
+          ({
+            postfach: "",
+            nachrichten: [],
+            eintraege: [],
+            offen: 0,
+          } satisfies PostfachSyncErgebnis);
+        const aktuell = zuZeilen(basis);
+        const neu = typeof next === "function" ? next(aktuell) : next;
+        return {
+          ...basis,
+          nachrichten: neu.map((z) => z.nachricht),
+          eintraege: neu
+            .map((z) => z.eintrag)
+            .filter((e): e is PostfachEintrag => e != null),
+        };
+      });
+    },
+    [queryClient, queryKey],
+  );
 
   const pruefen = useCallback(
     (eintrag: PostfachEintrag) => {
@@ -333,7 +309,7 @@ export function TransaktionslistePage() {
         setWiederholenId(null);
       }
     },
-    [token],
+    [token, setZeilen],
   );
 
   const spalten: Column<Zeile>[] = [
@@ -448,18 +424,6 @@ export function TransaktionslistePage() {
     <>
       <PageHeader
         titel="Offene Exposés"
-        nebenTitel={
-          analyseLaeuft ? (
-            <span className="inline-flex items-center gap-2 text-xs text-text-muted">
-              <Loader2
-                className="h-3.5 w-3.5 animate-spin"
-                strokeWidth={1.5}
-                aria-hidden
-              />
-              KI-Analyse läuft
-            </span>
-          ) : undefined
-        }
       />
       <SalesforceConnectDialog
         open={sfConnectOpen}
