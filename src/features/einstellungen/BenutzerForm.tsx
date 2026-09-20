@@ -18,12 +18,9 @@ import { toast } from "sonner";
 import { einstellungenApi } from "@/api/einstellungen";
 import { verwaltungApi } from "@/api/verwaltung";
 import { useApi } from "@/hooks/useApi";
-import { usePermissions } from "@/hooks/useAuth";
-import { useAktionGuard } from "@/hooks/useAktionGuard";
 import { gesellschaftIdsAusBenutzer } from "@/lib/auth";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import { rollenBezeichnung } from "@/lib/constants";
-import { SYSTEM_KONFIGURIERBARE_ROLLEN } from "@/lib/permissions";
 import { gesellschaftZuweisungFuerRolle } from "@/lib/rollenGesellschaft";
 import type { Benutzer, EinladungsRolle, Gesellschaft, RollenDefinition } from "@/types";
 
@@ -103,12 +100,8 @@ function selectWert<T extends string>(wert: string | undefined, optionen: readon
 function rollenMitAktueller(
   basis: EinladungsRolle[],
   aktuelleRolle: string | undefined,
-  istOpAdmin: boolean,
 ): EinladungsRolle[] {
-  let optionen = basis.length > 0 ? basis : [...SYSTEM_KONFIGURIERBARE_ROLLEN];
-  if (istOpAdmin) {
-    optionen = ["op_admin", ...optionen.filter((rolle) => rolle !== "op_admin")];
-  }
+  let optionen = [...basis];
   if (aktuelleRolle && !optionen.includes(aktuelleRolle)) {
     optionen = [...optionen, aktuelleRolle];
   }
@@ -125,13 +118,16 @@ export function BenutzerForm({
   onLoeschenAnfragen?: () => void;
 }) {
   const istBearbeitung = Boolean(benutzer);
-  const { zuweisbareRollen, rollen, istOpAdmin, permissionsLoading, eigeneRolle } = usePermissions();
-  const { erlaubtOderHinweis } = useAktionGuard();
+  const rollenApi = useApi(() => einstellungenApi.listRollen(), []);
+  const rollen: RollenDefinition[] = rollenApi.data ?? [];
   const bisherigeRolle = benutzer?.rollen[0]?.rolle;
-  const opAdmin = eigeneRolle === "op_admin";
   const zuweisbare = useMemo(
-    () => rollenMitAktueller(zuweisbareRollen(), bisherigeRolle, opAdmin),
-    [eigeneRolle, rollen, bisherigeRolle, opAdmin],
+    () =>
+      rollenMitAktueller(
+        rollen.map((r) => r.id),
+        bisherigeRolle,
+      ),
+    [rollen, bisherigeRolle],
   );
   const zuweisbareSchluessel = zuweisbare.join("\0");
   const gesellschaften = useApi(() => verwaltungApi.listGesellschaften(), []);
@@ -242,8 +238,6 @@ export function BenutzerForm({
 
   const onResend = async () => {
     if (!benutzer) return;
-    const berechtigung = "aktion.einstellungen.benutzer.einladen";
-    if (!istOpAdmin() && !erlaubtOderHinweis(berechtigung)) return;
 
     setIsResending(true);
     try {
@@ -278,11 +272,6 @@ export function BenutzerForm({
   };
 
   const onSubmit = async (values: FormValues) => {
-    const berechtigung = istBearbeitung
-      ? "aktion.einstellungen.benutzer.bearbeiten"
-      : "aktion.einstellungen.benutzer.einladen";
-    if (!istOpAdmin() && !erlaubtOderHinweis(berechtigung)) return;
-
     try {
       const zuweisung = gesellschaftZuweisungFuerRolle(values.rolle, rollen);
       const gesellschaftZugriff =
@@ -325,11 +314,13 @@ export function BenutzerForm({
     return undefined;
   };
 
+  if (rollenApi.isLoading) {
+    return <p className="text-sm text-text-muted">Rollen werden geladen…</p>;
+  }
+
   if (zuweisbare.length === 0) {
     return (
-      <p className="text-sm text-text-muted">
-        {permissionsLoading ? "Rollen werden geladen…" : "Ihre Rolle erlaubt keine Zuweisung weiterer Benutzerrollen."}
-      </p>
+      <p className="text-sm text-text-muted">Keine Rollen verfügbar.</p>
     );
   }
 

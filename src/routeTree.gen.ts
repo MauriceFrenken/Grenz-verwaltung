@@ -34,7 +34,6 @@ import { Route as TransaktionenListeRouteImport } from './routes/transaktionen.l
 import { Route as TransaktionenExposeImportRouteImport } from './routes/transaktionen.expose-import'
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
 import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
-import { Route as EinstellungenRollenRouteImport } from './routes/einstellungen.rollen'
 import { Route as EinstellungenIntegrationenRouteImport } from './routes/einstellungen.integrationen'
 import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
 import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
@@ -178,11 +177,6 @@ const MicrosoftCallbackRoute = MicrosoftCallbackRouteImport.update({
   path: '/microsoft/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EinstellungenRollenRoute = EinstellungenRollenRouteImport.update({
-  id: '/rollen',
-  path: '/rollen',
-  getParentRoute: () => EinstellungenRoute,
-} as any)
 const EinstellungenIntegrationenRoute =
   EinstellungenIntegrationenRouteImport.update({
     id: '/integrationen',
@@ -278,7 +272,6 @@ export interface FileRoutesByFullPath {
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
-  '/einstellungen/rollen': typeof EinstellungenRollenRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
@@ -316,7 +309,6 @@ export interface FileRoutesByTo {
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
-  '/einstellungen/rollen': typeof EinstellungenRollenRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/liste': typeof TransaktionenListeRoute
@@ -356,7 +348,6 @@ export interface FileRoutesById {
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
-  '/einstellungen/rollen': typeof EinstellungenRollenRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
@@ -400,7 +391,6 @@ export interface FileRouteTypes {
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
-    | '/einstellungen/rollen'
     | '/microsoft/callback'
     | '/salesforce/callback'
     | '/transaktionen/expose-import'
@@ -438,7 +428,6 @@ export interface FileRouteTypes {
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
-    | '/einstellungen/rollen'
     | '/microsoft/callback'
     | '/salesforce/callback'
     | '/transaktionen/liste'
@@ -477,7 +466,6 @@ export interface FileRouteTypes {
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
-    | '/einstellungen/rollen'
     | '/microsoft/callback'
     | '/salesforce/callback'
     | '/transaktionen/expose-import'
@@ -695,13 +683,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MicrosoftCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/einstellungen/rollen': {
-      id: '/einstellungen/rollen'
-      path: '/rollen'
-      fullPath: '/einstellungen/rollen'
-      preLoaderRoute: typeof EinstellungenRollenRouteImport
-      parentRoute: typeof EinstellungenRoute
-    }
     '/einstellungen/integrationen': {
       id: '/einstellungen/integrationen'
       path: '/integrationen'
@@ -827,7 +808,6 @@ interface EinstellungenRouteChildren {
   EinstellungenAuditRoute: typeof EinstellungenAuditRoute
   EinstellungenBenutzerRoute: typeof EinstellungenBenutzerRoute
   EinstellungenIntegrationenRoute: typeof EinstellungenIntegrationenRoute
-  EinstellungenRollenRoute: typeof EinstellungenRollenRoute
   EinstellungenIndexRoute: typeof EinstellungenIndexRoute
 }
 
@@ -835,7 +815,6 @@ const EinstellungenRouteChildren: EinstellungenRouteChildren = {
   EinstellungenAuditRoute: EinstellungenAuditRoute,
   EinstellungenBenutzerRoute: EinstellungenBenutzerRoute,
   EinstellungenIntegrationenRoute: EinstellungenIntegrationenRoute,
-  EinstellungenRollenRoute: EinstellungenRollenRoute,
   EinstellungenIndexRoute: EinstellungenIndexRoute,
 }
 

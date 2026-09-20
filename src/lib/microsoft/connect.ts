@@ -39,16 +39,12 @@ function statusPayload(
   };
 }
 
-async function requireCaller(token: string, verbinden: boolean): Promise<MicrosoftCaller> {
-  const caller = await microsoftCallerAusJwt(token);
-  if (verbinden && !caller.darfVerbinden) {
-    throw new Error("Nur Administratoren dürfen die Microsoft-Integration verbinden oder trennen.");
-  }
-  return caller;
+async function requireCaller(token: string): Promise<MicrosoftCaller> {
+  return microsoftCallerAusJwt(token);
 }
 
 export async function microsoftStatusFuerNutzer(supabaseAccessToken: string): Promise<MicrosoftStatusPayload> {
-  await requireCaller(supabaseAccessToken, false);
+  await requireCaller(supabaseAccessToken);
   try {
     const status = await leseMicrosoftStatus();
     return statusPayload(status);
@@ -73,7 +69,7 @@ export async function microsoftStatusFuerNutzer(supabaseAccessToken: string): Pr
 export async function completeMicrosoftConnect(input: {
   supabaseAccessToken: string;
 }): Promise<MicrosoftStatusPayload> {
-  const caller = await requireCaller(input.supabaseAccessToken, true);
+  const caller = await requireCaller(input.supabaseAccessToken);
   const postfach = microsoftPostfach();
 
   if (!microsoftAzureIstKonfiguriert()) {
@@ -100,13 +96,13 @@ export async function completeMicrosoftConnect(input: {
 }
 
 export async function disconnectMicrosoft(supabaseAccessToken: string): Promise<MicrosoftStatusPayload> {
-  await requireCaller(supabaseAccessToken, true);
+  await requireCaller(supabaseAccessToken);
   const status = await loescheMicrosoftVerbindung();
   return statusPayload(status);
 }
 
 export async function probeMicrosoft(supabaseAccessToken: string): Promise<MicrosoftStatusPayload> {
-  await requireCaller(supabaseAccessToken, true);
+  await requireCaller(supabaseAccessToken);
   const postfach = microsoftPostfach();
 
   const row = await leseMicrosoftRow();

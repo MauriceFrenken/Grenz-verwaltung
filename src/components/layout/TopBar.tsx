@@ -9,7 +9,9 @@ export function TopBar() {
   const navigate = useNavigate();
   const initialen = benutzer?.initialen ?? "–";
   const rolleKey = benutzer?.rollen[0]?.rolle;
-  const rolle = rolleKey ? ROLLEN[rolleKey].bezeichnung : "kein Login";
+  const rolle = rolleKey
+    ? (ROLLEN[rolleKey]?.bezeichnung ?? rolleKey)
+    : "kein Login";
   const name = benutzer?.name ?? "Nicht angemeldet";
 
   async function onAbmelden() {

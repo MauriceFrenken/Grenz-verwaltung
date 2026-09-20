@@ -3,7 +3,6 @@ import { Upload } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TeaserShell } from "./TeaserShell";
@@ -22,15 +21,13 @@ export function SollstellungTeaser() {
       <PageHeader
         titel="Sollstellung"
         aktionen={
-          <PermissionGate berechtigung="aktion.buchhaltung.sollstellung.erzeugen">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-foreground text-foreground"
-            >
-              Sollstellungslauf erzeugen
-            </Button>
-          </PermissionGate>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-foreground text-foreground"
+          >
+            Sollstellungslauf erzeugen
+          </Button>
         }
       />
       <PageWrapper>
@@ -46,16 +43,14 @@ export function ZahlungenTeaser() {
       <PageHeader
         titel="Zahlungen & Rückstände"
         aktionen={
-          <PermissionGate berechtigung="aktion.buchhaltung.zahlungen.bankimport">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-foreground text-foreground"
-            >
-              <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              Bankauszug (PDF)
-            </Button>
-          </PermissionGate>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-foreground text-foreground"
+          >
+            <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
+            Bankauszug (PDF)
+          </Button>
         }
       />
       <PageWrapper>

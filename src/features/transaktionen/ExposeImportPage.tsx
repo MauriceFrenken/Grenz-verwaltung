@@ -5,7 +5,6 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ContentSection } from "@/components/layout/PageWrapper";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAuth, usePermissions } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import {
   EXPOSE_FELD_DEFINITIONEN,
@@ -191,16 +190,12 @@ const exposeImportRoute = getRouteApi("/transaktionen/expose-import/");
 
 export function ExposeImportPage() {
   const navigate = useNavigate();
-  const { darfAktion } = usePermissions();
   const { session } = useAuth();
   const token = session?.access_token ?? "";
   const { postfach: postfachSuche } = exposeImportRoute.useSearch();
   const objectUrlRef = useRef<string | null>(null);
   const pdfDateiRef = useRef<File | null>(null);
   const postfachGeladenRef = useRef<string | null>(null);
-  const darfHochladen = darfAktion(
-    "aktion.transaktionen.expose_import.hochladen",
-  );
 
   const [dateiname, setDateiname] = useState<string | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -541,69 +536,54 @@ export function ExposeImportPage() {
       <PageHeader
         titel="Exposé-Import"
         nebenTitel={
-          <PermissionGate
-            berechtigung="aktion.transaktionen.expose_import.salesforce_session"
-            skeletonClassName="w-28"
+          <Button
+            size="sm"
+            variant="outline"
+            className={cn(
+              "shrink-0",
+              sfVerbunden
+                ? "border-heading/40 text-heading"
+                : "border-foreground text-foreground",
+            )}
+            onClick={() => setSfConnectOpen(true)}
           >
-            <Button
-              size="sm"
-              variant="outline"
-              className={cn(
-                "shrink-0",
-                sfVerbunden
-                  ? "border-heading/40 text-heading"
-                  : "border-foreground text-foreground",
-              )}
-              onClick={() => setSfConnectOpen(true)}
-            >
-              {sfVerbunden ? (
-                <Check className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              ) : (
-                <Unplug className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              )}
-              {sfVerbunden ? "verbunden" : "Mit Salesforce verbinden"}
-            </Button>
-          </PermissionGate>
+            {sfVerbunden ? (
+              <Check className="mr-2 h-4 w-4" strokeWidth={1.5} />
+            ) : (
+              <Unplug className="mr-2 h-4 w-4" strokeWidth={1.5} />
+            )}
+            {sfVerbunden ? "verbunden" : "Mit Salesforce verbinden"}
+          </Button>
         }
         aktionen={
           <>
-            <PermissionGate
-              berechtigung="aktion.transaktionen.expose_import.hochladen"
-              skeletonClassName="w-40"
+            <Button
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-heading"
+              disabled={!objectUrl || analysiert || laedtPdf}
+              onClick={kiAnalysieren}
             >
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-heading"
-                disabled={!objectUrl || analysiert || laedtPdf}
-                onClick={kiAnalysieren}
-              >
-                {analysiert ? (
-                  <Loader2
-                    className="mr-2 h-4 w-4 animate-spin"
-                    strokeWidth={1.5}
-                  />
-                ) : (
-                  <Sparkles className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                )}
-                Mit KI analysieren
-              </Button>
-            </PermissionGate>
-            <PermissionGate
-              berechtigung="aktion.transaktionen.expose_import.uebernehmen"
-              skeletonClassName="w-44"
+              {analysiert ? (
+                <Loader2
+                  className="mr-2 h-4 w-4 animate-spin"
+                  strokeWidth={1.5}
+                />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" strokeWidth={1.5} />
+              )}
+              Mit KI analysieren
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-foreground text-foreground"
+              disabled={
+                !objectUrl || !hatExtrahierteWerte || !hatObjektadresse
+              }
+              onClick={exportSalesforce}
             >
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-foreground text-foreground"
-                disabled={
-                  !objectUrl || !hatExtrahierteWerte || !hatObjektadresse
-                }
-                onClick={exportSalesforce}
-              >
-                Export to Salesforce
-              </Button>
-            </PermissionGate>
+              Export to Salesforce
+            </Button>
           </>
         }
       />
@@ -626,7 +606,7 @@ export function ExposeImportPage() {
             pageLabels={pdfMeta?.pageLabels ?? null}
             highlight={highlight}
             className="h-full min-h-0"
-            onPdfDrop={darfHochladen ? pdfDropUebernehmen : undefined}
+            onPdfDrop={pdfDropUebernehmen}
             dropDisabled={laedtPdf}
           />
         </div>

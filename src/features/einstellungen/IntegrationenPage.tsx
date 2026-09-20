@@ -4,7 +4,6 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -161,41 +160,35 @@ export function IntegrationenPage() {
             ) : null}
 
             <div className="flex flex-wrap gap-2">
-              <PermissionGate berechtigung="aktion.einstellungen.integrationen.verbinden">
-                <Button
-                  size="sm"
-                  className="bg-foreground text-background hover:bg-heading"
-                  disabled={busy !== null || !status?.azureKonfiguriert}
-                  onClick={() => void verbinden()}
-                >
-                  {busy === "connect" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                  {verbunden ? "Neu verbinden" : "App-Verbindung herstellen"}
-                </Button>
-              </PermissionGate>
-              <PermissionGate berechtigung="aktion.einstellungen.integrationen.verbinden">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-foreground text-foreground"
-                  disabled={busy !== null || !verbunden}
-                  onClick={() => void pruefen()}
-                >
-                  {busy === "probe" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                  Verbindung prüfen
-                </Button>
-              </PermissionGate>
-              <PermissionGate berechtigung="aktion.einstellungen.integrationen.verbinden">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-danger text-danger"
-                  disabled={busy !== null || status?.status === "getrennt"}
-                  onClick={() => void trennen()}
-                >
-                  {busy === "disconnect" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                  Trennen
-                </Button>
-              </PermissionGate>
+              <Button
+                size="sm"
+                className="bg-foreground text-background hover:bg-heading"
+                disabled={busy !== null || !status?.azureKonfiguriert}
+                onClick={() => void verbinden()}
+              >
+                {busy === "connect" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                {verbunden ? "Neu verbinden" : "App-Verbindung herstellen"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-foreground text-foreground"
+                disabled={busy !== null || !verbunden}
+                onClick={() => void pruefen()}
+              >
+                {busy === "probe" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Verbindung prüfen
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-danger text-danger"
+                disabled={busy !== null || status?.status === "getrennt"}
+                onClick={() => void trennen()}
+              >
+                {busy === "disconnect" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Trennen
+              </Button>
             </div>
           </article>
         </div>

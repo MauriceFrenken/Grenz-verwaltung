@@ -1,5 +1,4 @@
-import { KONFIGURIERBARE_ROLLEN } from "@/lib/permissions";
-import type { KonfigurierbareRolle, RolleName, RollenDefinition } from "@/types";
+import type { RolleName, RollenDefinition } from "@/types";
 
 export const APP_NAME = "FRENKEN Verwaltung";
 
@@ -38,11 +37,13 @@ export function rollenBeschreibung(id: string, rollen: RollenDefinition[]): stri
   return ROLLEN[id as RolleName]?.beschreibung ?? "";
 }
 
-/** Rollen in der Rechte-Matrix (OP-Admin ist systemseitig und nicht konfigurierbar). */
-export const MATRIX_ROLLEN = (Object.keys(ROLLEN) as RolleName[]).filter((r) => r !== "op_admin");
-
-/** Rollen, die beim Einladen neuer Benutzer wählbar sind (entspricht der Rollen-Matrix). */
-export const EINLADUNGS_ROLLEN = KONFIGURIERBARE_ROLLEN satisfies readonly KonfigurierbareRolle[];
+/** Rollen, die beim Einladen neuer Benutzer wählbar sind. */
+export const EINLADUNGS_ROLLEN = [
+  "administrator",
+  "manager",
+  "mitarbeiter",
+  "leser",
+] as const;
 
 export const DOKUMENTTYP_LABEL: Record<string, string> = {
   rechnung: "Rechnung",

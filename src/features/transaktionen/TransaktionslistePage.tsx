@@ -5,10 +5,9 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
-import { useAuth, usePermissions } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import type { GraphAnhangArt, GraphNachricht } from "@/lib/microsoft/graph";
 import { base64ZuBytes, felderZuWerten, hatWerte } from "@/lib/postfach/client";
 import type { PostfachEintrag } from "@/lib/postfach/typen";
@@ -146,7 +145,6 @@ function AnalyseStatus({
 export function TransaktionslistePage() {
   const { session } = useAuth();
   const navigate = useNavigate();
-  const { darfAktion } = usePermissions();
   const token = session?.access_token ?? "";
   /** Ändert sich bei jedem Öffnen der Route (inkl. Soft-Navigation / Reload). */
   const besuchKey = useRouterState({
@@ -255,13 +253,7 @@ export function TransaktionslistePage() {
   const exportieren = useCallback(
     async (eintrag: PostfachEintrag) => {
       if (!istSalesforceVerbunden()) {
-        if (
-          darfAktion("aktion.transaktionen.expose_import.salesforce_session")
-        ) {
-          setSfConnectOpen(true);
-        } else {
-          toast.error("Nicht mit Salesforce verbunden.");
-        }
+        setSfConnectOpen(true);
         return;
       }
 
@@ -298,7 +290,7 @@ export function TransaktionslistePage() {
         setAktionId(null);
       }
     },
-    [darfAktion, navigate, token],
+    [navigate, token],
   );
 
   const analyseWiederholen = useCallback(
@@ -386,11 +378,7 @@ export function TransaktionslistePage() {
         <AnalyseStatus
           zeile={z}
           wiederholenId={wiederholenId}
-          onWiederholen={
-            darfAktion("aktion.transaktionen.liste.analyse_wiederholen")
-              ? analyseWiederholen
-              : undefined
-          }
+          onWiederholen={analyseWiederholen}
         />
       ),
     },
@@ -420,39 +408,29 @@ export function TransaktionslistePage() {
 
         return (
           <div className="flex items-center justify-end gap-2">
-            <PermissionGate
-              berechtigung="aktion.transaktionen.liste.pruefen"
-              skeletonClassName="w-16"
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-foreground text-foreground"
+              disabled={!bereit || Boolean(aktionId)}
+              onClick={() => eintrag && pruefen(eintrag)}
             >
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-foreground text-foreground"
-                disabled={!bereit || Boolean(aktionId)}
-                onClick={() => eintrag && pruefen(eintrag)}
-              >
-                Check
-              </Button>
-            </PermissionGate>
-            <PermissionGate
-              berechtigung="aktion.transaktionen.liste.exportieren"
-              skeletonClassName="w-16"
+              Check
+            </Button>
+            <Button
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-heading"
+              disabled={!bereit || Boolean(aktionId)}
+              onClick={() => eintrag && void exportieren(eintrag)}
             >
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-heading"
-                disabled={!bereit || Boolean(aktionId)}
-                onClick={() => eintrag && void exportieren(eintrag)}
-              >
-                {laedtZeile ? (
-                  <Loader2
-                    className="mr-2 h-4 w-4 animate-spin"
-                    strokeWidth={1.5}
-                  />
-                ) : null}
-                Export
-              </Button>
-            </PermissionGate>
+              {laedtZeile ? (
+                <Loader2
+                  className="mr-2 h-4 w-4 animate-spin"
+                  strokeWidth={1.5}
+                />
+              ) : null}
+              Export
+            </Button>
           </div>
         );
       },

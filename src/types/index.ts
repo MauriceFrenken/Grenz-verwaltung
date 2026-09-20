@@ -1,8 +1,6 @@
 // Zentrales Domain-Modell für FRENKEN Verwaltung.
 // Konsistente IDs (Gesellschafts-ID, Objekt-ID) werden modulübergreifend verwendet.
 
-import type { KonfigurierbareRolle } from "@/lib/permissions/registry";
-
 export type GesellschaftId = string;
 export type ObjektId = string;
 export type EinheitId = string;
@@ -484,10 +482,3 @@ export interface Filter {
   bis?: string;
 }
 
-export type {
-  BerechtigungId,
-  SeitenBerechtigungId,
-  AktionsBerechtigungId,
-  KonfigurierbareRolle,
-  RolleBerechtigungenMap,
-} from "@/lib/permissions/registry";

@@ -23,7 +23,6 @@ const LABELS: Record<string, string> = {
   "/einstellungen": "Einstellungen",
   "/einstellungen/benutzer": "Benutzer",
   "/einstellungen/integrationen": "Integrationen",
-  "/einstellungen/rollen": "Rollen & Rechte",
   "/einstellungen/audit": "Audit-Trail",
 };
 

@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { EinheitenPage } from "@/features/verwaltung/EinheitenPage";
-import { seitenGuard } from "@/lib/permissions";
 
 export interface EinheitenSuche {
   gesellschaft?: string;
@@ -8,7 +7,6 @@ export interface EinheitenSuche {
 }
 
 export const Route = createFileRoute("/verwaltung/einheiten")({
-  beforeLoad: seitenGuard("seite.verwaltung.einheiten"),
   validateSearch: (search: Record<string, unknown>): EinheitenSuche => ({
     gesellschaft:
       typeof search.gesellschaft === "string" ? search.gesellschaft : undefined,

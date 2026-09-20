@@ -5,7 +5,6 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import {
@@ -731,20 +730,15 @@ export function PostfachPage() {
         }
 
         return (
-          <PermissionGate
-            berechtigung="aktion.dokumente.pruefordner.pruefen"
-            skeletonClassName="w-full"
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-full border-foreground text-foreground"
+            disabled={!pruefbar || laedtZeile}
+            onClick={() => eintrag && pruefen(eintrag)}
           >
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 w-full border-foreground text-foreground"
-              disabled={!pruefbar || laedtZeile}
-              onClick={() => eintrag && pruefen(eintrag)}
-            >
-              Check
-            </Button>
-          </PermissionGate>
+            Check
+          </Button>
         );
       },
     },
@@ -767,64 +761,49 @@ export function PostfachPage() {
 
         if (istExpose) {
           return (
-            <PermissionGate
-              berechtigung="aktion.dokumente.pruefordner.exposes_verschieben"
-              skeletonClassName="w-full"
+            <Button
+              size="sm"
+              className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
+              disabled={laedtZeile}
+              onClick={() =>
+                void zuExposesVerschieben(
+                  eintrag,
+                  eintrag.graphNachrichtId,
+                  eintrag.postfach,
+                )
+              }
             >
-              <Button
-                size="sm"
-                className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
-                disabled={laedtZeile}
-                onClick={() =>
-                  void zuExposesVerschieben(
-                    eintrag,
-                    eintrag.graphNachrichtId,
-                    eintrag.postfach,
-                  )
-                }
-              >
-                Zu Exposés
-              </Button>
-            </PermissionGate>
+              Zu Exposés
+            </Button>
           );
         }
 
         if (istTam) {
           return (
-            <PermissionGate
-              berechtigung="aktion.dokumente.pruefordner.zu_tam"
-              skeletonClassName="w-full"
+            <Button
+              size="sm"
+              className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
+              disabled={laedtZeile}
+              onClick={() => void zuTam(eintrag)}
             >
-              <Button
-                size="sm"
-                className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
-                disabled={laedtZeile}
-                onClick={() => void zuTam(eintrag)}
-              >
-                zu TAM
-              </Button>
-            </PermissionGate>
+              zu TAM
+            </Button>
           );
         }
 
         if (istRechnungEintrag(eintrag)) {
           return (
-            <PermissionGate
-              berechtigung="aktion.dokumente.rechnungsfreigabe.verschieben"
-              skeletonClassName="w-full"
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 w-full border-foreground text-foreground"
+              disabled={laedtZeile}
+              onClick={() =>
+                void navigate({ to: "/dokumente/rechnungsfreigabe" })
+              }
             >
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 w-full border-foreground text-foreground"
-                disabled={laedtZeile}
-                onClick={() =>
-                  void navigate({ to: "/dokumente/rechnungsfreigabe" })
-                }
-              >
-                Freigabe
-              </Button>
-            </PermissionGate>
+              Freigabe
+            </Button>
           );
         }
 
@@ -833,19 +812,14 @@ export function PostfachPage() {
         }
 
         return (
-          <PermissionGate
-            berechtigung="aktion.dokumente.pruefordner.ablegen"
-            skeletonClassName="w-full"
+          <Button
+            size="sm"
+            className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
+            disabled={laedtZeile}
+            onClick={() => void direktAusfuehren(eintrag)}
           >
-            <Button
-              size="sm"
-              className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
-              disabled={laedtZeile}
-              onClick={() => void direktAusfuehren(eintrag)}
-            >
-              Ablegen
-            </Button>
-          </PermissionGate>
+            Ablegen
+          </Button>
         );
       },
     },
@@ -882,37 +856,31 @@ export function PostfachPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(ev) => ev.stopPropagation()}>
               {kannAnalysieren ? (
-                <PermissionGate berechtigung="aktion.dokumente.posteingang.analysieren">
-                  <DropdownMenuItem
-                    disabled={menueGesperrt}
-                    onClick={() => eintrag && void analyseWiederholen(eintrag)}
-                  >
-                    <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
-                    KI-Analyse
-                  </DropdownMenuItem>
-                </PermissionGate>
+                <DropdownMenuItem
+                  disabled={menueGesperrt}
+                  onClick={() => eintrag && void analyseWiederholen(eintrag)}
+                >
+                  <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
+                  KI-Analyse
+                </DropdownMenuItem>
               ) : null}
               {kannWiederholen ? (
-                <PermissionGate berechtigung="aktion.dokumente.pruefordner.analyse_wiederholen">
-                  <DropdownMenuItem
-                    disabled={menueGesperrt}
-                    onClick={() => eintrag && void analyseWiederholen(eintrag)}
-                  >
-                    <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
-                    KI-Neustart
-                  </DropdownMenuItem>
-                </PermissionGate>
+                <DropdownMenuItem
+                  disabled={menueGesperrt}
+                  onClick={() => eintrag && void analyseWiederholen(eintrag)}
+                >
+                  <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
+                  KI-Neustart
+                </DropdownMenuItem>
               ) : null}
               {eintrag ? (
-                <PermissionGate berechtigung="aktion.dokumente.pruefordner.archivieren">
-                  <DropdownMenuItem
-                    disabled={menueGesperrt}
-                    onClick={() => void archivieren(eintrag)}
-                  >
-                    <Archive className="h-4 w-4" strokeWidth={1.5} />
-                    Archiv
-                  </DropdownMenuItem>
-                </PermissionGate>
+                <DropdownMenuItem
+                  disabled={menueGesperrt}
+                  onClick={() => void archivieren(eintrag)}
+                >
+                  <Archive className="h-4 w-4" strokeWidth={1.5} />
+                  Archiv
+                </DropdownMenuItem>
               ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -935,20 +903,18 @@ export function PostfachPage() {
         }
         aktionen={
           <>
-            <PermissionGate berechtigung="aktion.dokumente.posteingang.analysieren">
-              <Button
-                type="button"
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-heading"
-                disabled={laedt || analyseLaeuft || !token || offen <= 0}
-                onClick={() => void starteAnalyse()}
-              >
-                {analyseLaeuft ? (
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.5} />
-                ) : null}
-                KI-Analyse
-              </Button>
-            </PermissionGate>
+            <Button
+              type="button"
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-heading"
+              disabled={laedt || analyseLaeuft || !token || offen <= 0}
+              onClick={() => void starteAnalyse()}
+            >
+              {analyseLaeuft ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.5} />
+              ) : null}
+              KI-Analyse
+            </Button>
             <Button
               type="button"
               variant="outline"

@@ -8,7 +8,6 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { LoeschenDialog } from "@/components/shared/LoeschenDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,8 +16,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApi } from "@/hooks/useApi";
-import { usePermissions } from "@/hooks/useAuth";
-import { useAktionGuard } from "@/hooks/useAktionGuard";
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import type { Einheit } from "@/types";
@@ -136,8 +133,6 @@ const suchfelder = [
 export function EinheitenPage() {
   const { gesellschaft, objekt } = useSearch({ from: "/verwaltung/einheiten" });
   const navigate = useNavigate({ from: "/verwaltung/einheiten" });
-  const { darfAktion } = usePermissions();
-  const { erlaubtOderHinweis } = useAktionGuard();
   const [anlegenOffen, setAnlegenOffen] = useState(false);
   const [bearbeiten, setBearbeiten] = useState<Einheit | null>(null);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
@@ -163,7 +158,6 @@ export function EinheitenPage() {
 
   const loeschen = async () => {
     if (!bearbeiten) return;
-    if (!erlaubtOderHinweis("aktion.verwaltung.einheiten.loeschen")) return;
     setLoeschenLaeuft(true);
     try {
       await verwaltungApi.deleteEinheit(bearbeiten.id);
@@ -184,16 +178,14 @@ export function EinheitenPage() {
       <PageHeader
         titel="Einheiten"
         aktionen={
-          <PermissionGate berechtigung="aktion.verwaltung.einheiten.anlegen">
-            <Button
-              size="sm"
-              className="bg-primary text-primary-foreground hover:bg-heading"
-              onClick={() => setAnlegenOffen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              Neue Einheit
-            </Button>
-          </PermissionGate>
+          <Button
+            size="sm"
+            className="bg-primary text-primary-foreground hover:bg-heading"
+            onClick={() => setAnlegenOffen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
+            Neue Einheit
+          </Button>
         }
       />
       <PageWrapper>
@@ -224,11 +216,7 @@ export function EinheitenPage() {
           isEmpty={isEmpty && !suche.trim()}
           rowKey={(e) => e.id}
           emptyTitel={suche.trim() ? "Keine Treffer" : "Keine Einheiten"}
-          onRowClick={
-            darfAktion("aktion.verwaltung.einheiten.bearbeiten")
-              ? (e) => setBearbeiten(e)
-              : undefined
-          }
+          onRowClick={(e) => setBearbeiten(e)}
         />
       </PageWrapper>
 
@@ -267,11 +255,7 @@ export function EinheitenPage() {
                 schliessen();
                 reload();
               }}
-              onLoeschenAnfragen={
-                darfAktion("aktion.verwaltung.einheiten.loeschen")
-                  ? () => setLoeschenOffen(true)
-                  : undefined
-              }
+              onLoeschenAnfragen={() => setLoeschenOffen(true)}
             />
           ) : null}
         </DialogContent>

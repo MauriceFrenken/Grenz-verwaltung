@@ -10,7 +10,6 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { LoeschenDialog } from "@/components/shared/LoeschenDialog";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,8 +18,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApi } from "@/hooks/useApi";
-import { usePermissions } from "@/hooks/useAuth";
-import { useAktionGuard } from "@/hooks/useAktionGuard";
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import type { Gesellschaft } from "@/types";
@@ -99,8 +96,6 @@ const suchfelder = [
 ];
 
 export function GesellschaftenPage() {
-  const { darfAktion } = usePermissions();
-  const { erlaubtOderHinweis } = useAktionGuard();
   const [anlegenOffen, setAnlegenOffen] = useState(false);
   const [bearbeiten, setBearbeiten] = useState<Gesellschaft | null>(null);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
@@ -119,8 +114,6 @@ export function GesellschaftenPage() {
 
   const loeschen = async () => {
     if (!bearbeiten) return;
-    if (!erlaubtOderHinweis("aktion.verwaltung.gesellschaften.loeschen"))
-      return;
     setLoeschenLaeuft(true);
     try {
       await verwaltungApi.deleteGesellschaft(bearbeiten.id);
@@ -139,16 +132,14 @@ export function GesellschaftenPage() {
       <PageHeader
         titel="Gesellschaften"
         aktionen={
-          <PermissionGate berechtigung="aktion.verwaltung.gesellschaften.anlegen">
-            <Button
-              size="sm"
-              className="bg-primary text-primary-foreground hover:bg-heading"
-              onClick={() => setAnlegenOffen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              Neue Gesellschaft
-            </Button>
-          </PermissionGate>
+          <Button
+            size="sm"
+            className="bg-primary text-primary-foreground hover:bg-heading"
+            onClick={() => setAnlegenOffen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
+            Neue Gesellschaft
+          </Button>
         }
       />
       <PageWrapper>
@@ -160,11 +151,7 @@ export function GesellschaftenPage() {
           isEmpty={isEmpty && !suche.trim()}
           rowKey={(g) => g.id}
           emptyTitel={suche.trim() ? "Keine Treffer" : "Noch keine Gesellschaften"}
-          onRowClick={
-            darfAktion("aktion.verwaltung.gesellschaften.bearbeiten")
-              ? (g) => setBearbeiten(g)
-              : undefined
-          }
+          onRowClick={(g) => setBearbeiten(g)}
         />
       </PageWrapper>
 
@@ -200,11 +187,7 @@ export function GesellschaftenPage() {
                 schliessen();
                 reload();
               }}
-              onLoeschenAnfragen={
-                darfAktion("aktion.verwaltung.gesellschaften.loeschen")
-                  ? () => setLoeschenOffen(true)
-                  : undefined
-              }
+              onLoeschenAnfragen={() => setLoeschenOffen(true)}
             />
           ) : null}
         </DialogContent>

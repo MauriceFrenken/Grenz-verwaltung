@@ -16,7 +16,6 @@ import { KpiCard } from "@/components/shared/KpiCard";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { LoeschenDialog } from "@/components/shared/LoeschenDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,7 +24,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApi } from "@/hooks/useApi";
-import { useAktionGuard } from "@/hooks/useAktionGuard";
 import { buchhaltungApi } from "@/api/buchhaltung";
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
@@ -126,7 +124,6 @@ const suchfelder = [
 
 export function SollstellungDetailPage({ id }: { id: string }) {
   const navigate = useNavigate();
-  const { erlaubtOderHinweis } = useAktionGuard();
 
   const [suche, setSuche] = useState("");
   const [gesellschaftId, setGesellschaftId] = useState<string | null>(null);
@@ -178,7 +175,6 @@ export function SollstellungDetailPage({ id }: { id: string }) {
   };
 
   const abgleich = async () => {
-    if (!erlaubtOderHinweis("aktion.buchhaltung.sollstellung.erzeugen")) return;
     setAbgleichLaeuft(true);
     try {
       await buchhaltungApi.gleicheAb(id);
@@ -192,7 +188,6 @@ export function SollstellungDetailPage({ id }: { id: string }) {
   };
 
   const loeschen = async () => {
-    if (!erlaubtOderHinweis("aktion.buchhaltung.sollstellung.erzeugen")) return;
     setLoeschenLaeuft(true);
     try {
       await buchhaltungApi.deleteSollstellungLauf(id);
@@ -207,7 +202,6 @@ export function SollstellungDetailPage({ id }: { id: string }) {
 
   const auszugLoeschen = async () => {
     if (!auszugLoeschenId) return;
-    if (!erlaubtOderHinweis("aktion.buchhaltung.zahlungen.bankimport")) return;
     try {
       await buchhaltungApi.deleteBankauszug(auszugLoeschenId, id);
       toast.success("Bankauszug entfernt");
@@ -261,46 +255,40 @@ export function SollstellungDetailPage({ id }: { id: string }) {
                 Übersicht
               </Link>
             </Button>
-            <PermissionGate berechtigung="aktion.buchhaltung.zahlungen.bankimport">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-none border-foreground"
-                onClick={() => setImportOffen(true)}
-              >
-                <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                Bankauszug
-              </Button>
-            </PermissionGate>
-            <PermissionGate berechtigung="aktion.buchhaltung.sollstellung.erzeugen">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-none"
-                onClick={() => void abgleich()}
-                disabled={abgleichLaeuft}
-              >
-                <RefreshCw
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    abgleichLaeuft && "animate-spin",
-                  )}
-                  strokeWidth={1.5}
-                />
-                Abgleich
-              </Button>
-            </PermissionGate>
-            <PermissionGate berechtigung="aktion.buchhaltung.sollstellung.erzeugen">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-none border-danger text-danger"
-                onClick={() => setLoeschenOffen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                Löschen
-              </Button>
-            </PermissionGate>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-none border-foreground"
+              onClick={() => setImportOffen(true)}
+            >
+              <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
+              Bankauszug
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-none"
+              onClick={() => void abgleich()}
+              disabled={abgleichLaeuft}
+            >
+              <RefreshCw
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  abgleichLaeuft && "animate-spin",
+                )}
+                strokeWidth={1.5}
+              />
+              Abgleich
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-none border-danger text-danger"
+              onClick={() => setLoeschenOffen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" strokeWidth={1.5} />
+              Löschen
+            </Button>
           </div>
         }
       />
@@ -357,16 +345,14 @@ export function SollstellungDetailPage({ id }: { id: string }) {
                         : ""}
                     </span>
                   </div>
-                  <PermissionGate berechtigung="aktion.buchhaltung.zahlungen.bankimport">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="rounded-none text-danger"
-                      onClick={() => setAuszugLoeschenId(ba.id)}
-                    >
-                      Entfernen
-                    </Button>
-                  </PermissionGate>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-none text-danger"
+                    onClick={() => setAuszugLoeschenId(ba.id)}
+                  >
+                    Entfernen
+                  </Button>
                 </li>
               ))}
             </ul>

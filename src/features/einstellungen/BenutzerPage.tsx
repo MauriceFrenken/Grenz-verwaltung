@@ -3,21 +3,17 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { LoeschenDialog } from "@/components/shared/LoeschenDialog";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useApi } from "@/hooks/useApi";
-import { useAuth, usePermissions } from "@/hooks/useAuth";
-import { useAktionGuard } from "@/hooks/useAktionGuard";
+import { useAuth } from "@/hooks/useAuth";
 import { einstellungenApi } from "@/api/einstellungen";
 import { verwaltungApi } from "@/api/verwaltung";
 import { gesellschaftIdsAusBenutzer } from "@/lib/auth";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
-import { primaereRolle } from "@/lib/permissions";
 import { ROLLEN } from "@/lib/constants";
-import { usePermissionsStore } from "@/store/permissions";
 import type { Benutzer, Gesellschaft } from "@/types";
 import { BenutzerForm } from "./BenutzerForm";
 
@@ -76,9 +72,6 @@ function spaltenFuerGesellschaften(gesellschaften: Gesellschaft[]): Column<Benut
 
 export function BenutzerPage() {
   const { benutzer: angemeldeterBenutzer } = useAuth();
-  const { darfAktion, darfBenutzerVerwalten, istOpAdmin } = usePermissions();
-  const { erlaubtOderHinweis } = useAktionGuard();
-  const rangMap = usePermissionsStore((s) => s.rangMap);
   const [dialogOffen, setDialogOffen] = useState(false);
   const [bearbeiten, setBearbeiten] = useState<Benutzer | null>(null);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
@@ -87,14 +80,6 @@ export function BenutzerPage() {
   const gesellschaften = useApi(() => verwaltungApi.listGesellschaften(), []);
   const spalten = spaltenFuerGesellschaften(gesellschaften.data?.items ?? []);
 
-  const kannBenutzerBearbeiten = (b: Benutzer): boolean => {
-    if (istOpAdmin()) return true;
-    if (!darfAktion("aktion.einstellungen.benutzer.bearbeiten")) return false;
-    const zielRolle = primaereRolle(b.rollen, rangMap());
-    if (!zielRolle) return false;
-    return darfBenutzerVerwalten(zielRolle);
-  };
-
   const schliesseBearbeitung = () => {
     setBearbeiten(null);
     setLoeschenOffen(false);
@@ -102,7 +87,6 @@ export function BenutzerPage() {
 
   const loeschen = async () => {
     if (!bearbeiten) return;
-    if (!istOpAdmin() && !erlaubtOderHinweis("aktion.einstellungen.benutzer.loeschen")) return;
     if (bearbeiten.id === angemeldeterBenutzer?.id) {
       toast.error("Sie können Ihr eigenes Konto nicht löschen");
       return;
@@ -125,29 +109,27 @@ export function BenutzerPage() {
       <PageHeader
         titel="Benutzer"
         aktionen={
-          <PermissionGate berechtigung="aktion.einstellungen.benutzer.einladen">
-            <Dialog open={dialogOffen} onOpenChange={setDialogOffen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-heading">
-                  <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                  Neuer Benutzer
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-xl overflow-hidden">
-                <DialogHeader>
-                  <DialogTitle>Benutzer einladen</DialogTitle>
-                </DialogHeader>
-                {dialogOffen ? (
-                  <BenutzerForm
-                    onDone={() => {
-                      setDialogOffen(false);
-                      reload();
-                    }}
-                  />
-                ) : null}
-              </DialogContent>
-            </Dialog>
-          </PermissionGate>
+          <Dialog open={dialogOffen} onOpenChange={setDialogOffen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="bg-primary text-primary-foreground hover:bg-heading">
+                <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
+                Neuer Benutzer
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-xl overflow-hidden">
+              <DialogHeader>
+                <DialogTitle>Benutzer einladen</DialogTitle>
+              </DialogHeader>
+              {dialogOffen ? (
+                <BenutzerForm
+                  onDone={() => {
+                    setDialogOffen(false);
+                    reload();
+                  }}
+                />
+              ) : null}
+            </DialogContent>
+          </Dialog>
         }
       />
       <PageWrapper>
@@ -157,13 +139,7 @@ export function BenutzerPage() {
           isLoading={isLoading}
           isEmpty={isEmpty}
           rowKey={(b) => b.id}
-          onRowClick={
-            istOpAdmin() || darfAktion("aktion.einstellungen.benutzer.bearbeiten")
-              ? (b) => {
-                  if (kannBenutzerBearbeiten(b)) setBearbeiten(b);
-                }
-              : undefined
-          }
+          onRowClick={(b) => setBearbeiten(b)}
         />
       </PageWrapper>
 
@@ -181,10 +157,7 @@ export function BenutzerPage() {
                 reload();
               }}
               onLoeschenAnfragen={
-                bearbeiten.id !== angemeldeterBenutzer?.id &&
-                (istOpAdmin() ||
-                  (darfAktion("aktion.einstellungen.benutzer.loeschen") &&
-                    darfBenutzerVerwalten(primaereRolle(bearbeiten.rollen, rangMap()) ?? "")))
+                bearbeiten.id !== angemeldeterBenutzer?.id
                   ? () => setLoeschenOffen(true)
                   : undefined
               }

@@ -11,7 +11,6 @@ import { KpiCard } from "@/components/shared/KpiCard";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { LoeschenDialog } from "@/components/shared/LoeschenDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,8 +19,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApi } from "@/hooks/useApi";
-import { usePermissions } from "@/hooks/useAuth";
-import { useAktionGuard } from "@/hooks/useAktionGuard";
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import type { Einheit } from "@/types";
@@ -113,8 +110,6 @@ function Stammdaten({ eintraege }: { eintraege: [string, string][] }) {
 
 export function ObjektDetailPage({ id }: { id: string }) {
   const navigate = useNavigate();
-  const { darfAktion } = usePermissions();
-  const { erlaubtOderHinweis } = useAktionGuard();
   const [objektBearbeiten, setObjektBearbeiten] = useState(false);
   const [objektLoeschen, setObjektLoeschen] = useState(false);
   const [objektLoeschenLaeuft, setObjektLoeschenLaeuft] = useState(false);
@@ -143,7 +138,6 @@ export function ObjektDetailPage({ id }: { id: string }) {
 
   const objektEntfernen = async () => {
     if (!o) return;
-    if (!erlaubtOderHinweis("aktion.verwaltung.objekte.loeschen")) return;
     setObjektLoeschenLaeuft(true);
     try {
       await verwaltungApi.deleteObjekt(o.id);
@@ -158,7 +152,6 @@ export function ObjektDetailPage({ id }: { id: string }) {
 
   const einheitEntfernen = async () => {
     if (!einheitBearbeiten) return;
-    if (!erlaubtOderHinweis("aktion.verwaltung.einheiten.loeschen")) return;
     setEinheitLoeschenLaeuft(true);
     try {
       await verwaltungApi.deleteEinheit(einheitBearbeiten.id);
@@ -222,26 +215,22 @@ export function ObjektDetailPage({ id }: { id: string }) {
         }
         aktionen={
           <>
-            <PermissionGate berechtigung="aktion.verwaltung.einheiten.anlegen">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setEinheitAnlegen(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                Neue Einheit
-              </Button>
-            </PermissionGate>
-            <PermissionGate berechtigung="aktion.verwaltung.objekte.bearbeiten">
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-heading"
-                onClick={() => setObjektBearbeiten(true)}
-              >
-                <Pencil className="mr-2 h-4 w-4" strokeWidth={1.5} />
-                Bearbeiten
-              </Button>
-            </PermissionGate>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEinheitAnlegen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
+              Neue Einheit
+            </Button>
+            <Button
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-heading"
+              onClick={() => setObjektBearbeiten(true)}
+            >
+              <Pencil className="mr-2 h-4 w-4" strokeWidth={1.5} />
+              Bearbeiten
+            </Button>
           </>
         }
       />
@@ -287,11 +276,7 @@ export function ObjektDetailPage({ id }: { id: string }) {
           isEmpty={einheiten.isEmpty && !suche.trim()}
           rowKey={(e) => e.id}
           emptyTitel={suche.trim() ? "Keine Treffer" : "Keine Einheiten"}
-          onRowClick={
-            darfAktion("aktion.verwaltung.einheiten.bearbeiten")
-              ? (e) => setEinheitBearbeiten(e)
-              : undefined
-          }
+          onRowClick={(e) => setEinheitBearbeiten(e)}
         />
       </PageWrapper>
 
@@ -308,11 +293,7 @@ export function ObjektDetailPage({ id }: { id: string }) {
                 setObjektBearbeiten(false);
                 objekt.reload();
               }}
-              onLoeschenAnfragen={
-                darfAktion("aktion.verwaltung.objekte.loeschen")
-                  ? () => setObjektLoeschen(true)
-                  : undefined
-              }
+              onLoeschenAnfragen={() => setObjektLoeschen(true)}
             />
           ) : null}
         </DialogContent>
@@ -355,11 +336,7 @@ export function ObjektDetailPage({ id }: { id: string }) {
                 einheiten.reload();
                 objekt.reload();
               }}
-              onLoeschenAnfragen={
-                darfAktion("aktion.verwaltung.einheiten.loeschen")
-                  ? () => setEinheitLoeschen(true)
-                  : undefined
-              }
+              onLoeschenAnfragen={() => setEinheitLoeschen(true)}
             />
           ) : null}
         </DialogContent>

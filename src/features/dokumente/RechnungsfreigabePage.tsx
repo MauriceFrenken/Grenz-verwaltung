@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { Button } from "@/components/ui/button";
-import { useAuth, usePermissions } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import {
   FREIGABE_STATUS_LABELS,
   FREIGABE_STATUS_SPALTEN,
@@ -235,15 +235,11 @@ function Spalte({
 
 export function RechnungsfreigabePage() {
   const { session } = useAuth();
-  const { darfAktion } = usePermissions();
   const token = session?.access_token ?? "";
   const [eintraege, setEintraege] = useState<DokumentPosteingangEintrag[]>([]);
   const [historie, setHistorie] = useState<RechnungHistorieEintrag[]>([]);
   const [laedt, setLaedt] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-
-  const kannVerschieben = darfAktion("aktion.dokumente.rechnungsfreigabe.verschieben");
-  const kannDatev = darfAktion("aktion.dokumente.rechnungsfreigabe.datev");
 
   const laden = useCallback(async () => {
     if (!token) return;
@@ -292,15 +288,7 @@ export function RechnungsfreigabePage() {
       if (von === ziel) return;
       if (von === "erledigt") return;
 
-      if (ziel === "an_datev") {
-        if (!kannDatev) {
-          toast.error("Keine Berechtigung für DATEV.");
-          return;
-        }
-      } else if (ziel === "erledigt" || ziel === "freigegeben") {
-        return;
-      } else if (!kannVerschieben) {
-        toast.error("Keine Berechtigung zum Verschieben.");
+      if (ziel === "erledigt" || ziel === "freigegeben") {
         return;
       }
 
@@ -351,7 +339,7 @@ export function RechnungsfreigabePage() {
         setBusyId(null);
       }
     },
-    [busyId, eintraege, kannDatev, kannVerschieben, token],
+    [busyId, eintraege, token],
   );
 
   return (
@@ -378,9 +366,7 @@ export function RechnungsfreigabePage() {
       <PageWrapper>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {FREIGABE_STATUS_SPALTEN.map((status) => {
-              const dropErlaubt =
-                busyId === null &&
-                (status === "an_datev" ? kannDatev : kannVerschieben);
+              const dropErlaubt = busyId === null;
               return (
                 <Spalte
                   key={status}

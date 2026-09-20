@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,7 +25,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useApi } from "@/hooks/useApi";
-import { useAktionGuard } from "@/hooks/useAktionGuard";
 import { buchhaltungApi } from "@/api/buchhaltung";
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
@@ -115,7 +113,6 @@ function aktuellerMonat(): string {
 
 export function SollstellungPage() {
   const navigate = useNavigate();
-  const { erlaubtOderHinweis } = useAktionGuard();
   const [suche, setSuche] = useState("");
   const [erzeugenOffen, setErzeugenOffen] = useState(false);
   const [zeitraum, setZeitraum] = useState(aktuellerMonat);
@@ -130,7 +127,6 @@ export function SollstellungPage() {
   const zeilen = useTabellenSuche(data?.items ?? [], suche, suchfelder);
 
   const erzeugen = async () => {
-    if (!erlaubtOderHinweis("aktion.buchhaltung.sollstellung.erzeugen")) return;
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(zeitraum)) {
       toast.error("Ungültiger Monat");
       return;
@@ -157,20 +153,18 @@ export function SollstellungPage() {
       <PageHeader
         titel="Sollstellung"
         aktionen={
-          <PermissionGate berechtigung="aktion.buchhaltung.sollstellung.erzeugen">
-            <Button
-              size="sm"
-              className="bg-primary text-primary-foreground hover:bg-heading"
-              onClick={() => {
-                setZeitraum(aktuellerMonat());
-                setGesellschaftId(null);
-                setErzeugenOffen(true);
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              Neue Sollstellung
-            </Button>
-          </PermissionGate>
+          <Button
+            size="sm"
+            className="bg-primary text-primary-foreground hover:bg-heading"
+            onClick={() => {
+              setZeitraum(aktuellerMonat());
+              setGesellschaftId(null);
+              setErzeugenOffen(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
+            Neue Sollstellung
+          </Button>
         }
       />
       <PageWrapper>

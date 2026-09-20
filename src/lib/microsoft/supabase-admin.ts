@@ -26,8 +26,6 @@ export type MicrosoftCaller = {
   darfVerbinden: boolean;
 };
 
-const VERBINDEN_ROLLEN = new Set(["op_admin", "administrator"]);
-
 export async function microsoftCallerAusJwt(accessToken: string): Promise<MicrosoftCaller> {
   const token = accessToken?.trim();
   if (!token) throw new Error("Nicht angemeldet.");
@@ -51,6 +49,6 @@ export async function microsoftCallerAusJwt(accessToken: string): Promise<Micros
   return {
     userId: data.user.id,
     rolle,
-    darfVerbinden: VERBINDEN_ROLLEN.has(rolle),
+    darfVerbinden: true,
   };
 }

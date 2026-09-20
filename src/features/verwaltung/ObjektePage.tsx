@@ -8,7 +8,6 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { LoeschenDialog } from "@/components/shared/LoeschenDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,8 +16,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApi } from "@/hooks/useApi";
-import { usePermissions } from "@/hooks/useAuth";
-import { useAktionGuard } from "@/hooks/useAktionGuard";
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import type { Objekt } from "@/types";
@@ -132,8 +129,6 @@ const suchfelder = [
 export function ObjektePage() {
   const { gesellschaft } = useSearch({ from: "/verwaltung/objekte" });
   const navigate = useNavigate();
-  const { darfAktion } = usePermissions();
-  const { erlaubtOderHinweis } = useAktionGuard();
   const [anlegenOffen, setAnlegenOffen] = useState(false);
   const [bearbeiten, setBearbeiten] = useState<Objekt | null>(null);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
@@ -154,7 +149,6 @@ export function ObjektePage() {
 
   const loeschen = async () => {
     if (!bearbeiten) return;
-    if (!erlaubtOderHinweis("aktion.verwaltung.objekte.loeschen")) return;
     setLoeschenLaeuft(true);
     try {
       await verwaltungApi.deleteObjekt(bearbeiten.id);
@@ -173,16 +167,14 @@ export function ObjektePage() {
       <PageHeader
         titel="Objekte"
         aktionen={
-          <PermissionGate berechtigung="aktion.verwaltung.objekte.anlegen">
-            <Button
-              size="sm"
-              className="bg-primary text-primary-foreground hover:bg-heading"
-              onClick={() => setAnlegenOffen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              Neues Objekt
-            </Button>
-          </PermissionGate>
+          <Button
+            size="sm"
+            className="bg-primary text-primary-foreground hover:bg-heading"
+            onClick={() => setAnlegenOffen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
+            Neues Objekt
+          </Button>
         }
       />
       <PageWrapper>
@@ -206,11 +198,7 @@ export function ObjektePage() {
           isEmpty={isEmpty && !suche.trim()}
           rowKey={(o) => o.id}
           emptyTitel={suche.trim() ? "Keine Treffer" : "Keine Objekte"}
-          onRowClick={
-            darfAktion("aktion.verwaltung.objekte.bearbeiten")
-              ? (o) => setBearbeiten(o)
-              : undefined
-          }
+          onRowClick={(o) => setBearbeiten(o)}
         />
       </PageWrapper>
 
@@ -249,11 +237,7 @@ export function ObjektePage() {
                 schliessen();
                 reload();
               }}
-              onLoeschenAnfragen={
-                darfAktion("aktion.verwaltung.objekte.loeschen")
-                  ? () => setLoeschenOffen(true)
-                  : undefined
-              }
+              onLoeschenAnfragen={() => setLoeschenOffen(true)}
             />
           ) : null}
         </DialogContent>

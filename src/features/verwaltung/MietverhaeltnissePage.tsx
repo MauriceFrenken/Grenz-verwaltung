@@ -8,7 +8,6 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { LoeschenDialog } from "@/components/shared/LoeschenDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,8 +16,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApi } from "@/hooks/useApi";
-import { usePermissions } from "@/hooks/useAuth";
-import { useAktionGuard } from "@/hooks/useAktionGuard";
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import type { Mietverhaeltnis } from "@/types";
@@ -131,8 +128,6 @@ export function MietverhaeltnissePage() {
     from: "/verwaltung/mietverhaeltnisse",
   });
   const navigate = useNavigate({ from: "/verwaltung/mietverhaeltnisse" });
-  const { darfAktion } = usePermissions();
-  const { erlaubtOderHinweis } = useAktionGuard();
   const [anlegenOffen, setAnlegenOffen] = useState(false);
   const [bearbeiten, setBearbeiten] = useState<Mietverhaeltnis | null>(null);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
@@ -159,8 +154,6 @@ export function MietverhaeltnissePage() {
 
   const loeschen = async () => {
     if (!bearbeiten) return;
-    if (!erlaubtOderHinweis("aktion.verwaltung.mietverhaeltnisse.loeschen"))
-      return;
     setLoeschenLaeuft(true);
     try {
       await verwaltungApi.deleteMietverhaeltnis(bearbeiten.id);
@@ -185,19 +178,17 @@ export function MietverhaeltnissePage() {
       <PageHeader
         titel="Mietverhältnisse"
         aktionen={
-          <PermissionGate berechtigung="aktion.verwaltung.mietverhaeltnisse.anlegen">
-            <Button
-              size="sm"
-              className="bg-primary text-primary-foreground hover:bg-heading"
-              onClick={() => {
-                schliessen();
-                setAnlegenOffen(true);
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              Neues Mietverhältnis
-            </Button>
-          </PermissionGate>
+          <Button
+            size="sm"
+            className="bg-primary text-primary-foreground hover:bg-heading"
+            onClick={() => {
+              schliessen();
+              setAnlegenOffen(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" strokeWidth={1.5} />
+            Neues Mietverhältnis
+          </Button>
         }
       />
       <PageWrapper>
@@ -228,14 +219,10 @@ export function MietverhaeltnissePage() {
           isEmpty={isEmpty && !suche.trim()}
           rowKey={(m) => m.id}
           emptyTitel={suche.trim() ? "Keine Treffer" : "Keine Mietverhältnisse"}
-          onRowClick={
-            darfAktion("aktion.verwaltung.mietverhaeltnisse.bearbeiten")
-              ? (m) => {
-                  setAnlegenOffen(false);
-                  setBearbeiten(m);
-                }
-              : undefined
-          }
+          onRowClick={(m) => {
+            setAnlegenOffen(false);
+            setBearbeiten(m);
+          }}
         />
       </PageWrapper>
 
@@ -276,11 +263,7 @@ export function MietverhaeltnissePage() {
                 schliessen();
                 reload();
               }}
-              onLoeschenAnfragen={
-                darfAktion("aktion.verwaltung.mietverhaeltnisse.loeschen")
-                  ? () => setLoeschenOffen(true)
-                  : undefined
-              }
+              onLoeschenAnfragen={() => setLoeschenOffen(true)}
             />
           ) : null}
         </DialogContent>

@@ -4,7 +4,6 @@ import { AlertTriangle, BookOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -427,67 +426,52 @@ export function DokumentPruefungPage() {
         }
         aktionen={
           istTam ? (
-            <PermissionGate
-              berechtigung="aktion.dokumente.pruefordner.zu_tam"
-              skeletonClassName="w-24"
+            <Button
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-heading"
+              disabled={
+                laedtPdf ||
+                speichert ||
+                eintrag?.status === "abgelegt" ||
+                eintrag?.status === "gebucht"
+              }
+              onClick={() => void zuTam()}
             >
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-heading"
-                disabled={
-                  laedtPdf ||
-                  speichert ||
-                  eintrag?.status === "abgelegt" ||
-                  eintrag?.status === "gebucht"
-                }
-                onClick={() => void zuTam()}
-              >
-                zu TAM
-              </Button>
-            </PermissionGate>
+              zu TAM
+            </Button>
           ) : istRechnung ? (
-            <PermissionGate
-              berechtigung="aktion.dokumente.pruefordner.buchen"
-              skeletonClassName="w-24"
+            <Button
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-heading"
+              disabled={
+                laedtPdf ||
+                speichert ||
+                !gesellschaftId ||
+                eintrag?.status === "abgelegt" ||
+                eintrag?.status === "gebucht"
+              }
+              onClick={() => void buchen()}
             >
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-heading"
-                disabled={
-                  laedtPdf ||
-                  speichert ||
-                  !gesellschaftId ||
-                  eintrag?.status === "abgelegt" ||
-                  eintrag?.status === "gebucht"
-                }
-                onClick={() => void buchen()}
-              >
-                zu DATEV
-              </Button>
-            </PermissionGate>
+              zu DATEV
+            </Button>
           ) : (
-            <PermissionGate
-              berechtigung="aktion.dokumente.pruefordner.ablegen"
-              skeletonClassName="w-24"
+            <Button
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-heading"
+              disabled={
+                laedtPdf ||
+                speichert ||
+                !ordnerId ||
+                eintrag?.status === "abgelegt" ||
+                eintrag?.status === "gebucht"
+              }
+              onClick={() => void ablegen()}
             >
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-heading"
-                disabled={
-                  laedtPdf ||
-                  speichert ||
-                  !ordnerId ||
-                  eintrag?.status === "abgelegt" ||
-                  eintrag?.status === "gebucht"
-                }
-                onClick={() => void ablegen()}
-              >
-                {speichert ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                ) : null}
-                Ablegen
-              </Button>
-            </PermissionGate>
+              {speichert ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+              ) : null}
+              Ablegen
+            </Button>
           )
         }
       />
