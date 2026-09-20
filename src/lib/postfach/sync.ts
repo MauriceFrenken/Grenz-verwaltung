@@ -47,7 +47,7 @@ async function analysiereEintrag(
   accessToken: string,
   postfach: string,
   row: PostfachEintragRow,
-): Promise<void> {
+): Promise<boolean> {
   try {
     if (!row.anhang_id) {
       throw new Error("Kein PDF-Anhang an der Mail gefunden.");
@@ -80,8 +80,20 @@ async function analysiereEintrag(
     });
 
     await speichereAnalyse(row.id, ergebnis.fields);
+    return true;
   } catch (err) {
-    await speichereAnalyseFehler(row.id, fehlerText(err));
+    try {
+      await speichereAnalyseFehler(row.id, fehlerText(err));
+    } catch (speicherErr) {
+      console.error(
+        "[postfach] Analysefehler konnte nicht gespeichert werden",
+        row.id,
+        speicherErr,
+      );
+      // Eintrag bleibt ggf. „neu“ → Aufrufer muss abbrechen, sonst Endlosschleife.
+      throw speicherErr;
+    }
+    return false;
   }
 }
 
@@ -193,5 +205,131 @@ export async function postfachSynchronisieren(input: {
     nachrichten,
     eintraege: rows.map(zuEintrag),
     offen: await zaehleOffene(postfach),
+  };
+}
+
+/**
+ * Mindestabstand zwischen Anthropic-Starts (~5 Requests/Minute).
+ * Dauert eine Analyse schon länger, wird nicht extra gewartet.
+ */
+const ANTHROPIC_MIN_ABSTAND_MS = 12_000;
+/** Nach so vielen Fehlern in Folge: Lauf stoppen (vermutlich systemisch). */
+const NACHTLAUF_MAX_FEHLER_IN_FOLGE = 3;
+/**
+ * Sicherheitslimit pro Invocation (zusätzlich zum Zeitbudget).
+ * Reicht für große Posteingänge; echte Grenze ist deadlineMs / maxDuration.
+ */
+const NACHTLAUF_MAX_ANALYSEN_PRO_LAUF = 200;
+/** Max. Selbst-Fortsetzungen nach dem ersten Cron-Trigger. */
+export const NACHTLAUF_MAX_RUNDEN = 40;
+/**
+ * ~4,5 Min. unter Hobby-maxDuration 300s — Rest geht über Folge-Invocations.
+ */
+export const NACHTLAUF_DEFAULT_BUDGET_MS = 270_000;
+
+function warteMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export type PostfachNachtlaufErgebnis = {
+  analysiert: number;
+  fehlgeschlagen: number;
+  offen: number;
+  fortsetzen: boolean;
+  abgebrochen?: "zu_viele_fehler" | "persistenz";
+  inboxSyncFehler?: string;
+};
+
+/**
+ * Nachtlauf ohne User-JWT: Ankauf-Posteingang listen, dann nacheinander
+ * analysieren bis keine offenen Mails mehr da sind oder das Zeitbudget endet.
+ * Einzelne Eintrag-Fehler werden übersprungen; nach 3 Fehlern in Folge Stopp.
+ */
+export async function postfachNachtlauf(input?: {
+  /** Erste Runde: Inbox von Graph laden. Folgerunden: nur analysieren. */
+  inboxSync?: boolean;
+  /**
+   * Absolute Deadline (Date.now()-ms). Danach keine neue Analyse mehr starten;
+   * Caller kann mit einer neuen Invocation fortsetzen.
+   */
+  deadlineMs?: number;
+}): Promise<PostfachNachtlaufErgebnis> {
+  const inboxSync = input?.inboxSync !== false;
+  const deadlineMs =
+    input?.deadlineMs ?? Date.now() + NACHTLAUF_DEFAULT_BUDGET_MS;
+  const postfach = microsoftPostfach();
+  let inboxSyncFehler: string | undefined;
+
+  if (inboxSync) {
+    try {
+      const { accessToken } = await microsoftAccessToken();
+      const nachrichten = await graphPosteingangNachrichten(
+        accessToken,
+        postfach,
+        { anzahl: MAX_NACHRICHTEN },
+      );
+      await eintraegeAnlegen(postfach, nachrichten);
+    } catch (err) {
+      inboxSyncFehler = fehlerText(err);
+      console.error("[postfach] Inbox-Sync im Nachtlauf", err);
+      // Bestehende „neu“-Einträge trotzdem analysieren.
+    }
+  }
+
+  const { accessToken } = await microsoftAccessToken();
+  let analysiert = 0;
+  let fehlgeschlagen = 0;
+  let fehlerInFolge = 0;
+  let naechsterStartErlaubt = 0;
+  let abgebrochen: PostfachNachtlaufErgebnis["abgebrochen"];
+
+  for (let i = 0; i < NACHTLAUF_MAX_ANALYSEN_PRO_LAUF; i++) {
+    if (Date.now() >= deadlineMs) break;
+
+    const offen = await naechsteOffeneMail(postfach);
+    if (!offen) break;
+
+    const warte = naechsterStartErlaubt - Date.now();
+    if (warte > 0) {
+      if (Date.now() + warte >= deadlineMs) break;
+      await warteMs(warte);
+    }
+    naechsterStartErlaubt = Date.now() + ANTHROPIC_MIN_ABSTAND_MS;
+
+    let ok: boolean;
+    try {
+      ok = await analysiereEintrag(accessToken, postfach, offen);
+    } catch (err) {
+      console.error("[postfach] Unerwarteter Analysefehler", offen.id, err);
+      abgebrochen = "persistenz";
+      break;
+    }
+
+    if (ok) {
+      analysiert += 1;
+      fehlerInFolge = 0;
+    } else {
+      fehlgeschlagen += 1;
+      fehlerInFolge += 1;
+      console.error(
+        "[postfach] Analyse fehlgeschlagen, überspringe",
+        offen.id,
+        `(${fehlerInFolge}/${NACHTLAUF_MAX_FEHLER_IN_FOLGE} in Folge)`,
+      );
+      if (fehlerInFolge >= NACHTLAUF_MAX_FEHLER_IN_FOLGE) {
+        abgebrochen = "zu_viele_fehler";
+        break;
+      }
+    }
+  }
+
+  const nochOffen = await zaehleOffene(postfach);
+  return {
+    analysiert,
+    fehlgeschlagen,
+    offen: nochOffen,
+    fortsetzen: !abgebrochen && nochOffen > 0,
+    abgebrochen,
+    inboxSyncFehler,
   };
 }
