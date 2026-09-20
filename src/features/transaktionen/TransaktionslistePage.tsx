@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import type { GraphAnhangArt, GraphNachricht } from "@/lib/microsoft/graph";
 import { base64ZuBytes, felderZuWerten, hatWerte } from "@/lib/postfach/client";
+import {
+  setzeCheckPdfPromise,
+  speichereCheckHandoff,
+} from "@/lib/postfach/check-handoff";
 import type { PostfachEintrag } from "@/lib/postfach/typen";
 import {
   istSalesforceVerbunden,
@@ -228,12 +232,29 @@ export function TransaktionslistePage() {
 
   const pruefen = useCallback(
     (eintrag: PostfachEintrag) => {
+      speichereCheckHandoff(eintrag.id, {
+        felder: eintrag.felder,
+        anhangName: eintrag.anhangName,
+      });
+      if (token) {
+        const pdfPromise = import("@/lib/postfach/server-fn").then(
+          ({ postfachEintragFn }) =>
+            postfachEintragFn({
+              data: {
+                supabaseAccessToken: token,
+                eintragId: eintrag.id,
+              },
+            }),
+        );
+        setzeCheckPdfPromise(eintrag.id, pdfPromise);
+        void pdfPromise.catch(() => {});
+      }
       void navigate({
         to: "/transaktionen/expose-import",
         search: { postfach: eintrag.id },
       });
     },
-    [navigate],
+    [navigate, token],
   );
 
   const exportieren = useCallback(

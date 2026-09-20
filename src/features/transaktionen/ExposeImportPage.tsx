@@ -25,7 +25,12 @@ import {
   type ExposeFeldId,
   type ExposeFeldQuelle,
 } from "@/lib/expose-ai";
+import {
+  leseCheckHandoff,
+  loescheCheckHandoff,
+} from "@/lib/postfach/check-handoff";
 import { base64ZuFile } from "@/lib/postfach/client";
+import type { PostfachEintragMitPdf } from "@/lib/postfach/typen";
 import {
   anreichereAdressFelderWerte,
   istSalesforceVerbunden,
@@ -261,8 +266,12 @@ export function ExposeImportPage() {
     [felder, pdfMeta],
   );
 
+  /** PDF-Vorschau sofort setzen; Text-Extraktion optional danach. */
   const pdfDateiUebernehmen = useCallback(
-    async (file: File): Promise<ExtractedPdfForChat | null> => {
+    async (
+      file: File,
+      options?: { felderZuruecksetzen?: boolean },
+    ): Promise<ExtractedPdfForChat | null> => {
       if (
         file.type !== "application/pdf" &&
         !file.name.toLowerCase().endsWith(".pdf")
@@ -271,11 +280,14 @@ export function ExposeImportPage() {
         return null;
       }
 
+      const felderZuruecksetzen = options?.felderZuruecksetzen !== false;
       setLaedtPdf(true);
-      setAnalysiert(false);
-      setFelder(leereFelder());
-      setHighlight(null);
-      setPdfSeite(1);
+      if (felderZuruecksetzen) {
+        setAnalysiert(false);
+        setFelder(leereFelder());
+        setHighlight(null);
+        setPdfSeite(1);
+      }
 
       try {
         if (objectUrlRef.current) {
@@ -285,9 +297,9 @@ export function ExposeImportPage() {
         objectUrlRef.current = url;
         setObjectUrl(url);
         setDateiname(file.name);
+        pdfDateiRef.current = file;
 
         const extracted = await extractPdfForChat(file);
-        pdfDateiRef.current = file;
         setPdfMeta(extracted);
         return extracted;
       } catch {
@@ -316,9 +328,9 @@ export function ExposeImportPage() {
     [pdfDateiUebernehmen],
   );
 
-  /** KI-Ergebnis in die Felder übernehmen und erste Quelle im PDF markieren. */
+  /** KI-Ergebnis in die Felder übernehmen; Highlight nur wenn PDF-Text da ist. */
   const ergebnisUebernehmen = useCallback(
-    (fields: ExposeFelder, meta: ExtractedPdfForChat) => {
+    (fields: ExposeFelder, meta: ExtractedPdfForChat | null = null) => {
       const neu = leereFelder();
       let erkannt = 0;
       let erstesMitQuelle: {
@@ -367,7 +379,7 @@ export function ExposeImportPage() {
 
       setFelder(neu);
 
-      if (erstesMitQuelle) {
+      if (meta && erstesMitQuelle) {
         const seite = loeseSeite(erstesMitQuelle.quelle, meta.pages);
         if (seite && erstesMitQuelle.quelle.verbatimQuote) {
           setPdfSeite(seite);
@@ -384,36 +396,86 @@ export function ExposeImportPage() {
     [],
   );
 
-  // Aus „Offene Exposés“ übernommen: PDF aus dem Postfach laden, KI-Ergebnis
-  // aus Supabase einsetzen — keine zweite Analyse.
+  const highlightAusFeldern = useCallback(
+    (fields: ExposeFelder, meta: ExtractedPdfForChat) => {
+      for (const { id } of EXPOSE_FELD_DEFINITIONEN) {
+        const quelle = fields[id];
+        if (!quelle?.verbatimQuote) continue;
+        const seite = loeseSeite(quelle, meta.pages);
+        if (!seite) continue;
+        setPdfSeite(seite);
+        setHighlight({
+          page: seite,
+          quote: quelle.verbatimQuote,
+          hint: (quelle.value ?? "").trim() || undefined,
+        });
+        return;
+      }
+    },
+    [],
+  );
+
+  // Aus „Offene Exposés“: Felder sofort aus Handoff, PDF parallel (Prefetch).
   useEffect(() => {
     const eintragId = postfachSuche?.trim();
     if (!eintragId || !token) return;
     if (postfachGeladenRef.current === eintragId) return;
     postfachGeladenRef.current = eintragId;
 
+    const handoff = leseCheckHandoff(eintragId);
+    let felderFuerHighlight: ExposeFelder | null = handoff?.felder ?? null;
+    if (handoff?.felder) {
+      ergebnisUebernehmen(handoff.felder, null);
+      setPostfachEintragId(eintragId);
+    }
+    if (handoff?.anhangName) {
+      setDateiname(handoff.anhangName);
+    }
+
     let cancelled = false;
     void (async () => {
       setLaedtPdf(true);
       try {
-        const { postfachEintragFn } = await import("@/lib/postfach/server-fn");
-        const { eintrag, pdf } = await postfachEintragFn({
-          data: { supabaseAccessToken: token, eintragId },
-        });
+        let geladen: PostfachEintragMitPdf | null = null;
+        if (handoff?.pdfPromise) {
+          try {
+            geladen = await handoff.pdfPromise;
+          } catch {
+            geladen = null;
+          }
+        }
+        if (!geladen) {
+          const { postfachEintragFn } = await import(
+            "@/lib/postfach/server-fn"
+          );
+          geladen = await postfachEintragFn({
+            data: { supabaseAccessToken: token, eintragId },
+          });
+        }
         if (cancelled) return;
 
-        const datei = base64ZuFile(pdf.base64, pdf.dateiname, pdf.mimeType);
-        const extracted = await pdfDateiUebernehmen(datei);
+        setPostfachEintragId(geladen.eintrag.id);
+        if (!felderFuerHighlight) {
+          if (geladen.eintrag.felder) {
+            ergebnisUebernehmen(geladen.eintrag.felder, null);
+            felderFuerHighlight = geladen.eintrag.felder;
+          } else {
+            toast.info("Für diese Mail liegt noch kein KI-Ergebnis vor.");
+          }
+        }
+
+        const datei = base64ZuFile(
+          geladen.pdf.base64,
+          geladen.pdf.dateiname,
+          geladen.pdf.mimeType,
+        );
+        const extracted = await pdfDateiUebernehmen(datei, {
+          felderZuruecksetzen: false,
+        });
         if (cancelled || !extracted) return;
 
-        setPostfachEintragId(eintrag.id);
-        if (eintrag.felder) {
-          const erkannt = ergebnisUebernehmen(eintrag.felder, extracted);
-          toast.success(
-            `${erkannt} Feld${erkannt === 1 ? "" : "er"} aus der KI-Analyse übernommen`,
-          );
-        } else {
-          toast.info("Für diese Mail liegt noch kein KI-Ergebnis vor.");
+        if (felderFuerHighlight) {
+          highlightAusFeldern(felderFuerHighlight, extracted);
         }
       } catch (err) {
         if (cancelled) return;
@@ -424,6 +486,7 @@ export function ExposeImportPage() {
             : "Exposé aus dem Postfach konnte nicht geladen werden.",
         );
       } finally {
+        loescheCheckHandoff(eintragId);
         if (!cancelled) setLaedtPdf(false);
       }
     })();
@@ -431,7 +494,13 @@ export function ExposeImportPage() {
     return () => {
       cancelled = true;
     };
-  }, [ergebnisUebernehmen, pdfDateiUebernehmen, postfachSuche, token]);
+  }, [
+    ergebnisUebernehmen,
+    highlightAusFeldern,
+    pdfDateiUebernehmen,
+    postfachSuche,
+    token,
+  ]);
 
   const kiAnalysieren = async () => {
     if (!pdfMeta?.modelContext) {
