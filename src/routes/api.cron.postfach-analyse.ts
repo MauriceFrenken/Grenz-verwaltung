@@ -104,8 +104,8 @@ function ggfFortsetzen(
 }
 
 /**
- * Täglicher Nachtlauf: Dokumente › Postfach listen + KI-Analyse.
- * Pro Invocation Zeitbudget; Rest über bg-Folge-Runden bis leer.
+ * Halbtäglicher Lauf (00:00 + 12:00 Berlin/CEST): Dokumente › Postfach
+ * listen + KI-Analyse. Pro Invocation Zeitbudget; Rest über bg-Folge-Runden.
  */
 export const Route = createFileRoute("/api/cron/postfach-analyse")({
   server: {
