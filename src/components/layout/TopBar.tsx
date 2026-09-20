@@ -7,16 +7,16 @@ import { APP_NAME, ROLLEN } from "@/lib/constants";
 export function TopBar() {
   const { benutzer, abmelden } = useAuth();
   const navigate = useNavigate();
-  const initialen = benutzer?.initialen ?? "–";
-  const rolleKey = benutzer?.rollen[0]?.rolle;
-  const rolle = rolleKey
-    ? (ROLLEN[rolleKey]?.bezeichnung ?? rolleKey)
-    : "kein Login";
-  const name = benutzer?.name ?? "Nicht angemeldet";
+  if (!benutzer) return null;
+
+  const initialen = benutzer.initialen;
+  const rolleKey = benutzer.rollen[0]?.rolle;
+  const rolle = rolleKey ? (ROLLEN[rolleKey]?.bezeichnung ?? rolleKey) : "";
+  const name = benutzer.name;
 
   async function onAbmelden() {
     await abmelden();
-    await navigate({ to: "/anmelden" });
+    await navigate({ to: "/anmelden", replace: true });
   }
 
   return (

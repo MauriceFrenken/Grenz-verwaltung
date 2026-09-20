@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthShell } from "@/features/auth/AuthShell";
 import { AuthDatenschutzLink } from "@/components/legal/AuthDatenschutzLink";
+import { Route } from "@/routes/anmelden";
 
 export function AnmeldenPage() {
   const { anmelden, passwortVergessen } = useAuth();
   const navigate = useNavigate();
+  const { von } = Route.useSearch();
   const [ansicht, setAnsicht] = useState<"anmelden" | "passwort-vergessen">("anmelden");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,7 +26,7 @@ export function AnmeldenPage() {
     setIsSubmitting(true);
     try {
       await anmelden(email.trim(), password);
-      await navigate({ to: "/" });
+      await navigate({ to: von ?? "/" });
     } catch {
       setError("Anmeldung fehlgeschlagen.");
     } finally {

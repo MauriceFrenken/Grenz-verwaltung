@@ -8,6 +8,7 @@ import {
   useRouterState,
   HeadContent,
   Scripts,
+  redirect,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
@@ -17,6 +18,7 @@ import { AuthProvider } from "../components/auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { Toaster } from "../components/ui/sonner";
 import { useAuth } from "../hooks/useAuth";
+import { istOeffentlicherAuthPfad, sichererRueckweg } from "../lib/auth-pfade";
 
 function NotFoundComponent() {
   return (
@@ -79,6 +81,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: ({ location }) => {
+    // SSR kennt keine localStorage-Session → geschützte URLs nie als App ausliefern.
+    if (!import.meta.env.SSR) return;
+    if (istOeffentlicherAuthPfad(location.pathname)) return;
+    throw redirect({
+      to: "/anmelden",
+      search: { von: location.pathname },
+      replace: true,
+    });
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -124,8 +136,11 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function AuthGate({ children }: { children: ReactNode }) {
-  const { istAngemeldet, isLoading } = useAuth();
+  const { istAngemeldet, status } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const von = useRouterState({
+    select: (s) => sichererRueckweg((s.location.search as { von?: unknown }).von),
+  });
   const istAnmeldenSeite = pathname === "/anmelden";
   const istEinladungSeite = pathname === "/einladung";
   const istPasswortZuruecksetzenSeite = pathname === "/passwort-zuruecksetzen";
@@ -133,18 +148,14 @@ function AuthGate({ children }: { children: ReactNode }) {
   const istSalesforceCallback = pathname === "/salesforce/callback";
   const istMicrosoftCallback = pathname === "/microsoft/callback";
   const istOauthCallback = istSalesforceCallback || istMicrosoftCallback;
-  const istAuthSeite =
-    istAnmeldenSeite ||
-    istEinladungSeite ||
-    istPasswortZuruecksetzenSeite ||
-    istDatenschutzSeite ||
-    istOauthCallback;
+  const istAuthSeite = istOeffentlicherAuthPfad(pathname);
 
   if (istOauthCallback) {
     return children;
   }
 
-  if (isLoading) {
+  // Bis die Session serverseitig bestätigt ist: neutrale Fläche, nie AppShell.
+  if (status === "pending") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <p className="text-sm text-text-muted">Sitzung wird geprüft…</p>
@@ -153,7 +164,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (!istAngemeldet && !istAuthSeite) {
-    return <Navigate to="/anmelden" />;
+    return <Navigate to="/anmelden" search={{ von: pathname }} replace />;
   }
 
   // Invite / recovery links establish a session and must set a password first.
@@ -162,11 +173,15 @@ function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (istAngemeldet && istAnmeldenSeite) {
-    return <Navigate to="/" />;
+    return <Navigate to={von ?? "/"} replace />;
   }
 
   if (istAnmeldenSeite) {
     return children;
+  }
+
+  if (!istAngemeldet) {
+    return <Navigate to="/anmelden" replace />;
   }
 
   return <AppShell>{children}</AppShell>;
