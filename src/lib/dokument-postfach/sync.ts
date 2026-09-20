@@ -3,8 +3,7 @@
  */
 import { handleAnalyzeDokumentRequest } from "@/lib/dokument-ai";
 import {
-  microsoftDokumentPosteingangLesen,
-  microsoftDokumentPosteingangLesenIntern,
+  microsoftDokumentPosteingangQuellen,
   istAblageRootOrdner,
   microsoftOneDriveUser,
 } from "@/lib/microsoft/ablage";
@@ -34,6 +33,8 @@ import {
 } from "./ablage-kontext";
 import {
   eintraegeAnlegen,
+  existierendeNachrichtSchluessel,
+  leseAktiveEintraege,
   leseEintrag,
   leseEintraege,
   naechsteOffeneMail,
@@ -352,6 +353,20 @@ export async function dokumentPosteingangAnalyseWiederholen(input: {
   return zuEintrag(await leseEintrag(row.id));
 }
 
+/** Schnelles Erstladen nur aus Supabase — ohne Graph. */
+export async function dokumentPosteingangAusDbLaden(input: {
+  supabaseAccessToken: string;
+}): Promise<DokumentPosteingangSyncErgebnis> {
+  await microsoftCallerAusJwt(input.supabaseAccessToken);
+  const rows = await leseAktiveEintraege(100);
+  return {
+    postfaecher: microsoftDokumentPosteingangQuellen().map((q) => q.postfach),
+    nachrichten: [],
+    eintraege: rows.map(zuEintrag),
+    offen: await zaehleOffene(),
+  };
+}
+
 export async function dokumentPosteingangSynchronisieren(input: {
   supabaseAccessToken: string;
   maxAnalysen?: number;
@@ -376,12 +391,29 @@ export async function dokumentPosteingangSynchronisieren(input: {
     };
   }
 
-  const { postfaecher, nachrichten } = await microsoftDokumentPosteingangLesen({
-    supabaseAccessToken: input.supabaseAccessToken,
-    anzahl: 50,
-  });
+  const {
+    microsoftDokumentPosteingangLeichtLesen,
+    microsoftDokumentPosteingangAnreichern,
+  } = await import("@/lib/microsoft/ablage");
 
-  await eintraegeAnlegen(nachrichten);
+  const { postfaecher, nachrichten: leicht } =
+    await microsoftDokumentPosteingangLeichtLesen(50);
+
+  const bekannt = await existierendeNachrichtSchluessel(
+    leicht.map((n) => ({
+      postfach: n.postfach,
+      graphNachrichtId: n.id,
+    })),
+  );
+
+  const nachrichten = await microsoftDokumentPosteingangAnreichern(
+    leicht,
+    bekannt,
+  );
+
+  await eintraegeAnlegen(
+    nachrichten.filter((n) => n.anhaenge.length > 0 || Boolean(n.primaerAnhang?.id)),
+  );
 
   const rows = await leseEintraege(
     nachrichten.map((n) => ({ postfach: n.postfach, id: n.id })),
@@ -454,10 +486,28 @@ export async function dokumentPosteingangNachtlauf(input?: {
     }
 
     try {
-      const { nachrichten } = await microsoftDokumentPosteingangLesenIntern({
-        anzahl: 50,
-      });
-      await eintraegeAnlegen(nachrichten);
+      const {
+        microsoftDokumentPosteingangLeichtLesen,
+        microsoftDokumentPosteingangAnreichern,
+      } = await import("@/lib/microsoft/ablage");
+      const { postfaecher: _p, nachrichten: leicht } =
+        await microsoftDokumentPosteingangLeichtLesen(50);
+      void _p;
+      const bekannt = await existierendeNachrichtSchluessel(
+        leicht.map((n) => ({
+          postfach: n.postfach,
+          graphNachrichtId: n.id,
+        })),
+      );
+      const nachrichten = await microsoftDokumentPosteingangAnreichern(
+        leicht,
+        bekannt,
+      );
+      await eintraegeAnlegen(
+        nachrichten.filter(
+          (n) => n.anhaenge.length > 0 || Boolean(n.primaerAnhang?.id),
+        ),
+      );
     } catch (err) {
       inboxSyncFehler = fehlerText(err);
       console.error("[dokument-postfach] Inbox-Sync im Nachtlauf", err);

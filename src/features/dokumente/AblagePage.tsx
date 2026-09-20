@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronRight, File, Folder, RefreshCw } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -84,6 +84,7 @@ export function AblagePage() {
   const [laedt, setLaedt] = useState(true);
   const [fehler, setFehler] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const frischRef = useRef(false);
 
   const aktuellerOrdnerId = pfad.length > 0 ? pfad[pfad.length - 1]!.id : null;
 
@@ -98,6 +99,8 @@ export function AblagePage() {
     let cancelled = false;
     setLaedt(true);
     setFehler(null);
+    const bypassCache = frischRef.current;
+    frischRef.current = false;
 
     void (async () => {
       try {
@@ -108,6 +111,7 @@ export function AblagePage() {
           data: {
             supabaseAccessToken: token,
             itemId: aktuellerOrdnerId,
+            frisch: bypassCache,
           },
         });
         if (cancelled) return;
@@ -159,7 +163,10 @@ export function AblagePage() {
             size="sm"
             className="border-foreground text-foreground"
             disabled={laedt || !token}
-            onClick={() => setReloadKey((k) => k + 1)}
+            onClick={() => {
+              frischRef.current = true;
+              setReloadKey((k) => k + 1);
+            }}
             aria-label="Aktualisieren"
           >
             <RefreshCw

@@ -201,6 +201,58 @@ export async function leseEintraege(
   return (data as unknown as DokumentPosteingangRow[]) ?? [];
 }
 
+/** Offene Postfach-Zeilen aus der DB (ohne Graph) — für schnelles Erstladen. */
+export async function leseAktiveEintraege(
+  limit = 100,
+): Promise<DokumentPosteingangRow[]> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from(TABELLE)
+    .select(SPALTEN)
+    .in("status", ["neu", "analysiert", "fehler"])
+    .order("eingegangen_am", { ascending: false, nullsFirst: false })
+    .limit(Math.min(Math.max(limit, 1), 200));
+
+  if (error) {
+    throw fehler("Dokument-Posteingang konnte nicht gelesen werden", error.message);
+  }
+  return (data as unknown as DokumentPosteingangRow[]) ?? [];
+}
+
+/** Welche Graph-Nachrichten bereits als Zeile existieren (`postfach|id`). */
+export async function existierendeNachrichtSchluessel(
+  schluessel: Array<{ postfach: string; graphNachrichtId: string }>,
+): Promise<Set<string>> {
+  if (schluessel.length === 0) return new Set();
+
+  const admin = createServiceRoleClient();
+  const postfaecher = [...new Set(schluessel.map((s) => s.postfach))];
+  const ids = [...new Set(schluessel.map((s) => s.graphNachrichtId))];
+
+  const { data, error } = await admin
+    .from(TABELLE)
+    .select("postfach,graph_nachricht_id")
+    .in("postfach", postfaecher)
+    .in("graph_nachricht_id", ids);
+
+  if (error) {
+    throw fehler(
+      "Dokument-Posteingang-Schlüssel konnten nicht gelesen werden",
+      error.message,
+    );
+  }
+
+  const set = new Set<string>();
+  for (const row of data ?? []) {
+    const postfach = (row as { postfach?: string }).postfach;
+    const id = (row as { graph_nachricht_id?: string }).graph_nachricht_id;
+    if (postfach && id) {
+      set.add(`${postfach.toLowerCase()}|${id}`);
+    }
+  }
+  return set;
+}
+
 export async function leseEintrag(id: string): Promise<DokumentPosteingangRow> {
   const admin = createServiceRoleClient();
   const { data, error } = await admin

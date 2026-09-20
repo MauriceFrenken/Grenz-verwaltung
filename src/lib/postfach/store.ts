@@ -124,6 +124,58 @@ export async function leseEintraege(
   return (data ?? []) as unknown as PostfachEintragRow[];
 }
 
+/** Offene Exposé-Zeilen aus der DB (ohne Graph). */
+export async function leseAktiveEintraege(
+  postfach: string,
+  limit = 50,
+): Promise<PostfachEintragRow[]> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from(TABELLE)
+    .select(SPALTEN)
+    .eq("postfach", postfach)
+    .in("status", ["neu", "analysiert", "fehler"])
+    .is("abgelegt_am", null)
+    .order("eingegangen_am", { ascending: false, nullsFirst: false })
+    .limit(Math.min(Math.max(limit, 1), 100));
+
+  if (error) {
+    throw fehler(
+      "Postfach-Einträge konnten nicht gelesen werden",
+      error.message,
+    );
+  }
+  return (data ?? []) as unknown as PostfachEintragRow[];
+}
+
+/** Bereits bekannte Graph-Nachrichten-IDs im Postfach. */
+export async function existierendeNachrichtIds(
+  postfach: string,
+  graphNachrichtIds: string[],
+): Promise<Set<string>> {
+  if (graphNachrichtIds.length === 0) return new Set();
+
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from(TABELLE)
+    .select("graph_nachricht_id")
+    .eq("postfach", postfach)
+    .in("graph_nachricht_id", graphNachrichtIds);
+
+  if (error) {
+    throw fehler(
+      "Postfach-Nachrichten-IDs konnten nicht gelesen werden",
+      error.message,
+    );
+  }
+
+  return new Set(
+    (data ?? [])
+      .map((r) => (r as { graph_nachricht_id?: string }).graph_nachricht_id)
+      .filter((id): id is string => Boolean(id)),
+  );
+}
+
 export async function leseEintrag(id: string): Promise<PostfachEintragRow> {
   const admin = createServiceRoleClient();
   const { data, error } = await admin

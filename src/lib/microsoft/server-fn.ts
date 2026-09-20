@@ -57,12 +57,14 @@ export const microsoftOneDriveKinderFn = createServerFn({ method: "POST" })
       data as {
         supabaseAccessToken: string;
         itemId?: string | null;
+        frisch?: boolean;
       },
   )
   .handler(async ({ data }) =>
     microsoftOneDriveKinderLesen({
       supabaseAccessToken: asToken(data),
       itemId: data.itemId,
+      frisch: data.frisch === true,
     }),
   );
 

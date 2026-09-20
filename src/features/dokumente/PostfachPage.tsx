@@ -322,16 +322,37 @@ export function PostfachPage() {
 
     void (async () => {
       try {
-        const { dokumentPosteingangSyncFn } = await import(
-          "@/lib/dokument-postfach/server-fn"
-        );
+        const {
+          dokumentPosteingangLadenFn,
+          dokumentPosteingangSyncFn,
+        } = await import("@/lib/dokument-postfach/server-fn");
 
-        const erst = await dokumentPosteingangSyncFn({
-          data: { supabaseAccessToken: token, maxAnalysen: 0 },
+        // 1) Sofort aus DB — ohne Graph.
+        const erst = await dokumentPosteingangLadenFn({
+          data: { supabaseAccessToken: token },
         });
         if (cancelled) return;
         setEintraege(erst.eintraege);
         setOffen(erst.offen);
+        setLaedt(false);
+
+        // 2) Graph-Sync im Hintergrund (leichte Inbox + nur neue Anhänge).
+        try {
+          const sync = await dokumentPosteingangSyncFn({
+            data: { supabaseAccessToken: token, maxAnalysen: 0 },
+          });
+          if (cancelled) return;
+          setEintraege(sync.eintraege);
+          setOffen(sync.offen);
+        } catch (syncErr) {
+          if (cancelled) return;
+          toast.error(
+            syncErr instanceof Error
+              ? syncErr.message
+              : "Postfach-Aktualisierung fehlgeschlagen.",
+            { duration: 8_000 },
+          );
+        }
       } catch (e) {
         if (cancelled) return;
         setEintraege([]);
@@ -339,8 +360,7 @@ export function PostfachPage() {
         setFehler(
           e instanceof Error ? e.message : "Postfach konnte nicht geladen werden.",
         );
-      } finally {
-        if (!cancelled) setLaedt(false);
+        setLaedt(false);
       }
     })();
 

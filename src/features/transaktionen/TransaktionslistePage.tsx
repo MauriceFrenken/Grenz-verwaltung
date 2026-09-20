@@ -19,9 +19,6 @@ import {
 
 import { SalesforceConnectDialog } from "./expose-import/SalesforceConnectDialog";
 
-/** Analyse-Runden: je eine Mail, nacheinander — bis Posteingang leer oder Limit. */
-const MAX_ANALYSE_RUNDEN = 50;
-
 type Zeile = {
   nachricht: GraphNachricht;
   eintrag: PostfachEintrag | null;
@@ -88,16 +85,7 @@ function AnalyseStatus({
     return <span className="text-text-subtle">Kein PDF</span>;
   }
   if (!eintrag || eintrag.status === "neu") {
-    return (
-      <span className="inline-flex items-center gap-2 text-text-muted">
-        <Loader2
-          className="h-3.5 w-3.5 animate-spin"
-          strokeWidth={1.5}
-          aria-hidden
-        />
-        KI-Analyse
-      </span>
-    );
+    return <span className="text-text-muted">Offen</span>;
   }
   if (eintrag.status === "fehler") {
     const laedt = wiederholenId === eintrag.id;
@@ -189,35 +177,33 @@ export function TransaktionslistePage() {
 
     void (async () => {
       try {
-        const { postfachSyncFn } = await import("@/lib/postfach/server-fn");
+        const { postfachLadenFn, postfachSyncFn } = await import(
+          "@/lib/postfach/server-fn"
+        );
 
-        // Erster Lauf ohne Analyse: Liste erscheint sofort.
-        const erst = await postfachSyncFn({
-          data: { supabaseAccessToken: token, maxAnalysen: 0 },
+        // 1) Sofort aus DB — ohne Graph / ohne KI.
+        const erst = await postfachLadenFn({
+          data: { supabaseAccessToken: token },
         });
         if (cancelled) return;
         uebernehmen(erst.nachrichten, erst.eintraege);
         setLaedt(false);
 
-        let offen = erst.offen;
-        for (let runde = 0; offen > 0 && runde < MAX_ANALYSE_RUNDEN; runde++) {
-          setAnalyseLaeuft(true);
-          // Eine Mail pro Runde — await, nie parallel.
-          const weiter = await postfachSyncFn({
-            data: { supabaseAccessToken: token, maxAnalysen: 1 },
+        // 2) Leichter Graph-Sync im Hintergrund.
+        try {
+          const sync = await postfachSyncFn({
+            data: { supabaseAccessToken: token, maxAnalysen: 0 },
           });
           if (cancelled) return;
-          if (weiter.eintraege.length > 0) {
-            setZeilen((prev) =>
-              prev.map((z) => {
-                const update = weiter.eintraege.find(
-                  (e) => e.graphNachrichtId === z.nachricht.id,
-                );
-                return update ? { ...z, eintrag: update } : z;
-              }),
-            );
-          }
-          offen = weiter.offen;
+          uebernehmen(sync.nachrichten, sync.eintraege);
+        } catch (syncErr) {
+          if (cancelled) return;
+          toast.error(
+            syncErr instanceof Error
+              ? syncErr.message
+              : "Exposé-Postfach konnte nicht aktualisiert werden.",
+            { duration: 8_000 },
+          );
         }
       } catch (e) {
         if (cancelled) return;

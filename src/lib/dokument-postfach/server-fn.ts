@@ -12,11 +12,16 @@ import {
 } from "./freigabe";
 import {
   dokumentPosteingangAnalyseWiederholen,
+  dokumentPosteingangAusDbLaden,
   dokumentPosteingangSynchronisieren,
 } from "./sync";
 import { dokumentPosteingangZuExposesVerschieben } from "./verschieben";
 import { dokumentPosteingangZuTam } from "./zu-tam";
 import type { DokumentFreigabeStatus } from "./typen";
+
+export const dokumentPosteingangLadenFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { supabaseAccessToken: string })
+  .handler(async ({ data }) => dokumentPosteingangAusDbLaden(data));
 
 export const dokumentPosteingangSyncFn = createServerFn({ method: "POST" })
   .validator(
