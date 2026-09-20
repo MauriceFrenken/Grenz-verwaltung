@@ -6,8 +6,9 @@ import {
   KI_MAX_DOKUMENT_ZEICHEN,
   KI_MAX_MAIL_ZEICHEN,
   KI_MAX_VISION_PAYLOAD_BYTES,
-  KI_MIN_TEXT_SKIP_VISION,
+  istDokumentTextAusreichendFuerKi,
   kuerzeTextFuerKi,
+  nutzbarerDokumentText,
 } from "@/lib/ki-kontext";
 import { extrahiereAnhangText } from "@/lib/postfach/anhang-text";
 import { bereitePdfScanFuerKi } from "@/lib/postfach/pdf-scan-vision";
@@ -22,6 +23,8 @@ export type AnhangAnalyseKontext = {
   mailKontext: string;
   modelContext: string;
   vision: DokumentVisionBlock[];
+  /** true = Scan/Bild-Pfad — Objekt-Matching darf KI-Felder nutzen. */
+  istScanVision: boolean;
 };
 
 export type MailKontextQuelle = {
@@ -75,12 +78,14 @@ export async function baueAnhangAnalyseKontext(input: {
   });
 
   const extrahierterText = extraktion.text.trim();
-  const textAusreichend = extrahierterText.length >= KI_MIN_TEXT_SKIP_VISION;
+  const nutzbarerText = nutzbarerDokumentText(extrahierterText);
+  // Nur echter Inhalt zählt — Platzhalter „(kein extrahierbarer Text…)“ nicht.
+  const textAusreichend = istDokumentTextAusreichendFuerKi(extrahierterText);
   let vision: DokumentVisionBlock[] = [];
   let scanHinweis: string | null = null;
 
   if (textAusreichend) {
-    // Text reicht — kein Vision-Anhang nötig.
+    // Digitaler Text-PDF — unverändert ohne Vision.
   } else if (istPdf) {
     const scan = await bereitePdfScanFuerKi(quellBytes);
     vision = scan.vision;
@@ -96,14 +101,24 @@ export async function baueAnhangAnalyseKontext(input: {
     });
   }
 
+  const istScanVision = vision.length > 0;
+
   const dokumentTextHinweis = (() => {
-    if (extrahierterText) {
+    // Text-PDF: voller Kontext inkl. Seitenmarker (wie bisher).
+    if (textAusreichend && extrahierterText) {
       return `Extrahierter Dokumenttext:\n${kuerzeTextFuerKi(
         extrahierterText,
         KI_MAX_DOKUMENT_ZEICHEN,
       )}`;
     }
-    if (vision.length > 0) {
+    // Scan mit wenig Resttext: nur den nutzbaren Anteil, keine Leerseiten-Platzhalter.
+    if (istScanVision && nutzbarerText) {
+      return `Extrahierter Dokumenttext (teilweise):\n${kuerzeTextFuerKi(
+        nutzbarerText,
+        KI_MAX_DOKUMENT_ZEICHEN,
+      )}`;
+    }
+    if (istScanVision) {
       return null;
     }
     if (istBildDatei(titel, input.contentType)) {
@@ -130,5 +145,5 @@ export async function baueAnhangAnalyseKontext(input: {
     .filter(Boolean)
     .join("\n\n");
 
-  return { titel, mailKontext, modelContext, vision };
+  return { titel, mailKontext, modelContext, vision, istScanVision };
 }

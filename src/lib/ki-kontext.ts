@@ -10,6 +10,31 @@ export const KI_MAX_STAMMDATEN_ZEICHEN = 40_000;
 /** Genug extrahierter Text → kein ganzes PDF als Vision mitschicken. */
 export const KI_MIN_TEXT_SKIP_VISION = 400;
 
+/**
+ * Platzhalter aus buildModelContext — zählen NICHT als nutzbarer Dokumenttext.
+ * Sonst würden reine Scan-PDFs (≥7 leere Seiten) fälschlich Vision überspringen.
+ */
+const PDF_LEERSEITEN_PLATZHALTER =
+  /\(kein extrahierbarer Text auf dieser Seite\)/gi;
+const PDF_SEITEN_MARKER = /<<<PAGE\s+\d+>>>/gi;
+const PDF_SEITENNUMMER_HINWEIS =
+  /Gedruckte Seitennummer \(nur für Menschen, nicht für Zitate\): "[^"]*"\n?/gi;
+
+/** Nur wirklich lesbaren PDF-Text behalten (ohne Scan-Platzhalter/Marker). */
+export function nutzbarerDokumentText(text: string): string {
+  return text
+    .replace(PDF_SEITEN_MARKER, " ")
+    .replace(PDF_LEERSEITEN_PLATZHALTER, " ")
+    .replace(PDF_SEITENNUMMER_HINWEIS, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Ob der extrahierte Text reicht, um Vision/Scan-OCR zu überspringen. */
+export function istDokumentTextAusreichendFuerKi(text: string): boolean {
+  return nutzbarerDokumentText(text).length >= KI_MIN_TEXT_SKIP_VISION;
+}
+
 /** Vision nur für kleinere Scans — große PDFs sprengen das Token-Limit. */
 export const KI_MAX_VISION_PAYLOAD_BYTES = 4 * 1024 * 1024;
 

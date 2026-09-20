@@ -114,6 +114,18 @@ async function analysiereEintrag(
         .select("id,bezeichnung,gesellschaft_id,strasse,ort"),
     ]);
 
+    const kiObjektAusScan =
+      ergebnis.felder.objektBezeichnung?.value?.trim() || null;
+    const kiAdressenAusScan = [
+      ergebnis.felder.zahlungsempfaengerAdresse?.value,
+      ergebnis.felder.zahlungsempfaenger?.value,
+      ergebnis.felder.rechnungsstellerAdresse?.value,
+    ]
+      .map((v) => (typeof v === "string" ? v.trim() : ""))
+      .filter(Boolean);
+
+    // Text-PDF: Objekt weiterhin nur serverseitig aus Dokumenttext matchen.
+    // Scan-Vision: KI-Adresse vor dem Match merken (unten in kontextTexte).
     ergebnis.felder.objektBezeichnung = {
       ...ergebnis.felder.objektBezeichnung,
       value: null,
@@ -133,6 +145,13 @@ async function analysiereEintrag(
     }
 
     const kontextTexte = [kontext.modelContext, kontext.mailKontext];
+    if (kontext.istScanVision) {
+      // Scan hat keinen PDF-Text — Adresse/Objekt aus der Bildanalyse einbeziehen.
+      if (kiObjektAusScan) kontextTexte.push(kiObjektAusScan);
+      kontextTexte.push(...kiAdressenAusScan);
+      const gsName = ergebnis.felder.gesellschaftName?.value?.trim();
+      if (gsName) kontextTexte.push(gsName);
+    }
 
     // Objektadresse zuerst (z. B. Alt-Pempelfort) — korrigiert falsche Holding-Zuordnung
     let gesellschaftId: string | null = null;

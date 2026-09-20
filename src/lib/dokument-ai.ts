@@ -323,9 +323,10 @@ async function anthropicNachricht(
     throw new Error("ANTHROPIC_API_KEY ist nicht konfiguriert.");
   }
 
+  // Dokument/Bild zuerst — Anthropic empfiehlt das für PDF-/Scan-Verständnis.
   const userContent: Array<Record<string, unknown>> = [
-    { type: "text", text: userText },
     ...vision.map(visionZuApi),
+    { type: "text", text: userText },
   ];
 
   const res = await fetch(ANTHROPIC_MESSAGES_URL, {
@@ -406,7 +407,7 @@ Regeln:
 - Spezifische Marker nutzen (Immobilien, Holding, Investment, Capital, MTF). „Frenken“ allein reicht nicht — Holding nur wenn klar Holding ohne Objektbezug.
 - Objektadresse im Dokument (Straße/Ort) → zugehörige Objekt-Gesellschaft (meist Immobilien), nicht Holding.
 - Ausnahme: eindeutig an TradeAnyMachine GmbH (TAM) adressiert → gesellschaftName exakt "TradeAnyMachine GmbH" (steht nicht in Stammdaten).
-- objektBezeichnung: immer null — Objekte (Immobilien der Gesellschaften) werden serverseitig zugeordnet, nicht von der KI.
+- objektBezeichnung: bei Scans/Bildern die im Dokument sichtbare Objektadresse oder Objektbezeichnung (Straße + ggf. Ort, z. B. „Alt-Pempelfort 7, Düsseldorf“). Bei digitalem Text null lassen — Zuordnung läuft dann serverseitig aus dem Text. Keine erfundenen Namen.
 - Adressen, Maschinen, Fahrzeuge oder Objekte aus Exposés/Verkaufsunterlagen sind KEINE Stammdaten-Objekte.
 - ordnerPfad: immer null lassen (wird separat über OneDrive ermittelt).
 - Bei Rechnungen (Eingangsrechnungen an FRENKEN): zahlungsempfaenger = FRENKEN-Gesellschaft an die gezahlt/adressiert wird, rechnungssteller = Aussteller/Lieferant.
