@@ -42,6 +42,12 @@ function DuplikatHinweis({ eintrag }: { eintrag: DokumentPosteingangEintrag }) {
 
   const treffer = hinweis.treffer[0];
   const wann = kurzDatum(treffer.datum);
+  const wo =
+    treffer.quelle === "datev"
+      ? " an DATEV"
+      : treffer.quelle === "gesendet"
+        ? " als Anhang an DATEV"
+        : " eingegangen";
 
   return (
     <p
@@ -50,8 +56,9 @@ function DuplikatHinweis({ eintrag }: { eintrag: DokumentPosteingangEintrag }) {
     >
       <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
       <span>
-        Nr. {hinweis.rechnungsnummer} schon am {wann}
-        {treffer.quelle === "datev" ? " an DATEV" : " eingegangen"}
+        {treffer.quelle === "gesendet"
+          ? `Anhang schon am ${wann}${wo}`
+          : `Nr. ${hinweis.rechnungsnummer} schon am ${wann}${wo}`}
         {hinweis.treffer.length > 1 ? ` (+${hinweis.treffer.length - 1})` : ""}
       </span>
     </p>

@@ -269,6 +269,9 @@ async function analysiereEintrag(
         duplikatHinweis = await pruefeRechnungsDuplikat({
           rechnungsnummer: ergebnis.felder.rechnungsnummer?.value,
           eintragId: row.id,
+          anhangName: row.anhang_name,
+          betreff: row.betreff,
+          felder: ergebnis.felder,
         });
       } catch (err) {
         // Hinweis ist optional — Analyse darf daran nicht scheitern.

@@ -539,11 +539,23 @@ export function DokumentPruefungPage() {
                 strokeWidth={1.5}
               />
               <div className="flex flex-col gap-1">
-                <span>Mögliche Dublette · Nr. {duplikat.rechnungsnummer}</span>
+                <span>
+                  Mögliche Dublette
+                  {duplikat.rechnungsnummer
+                    ? ` · Nr. ${duplikat.rechnungsnummer}`
+                    : ""}
+                </span>
                 {duplikat.treffer.map((t, i) => (
                   <span key={i} className="text-xs">
-                    {t.quelle === "datev" ? "An DATEV" : "Eingegangen"}{" "}
+                    {t.quelle === "datev"
+                      ? "An DATEV"
+                      : t.quelle === "gesendet"
+                        ? "Anhang schon an DATEV"
+                        : "Eingegangen"}{" "}
                     {formatDatum(t.datum)}
+                    {t.quelle === "gesendet" && t.anhangName
+                      ? ` · ${t.anhangName}`
+                      : ""}
                     {t.rechnungssteller ? ` · ${t.rechnungssteller}` : ""}
                     {t.rechnungsbetrag
                       ? ` · ${t.rechnungsbetrag} ${t.waehrung || "EUR"}`

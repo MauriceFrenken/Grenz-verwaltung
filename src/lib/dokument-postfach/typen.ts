@@ -38,14 +38,19 @@ export const FREIGABE_STATUS_LABELS: Record<DokumentFreigabeStatus, string> = {
 export const RECHNUNG_HISTORIE_TAGE = 30;
 
 export type RechnungDuplikatTreffer = {
-  /** `datev`: bereits gesendet · `offen`: liegt noch auf dem Board. */
-  quelle: "datev" | "offen";
+  /**
+   * `datev`: Historie (bereits gebucht) · `offen`: noch auf dem Board ·
+   * `gesendet`: Anhang gleichen Namens schon an DATEV im Ordner „Gesendet“.
+   */
+  quelle: "datev" | "offen" | "gesendet";
   rechnungsnummer: string;
   rechnungssteller: string | null;
   rechnungsbetrag: string | null;
   waehrung: string | null;
   /** An DATEV gesendet am bzw. eingegangen am. */
   datum: string | null;
+  /** Bei `gesendet`: Name des bereits versendeten Anhangs. */
+  anhangName?: string | null;
 };
 
 export type RechnungDuplikatHinweis = {

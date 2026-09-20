@@ -698,6 +698,97 @@ export async function graphAnhangAlsMailSenden(
   }
 }
 
+export type GraphGesendeterAnhang = {
+  nachrichtId: string;
+  anhangName: string;
+  empfaenger: string[];
+  gesendetAm: string;
+};
+
+type RohGesendetNachricht = {
+  id?: string;
+  sentDateTime?: string;
+  hasAttachments?: boolean;
+  toRecipients?: Array<{ emailAddress?: { address?: string } }>;
+  attachments?: RohAnhangMeta[];
+};
+
+/**
+ * Liest Anhänge aus dem Ordner „Gesendete Elemente“, optional nur an bestimmte
+ * Empfänger (z. B. DATEV-Postfächer) und nur seit einem Datum.
+ */
+export async function graphGesendeteAnhaenge(
+  accessToken: string,
+  postfach: string,
+  optionen: {
+    seit: string;
+    /** Nur Mails an diese Adressen (kleingeschrieben). Leer = alle. */
+    empfaenger?: string[];
+    /** Max. Graph-Seiten (je 50). Default 4. */
+    maxSeiten?: number;
+  },
+): Promise<GraphGesendeterAnhang[]> {
+  const empfaengerFilter = new Set(
+    (optionen.empfaenger ?? [])
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const maxSeiten = Math.min(Math.max(optionen.maxSeiten ?? 4, 1), 10);
+  const params = new URLSearchParams({
+    $select: "id,sentDateTime,hasAttachments,toRecipients",
+    $expand: "attachments($select=id,name,contentType,size,isInline)",
+    $orderby: "sentDateTime desc",
+    $top: "50",
+    $filter: `sentDateTime ge ${optionen.seit} and hasAttachments eq true`,
+  });
+
+  const treffer: GraphGesendeterAnhang[] = [];
+  let url: string | null =
+    `${GRAPH_BASIS}/users/${encodeURIComponent(postfach)}/mailFolders/sentitems/messages?${params.toString()}`;
+  let seite = 0;
+
+  while (url && seite < maxSeiten) {
+    seite += 1;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const json: unknown = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw graphFehler(res.status, json as GraphFehlerJson, postfach);
+    }
+    const data = json as {
+      value?: RohGesendetNachricht[];
+      "@odata.nextLink"?: string;
+    };
+
+    for (const roh of data.value ?? []) {
+      if (!roh.id || !roh.sentDateTime) continue;
+      const empfaenger = (roh.toRecipients ?? [])
+        .map((r) => r.emailAddress?.address?.trim().toLowerCase() ?? "")
+        .filter(Boolean);
+      if (
+        empfaengerFilter.size > 0 &&
+        !empfaenger.some((e) => empfaengerFilter.has(e))
+      ) {
+        continue;
+      }
+      for (const anhang of roh.attachments ?? []) {
+        if (anhang.isInline || !anhang.name?.trim()) continue;
+        treffer.push({
+          nachrichtId: roh.id,
+          anhangName: anhang.name.trim(),
+          empfaenger,
+          gesendetAm: roh.sentDateTime,
+        });
+      }
+    }
+
+    url = data["@odata.nextLink"] ?? null;
+  }
+
+  return treffer;
+}
+
 /** Posteingangs-Ordner-ID eines Postfachs. */
 export async function graphPosteingangOrdnerId(
   accessToken: string,
