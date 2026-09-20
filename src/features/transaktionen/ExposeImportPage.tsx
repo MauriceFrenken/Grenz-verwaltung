@@ -664,20 +664,27 @@ export function ExposeImportPage() {
       />
       <div className="flex h-[calc(100dvh-4rem-5rem)] min-h-0 flex-col gap-4 overflow-hidden px-8 pt-6 pb-6 lg:flex-row lg:gap-6">
         <div className="flex h-[42vh] min-h-0 min-w-0 shrink-0 flex-col overflow-hidden lg:h-auto lg:flex-1 lg:shrink">
-          <PdfSourceViewer
-            objectUrl={objectUrl}
-            page={pdfSeite}
-            onPageChange={(p) => {
-              setPdfSeite(p);
-              setHighlight(null);
-            }}
-            pages={pdfMeta?.pages ?? null}
-            pageLabels={pdfMeta?.pageLabels ?? null}
-            highlight={highlight}
-            className="h-full min-h-0"
-            onPdfDrop={pdfDropUebernehmen}
-            dropDisabled={laedtPdf}
-          />
+          {laedtPdf && !objectUrl ? (
+            <div className="flex h-full items-center justify-center gap-2 text-text-muted">
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+              <span>Anhang wird geladen…</span>
+            </div>
+          ) : (
+            <PdfSourceViewer
+              objectUrl={objectUrl}
+              page={pdfSeite}
+              onPageChange={(p) => {
+                setPdfSeite(p);
+                setHighlight(null);
+              }}
+              pages={pdfMeta?.pages ?? null}
+              pageLabels={pdfMeta?.pageLabels ?? null}
+              highlight={highlight}
+              className="h-full min-h-0"
+              onPdfDrop={pdfDropUebernehmen}
+              dropDisabled={laedtPdf}
+            />
+          )}
         </div>
 
         <aside className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain lg:w-[340px] lg:flex-none xl:w-[380px]">
