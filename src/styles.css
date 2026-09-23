@@ -167,3 +167,18 @@
 @utility hairline-l {
   border-left: 1px solid var(--color-hairline);
 }
+
+/* OP-Admin-Zensur: Marken + API-/Supabase-Daten verschwommen (Screenshot-Schutz) */
+html[data-op-zensur="true"] [data-op-zensur-ziel],
+html[data-op-zensur="true"] [role="dialog"],
+html[data-op-zensur="true"] [data-sonner-toast] {
+  filter: blur(7px);
+  user-select: none;
+  transition: filter 0.15s ease;
+}
+
+html[data-op-zensur="true"] [data-op-zensur-ausnahme],
+html[data-op-zensur="true"] [data-op-zensur-ausnahme] * {
+  filter: none !important;
+  user-select: auto;
+}

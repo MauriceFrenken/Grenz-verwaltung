@@ -16,6 +16,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../components/auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
+import { OpAdminZensurSync } from "../components/op-admin/OpAdminZensurSync";
 import { Toaster } from "../components/ui/sonner";
 import { useAuth } from "../hooks/useAuth";
 import { istOeffentlicherAuthPfad, sichererRueckweg } from "../lib/auth-pfade";
@@ -193,6 +194,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <OpAdminZensurSync />
         <AuthGate>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />

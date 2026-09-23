@@ -1,8 +1,10 @@
 import { Bell, LogOut, Search } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Breadcrumb } from "./Breadcrumb";
+import { OpAdminEinstellungen } from "@/components/op-admin/OpAdminEinstellungen";
 import { useAuth } from "@/hooks/useAuth";
 import { APP_NAME, ROLLEN } from "@/lib/constants";
+import { istOpAdmin } from "@/lib/op-admin";
 
 export function TopBar() {
   const { benutzer, abmelden } = useAuth();
@@ -13,6 +15,7 @@ export function TopBar() {
   const rolleKey = benutzer.rollen[0]?.rolle;
   const rolle = rolleKey ? (ROLLEN[rolleKey]?.bezeichnung ?? rolleKey) : "";
   const name = benutzer.name;
+  const zeigtOpAdmin = istOpAdmin(benutzer.email);
 
   async function onAbmelden() {
     await abmelden();
@@ -22,7 +25,10 @@ export function TopBar() {
   return (
     <header className="hairline-b sticky top-0 z-40 flex h-16 items-stretch border-b border-hairline bg-surface">
       <div className="hairline-r flex w-60 items-center gap-2 border-r border-hairline px-6">
-        <span className="text-sm font-bold uppercase tracking-[0.14em] text-heading">
+        <span
+          data-op-zensur-ziel=""
+          className="text-sm font-bold uppercase tracking-[0.14em] text-heading"
+        >
           {APP_NAME}
         </span>
       </div>
@@ -44,11 +50,15 @@ export function TopBar() {
         >
           <Bell className="h-4 w-4 text-text-muted" strokeWidth={1.5} />
         </button>
+        {zeigtOpAdmin ? <OpAdminEinstellungen /> : null}
         <div className="ml-2 flex items-center gap-3 border-l border-hairline pl-4">
-          <div className="flex h-9 w-9 items-center justify-center bg-primary text-xs font-semibold uppercase text-primary-foreground">
+          <div
+            data-op-zensur-ziel=""
+            className="flex h-9 w-9 items-center justify-center bg-primary text-xs font-semibold uppercase text-primary-foreground"
+          >
             {initialen}
           </div>
-          <div className="hidden flex-col md:flex">
+          <div data-op-zensur-ziel="" className="hidden flex-col md:flex">
             <span className="text-sm font-medium text-heading">{name}</span>
             <span className="label-caps text-text-subtle">{rolle}</span>
           </div>

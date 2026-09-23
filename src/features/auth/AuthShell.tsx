@@ -71,11 +71,14 @@ export function AuthShell({ title, description, children }: AuthShellProps) {
       <aside className="relative hidden w-[46%] shrink-0 flex-col overflow-hidden bg-heading px-10 py-10 text-primary-foreground lg:flex xl:w-[48%] xl:px-14">
         <FacadePattern />
 
-        <div className="relative z-10">
+        <div data-op-zensur-ziel="" className="relative z-10">
           <BrandMark className="size-10" />
         </div>
 
-        <div className="relative z-10 flex flex-1 flex-col justify-center">
+        <div
+          data-op-zensur-ziel=""
+          className="relative z-10 flex flex-1 flex-col justify-center"
+        >
           <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.22em] text-white/45">
             FRENKEN
           </p>
@@ -87,7 +90,10 @@ export function AuthShell({ title, description, children }: AuthShellProps) {
       </aside>
 
       <main className="relative flex flex-1 flex-col">
-        <div className="flex items-center gap-3 border-b border-hairline bg-heading px-6 py-4 text-primary-foreground lg:hidden">
+        <div
+          data-op-zensur-ziel=""
+          className="flex items-center gap-3 border-b border-hairline bg-heading px-6 py-4 text-primary-foreground lg:hidden"
+        >
           <BrandMark className="size-8" />
           <div>
             <p className="text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-white/50">

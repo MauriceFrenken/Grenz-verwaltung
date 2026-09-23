@@ -32,7 +32,10 @@ export function LegalPageLayout({
 }: LegalPageLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-3 border-b border-hairline bg-heading px-6 py-4 text-primary-foreground">
+      <header
+        data-op-zensur-ziel=""
+        className="flex items-center gap-3 border-b border-hairline bg-heading px-6 py-4 text-primary-foreground"
+      >
         <BrandMark className="size-8" />
         <div>
           <p className="text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-white/50">
@@ -53,12 +56,14 @@ export function LegalPageLayout({
           Zur Anmeldung
         </Link>
 
-        <h1 className="text-2xl font-semibold tracking-tight text-heading">
-          {titel}
-        </h1>
-        <p className="mt-2 text-sm text-text-muted">{untertitel}</p>
+        <div data-op-zensur-ziel="">
+          <h1 className="text-2xl font-semibold tracking-tight text-heading">
+            {titel}
+          </h1>
+          <p className="mt-2 text-sm text-text-muted">{untertitel}</p>
 
-        <div className="mt-10">{children}</div>
+          <div className="mt-10">{children}</div>
+        </div>
       </main>
     </div>
   );

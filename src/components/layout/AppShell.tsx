@@ -13,7 +13,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <TopBar />
       <div className="flex flex-1">
         <Sidebar />
-        <main className="relative z-0 min-w-0 flex-1">{children}</main>
+        <main data-op-zensur-ziel="" className="relative z-0 min-w-0 flex-1">
+          {children}
+        </main>
       </div>
     </div>
   );
