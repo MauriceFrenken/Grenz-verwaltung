@@ -121,6 +121,7 @@ function DokumentFeldZeile({
         ) : null}
       </button>
       <Input
+        data-op-zensur-daten=""
         value={feld.value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Noch nicht ausgefüllt"
@@ -574,7 +575,7 @@ export function DokumentPruefungPage() {
                 }
               }}
             >
-              <SelectTrigger className="rounded-none bg-surface">
+              <SelectTrigger data-op-zensur-daten="" className="rounded-none bg-surface">
                 <SelectValue placeholder="Gesellschaft" />
               </SelectTrigger>
               <SelectContent>
@@ -604,7 +605,7 @@ export function DokumentPruefungPage() {
                 }
               }}
             >
-              <SelectTrigger className="rounded-none bg-surface">
+              <SelectTrigger data-op-zensur-daten="" className="rounded-none bg-surface">
                 <SelectValue placeholder="Objekt" />
               </SelectTrigger>
               <SelectContent>

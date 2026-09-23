@@ -47,7 +47,11 @@ export function StammdatenFilter({
             value={gesellschaftId ?? ALLE}
             onValueChange={(v) => onGesellschaftChange(v === ALLE ? null : v)}
           >
-            <SelectTrigger id="filter-gesellschaft" className="w-72 rounded-none">
+            <SelectTrigger
+              id="filter-gesellschaft"
+              data-op-zensur-daten=""
+              className="w-72 rounded-none"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -74,7 +78,11 @@ export function StammdatenFilter({
             value={objektId ?? ALLE}
             onValueChange={(v) => onObjektChange(v === ALLE ? null : v)}
           >
-            <SelectTrigger id="filter-objekt" className="w-72 rounded-none">
+            <SelectTrigger
+              id="filter-objekt"
+              data-op-zensur-daten=""
+              className="w-72 rounded-none"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

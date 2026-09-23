@@ -56,13 +56,13 @@ export function LegalPageLayout({
           Zur Anmeldung
         </Link>
 
-        <div data-op-zensur-ziel="">
-          <h1 className="text-2xl font-semibold tracking-tight text-heading">
-            {titel}
-          </h1>
-          <p className="mt-2 text-sm text-text-muted">{untertitel}</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-heading">
+          {titel}
+        </h1>
+        <p className="mt-2 text-sm text-text-muted">{untertitel}</p>
 
-          <div className="mt-10">{children}</div>
+        <div data-op-zensur-daten="" className="mt-10">
+          {children}
         </div>
       </main>
     </div>

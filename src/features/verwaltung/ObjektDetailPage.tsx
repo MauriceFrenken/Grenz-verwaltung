@@ -203,6 +203,7 @@ export function ObjektDetailPage({ id }: { id: string }) {
         titel={o.bezeichnung}
         beschreibung={`${o.adresse.strasse}, ${o.adresse.plz} ${o.adresse.ort}`}
         nebenTitel={<StatusBadge status={o.status} />}
+        zensurTitel
         meta={
           <Link
             to="/verwaltung/objekte"

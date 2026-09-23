@@ -231,6 +231,7 @@ export function OrdnerAuswahl({
             <ChevronRight className="h-3 w-3 shrink-0 text-text-subtle" aria-hidden />
             <button
               type="button"
+              data-op-zensur-daten=""
               onClick={() => zuSegment(i)}
               className={cn(
                 "break-words rounded px-1 py-0.5 text-left hover:bg-surface-muted",
@@ -246,7 +247,10 @@ export function OrdnerAuswahl({
         gewaehlterInAktuellerListe ? (
           <span className="flex items-center gap-0.5">
             <ChevronRight className="h-3 w-3 shrink-0 text-text-subtle" aria-hidden />
-            <span className="break-words px-1 py-0.5 font-medium text-heading">
+            <span
+              data-op-zensur-daten=""
+              className="break-words px-1 py-0.5 font-medium text-heading"
+            >
               {gewaehlterOrdnerPfad.split("/").filter(Boolean).pop()}
             </span>
           </span>

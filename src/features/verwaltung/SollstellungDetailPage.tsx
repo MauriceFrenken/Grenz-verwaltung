@@ -242,6 +242,7 @@ export function SollstellungDetailPage({ id }: { id: string }) {
       <PageHeader
         titel={monatLabel(l.zeitraum)}
         beschreibung={scopeLabel}
+        zensurTitel
         aktionen={
           <div className="flex flex-wrap items-center gap-2">
             <Button

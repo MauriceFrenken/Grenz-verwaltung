@@ -143,7 +143,7 @@ export function DataTable<T>({
                         stickyKlassen(s.key, "td"),
                       )}
                     >
-                      {s.render(row)}
+                      <span data-op-zensur-daten="">{s.render(row)}</span>
                     </td>
                   ))}
                 </tr>

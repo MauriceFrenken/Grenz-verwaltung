@@ -112,23 +112,23 @@ function Karte({
           <Loader2 className="h-5 w-5 animate-spin text-heading" strokeWidth={1.5} />
         </div>
       ) : null}
-      <p className="line-clamp-2 text-sm font-medium text-heading">
+      <p data-op-zensur-daten="" className="line-clamp-2 text-sm font-medium text-heading">
         {eintrag.felder?.rechnungssteller?.value?.trim() ||
           eintrag.anhangName ||
           eintrag.betreff ||
           "Rechnung"}
       </p>
-      <p className="mt-1 text-xs text-text-muted">
+      <p data-op-zensur-daten="" className="mt-1 text-xs text-text-muted">
         {eintrag.felder?.gesellschaftName?.value?.trim() || "–"}
       </p>
-      <p className="mt-1 text-xs text-text-subtle">
+      <p data-op-zensur-daten="" className="mt-1 text-xs text-text-subtle">
         {betragText(
           eintrag.felder?.rechnungsbetrag?.value,
           eintrag.felder?.waehrung?.value,
         )}
       </p>
       {eintrag.felder?.rechnungsnummer?.value?.trim() ? (
-        <p className="mt-0.5 text-xs text-text-subtle">
+        <p data-op-zensur-daten="" className="mt-0.5 text-xs text-text-subtle">
           Nr. {eintrag.felder.rechnungsnummer.value.trim()}
         </p>
       ) : null}
@@ -151,24 +151,24 @@ function Karte({
 function HistorieKarte({ eintrag }: { eintrag: RechnungHistorieEintrag }) {
   return (
     <div className="border border-hairline border-dashed bg-surface p-3 text-left">
-      <p className="line-clamp-2 text-sm font-medium text-heading">
+      <p data-op-zensur-daten="" className="line-clamp-2 text-sm font-medium text-heading">
         {eintrag.rechnungssteller?.trim() ||
           eintrag.anhangName ||
           eintrag.betreff ||
           "Rechnung"}
       </p>
-      <p className="mt-1 text-xs text-text-muted">
+      <p data-op-zensur-daten="" className="mt-1 text-xs text-text-muted">
         {eintrag.gesellschaftName?.trim() || "–"}
       </p>
-      <p className="mt-1 text-xs text-text-subtle">
+      <p data-op-zensur-daten="" className="mt-1 text-xs text-text-subtle">
         {betragText(eintrag.rechnungsbetrag, eintrag.waehrung)}
       </p>
       {eintrag.rechnungsnummer?.trim() ? (
-        <p className="mt-0.5 text-xs text-text-subtle">
+        <p data-op-zensur-daten="" className="mt-0.5 text-xs text-text-subtle">
           Nr. {eintrag.rechnungsnummer.trim()}
         </p>
       ) : null}
-      <p className="mt-2 text-xs text-text-muted">
+      <p data-op-zensur-daten="" className="mt-2 text-xs text-text-muted">
         Gesendet {kurzDatum(eintrag.anDatevAm)}
       </p>
     </div>

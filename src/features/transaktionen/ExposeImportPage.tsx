@@ -89,6 +89,7 @@ function ExposeSystemFeldZeile({
     <div className="flex flex-col gap-2 border border-hairline bg-surface-muted/40 p-4">
       <span className="label-caps text-text-muted">{label}</span>
       <Input
+        data-op-zensur-daten=""
         value={wert}
         readOnly
         disabled
@@ -158,7 +159,7 @@ function ExposeFeldZeile({
           value={feld.value || AUSWAHL_LEER}
           onValueChange={(v) => onChange(v === AUSWAHL_LEER ? "" : v)}
         >
-          <SelectTrigger className="rounded-none bg-surface">
+          <SelectTrigger data-op-zensur-daten="" className="rounded-none bg-surface">
             <SelectValue placeholder="Noch nicht ausgefüllt" />
           </SelectTrigger>
           <SelectContent>
@@ -172,6 +173,7 @@ function ExposeFeldZeile({
         </Select>
       ) : (
         <Input
+          data-op-zensur-daten=""
           value={feld.value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Noch nicht ausgefüllt"

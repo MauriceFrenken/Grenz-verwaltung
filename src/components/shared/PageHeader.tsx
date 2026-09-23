@@ -9,6 +9,8 @@ interface PageHeaderProps {
   /** Steht direkt neben dem Titel (z. B. Status-Button). */
   nebenTitel?: ReactNode;
   meta?: ReactNode;
+  /** Titel/Beschreibung/Meta stammen aus API-Daten und werden bei OP-Zensur unkenntlich. */
+  zensurTitel?: boolean;
 }
 
 export function PageHeader({
@@ -17,6 +19,7 @@ export function PageHeader({
   aktionen,
   nebenTitel,
   meta,
+  zensurTitel = false,
 }: PageHeaderProps) {
   const erweitert = Boolean(beschreibung || meta);
 
@@ -31,15 +34,36 @@ export function PageHeader({
     >
       <div className="flex min-w-0 items-center gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-heading">
+          <h1
+            data-op-zensur-daten={zensurTitel ? "" : undefined}
+            className="text-2xl font-semibold tracking-tight text-heading"
+          >
             {titel}
           </h1>
           {beschreibung ? (
-            <p className="text-sm text-text-muted">{beschreibung}</p>
+            <p
+              data-op-zensur-daten={zensurTitel ? "" : undefined}
+              className="text-sm text-text-muted"
+            >
+              {beschreibung}
+            </p>
           ) : null}
-          {meta ? <div className="pt-1 text-xs text-text-subtle">{meta}</div> : null}
+          {meta ? (
+            <div
+              data-op-zensur-daten={zensurTitel ? "" : undefined}
+              className="pt-1 text-xs text-text-subtle"
+            >
+              {meta}
+            </div>
+          ) : null}
         </div>
-        {nebenTitel}
+        {nebenTitel ? (
+          zensurTitel ? (
+            <span data-op-zensur-daten="">{nebenTitel}</span>
+          ) : (
+            nebenTitel
+          )
+        ) : null}
       </div>
       {aktionen ? (
         <div className="flex shrink-0 items-center gap-2 overflow-x-auto">

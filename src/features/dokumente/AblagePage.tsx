@@ -181,6 +181,7 @@ export function AblagePage() {
               />
               <button
                 type="button"
+                data-op-zensur-daten=""
                 onClick={() => zuSegment(i)}
                 className={cn(
                   "truncate rounded px-1.5 py-0.5 hover:bg-surface-muted",

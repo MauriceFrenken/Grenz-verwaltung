@@ -168,11 +168,15 @@
   border-left: 1px solid var(--color-hairline);
 }
 
-/* OP-Admin-Zensur: Marken + API-/Supabase-Daten verschwommen (Screenshot-Schutz) */
+/* OP-Admin-Zensur: nur Marke + Datenwerte, UI-Struktur bleibt lesbar */
 html[data-op-zensur="true"] [data-op-zensur-ziel],
-html[data-op-zensur="true"] [role="dialog"],
-html[data-op-zensur="true"] [data-sonner-toast] {
-  filter: blur(7px);
+html[data-op-zensur="true"] [data-op-zensur-daten],
+html[data-op-zensur="true"] dd,
+html[data-op-zensur="true"] [role="dialog"] input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]),
+html[data-op-zensur="true"] [role="dialog"] textarea,
+html[data-op-zensur="true"] [role="dialog"] button[role="combobox"],
+html[data-op-zensur="true"] [role="listbox"] {
+  filter: blur(6px);
   user-select: none;
   transition: filter 0.15s ease;
 }
