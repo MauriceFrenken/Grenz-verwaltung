@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase";
-import type { BankBuchungEingabe } from "@/lib/bankAuszugPdf";
 import type {
   Bankauszug,
   Bankbuchung,
@@ -179,61 +178,6 @@ export const buchhaltungApi = {
       items: (data ?? []).map((r) => mapBankauszug(r as Record<string, unknown>)),
       gesamt: (data ?? []).length,
     };
-  },
-
-  async importBankauszug(input: {
-    laufId: string;
-    gesellschaftId: string;
-    dateiname: string;
-    zeitraumVon: string | null;
-    zeitraumBis: string | null;
-    buchungen: BankBuchungEingabe[];
-  }): Promise<Bankauszug> {
-    const { data: auszug, error: auszugErr } = await supabase
-      .from("bankauszuege")
-      .insert({
-        lauf_id: input.laufId,
-        gesellschaft_id: input.gesellschaftId,
-        dateiname: input.dateiname,
-        zeitraum_von: input.zeitraumVon,
-        zeitraum_bis: input.zeitraumBis,
-        anzahl_buchungen: input.buchungen.length,
-      })
-      .select("id")
-      .single();
-    if (auszugErr) throw auszugErr;
-
-    const rows = input.buchungen.map((b) => ({
-      bankauszug_id: auszug.id,
-      buchungsdatum: b.buchungsdatum,
-      betrag: b.betrag,
-      gegenkonto_iban: b.gegenkontoIban,
-      auftraggeber_name: b.auftraggeberName,
-      verwendungszweck: b.verwendungszweck,
-      fingerprint: b.fingerprint,
-    }));
-
-    // Chunked insert für große Auszüge
-    const CHUNK = 200;
-    for (let i = 0; i < rows.length; i += CHUNK) {
-      const { error } = await supabase
-        .from("bankbuchungen")
-        .insert(rows.slice(i, i + CHUNK));
-      if (error) throw error;
-    }
-
-    const { error: matchErr } = await supabase.rpc("gleiche_sollstellung_ab", {
-      p_lauf_id: input.laufId,
-    });
-    if (matchErr) throw matchErr;
-
-    const { data: view, error: viewErr } = await supabase
-      .from("v_bankauszuege")
-      .select("*")
-      .eq("id", auszug.id)
-      .single();
-    if (viewErr) throw viewErr;
-    return mapBankauszug(view as Record<string, unknown>);
   },
 
   async deleteBankauszug(id: string, laufId: string): Promise<void> {

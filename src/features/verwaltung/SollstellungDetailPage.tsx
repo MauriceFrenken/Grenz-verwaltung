@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  Download,
+  Landmark,
   RefreshCw,
   Trash2,
-  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApi } from "@/hooks/useApi";
+import { useAuth } from "@/hooks/useAuth";
 import { buchhaltungApi } from "@/api/buchhaltung";
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
@@ -33,7 +35,7 @@ import type {
   SollstellungPosition,
   SollstellungPositionStatus,
 } from "@/types";
-import { BankauszugImportDialog } from "./BankauszugImportDialog";
+import { EbicsBankDialog } from "./EbicsBankDialog";
 import { StammdatenFilter } from "./StammdatenFilter";
 import { VerwaltungTabellenLeiste } from "./TabellenSuche";
 import { useTabellenSuche } from "./useTabellenSuche";
@@ -124,6 +126,8 @@ const suchfelder = [
 
 export function SollstellungDetailPage({ id }: { id: string }) {
   const navigate = useNavigate();
+  const { session } = useAuth();
+  const token = session?.access_token ?? "";
 
   const [suche, setSuche] = useState("");
   const [gesellschaftId, setGesellschaftId] = useState<string | null>(null);
@@ -131,10 +135,11 @@ export function SollstellungDetailPage({ id }: { id: string }) {
   const [statusFilter, setStatusFilter] = useState<
     SollstellungPositionStatus | "alle"
   >("fehlt");
-  const [importOffen, setImportOffen] = useState(false);
+  const [ebicsOffen, setEbicsOffen] = useState(false);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
   const [loeschenLaeuft, setLoeschenLaeuft] = useState(false);
   const [abgleichLaeuft, setAbgleichLaeuft] = useState(false);
+  const [umsaetzeLaeuft, setUmsaetzeLaeuft] = useState(false);
   const [detail, setDetail] = useState<SollstellungPosition | null>(null);
   const [auszugLoeschenId, setAuszugLoeschenId] = useState<string | null>(null);
 
@@ -187,6 +192,33 @@ export function SollstellungDetailPage({ id }: { id: string }) {
     }
   };
 
+  const umsaetzeHolen = async () => {
+    if (!token) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+    setUmsaetzeLaeuft(true);
+    try {
+      const { ebicsUmstaetzeHolenFn } = await import("@/lib/ebics/server-fn");
+      const res = await ebicsUmstaetzeHolenFn({
+        data: { supabaseAccessToken: token, laufId: id },
+      });
+      const fehler = res.ergebnisse.filter((e) => e.status === "fehler");
+      if (fehler.length > 0) {
+        toast.error(
+          `${res.anzahlNeuGesamt} neu · ${fehler.length} Fehler`,
+        );
+      } else {
+        toast.success(`${res.anzahlNeuGesamt} neue Buchungen`);
+      }
+      reloadAlles();
+    } catch (err) {
+      toast.error(apiFehlermeldung(err));
+    } finally {
+      setUmsaetzeLaeuft(false);
+    }
+  };
+
   const loeschen = async () => {
     setLoeschenLaeuft(true);
     try {
@@ -233,10 +265,6 @@ export function SollstellungDetailPage({ id }: { id: string }) {
     ? `${l.gesellschaftName}${l.gesellschaftKuerzel ? ` (${l.gesellschaftKuerzel})` : ""}`
     : "Alle Gesellschaften";
 
-  const gesellschaftenFuerImport = l.gesellschaftId
-    ? (gesellschaften.data?.items ?? []).filter((g) => g.id === l.gesellschaftId)
-    : (gesellschaften.data?.items ?? []);
-
   return (
     <>
       <PageHeader
@@ -260,10 +288,26 @@ export function SollstellungDetailPage({ id }: { id: string }) {
               variant="outline"
               size="sm"
               className="rounded-none border-foreground"
-              onClick={() => setImportOffen(true)}
+              onClick={() => void umsaetzeHolen()}
+              disabled={umsaetzeLaeuft || l.status !== "offen"}
             >
-              <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              Bankauszug
+              <Download
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  umsaetzeLaeuft && "animate-pulse",
+                )}
+                strokeWidth={1.5}
+              />
+              Umsätze holen
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-none"
+              onClick={() => setEbicsOffen(true)}
+            >
+              <Landmark className="mr-2 h-4 w-4" strokeWidth={1.5} />
+              EBICS
             </Button>
             <Button
               variant="outline"
@@ -431,13 +475,10 @@ export function SollstellungDetailPage({ id }: { id: string }) {
         />
       </PageWrapper>
 
-      <BankauszugImportDialog
-        offen={importOffen}
-        onOpenChange={setImportOffen}
-        laufId={id}
-        gesellschaften={gesellschaftenFuerImport}
-        vorgabeGesellschaftId={l.gesellschaftId}
-        onDone={reloadAlles}
+      <EbicsBankDialog
+        offen={ebicsOffen}
+        onOpenChange={setEbicsOffen}
+        gesellschaftId={l.gesellschaftId}
       />
 
       <Dialog

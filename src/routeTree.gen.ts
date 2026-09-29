@@ -43,6 +43,7 @@ import { Route as VerwaltungSollstellungRouteImport } from './routes/verwaltung.
 import { Route as VerwaltungZahlungenRouteImport } from './routes/verwaltung.zahlungen'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
 import { Route as ApiCronPostfachAnalyseRouteImport } from './routes/api.cron.postfach-analyse'
+import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as TransaktionenExposeImportIndexRouteImport } from './routes/transaktionen.expose-import.index'
 import { Route as TransaktionenExposeImportSalesforceRouteImport } from './routes/transaktionen.expose-import.salesforce'
 import { Route as VerwaltungObjekteIndexRouteImport } from './routes/verwaltung.objekte.index'
@@ -225,6 +226,11 @@ const ApiCronPostfachAnalyseRoute = ApiCronPostfachAnalyseRouteImport.update({
   path: '/api/cron/postfach-analyse',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronEbicsUmsaetzeRoute = ApiCronEbicsUmsaetzeRouteImport.update({
+  id: '/api/cron/ebics-umsaetze',
+  path: '/api/cron/ebics-umsaetze',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TransaktionenExposeImportIndexRoute =
   TransaktionenExposeImportIndexRouteImport.update({
     id: '/',
@@ -295,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/verwaltung/': typeof VerwaltungIndexRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
+  '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
@@ -330,6 +337,7 @@ export interface FileRoutesByTo {
   '/verwaltung': typeof VerwaltungIndexRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
+  '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
@@ -373,6 +381,7 @@ export interface FileRoutesById {
   '/verwaltung/': typeof VerwaltungIndexRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
+  '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
@@ -417,6 +426,7 @@ export interface FileRouteTypes {
     | '/verwaltung/'
     | '/api/cron/expose-analyse'
     | '/api/cron/postfach-analyse'
+    | '/api/cron/ebics-umsaetze'
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/verwaltung/sollstellung/$id'
@@ -452,6 +462,7 @@ export interface FileRouteTypes {
     | '/verwaltung'
     | '/api/cron/expose-analyse'
     | '/api/cron/postfach-analyse'
+    | '/api/cron/ebics-umsaetze'
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/verwaltung/sollstellung/$id'
@@ -494,6 +505,7 @@ export interface FileRouteTypes {
     | '/verwaltung/'
     | '/api/cron/expose-analyse'
     | '/api/cron/postfach-analyse'
+    | '/api/cron/ebics-umsaetze'
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/verwaltung/sollstellung/$id'
@@ -517,6 +529,7 @@ export interface RootRouteChildren {
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
   ApiCronPostfachAnalyseRoute: typeof ApiCronPostfachAnalyseRoute
+  ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -759,6 +772,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronPostfachAnalyseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/ebics-umsaetze': {
+      id: '/api/cron/ebics-umsaetze'
+      path: '/api/cron/ebics-umsaetze'
+      fullPath: '/api/cron/ebics-umsaetze'
+      preLoaderRoute: typeof ApiCronEbicsUmsaetzeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/transaktionen/expose-import/': {
       id: '/transaktionen/expose-import/'
       path: '/'
@@ -945,6 +965,7 @@ const rootRouteChildren: RootRouteChildren = {
   SalesforceCallbackRoute: SalesforceCallbackRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
   ApiCronPostfachAnalyseRoute: ApiCronPostfachAnalyseRoute,
+  ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

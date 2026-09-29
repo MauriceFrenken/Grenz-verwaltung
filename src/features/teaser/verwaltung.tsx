@@ -1,5 +1,3 @@
-import { Upload } from "lucide-react";
-
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -40,19 +38,7 @@ export function SollstellungTeaser() {
 export function ZahlungenTeaser() {
   return (
     <TeaserShell>
-      <PageHeader
-        titel="Zahlungen & Rückstände"
-        aktionen={
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-foreground text-foreground"
-          >
-            <Upload className="mr-2 h-4 w-4" strokeWidth={1.5} />
-            Bankauszug (PDF)
-          </Button>
-        }
-      />
+      <PageHeader titel="Zahlungen & Rückstände" />
       <PageWrapper>
         <Tabs defaultValue="zahlungen">
           <TabsList className="border border-hairline bg-surface p-0">

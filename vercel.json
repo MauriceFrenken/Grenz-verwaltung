@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/expose-analyse",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/ebics-umsaetze",
+      "schedule": "0 6 * * *"
     }
   ]
 }
