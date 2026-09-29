@@ -69,7 +69,10 @@ export const ebicsInitialisierenFn = createServerFn({ method: "POST" })
     const fehler: Array<{ gesellschaftId: string; meldung: string }> = [];
 
     for (const kunde of kunden) {
-      if (kunde.status === "bereit") continue;
+      // Nicht erneut INI/HIA senden — Schlüssel bleiben gültig für die Bank
+      if (kunde.status === "bereit" || kunde.status === "wartet_auf_bank") {
+        continue;
+      }
       try {
         const { iniLetterHtml } = await ebicsInitialisiereKunde(admin, kunde);
         const { data: g } = await admin
@@ -103,6 +106,69 @@ export const ebicsInitialisierenFn = createServerFn({ method: "POST" })
       hinweis:
         "INI-Briefe ausdrucken, unterschreiben und an die Bank senden. Danach „Freischaltung“.",
     };
+  });
+
+/** INI-Briefe erneut aus gespeicherten Schlüsseln (ohne Bank-Kontakt). */
+export const ebicsIniBriefeHolenFn = createServerFn({ method: "POST" })
+  .validator(
+    (data: unknown) =>
+      data as {
+        supabaseAccessToken: string;
+        gesellschaftId?: string | null;
+      },
+  )
+  .handler(async ({ data }) => {
+    await microsoftCallerAusJwt(asToken(data));
+    const admin = createServiceRoleClient();
+    const { ebicsIniBriefErzeugen } = await import("@/lib/ebics/client");
+    const kunden = await loadEbicsKunden(
+      admin,
+      data.gesellschaftId?.trim() || null,
+    );
+    const briefe: Array<{
+      gesellschaftId: string;
+      gesellschaftName: string;
+      iniLetterHtml: string;
+    }> = [];
+    const fehler: Array<{ gesellschaftId: string; meldung: string }> = [];
+
+    for (const kunde of kunden) {
+      if (kunde.status === "nicht_initialisiert") {
+        fehler.push({
+          gesellschaftId: kunde.gesellschaft_id,
+          meldung: "Noch nicht initialisiert.",
+        });
+        continue;
+      }
+      try {
+        const { iniLetterHtml } = await ebicsIniBriefErzeugen(admin, kunde);
+        const { data: g } = await admin
+          .from("gesellschaften")
+          .select("name")
+          .eq("id", kunde.gesellschaft_id)
+          .maybeSingle();
+        briefe.push({
+          gesellschaftId: kunde.gesellschaft_id,
+          gesellschaftName: (g?.name as string) ?? kunde.gesellschaft_id,
+          iniLetterHtml,
+        });
+      } catch (err) {
+        fehler.push({
+          gesellschaftId: kunde.gesellschaft_id,
+          meldung: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    if (briefe.length === 0) {
+      throw new Error(
+        fehler.length
+          ? fehler.map((f) => `${f.gesellschaftId}: ${f.meldung}`).join(" · ")
+          : "Keine INI-Briefe vorhanden.",
+      );
+    }
+
+    return { anzahl: briefe.length, briefe, fehler };
   });
 
 export const ebicsBankFreischaltungPruefenFn = createServerFn({ method: "POST" })

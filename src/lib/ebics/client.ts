@@ -109,11 +109,32 @@ function menschenlesbarerFehler(err: unknown): string {
   return msg;
 }
 
+/** INI-Brief aus bestehenden Schlüsseln (ohne erneutes INI/HIA an die Bank). */
+export async function ebicsIniBriefErzeugen(
+  admin: SupabaseClient,
+  kunde: EbicsKundeRow,
+): Promise<{ iniLetterHtml: string }> {
+  const { BankLetter } = await loadEbicsPkg();
+  const client = await createEbicsClient(admin, kunde);
+  const keys = await client.keys();
+  if (!keys) {
+    throw new Error(
+      "Keine lokalen EBICS-Schlüssel — bitte erneut Initialisieren.",
+    );
+  }
+  const letter = new BankLetter({
+    client,
+    bankName: kunde.bank_name,
+    template: EBICS_INI_BRIEF_DE,
+  });
+  return { iniLetterHtml: await letter.generate() };
+}
+
 export async function ebicsInitialisiereKunde(
   admin: SupabaseClient,
   kunde: EbicsKundeRow,
 ): Promise<{ iniLetterHtml: string }> {
-  const { Orders, BankLetter } = await loadEbicsPkg();
+  const { Orders } = await loadEbicsPkg();
 
   // Alte Blobs (z. B. mit IV verschlüsselt) verwerfen → sauberer Neustart
   await ebicsSchluesselZuruecksetzen(admin, kunde.id);
@@ -137,12 +158,7 @@ export async function ebicsInitialisiereKunde(
     const hiaRes = await client.send(Orders.HIA);
     assertTechnicalOk(hiaRes);
 
-    const letter = new BankLetter({
-      client,
-      bankName: kunde.bank_name,
-      template: EBICS_INI_BRIEF_DE,
-    });
-    const iniLetterHtml = await letter.generate();
+    const { iniLetterHtml } = await ebicsIniBriefErzeugen(admin, kunde);
 
     await admin
       .from("ebics_kunden")

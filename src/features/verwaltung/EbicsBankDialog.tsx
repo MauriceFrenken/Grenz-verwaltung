@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Landmark, RefreshCw } from "lucide-react";
+import { Download, FileText, Landmark, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -19,17 +19,24 @@ function statusLabel(status: string): string {
   return STATUS_LABEL[status] ?? status;
 }
 
-function downloadHtml(filename: string, html: string) {
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+async function downloadBriefeZip(
+  briefe: Array<{ gesellschaftId: string; iniLetterHtml: string }>,
+) {
+  const JSZip = (await import("jszip")).default;
+  const zip = new JSZip();
+  for (const brief of briefe) {
+    zip.file(`EBICS-INI-${brief.gesellschaftId}.html`, brief.iniLetterHtml);
+  }
+  const blob = await zip.generateAsync({ type: "blob" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename;
+  a.download = "EBICS-INI-Briefe.zip";
   a.click();
   URL.revokeObjectURL(url);
 }
 
-type Aktion = "status" | "init" | "frei" | null;
+type Aktion = "status" | "init" | "frei" | "briefe" | null;
 
 export function EbicsBankDialog({
   offen,
@@ -73,11 +80,8 @@ export function EbicsBankDialog({
           gesellschaftId: gesellschaftId ?? null,
         },
       });
-      for (const brief of res.briefe) {
-        downloadHtml(
-          `EBICS-INI-${brief.gesellschaftId}.html`,
-          brief.iniLetterHtml,
-        );
+      if (res.briefe.length > 0) {
+        await downloadBriefeZip(res.briefe);
       }
       if (res.fehler?.length) {
         toast.error(
@@ -85,7 +89,7 @@ export function EbicsBankDialog({
         );
       }
       if (res.anzahl > 0) {
-        toast.success(`${res.anzahl} INI-Brief(e) erzeugt`);
+        toast.success(`${res.anzahl} INI-Brief(e) als ZIP`);
       } else if (!res.fehler?.length) {
         toast.message("Nichts zu initialisieren");
       }
@@ -93,6 +97,31 @@ export function EbicsBankDialog({
     } catch (err) {
       toast.error(apiFehlermeldung(err));
       await laden();
+    } finally {
+      setAktion(null);
+    }
+  };
+
+  const briefeHolen = async () => {
+    if (!token) return;
+    setAktion("briefe");
+    try {
+      const { ebicsIniBriefeHolenFn } = await import("@/lib/ebics/server-fn");
+      const res = await ebicsIniBriefeHolenFn({
+        data: {
+          supabaseAccessToken: token,
+          gesellschaftId: gesellschaftId ?? null,
+        },
+      });
+      await downloadBriefeZip(res.briefe);
+      if (res.fehler?.length) {
+        toast.error(
+          res.fehler.map((f) => `${f.gesellschaftId}: ${f.meldung}`).join(" · "),
+        );
+      }
+      toast.success(`${res.anzahl} INI-Brief(e) als ZIP`);
+    } catch (err) {
+      toast.error(apiFehlermeldung(err));
     } finally {
       setAktion(null);
     }
@@ -139,6 +168,9 @@ export function EbicsBankDialog({
   };
 
   const busy = aktion !== null;
+  const hatBriefe = items.some(
+    (i) => i.status === "wartet_auf_bank" || i.status === "bereit",
+  );
 
   return (
     <Dialog
@@ -188,6 +220,19 @@ export function EbicsBankDialog({
               strokeWidth={1.5}
             />
             {aktion === "init" ? "Initialisiert…" : "Initialisieren"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-none"
+            disabled={busy || !hatBriefe}
+            onClick={() => void briefeHolen()}
+          >
+            <FileText
+              className={`mr-2 h-4 w-4 ${aktion === "briefe" ? "animate-pulse" : ""}`}
+              strokeWidth={1.5}
+            />
+            {aktion === "briefe" ? "Lädt…" : "INI-Briefe"}
           </Button>
           <Button
             variant="outline"
