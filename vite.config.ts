@@ -10,12 +10,29 @@ import { exposeAiDevPlugin } from "./vite-plugin-expose-ai-dev";
 import { salesforceOauthDevPlugin } from "./vite-plugin-salesforce-oauth-dev";
 import { microsoftOauthDevPlugin } from "./vite-plugin-microsoft-oauth-dev";
 
+/** CJS-Banking-Lib +Deps müssen ins Server-Bundle, sonst fehlt sie auf Vercel. */
+const EBICS_BUNDLE = [
+  "ebics-client",
+  "node-forge",
+  "node-rsa",
+  "handlebars",
+  "xml-crypto",
+  "js2xmlparser",
+  "xpath",
+  "@xmldom/xmldom",
+  "uuid",
+  "rock-req",
+];
+
 export default defineConfig({
   plugins: [exposeAiDevPlugin(), salesforceOauthDevPlugin(), microsoftOauthDevPlugin()],
   vite: {
     server: {
       port: 8080,
       strictPort: true,
+    },
+    ssr: {
+      noExternal: EBICS_BUNDLE,
     },
   },
   tanstackStart: {
@@ -24,7 +41,6 @@ export default defineConfig({
     server: { entry: "server" },
   },
   // Postfach-Nachtlauf: Hobby-Plan erlaubt max. 300s pro Function.
-  // ebics-client muss im Serverless-Bundle landen (createRequire/NFT).
   nitro: {
     vercel: {
       functions: {
@@ -32,8 +48,10 @@ export default defineConfig({
       },
     },
     externals: {
-      traceInclude: ["node_modules/ebics-client/**/*"],
+      inline: EBICS_BUNDLE,
     },
-  } as { preset?: string; externals?: { traceInclude?: string[] } },
+  } as {
+    preset?: string;
+    externals?: { inline?: string[] };
+  },
 });
-
