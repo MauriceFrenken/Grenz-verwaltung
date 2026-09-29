@@ -1,109 +1,24 @@
 /**
  * Einmalig: INI-Briefe aus DB-Schlüsseln als HTML + ZIP schreiben.
- * Usage: node --env-file=.env.local scripts/ebics-ini-briefe.mjs
+ * Usage: node scripts/ebics-ini-briefe.mjs
  */
 import { createClient } from "@supabase/supabase-js";
-import { mkdir, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import JSZip from "jszip";
 
 const require = createRequire(import.meta.url);
-const { Client, BankLetter } = require("ebics-client");
+const { Client } = require("ebics-client");
 
-const TEMPLATE = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
-<head>
-	<meta http-equiv="content-type" content="text/html; charset=utf-8">
-	<meta charset="UTF-8" />
-	<title>EBICS ini</title>
-</head>
-<body>
-	<div>
-		<h2>EBICS-Initialisierungsbrief (INI)</h2>
-		<table>
-			<tr><td>Datum</td><td>{{ today }}</td></tr>
-			<tr><td>Uhrzeit</td><td>{{ now }}</td></tr>
-			<tr><td>Empfänger</td><td>{{ bankName }}</td></tr>
-			<tr><td>User-ID</td><td>{{ userId }}</td></tr>
-			<tr><td>Kunden-ID</td><td>{{ partnerId }}</td></tr>
-		</table>
-		<p>Öffentlicher Schlüssel für die elektronische Unterschrift (A006)</p>
-		<p>Exponent ({{ keyExponentBits A006 }} Bit):</p>
-		<p><code>{{ keyExponent A006 }}</code></p>
-		<p>Modulus ({{ keyModulusBits A006 }} Bit):</p>
-		<p><code>{{ keyModulus A006 }}</code></p>
-		<p>Hash (SHA-256):</p>
-		<p><code>{{ sha256 A006 }}</code></p>
-		<p>Ich bestätige hiermit den obigen öffentlichen Schlüssel für meine elektronische Unterschrift.</p>
-		<br/><br/><br/><br/>
-		<table>
-			<tr>
-				<td>_________________________</td>
-				<td>_________________________</td>
-				<td>_________________________</td>
-			</tr>
-			<tr><td>Ort/Datum</td><td>Name/Firma</td><td>Unterschrift</td></tr>
-		</table>
-	</div>
-	<div style="page-break-after:always"></div>
-	<h2>EBICS-Initialisierungsbrief (HIA) - Seite 1/2</h2>
-	<table>
-		<tr><td>Datum</td><td>{{ today }}</td></tr>
-		<tr><td>Uhrzeit</td><td>{{ now }}</td></tr>
-		<tr><td>Empfänger</td><td>{{ bankName }}</td></tr>
-		<tr><td>User-ID</td><td>{{ userId }}</td></tr>
-		<tr><td>Kunden-ID</td><td>{{ partnerId }}</td></tr>
-	</table>
-	<div>
-		<p>Öffentlicher Authentifikationsschlüssel (X002)</p>
-		<p>Exponent ({{ keyExponentBits X002 }} Bit):</p>
-		<p><code>{{ keyExponent X002 }}</code></p>
-		<p>Modulus ({{ keyModulusBits X002 }} Bit):</p>
-		<p><code>{{ keyModulus X002 }}</code></p>
-		<p>Hash (SHA-256):</p>
-		<p><code>{{ sha256 X002 }}</code></p>
-		<p> Fortsetzung auf Seite 2 ...</p>
-		<div style="page-break-after:always"></div>
-		<h2>EBICS-Initialisierungsbrief (HIA) - Seite 2/2</h2>
-		<table>
-			<tr><td>Datum</td><td>{{ today }}</td></tr>
-			<tr><td>Uhrzeit</td><td>{{ now }}</td></tr>
-			<tr><td>Empfänger</td><td>{{ bankName }}</td></tr>
-			<tr><td>User-ID</td><td>{{ userId }}</td></tr>
-			<tr><td>Kunden-ID</td><td>{{ partnerId }}</td></tr>
-		</table>
-	</div>
-	<div>
-		<p>Öffentlicher Verschlüsselungsschlüssel (E002)</p>
-		<p>Exponent ({{ keyExponentBits E002 }} Bit):</p>
-		<p><code>{{ keyExponent E002 }}</code></p>
-		<p>Modulus ({{ keyModulusBits E002 }} Bit):</p>
-		<p><code>{{ keyModulus E002 }}</code></p>
-		<p>Hash (SHA-256):</p>
-		<p><code>{{ sha256 E002 }}</code></p>
-		<p>Ich bestätige hiermit die obigen öffentlichen Schlüssel für meinen EBICS-Zugang.</p>
-		<br/><br/><br/><br/>
-		<table>
-			<tr>
-				<td>_________________________</td>
-				<td>_________________________</td>
-				<td>_________________________</td>
-			</tr>
-			<tr><td>Ort/Datum</td><td>Name/Firma</td><td>Unterschrift</td></tr>
-		</table>
-	</div>
-</body>
-</html>
-`;
+const TEILNEHMER = "Maurice Willi Frenken";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "tmp", "ebics-ini-briefe");
 
-/** .env.local laden — Werte dürfen `#` enthalten (kein Kommentar-Strip). */
 async function loadEnvLocal() {
-  const { readFile } = await import("node:fs/promises");
   const text = await readFile(join(root, ".env.local"), "utf8");
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
@@ -120,6 +35,188 @@ async function loadEnvLocal() {
     }
     process.env[k] = v;
   }
+}
+
+function asHex(value) {
+  return typeof value === "string" ? value : value.toString("hex");
+}
+
+function formatHexZeilen(hex, bytesProZeile = 16) {
+  const bytes = hex.toUpperCase().replace(/\s+/g, "").match(/.{1,2}/g) ?? [];
+  const zeilen = [];
+  for (let i = 0; i < bytes.length; i += bytesProZeile) {
+    zeilen.push(bytes.slice(i, i + bytesProZeile).join(" "));
+  }
+  return zeilen.join("\n");
+}
+
+function exponentBits(k) {
+  const e = k.e();
+  const bytes = Buffer.isBuffer(e)
+    ? e.length
+    : Buffer.from(String(e).replace(/\s+/g, ""), "hex").length;
+  return bytes * 8;
+}
+
+function sha256Hex(k) {
+  const str = [
+    asHex(k.e("hex")).replace(/^(0+)/g, ""),
+    asHex(k.n("hex")).replace(/^(0+)/g, ""),
+  ]
+    .map((x) => x.toLowerCase())
+    .join(" ");
+  const digestB64 = createHash("sha256").update(str).digest("base64").trim();
+  return formatHexZeilen(Buffer.from(digestB64, "base64").toString("hex"), 16);
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function datumDe(d) {
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(d);
+}
+
+function uhrzeitDe(d) {
+  return new Intl.DateTimeFormat("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(d);
+}
+
+function metaTabelle(p) {
+  const rows = [
+    ["Datum", p.datum],
+    ["Uhrzeit", p.uhrzeit],
+    ["Empfänger", p.bankName],
+    ["Host-ID", p.hostId],
+    ["User-ID", p.userId],
+    ["Kunden-ID", p.partnerId],
+    ["Firma", p.firmaName],
+    ["Teilnehmer", p.teilnehmerName],
+  ];
+  return `<table class="meta">
+${rows.map(([l, v]) => `  <tr><th>${esc(l)}</th><td>${esc(v)}</td></tr>`).join("\n")}
+</table>`;
+}
+
+function schluesselBlock(titel, version, k) {
+  return `<section class="key-block">
+  <h3>${esc(titel)} (${esc(version)})</h3>
+  <p class="label">Exponent (${exponentBits(k)} Bit)</p>
+  <pre class="hex">${esc(formatHexZeilen(asHex(k.e("hex"))))}</pre>
+  <p class="label">Modulus (${k.size()} Bit)</p>
+  <pre class="hex">${esc(formatHexZeilen(asHex(k.n("hex"))))}</pre>
+  <p class="label">Hash (SHA-256)</p>
+  <pre class="hex hash">${esc(sha256Hex(k))}</pre>
+</section>`;
+}
+
+function unterschrift(ortDatum, firmaName, teilnehmerName) {
+  return `<table class="sign">
+  <tr>
+    <td class="line">${esc(ortDatum)}</td>
+    <td class="line">${esc(firmaName)}<br/><span class="muted">${esc(teilnehmerName)}</span></td>
+    <td class="line">&nbsp;</td>
+  </tr>
+  <tr>
+    <td>Ort/Datum</td>
+    <td>Name/Firma</td>
+    <td>Unterschrift</td>
+  </tr>
+</table>`;
+}
+
+const CSS = `
+@page { margin: 18mm 16mm; }
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.35;
+  color: #111;
+  margin: 0;
+  padding: 0;
+}
+h1 { font-size: 16pt; margin: 0 0 12pt; font-weight: 700; }
+h3 { font-size: 12pt; margin: 14pt 0 6pt; font-weight: 700; }
+.page { page-break-after: always; }
+.page:last-child { page-break-after: auto; }
+table.meta { width: 100%; border-collapse: collapse; margin: 0 0 14pt; }
+table.meta th, table.meta td {
+  border: 1px solid #333; padding: 5pt 8pt; text-align: left; vertical-align: top;
+}
+table.meta th { width: 28%; background: #f2f2f2; font-weight: 600; }
+.label { margin: 8pt 0 3pt; font-weight: 600; }
+pre.hex {
+  font-family: "SF Mono", Menlo, Consolas, "Courier New", monospace;
+  font-size: 8.5pt; line-height: 1.45; white-space: pre-wrap; word-break: break-all;
+  border: 1px solid #333; background: #fafafa; padding: 8pt; margin: 0 0 6pt;
+}
+pre.hex.hash { font-size: 9.5pt; font-weight: 600; background: #f5f5f5; }
+.confirm { margin: 14pt 0 18pt; }
+table.sign { width: 100%; border-collapse: collapse; margin-top: 8pt; }
+table.sign td { width: 33.33%; vertical-align: bottom; padding: 0 8pt 0 0; font-size: 9.5pt; }
+table.sign td.line { border-bottom: 1px solid #111; height: 42pt; font-size: 10pt; padding-bottom: 4pt; }
+.muted { color: #444; font-size: 9pt; }
+.continued { margin-top: 16pt; font-style: italic; color: #444; }
+`.trim();
+
+function renderBrief({ bankName, hostId, userId, partnerId, firmaName, A006, X002, E002 }) {
+  const jetzt = new Date();
+  const datum = datumDe(jetzt);
+  const uhrzeit = uhrzeitDe(jetzt);
+  const meta = {
+    datum,
+    uhrzeit,
+    bankName,
+    hostId,
+    userId,
+    partnerId,
+    firmaName,
+    teilnehmerName: TEILNEHMER,
+  };
+  const ortDatum = `Düsseldorf, ${datum}`;
+  return `<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>EBICS-INI ${esc(firmaName)} (${esc(partnerId)})</title>
+  <style>${CSS}</style>
+</head>
+<body>
+  <div class="page">
+    <h1>EBICS-Initialisierungsbrief (INI)</h1>
+    ${metaTabelle(meta)}
+    ${schluesselBlock("Öffentlicher Schlüssel für die elektronische Unterschrift", "A006", A006)}
+    <p class="confirm">Ich bestätige hiermit den obigen öffentlichen Schlüssel für meine elektronische Unterschrift.</p>
+    ${unterschrift(ortDatum, firmaName, TEILNEHMER)}
+  </div>
+  <div class="page">
+    <h1>EBICS-Initialisierungsbrief (HIA) — Seite 1/2</h1>
+    ${metaTabelle(meta)}
+    ${schluesselBlock("Öffentlicher Authentifikationsschlüssel", "X002", X002)}
+    <p class="continued">Fortsetzung auf Seite 2 …</p>
+  </div>
+  <div class="page">
+    <h1>EBICS-Initialisierungsbrief (HIA) — Seite 2/2</h1>
+    ${metaTabelle(meta)}
+    ${schluesselBlock("Öffentlicher Verschlüsselungsschlüssel", "E002", E002)}
+    <p class="confirm">Ich bestätige hiermit die obigen öffentlichen Schlüssel für meinen EBICS-Zugang.</p>
+    ${unterschrift(ortDatum, firmaName, TEILNEHMER)}
+  </div>
+</body>
+</html>
+`;
 }
 
 await loadEnvLocal();
@@ -144,6 +241,9 @@ const { data: kunden, error } = await admin
   .order("gesellschaft_id");
 if (error) throw error;
 
+const { data: ges } = await admin.from("gesellschaften").select("id, name");
+const nameById = Object.fromEntries((ges ?? []).map((g) => [g.id, g.name]));
+
 await mkdir(outDir, { recursive: true });
 const zip = new JSZip();
 
@@ -159,7 +259,9 @@ for (const kunde of kunden ?? []) {
         .eq("ebics_kunde_id", kunde.id)
         .maybeSingle();
       if (e) throw e;
-      if (!data?.encrypted_keys) throw new Error(`Keine Schlüssel für ${kunde.gesellschaft_id}`);
+      if (!data?.encrypted_keys) {
+        throw new Error(`Keine Schlüssel für ${kunde.gesellschaft_id}`);
+      }
       return data.encrypted_keys;
     },
   };
@@ -179,16 +281,21 @@ for (const kunde of kunden ?? []) {
   const keys = await client.keys();
   if (!keys) throw new Error(`keys() leer für ${kunde.gesellschaft_id}`);
 
-  const letter = new BankLetter({
-    client,
+  const firmaName = nameById[kunde.gesellschaft_id] ?? kunde.gesellschaft_id;
+  const html = renderBrief({
     bankName: kunde.bank_name,
-    template: TEMPLATE,
+    hostId: kunde.host_id,
+    userId: kunde.user_id,
+    partnerId: kunde.partner_id,
+    firmaName,
+    A006: keys.a(),
+    X002: keys.x(),
+    E002: keys.e(),
   });
-  const html = await letter.generate();
   const name = `EBICS-INI-${kunde.gesellschaft_id}.html`;
   await writeFile(join(outDir, name), html, "utf8");
   zip.file(name, html);
-  console.log("OK", kunde.gesellschaft_id, kunde.status);
+  console.log("OK", kunde.gesellschaft_id, firmaName);
 }
 
 const zipBuf = await zip.generateAsync({ type: "nodebuffer" });

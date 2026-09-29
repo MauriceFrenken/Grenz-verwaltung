@@ -5,7 +5,6 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
-  BankLetter as BankLetterType,
   Client as ClientType,
   Orders as OrdersType,
 } from "ebics-client";
@@ -16,7 +15,7 @@ import "node-rsa";
 import "node-forge";
 
 import { ebicsMasterKey } from "./config";
-import { EBICS_INI_BRIEF_DE } from "./ini-brief-de";
+import { renderEbicsIniBrief } from "./ini-brief-de";
 import type { EbicsKundeRow } from "./kunden";
 import { createDbKeyStorage } from "./key-storage";
 
@@ -26,11 +25,6 @@ export { loadEbicsKunden } from "./kunden";
 type EbicsPkg = {
   Client: new (opts: ConstructorParameters<typeof ClientType>[0]) => ClientType;
   Orders: typeof OrdersType;
-  BankLetter: new (opts: {
-    client: ClientType;
-    bankName: string;
-    template: string;
-  }) => BankLetterType;
 };
 
 let ebicsPkgPromise: Promise<EbicsPkg> | null = null;
@@ -109,12 +103,23 @@ function menschenlesbarerFehler(err: unknown): string {
   return msg;
 }
 
+async function firmaNameFuerKunde(
+  admin: SupabaseClient,
+  gesellschaftId: string,
+): Promise<string> {
+  const { data } = await admin
+    .from("gesellschaften")
+    .select("name")
+    .eq("id", gesellschaftId)
+    .maybeSingle();
+  return (data?.name as string | undefined)?.trim() || gesellschaftId;
+}
+
 /** INI-Brief aus bestehenden Schlüsseln (ohne erneutes INI/HIA an die Bank). */
 export async function ebicsIniBriefErzeugen(
   admin: SupabaseClient,
   kunde: EbicsKundeRow,
 ): Promise<{ iniLetterHtml: string }> {
-  const { BankLetter } = await loadEbicsPkg();
   const client = await createEbicsClient(admin, kunde);
   const keys = await client.keys();
   if (!keys) {
@@ -122,12 +127,18 @@ export async function ebicsIniBriefErzeugen(
       "Keine lokalen EBICS-Schlüssel — bitte erneut Initialisieren.",
     );
   }
-  const letter = new BankLetter({
-    client,
+  const firmaName = await firmaNameFuerKunde(admin, kunde.gesellschaft_id);
+  const iniLetterHtml = renderEbicsIniBrief({
     bankName: kunde.bank_name,
-    template: EBICS_INI_BRIEF_DE,
+    hostId: kunde.host_id,
+    userId: kunde.user_id,
+    partnerId: kunde.partner_id,
+    firmaName,
+    A006: keys.a(),
+    X002: keys.x(),
+    E002: keys.e(),
   });
-  return { iniLetterHtml: await letter.generate() };
+  return { iniLetterHtml };
 }
 
 export async function ebicsInitialisiereKunde(
