@@ -301,8 +301,8 @@ export function renderEbicsIniBrief(eingabe: EbicsIniBriefEingabe): string {
   <div class="sheet">
     <h1>EBICS-Initialisierungsbrief (INI)</h1>
     ${metaTabelle(meta)}
-    ${schluesselBlock("Öffentlicher Schlüssel für die elektronische Unterschrift", "A006", eingabe.A006)}
-    <p class="confirm">Ich bestätige hiermit den obigen öffentlichen Schlüssel für meine elektronische Unterschrift.</p>
+    ${schluesselBlock("Öffentlicher Schlüssel für die Unterschrift", "A006", eingabe.A006)}
+    <p class="confirm">Ich bestätige hiermit den obigen öffentlichen Schlüssel für meine Unterschrift.</p>
     ${unterschrift(eingabe.firmaName, teilnehmerName)}
   </div>
 

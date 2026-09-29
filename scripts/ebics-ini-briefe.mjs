@@ -220,8 +220,8 @@ function renderBrief({ bankName, hostId, userId, partnerId, firmaName, A006, X00
   <div class="sheet">
     <h1>EBICS-Initialisierungsbrief (INI)</h1>
     ${metaTabelle(meta)}
-    ${schluesselBlock("Öffentlicher Schlüssel für die elektronische Unterschrift", "A006", A006)}
-    <p class="confirm">Ich bestätige hiermit den obigen öffentlichen Schlüssel für meine elektronische Unterschrift.</p>
+    ${schluesselBlock("Öffentlicher Schlüssel für die Unterschrift", "A006", A006)}
+    <p class="confirm">Ich bestätige hiermit den obigen öffentlichen Schlüssel für meine Unterschrift.</p>
     ${unterschrift(firmaName, TEILNEHMER)}
   </div>
   <div class="sheet">
