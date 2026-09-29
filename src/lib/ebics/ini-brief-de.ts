@@ -139,14 +139,10 @@ function schluesselBlock(
 </section>`;
 }
 
-function unterschrift(
-  ortDatum: string,
-  firmaName: string,
-  teilnehmerName: string,
-): string {
+function unterschrift(firmaName: string, teilnehmerName: string): string {
   return `<table class="sign">
   <tr>
-    <td class="line">${esc(ortDatum)}</td>
+    <td class="line">&nbsp;</td>
     <td class="line">${esc(firmaName)}<br/><span class="muted">${esc(teilnehmerName)}</span></td>
     <td class="line">&nbsp;</td>
   </tr>
@@ -292,7 +288,6 @@ export function renderEbicsIniBrief(eingabe: EbicsIniBriefEingabe): string {
     firmaName: eingabe.firmaName,
     teilnehmerName,
   };
-  const ortDatum = `Düsseldorf, ${datum}`;
 
   return `<!DOCTYPE html>
 <html lang="de">
@@ -308,7 +303,7 @@ export function renderEbicsIniBrief(eingabe: EbicsIniBriefEingabe): string {
     ${metaTabelle(meta)}
     ${schluesselBlock("Öffentlicher Schlüssel für die elektronische Unterschrift", "A006", eingabe.A006)}
     <p class="confirm">Ich bestätige hiermit den obigen öffentlichen Schlüssel für meine elektronische Unterschrift.</p>
-    ${unterschrift(ortDatum, eingabe.firmaName, teilnehmerName)}
+    ${unterschrift(eingabe.firmaName, teilnehmerName)}
   </div>
 
   <div class="sheet">
@@ -323,7 +318,7 @@ export function renderEbicsIniBrief(eingabe: EbicsIniBriefEingabe): string {
     ${metaTabelle(meta)}
     ${schluesselBlock("Öffentlicher Verschlüsselungsschlüssel", "E002", eingabe.E002)}
     <p class="confirm">Ich bestätige hiermit die obigen öffentlichen Schlüssel für meinen EBICS-Zugang.</p>
-    ${unterschrift(ortDatum, eingabe.firmaName, teilnehmerName)}
+    ${unterschrift(eingabe.firmaName, teilnehmerName)}
   </div>
 </body>
 </html>

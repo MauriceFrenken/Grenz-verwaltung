@@ -122,10 +122,10 @@ function schluesselBlock(titel, version, k) {
 </section>`;
 }
 
-function unterschrift(ortDatum, firmaName, teilnehmerName) {
+function unterschrift(firmaName, teilnehmerName) {
   return `<table class="sign">
   <tr>
-    <td class="line">${esc(ortDatum)}</td>
+    <td class="line">&nbsp;</td>
     <td class="line">${esc(firmaName)}<br/><span class="muted">${esc(teilnehmerName)}</span></td>
     <td class="line">&nbsp;</td>
   </tr>
@@ -208,7 +208,6 @@ function renderBrief({ bankName, hostId, userId, partnerId, firmaName, A006, X00
     firmaName,
     teilnehmerName: TEILNEHMER,
   };
-  const ortDatum = `Düsseldorf, ${datum}`;
   return `<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -223,7 +222,7 @@ function renderBrief({ bankName, hostId, userId, partnerId, firmaName, A006, X00
     ${metaTabelle(meta)}
     ${schluesselBlock("Öffentlicher Schlüssel für die elektronische Unterschrift", "A006", A006)}
     <p class="confirm">Ich bestätige hiermit den obigen öffentlichen Schlüssel für meine elektronische Unterschrift.</p>
-    ${unterschrift(ortDatum, firmaName, TEILNEHMER)}
+    ${unterschrift(firmaName, TEILNEHMER)}
   </div>
   <div class="sheet">
     <h1>EBICS-Initialisierungsbrief (HIA) — Seite 1/2</h1>
@@ -236,7 +235,7 @@ function renderBrief({ bankName, hostId, userId, partnerId, firmaName, A006, X00
     ${metaTabelle(meta)}
     ${schluesselBlock("Öffentlicher Verschlüsselungsschlüssel", "E002", E002)}
     <p class="confirm">Ich bestätige hiermit die obigen öffentlichen Schlüssel für meinen EBICS-Zugang.</p>
-    ${unterschrift(ortDatum, firmaName, TEILNEHMER)}
+    ${unterschrift(firmaName, TEILNEHMER)}
   </div>
 </body>
 </html>
