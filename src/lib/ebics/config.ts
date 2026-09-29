@@ -1,9 +1,10 @@
 /**
  * EBICS-Umgebungskonfiguration (nur Server).
  * Keys nie in VITE_* oder UI.
+ *
+ * Hinweis: ebics-client encrypted mit optionalem IV, decrypted aber
+ * immer ohne IV (Library-Bug). Deshalb nur Passphrase, kein IV.
  */
-
-import { createHash } from "node:crypto";
 
 function readEnv(name: string): string {
   if (typeof process === "undefined") return "";
@@ -18,12 +19,4 @@ export function ebicsMasterKey(): string {
     );
   }
   return key;
-}
-
-/** AES-256 Key + IV aus Master-Key (stabil, pro Deployment gleich). */
-export function ebicsCipherMaterial(): { passphrase: Buffer; iv: Buffer } {
-  const master = ebicsMasterKey();
-  const passphrase = createHash("sha256").update(`ebics-pass:${master}`).digest();
-  const iv = createHash("md5").update(`ebics-iv:${master}`).digest();
-  return { passphrase, iv };
 }

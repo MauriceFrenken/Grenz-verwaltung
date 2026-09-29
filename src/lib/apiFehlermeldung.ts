@@ -55,6 +55,13 @@ export function apiFehlermeldung(error: unknown): string {
       return "Ungültige ID — nur Buchstaben, Zahlen, Bindestrich und Unterstrich (z. B. G-06).";
     }
 
+    if (/timed out|timeout|504|Task timed out/i.test(msg)) {
+      return "Zeitüberschreitung — bitte erneut versuchen.";
+    }
+    if (/Noch nicht initialisiert|Zuerst Initialisieren/i.test(msg)) {
+      return msg;
+    }
+
     return msg;
   }
 

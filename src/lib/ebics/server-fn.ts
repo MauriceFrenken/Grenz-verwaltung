@@ -66,27 +66,42 @@ export const ebicsInitialisierenFn = createServerFn({ method: "POST" })
       gesellschaftName: string;
       iniLetterHtml: string;
     }> = [];
+    const fehler: Array<{ gesellschaftId: string; meldung: string }> = [];
 
     for (const kunde of kunden) {
       if (kunde.status === "bereit") continue;
-      const { iniLetterHtml } = await ebicsInitialisiereKunde(admin, kunde);
-      const { data: g } = await admin
-        .from("gesellschaften")
-        .select("name")
-        .eq("id", kunde.gesellschaft_id)
-        .maybeSingle();
-      briefe.push({
-        gesellschaftId: kunde.gesellschaft_id,
-        gesellschaftName: (g?.name as string) ?? kunde.gesellschaft_id,
-        iniLetterHtml,
-      });
+      try {
+        const { iniLetterHtml } = await ebicsInitialisiereKunde(admin, kunde);
+        const { data: g } = await admin
+          .from("gesellschaften")
+          .select("name")
+          .eq("id", kunde.gesellschaft_id)
+          .maybeSingle();
+        briefe.push({
+          gesellschaftId: kunde.gesellschaft_id,
+          gesellschaftName: (g?.name as string) ?? kunde.gesellschaft_id,
+          iniLetterHtml,
+        });
+      } catch (err) {
+        fehler.push({
+          gesellschaftId: kunde.gesellschaft_id,
+          meldung: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    if (briefe.length === 0 && fehler.length > 0) {
+      throw new Error(
+        fehler.map((f) => `${f.gesellschaftId}: ${f.meldung}`).join(" · "),
+      );
     }
 
     return {
       anzahl: briefe.length,
       briefe,
+      fehler,
       hinweis:
-        "INI-Briefe ausdrucken, unterschreiben und an die Bank senden. Danach „Bank-Freischaltung prüfen“.",
+        "INI-Briefe ausdrucken, unterschreiben und an die Bank senden. Danach „Freischaltung“.",
     };
   });
 
@@ -108,15 +123,32 @@ export const ebicsBankFreischaltungPruefenFn = createServerFn({ method: "POST" }
     );
     const ergebnisse: Array<{
       gesellschaftId: string;
-      status: "bereit" | "fehler";
+      status: "bereit" | "fehler" | "skip";
       meldung?: string;
     }> = [];
+
+    const nochNichtInit = kunden.filter(
+      (k) => k.status === "nicht_initialisiert",
+    );
+    if (nochNichtInit.length === kunden.length && kunden.length > 0) {
+      throw new Error(
+        "Noch nicht initialisiert. Zuerst „Initialisieren“, INI-Briefe an die Bank, danach „Freischaltung“.",
+      );
+    }
 
     for (const kunde of kunden) {
       if (kunde.status === "bereit") {
         ergebnisse.push({
           gesellschaftId: kunde.gesellschaft_id,
           status: "bereit",
+        });
+        continue;
+      }
+      if (kunde.status === "nicht_initialisiert") {
+        ergebnisse.push({
+          gesellschaftId: kunde.gesellschaft_id,
+          status: "fehler",
+          meldung: "Zuerst Initialisieren",
         });
         continue;
       }

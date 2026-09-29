@@ -29,6 +29,8 @@ function downloadHtml(filename: string, html: string) {
   URL.revokeObjectURL(url);
 }
 
+type Aktion = "status" | "init" | "frei" | null;
+
 export function EbicsBankDialog({
   offen,
   onOpenChange,
@@ -41,11 +43,11 @@ export function EbicsBankDialog({
   const { session } = useAuth();
   const token = session?.access_token ?? "";
   const [items, setItems] = useState<EbicsKundeStatusDto[]>([]);
-  const [laeuft, setLaeuft] = useState(false);
+  const [aktion, setAktion] = useState<Aktion>(null);
 
   const laden = async () => {
     if (!token) return;
-    setLaeuft(true);
+    setAktion("status");
     try {
       const { ebicsStatusFn } = await import("@/lib/ebics/server-fn");
       const res = await ebicsStatusFn({ data: { supabaseAccessToken: token } });
@@ -56,13 +58,13 @@ export function EbicsBankDialog({
     } catch (err) {
       toast.error(apiFehlermeldung(err));
     } finally {
-      setLaeuft(false);
+      setAktion(null);
     }
   };
 
   const initialisieren = async () => {
     if (!token) return;
-    setLaeuft(true);
+    setAktion("init");
     try {
       const { ebicsInitialisierenFn } = await import("@/lib/ebics/server-fn");
       const res = await ebicsInitialisierenFn({
@@ -77,22 +79,35 @@ export function EbicsBankDialog({
           brief.iniLetterHtml,
         );
       }
-      toast.success(
-        res.anzahl > 0
-          ? `${res.anzahl} INI-Brief(e) erzeugt`
-          : "Nichts zu initialisieren",
-      );
+      if (res.fehler?.length) {
+        toast.error(
+          res.fehler.map((f) => `${f.gesellschaftId}: ${f.meldung}`).join(" · "),
+        );
+      }
+      if (res.anzahl > 0) {
+        toast.success(`${res.anzahl} INI-Brief(e) erzeugt`);
+      } else if (!res.fehler?.length) {
+        toast.message("Nichts zu initialisieren");
+      }
       await laden();
     } catch (err) {
       toast.error(apiFehlermeldung(err));
+      await laden();
     } finally {
-      setLaeuft(false);
+      setAktion(null);
     }
   };
 
   const freischaltung = async () => {
     if (!token) return;
-    setLaeuft(true);
+    const offenInit = items.filter((i) => i.status === "nicht_initialisiert");
+    if (offenInit.length === items.length && items.length > 0) {
+      toast.error(
+        "Zuerst Initialisieren — danach INI-Briefe an die Bank, dann Freischaltung.",
+      );
+      return;
+    }
+    setAktion("frei");
     try {
       const { ebicsBankFreischaltungPruefenFn } = await import(
         "@/lib/ebics/server-fn"
@@ -104,19 +119,26 @@ export function EbicsBankDialog({
         },
       });
       const ok = res.ergebnisse.filter((e) => e.status === "bereit").length;
-      const fehl = res.ergebnisse.filter((e) => e.status === "fehler").length;
-      if (fehl > 0) {
-        toast.error(`${ok} bereit · ${fehl} Fehler`);
+      const fehl = res.ergebnisse.filter((e) => e.status === "fehler");
+      if (fehl.length > 0) {
+        const detail = fehl
+          .map((e) => e.meldung ?? e.gesellschaftId)
+          .slice(0, 3)
+          .join(" · ");
+        toast.error(`${ok} bereit · ${fehl.length} Fehler: ${detail}`);
       } else {
         toast.success(`${ok} bereit`);
       }
       await laden();
     } catch (err) {
       toast.error(apiFehlermeldung(err));
+      await laden();
     } finally {
-      setLaeuft(false);
+      setAktion(null);
     }
   };
+
+  const busy = aktion !== null;
 
   return (
     <Dialog
@@ -131,18 +153,25 @@ export function EbicsBankDialog({
           <DialogTitle>EBICS</DialogTitle>
         </DialogHeader>
         <ul className="max-h-64 space-y-2 overflow-y-auto text-sm">
-          {items.length === 0 && !laeuft ? (
+          {items.length === 0 && !busy ? (
             <li className="text-text-muted">Keine Kunden</li>
           ) : null}
           {items.map((i) => (
             <li
               key={i.id}
-              className="flex items-center justify-between gap-2 border-b border-hairline py-2 last:border-0"
+              className="flex items-start justify-between gap-2 border-b border-hairline py-2 last:border-0"
             >
               <span className="font-medium text-heading">
                 {i.gesellschaftKuerzel}
               </span>
-              <span className="text-text-muted">{statusLabel(i.status)}</span>
+              <span className="text-right text-text-muted">
+                {statusLabel(i.status)}
+                {i.letzterFehler ? (
+                  <span className="mt-0.5 block text-xs text-danger">
+                    {i.letzterFehler}
+                  </span>
+                ) : null}
+              </span>
             </li>
           ))}
         </ul>
@@ -151,30 +180,33 @@ export function EbicsBankDialog({
             variant="outline"
             size="sm"
             className="rounded-none"
-            disabled={laeuft}
+            disabled={busy}
             onClick={() => void initialisieren()}
           >
-            <Download className="mr-2 h-4 w-4" strokeWidth={1.5} />
-            Initialisieren
+            <Download
+              className={`mr-2 h-4 w-4 ${aktion === "init" ? "animate-pulse" : ""}`}
+              strokeWidth={1.5}
+            />
+            {aktion === "init" ? "Initialisiert…" : "Initialisieren"}
           </Button>
           <Button
             variant="outline"
             size="sm"
             className="rounded-none"
-            disabled={laeuft}
+            disabled={busy}
             onClick={() => void freischaltung()}
           >
             <RefreshCw
-              className={`mr-2 h-4 w-4 ${laeuft ? "animate-spin" : ""}`}
+              className={`mr-2 h-4 w-4 ${aktion === "frei" ? "animate-spin" : ""}`}
               strokeWidth={1.5}
             />
-            Freischaltung
+            {aktion === "frei" ? "Prüft…" : "Freischaltung"}
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className="rounded-none"
-            disabled={laeuft}
+            disabled={busy}
             onClick={() => void laden()}
           >
             <Landmark className="mr-2 h-4 w-4" strokeWidth={1.5} />

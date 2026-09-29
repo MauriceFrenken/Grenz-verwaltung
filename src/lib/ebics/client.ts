@@ -15,7 +15,7 @@ import "asn1";
 import "node-rsa";
 import "node-forge";
 
-import { ebicsCipherMaterial } from "./config";
+import { ebicsMasterKey } from "./config";
 import { EBICS_INI_BRIEF_DE } from "./ini-brief-de";
 import type { EbicsKundeRow } from "./kunden";
 import { createDbKeyStorage } from "./key-storage";
@@ -50,19 +50,26 @@ async function createEbicsClient(
   kunde: EbicsKundeRow,
 ): Promise<ClientType> {
   const { Client } = await loadEbicsPkg();
-  const { passphrase, iv } = ebicsCipherMaterial();
+  // Kein IV: ebics-client decrypted intern immer ohne IV.
   return new Client({
     url: kunde.url,
     partnerId: kunde.partner_id,
     userId: kunde.user_id,
     hostId: kunde.host_id,
-    passphrase,
-    iv,
+    passphrase: ebicsMasterKey(),
     keyStorage: createDbKeyStorage(admin, kunde.id),
     bankName: kunde.bank_name,
     bankShortName: kunde.partner_id,
     languageCode: "de",
   });
+}
+
+/** Kaputte/alte Schlüsselblobs löschen, damit Init sauber neu starten kann. */
+export async function ebicsSchluesselZuruecksetzen(
+  admin: SupabaseClient,
+  kundeId: string,
+): Promise<void> {
+  await admin.from("ebics_schluessel").delete().eq("ebics_kunde_id", kundeId);
 }
 
 function assertTechnicalOk(res: {
@@ -88,16 +95,44 @@ function assertTechnicalOk(res: {
   );
 }
 
+function menschenlesbarerFehler(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/null \(reading 'a'\)|keys\(\)|No keys provided/i.test(msg)) {
+    return "EBICS-Schlüssel konnten nicht gelesen werden. Bitte erneut Initialisieren.";
+  }
+  if (/timed out|timeout|ETIMEDOUT|AbortError/i.test(msg)) {
+    return "Zeitüberschreitung bei der Bankverbindung. Bitte erneut versuchen.";
+  }
+  if (/ENOTFOUND|ECONNREFUSED|fetch failed|network/i.test(msg)) {
+    return "Keine Verbindung zur EBICS-Bank. Bitte später erneut versuchen.";
+  }
+  return msg;
+}
+
 export async function ebicsInitialisiereKunde(
   admin: SupabaseClient,
   kunde: EbicsKundeRow,
 ): Promise<{ iniLetterHtml: string }> {
   const { Orders, BankLetter } = await loadEbicsPkg();
+
+  // Alte Blobs (z. B. mit IV verschlüsselt) verwerfen → sauberer Neustart
+  await ebicsSchluesselZuruecksetzen(admin, kunde.id);
+
   const client = await createEbicsClient(admin, kunde);
 
   try {
+    const existing = await client.keys();
+    if (!existing) {
+      // Erzeugt Schlüssel über INI-Pfad (Client.initialization)
+    }
+
     const iniRes = await client.send(Orders.INI);
     assertTechnicalOk(iniRes);
+
+    const keysAfterIni = await client.keys();
+    if (!keysAfterIni) {
+      throw new Error("EBICS-Schlüssel nach INI nicht lesbar.");
+    }
 
     const hiaRes = await client.send(Orders.HIA);
     assertTechnicalOk(hiaRes);
@@ -120,12 +155,12 @@ export async function ebicsInitialisiereKunde(
 
     return { iniLetterHtml };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = menschenlesbarerFehler(err);
     await admin
       .from("ebics_kunden")
       .update({ status: "fehler", letzter_fehler: msg })
       .eq("id", kunde.id);
-    throw err;
+    throw new Error(msg);
   }
 }
 
@@ -133,8 +168,21 @@ export async function ebicsBankSchluesselHolen(
   admin: SupabaseClient,
   kunde: EbicsKundeRow,
 ): Promise<void> {
+  if (kunde.status === "nicht_initialisiert") {
+    throw new Error("Zuerst Initialisieren — noch keine Schlüssel bei der Bank.");
+  }
+  if (kunde.status === "bereit") return;
+
   const { Orders } = await loadEbicsPkg();
   const client = await createEbicsClient(admin, kunde);
+
+  const keys = await client.keys();
+  if (!keys) {
+    throw new Error(
+      "Keine lokalen EBICS-Schlüssel — bitte erneut Initialisieren.",
+    );
+  }
+
   try {
     const res = await client.send(Orders.HPB);
     assertTechnicalOk(res);
@@ -150,12 +198,16 @@ export async function ebicsBankSchluesselHolen(
       })
       .eq("id", kunde.id);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = menschenlesbarerFehler(err);
+    // Typisch: Bank hat INI-Brief noch nicht freigeschaltet
+    const hinweis = /EBICS_|technical|business|HPB|091/i.test(msg)
+      ? `${msg} — Bank hat den Teilnehmer ggf. noch nicht freigeschaltet.`
+      : msg;
     await admin
       .from("ebics_kunden")
-      .update({ status: "fehler", letzter_fehler: msg })
+      .update({ status: "fehler", letzter_fehler: hinweis })
       .eq("id", kunde.id);
-    throw err;
+    throw new Error(hinweis);
   }
 }
 
