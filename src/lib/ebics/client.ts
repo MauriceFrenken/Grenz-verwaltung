@@ -1,5 +1,6 @@
 /**
- * EBICS-Client-Factory und Abruf-Hilfen (nur Server / Service Role).
+ * EBICS-Protokoll (INI/HIA/HPB/C53) — nur bei Bedarf laden,
+ * damit SSR der restlichen App nicht von ebics-client abhängt.
  */
 
 import { readFileSync } from "node:fs";
@@ -7,44 +8,51 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { BankLetter as BankLetterType, Client as ClientType } from "ebics-client";
+import type {
+  BankLetter as BankLetterType,
+  Client as ClientType,
+  Orders as OrdersType,
+} from "ebics-client";
 
 import { ebicsCipherMaterial } from "./config";
+import type { EbicsKundeRow } from "./kunden";
 import { createDbKeyStorage } from "./key-storage";
 
-const require = createRequire(import.meta.url);
-const ebics = require("ebics-client") as typeof import("ebics-client");
-const { Client, Orders, BankLetter } = ebics;
+export type { EbicsKundeRow };
+export { loadEbicsKunden } from "./kunden";
 
-export type EbicsKundeRow = {
-  id: string;
-  gesellschaft_id: string;
-  partner_id: string;
-  user_id: string;
-  host_id: string;
-  url: string;
-  bank_name: string;
-  status: "nicht_initialisiert" | "wartet_auf_bank" | "bereit" | "fehler";
-  letzter_fehler: string | null;
+type EbicsPkg = {
+  Client: new (opts: ConstructorParameters<typeof ClientType>[0]) => ClientType;
+  Orders: typeof OrdersType;
+  BankLetter: new (opts: {
+    client: ClientType;
+    bankName: string;
+    template: string;
+  }) => BankLetterType;
 };
 
-export async function loadEbicsKunden(
-  admin: SupabaseClient,
-  gesellschaftId?: string | null,
-): Promise<EbicsKundeRow[]> {
-  let q = admin.from("ebics_kunden").select(
-    "id, gesellschaft_id, partner_id, user_id, host_id, url, bank_name, status, letzter_fehler",
-  );
-  if (gesellschaftId) q = q.eq("gesellschaft_id", gesellschaftId);
-  const { data, error } = await q.order("gesellschaft_id");
-  if (error) throw new Error(error.message);
-  return (data ?? []) as EbicsKundeRow[];
+let ebicsPkg: EbicsPkg | null = null;
+
+function loadEbicsPkg(): EbicsPkg {
+  if (ebicsPkg) return ebicsPkg;
+  const require = createRequire(import.meta.url);
+  const mod = require("ebics-client") as EbicsPkg & { default?: EbicsPkg };
+  ebicsPkg = (mod.default ?? mod) as EbicsPkg;
+  return ebicsPkg;
+}
+
+function loadIniTemplateDe(): string {
+  const require = createRequire(import.meta.url);
+  const pkgPath = require.resolve("ebics-client/package.json");
+  const templatePath = join(dirname(pkgPath), "templates", "ini_de.hbs");
+  return readFileSync(templatePath, "utf8");
 }
 
 export function createEbicsClient(
   admin: SupabaseClient,
   kunde: EbicsKundeRow,
 ): ClientType {
+  const { Client } = loadEbicsPkg();
   const { passphrase, iv } = ebicsCipherMaterial();
   return new Client({
     url: kunde.url,
@@ -71,7 +79,6 @@ function assertTechnicalOk(res: {
     sym === "EBICS_OK" ||
     sym === "OK" ||
     code === "000000" ||
-    // Keine neuen Auszüge im Zeitraum — kein Fehler
     sym.includes("NO_DOWNLOAD") ||
     code === "090005"
   ) {
@@ -84,16 +91,11 @@ function assertTechnicalOk(res: {
   );
 }
 
-function loadIniTemplateDe(): string {
-  const pkgPath = require.resolve("ebics-client/package.json");
-  const templatePath = join(dirname(pkgPath), "templates", "ini_de.hbs");
-  return readFileSync(templatePath, "utf8");
-}
-
 export async function ebicsInitialisiereKunde(
   admin: SupabaseClient,
   kunde: EbicsKundeRow,
 ): Promise<{ iniLetterHtml: string }> {
+  const { Orders, BankLetter } = loadEbicsPkg();
   const client = createEbicsClient(admin, kunde);
 
   try {
@@ -107,7 +109,7 @@ export async function ebicsInitialisiereKunde(
       client,
       bankName: kunde.bank_name,
       template: loadIniTemplateDe(),
-    }) as BankLetterType;
+    });
     const iniLetterHtml = await letter.generate();
 
     await admin
@@ -134,6 +136,7 @@ export async function ebicsBankSchluesselHolen(
   admin: SupabaseClient,
   kunde: EbicsKundeRow,
 ): Promise<void> {
+  const { Orders } = loadEbicsPkg();
   const client = createEbicsClient(admin, kunde);
   try {
     const res = await client.send(Orders.HPB);
@@ -170,6 +173,7 @@ export async function ebicsC53Abrufen(
       `EBICS für ${kunde.gesellschaft_id} nicht bereit (Status: ${kunde.status}).`,
     );
   }
+  const { Orders } = loadEbicsPkg();
   const client = createEbicsClient(admin, kunde);
   const res = await client.send(Orders.C53(von, bis));
   assertTechnicalOk(res);
@@ -187,5 +191,3 @@ export async function ebicsC53Abrufen(
   if (typeof data === "string") return Buffer.from(data, "binary");
   return Buffer.from(String(data), "binary");
 }
-
-export { Orders };

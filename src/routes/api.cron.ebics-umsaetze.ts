@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { cronSecretOk } from "@/lib/cron-auth";
 import { createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
-import { syncEbicsOffeneLaeufe } from "@/lib/ebics/sync";
 
 export const Route = createFileRoute("/api/cron/ebics-umsaetze")({
   server: {
@@ -13,6 +12,7 @@ export const Route = createFileRoute("/api/cron/ebics-umsaetze")({
         }
 
         try {
+          const { syncEbicsOffeneLaeufe } = await import("@/lib/ebics/sync");
           const admin = createServiceRoleClient();
           const ergebnis = await syncEbicsOffeneLaeufe(admin);
           return Response.json({

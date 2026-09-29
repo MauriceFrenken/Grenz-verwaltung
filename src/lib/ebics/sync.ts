@@ -10,10 +10,9 @@ import {
   parseCamt053Xml,
 } from "@/lib/camt053Parse";
 import {
-  ebicsC53Abrufen,
   loadEbicsKunden,
   type EbicsKundeRow,
-} from "@/lib/ebics/client";
+} from "@/lib/ebics/kunden";
 
 export type EbicsSyncKundeErgebnis = {
   gesellschaftId: string;
@@ -144,6 +143,7 @@ async function syncEinKunde(
 
   const { von, bis } = monatsgrenzen(zeitraum);
   try {
+    const { ebicsC53Abrufen } = await import("@/lib/ebics/client");
     const orderData = await ebicsC53Abrufen(admin, kunde, von, bis);
 
     let anzahlNeu = 0;

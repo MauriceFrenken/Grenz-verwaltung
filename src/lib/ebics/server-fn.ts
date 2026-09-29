@@ -1,6 +1,6 @@
 /**
  * Server-Funktionen für EBICS (Init, HPB, Umsätze, Status).
- * Keine Secrets in Rückgaben.
+ * Schwere EBICS-Abhängigkeiten nur lazy in den Handlern laden.
  */
 
 import { createServerFn } from "@tanstack/react-start";
@@ -9,12 +9,7 @@ import {
   createServiceRoleClient,
   microsoftCallerAusJwt,
 } from "@/lib/microsoft/supabase-admin";
-import {
-  ebicsBankSchluesselHolen,
-  ebicsInitialisiereKunde,
-  loadEbicsKunden,
-} from "@/lib/ebics/client";
-import { syncEbicsFuerLauf } from "@/lib/ebics/sync";
+import { loadEbicsKunden } from "@/lib/ebics/kunden";
 import type { EbicsKundeStatusDto } from "@/lib/ebics/types";
 
 export type { EbicsKundeStatusDto };
@@ -61,6 +56,7 @@ export const ebicsInitialisierenFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await microsoftCallerAusJwt(asToken(data));
     const admin = createServiceRoleClient();
+    const { ebicsInitialisiereKunde } = await import("@/lib/ebics/client");
     const kunden = await loadEbicsKunden(
       admin,
       data.gesellschaftId?.trim() || null,
@@ -105,6 +101,7 @@ export const ebicsBankFreischaltungPruefenFn = createServerFn({ method: "POST" }
   .handler(async ({ data }) => {
     await microsoftCallerAusJwt(asToken(data));
     const admin = createServiceRoleClient();
+    const { ebicsBankSchluesselHolen } = await import("@/lib/ebics/client");
     const kunden = await loadEbicsKunden(
       admin,
       data.gesellschaftId?.trim() || null,
@@ -154,5 +151,6 @@ export const ebicsUmstaetzeHolenFn = createServerFn({ method: "POST" })
     const laufId = data.laufId?.trim();
     if (!laufId) throw new Error("laufId fehlt");
     const admin = createServiceRoleClient();
+    const { syncEbicsFuerLauf } = await import("@/lib/ebics/sync");
     return syncEbicsFuerLauf(admin, laufId);
   });

@@ -24,12 +24,16 @@ export default defineConfig({
     server: { entry: "server" },
   },
   // Postfach-Nachtlauf: Hobby-Plan erlaubt max. 300s pro Function.
+  // ebics-client muss im Serverless-Bundle landen (createRequire/NFT).
   nitro: {
     vercel: {
       functions: {
         maxDuration: 300,
       },
     },
-  } as { preset?: string },
+    externals: {
+      traceInclude: ["node_modules/ebics-client/**/*"],
+    },
+  } as { preset?: string; externals?: { traceInclude?: string[] } },
 });
 
