@@ -1,5 +1,13 @@
-import { graphPostfachPruefen, graphDriveRootKinder } from "./graph";
-import { microsoftOneDriveUser } from "./ablage";
+import {
+  graphDriveRootKinder,
+  graphMasterKategorieSicherstellen,
+  graphPostfachPruefen,
+} from "./graph";
+import { microsoftOneDriveUser, microsoftPostMailboxZweit } from "./ablage";
+import {
+  MICROSOFT_ABLEGEN_KATEGORIE,
+  MICROSOFT_ABLEGEN_KATEGORIE_FARBE,
+} from "./config";
 import { microsoftAccessToken } from "./postfach";
 import {
   leseMicrosoftRow,
@@ -25,6 +33,25 @@ export type MicrosoftStatusPayload = MicrosoftIntegrationStatus & {
   postfachNachrichten: number | null;
   modus: "app-only";
 };
+
+async function ablegenKategorieSicherstellen(accessToken: string): Promise<void> {
+  const postfach = microsoftPostMailboxZweit();
+  if (!postfach) return;
+  try {
+    await graphMasterKategorieSicherstellen(
+      accessToken,
+      postfach,
+      MICROSOFT_ABLEGEN_KATEGORIE,
+      MICROSOFT_ABLEGEN_KATEGORIE_FARBE,
+    );
+  } catch (err) {
+    console.error(
+      "[microsoft] Outlook-Kategorie „ablegen“ konnte nicht angelegt werden",
+      "(MailboxSettings.ReadWrite in Entra prüfen)",
+      err,
+    );
+  }
+}
 
 function statusPayload(
   status: MicrosoftIntegrationStatus,
@@ -83,6 +110,7 @@ export async function completeMicrosoftConnect(input: {
   const info = await graphPostfachPruefen(tokens.accessToken, postfach);
   // OneDrive (Dokumentenablage) — braucht Files.ReadWrite.All + Admin Consent.
   await graphDriveRootKinder(tokens.accessToken, microsoftOneDriveUser());
+  await ablegenKategorieSicherstellen(tokens.accessToken);
 
   const status = await speichereMicrosoftVerbindung({
     tokens,
@@ -115,6 +143,7 @@ export async function probeMicrosoft(supabaseAccessToken: string): Promise<Micro
     const { accessToken } = await microsoftAccessToken({ erneuern: true });
     const info = await graphPostfachPruefen(accessToken, postfach);
     await graphDriveRootKinder(accessToken, microsoftOneDriveUser());
+    await ablegenKategorieSicherstellen(accessToken);
     await markiereMicrosoftPruefungOk();
     return statusPayload(await leseMicrosoftStatus(), info.anzahlNachrichten);
   } catch (e) {

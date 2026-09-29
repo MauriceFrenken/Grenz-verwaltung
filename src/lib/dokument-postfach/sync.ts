@@ -20,6 +20,10 @@ import {
 
 import { baueAnhangAnalyseKontext } from "./anhang-kontext";
 import {
+  dokumentPosteingangAblegenKategorieSicherstellen,
+  dokumentPosteingangOutlookKategorieAblegen,
+} from "./kategorie-ablegen";
+import {
   loescheAlteRechnungsHistorie,
   pruefeRechnungsDuplikat,
 } from "./rechnung-historie";
@@ -394,7 +398,17 @@ export async function dokumentPosteingangSynchronisieren(input: {
   const { postfaecher, nachrichten } =
     await microsoftDokumentPosteingangLesenIntern({ anzahl: 50 });
 
+  await dokumentPosteingangAblegenKategorieSicherstellen();
   await eintraegeAnlegen(nachrichten);
+
+  try {
+    await dokumentPosteingangOutlookKategorieAblegen({
+      supabaseAccessToken: input.supabaseAccessToken,
+      nachrichten,
+    });
+  } catch (err) {
+    console.error("[dokument-postfach] Outlook-Kategorie-Ablegen", err);
+  }
 
   const rows = await leseEintraege(
     nachrichten.map((n) => ({ postfach: n.postfach, id: n.id })),
@@ -470,6 +484,7 @@ export async function dokumentPosteingangNachtlauf(input?: {
       const { nachrichten } = await microsoftDokumentPosteingangLesenIntern({
         anzahl: 50,
       });
+      await dokumentPosteingangAblegenKategorieSicherstellen();
       await eintraegeAnlegen(nachrichten);
     } catch (err) {
       inboxSyncFehler = fehlerText(err);

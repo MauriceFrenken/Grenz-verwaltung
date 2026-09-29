@@ -32,6 +32,8 @@ export type GraphNachricht = {
   primaerAnhang: GraphAnhangMeta | null;
   /** Alle Nicht-Inline-Dateianhänge der Nachricht. */
   anhaenge: GraphAnhangMeta[];
+  /** Outlook-Kategorien (z. B. „ablegen“). */
+  categories: string[];
   vorschau: string | null;
   webLink: string | null;
 };
@@ -124,6 +126,27 @@ async function graphPost<T>(
   return json as T;
 }
 
+async function graphPatch<T>(
+  pfad: string,
+  accessToken: string,
+  body: unknown,
+  postfach?: string,
+): Promise<T> {
+  const res = await fetch(`${GRAPH_BASIS}${pfad}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const json: unknown = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw graphFehler(res.status, json as GraphFehlerJson, postfach);
+  }
+  return json as T;
+}
+
 /**
  * Liest den Posteingang. Mit App-only ist das der Nachweis,
  * dass genau dieses Postfach erreichbar ist.
@@ -170,6 +193,7 @@ type RohNachricht = {
   hasAttachments?: boolean;
   bodyPreview?: string;
   webLink?: string;
+  categories?: string[];
   attachments?: RohAnhangMeta[];
 };
 
@@ -256,6 +280,9 @@ function mapNachricht(roh: RohNachricht): GraphNachricht | null {
     pdfAnhang: pdf ? mapAnhangMeta(pdf) : null,
     primaerAnhang: waehlePrimaerAnhang(rohAnhaenge),
     anhaenge: dateiAnhaenge,
+    categories: (roh.categories ?? [])
+      .map((c) => (typeof c === "string" ? c.trim() : ""))
+      .filter(Boolean),
     vorschau: roh.bodyPreview ?? null,
     webLink: roh.webLink ?? null,
   };
@@ -269,7 +296,7 @@ export async function graphPosteingangNachrichten(
   const anzahl = Math.min(Math.max(optionen.anzahl ?? 25, 1), 100);
   const params = new URLSearchParams({
     $select:
-      "id,internetMessageId,subject,from,receivedDateTime,hasAttachments,bodyPreview,webLink",
+      "id,internetMessageId,subject,from,receivedDateTime,hasAttachments,bodyPreview,webLink,categories",
     $expand: "attachments($select=id,name,contentType,size,isInline)",
     $orderby: "receivedDateTime desc",
     $top: String(anzahl),
@@ -291,6 +318,92 @@ export async function graphPosteingangNachrichten(
   return optionen.nurMitAnhang
     ? nachrichten.filter((n) => n.anhaenge.length > 0)
     : nachrichten;
+}
+
+/**
+ * Stellt eine Outlook-Master-Kategorie sicher (Name + Farbe).
+ * Braucht Application-Permission MailboxSettings.ReadWrite.
+ */
+export async function graphMasterKategorieSicherstellen(
+  accessToken: string,
+  postfach: string,
+  displayName: string,
+  color: string,
+): Promise<{ id: string; displayName: string; color: string; angelegt: boolean }> {
+  const name = displayName.trim();
+  if (!name) throw new Error("Kategoriename fehlt.");
+
+  const data = await graphGet<{
+    value?: Array<{ id?: string; displayName?: string; color?: string }>;
+  }>(
+    `/users/${encodeURIComponent(postfach)}/outlook/masterCategories?$select=id,displayName,color&$top=100`,
+    accessToken,
+    postfach,
+  );
+
+  const vorhanden = (data.value ?? []).find(
+    (c) => (c.displayName ?? "").trim().toLowerCase() === name.toLowerCase(),
+  );
+
+  if (vorhanden?.id) {
+    if ((vorhanden.color ?? "").toLowerCase() !== color.toLowerCase()) {
+      const updated = await graphPatch<{
+        id?: string;
+        displayName?: string;
+        color?: string;
+      }>(
+        `/users/${encodeURIComponent(postfach)}/outlook/masterCategories/${encodeURIComponent(vorhanden.id)}`,
+        accessToken,
+        { color },
+        postfach,
+      );
+      return {
+        id: updated.id ?? vorhanden.id,
+        displayName: updated.displayName ?? vorhanden.displayName ?? name,
+        color: updated.color ?? color,
+        angelegt: false,
+      };
+    }
+    return {
+      id: vorhanden.id,
+      displayName: vorhanden.displayName ?? name,
+      color: vorhanden.color ?? color,
+      angelegt: false,
+    };
+  }
+
+  const erstellt = await graphPost<{
+    id?: string;
+    displayName?: string;
+    color?: string;
+  }>(
+    `/users/${encodeURIComponent(postfach)}/outlook/masterCategories`,
+    accessToken,
+    { displayName: name, color },
+    postfach,
+  );
+
+  if (!erstellt.id) {
+    throw new Error(`Kategorie „${name}“ konnte nicht angelegt werden.`);
+  }
+  return {
+    id: erstellt.id,
+    displayName: erstellt.displayName ?? name,
+    color: erstellt.color ?? color,
+    angelegt: true,
+  };
+}
+
+/** Prüft ob eine Nachricht die genannte Kategorie trägt (case-insensitive). */
+export function graphNachrichtHatKategorie(
+  nachricht: { categories?: string[] | null },
+  kategorie: string,
+): boolean {
+  const gesucht = kategorie.trim().toLowerCase();
+  if (!gesucht) return false;
+  return (nachricht.categories ?? []).some(
+    (c) => c.trim().toLowerCase() === gesucht,
+  );
 }
 
 export async function graphNachrichtAnhaenge(

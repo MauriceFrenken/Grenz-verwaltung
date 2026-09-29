@@ -19,6 +19,13 @@ export const MICROSOFT_DOKUMENT_POSTEINGANG_SEIT = "2025-08-20T00:00:00Z";
 export const MICROSOFT_ONEDRIVE_USER = "m.frenken@frenken-immobilien.com";
 
 /**
+ * Outlook-Kategorie: Mail beim nächsten Postfach-Laden automatisch ablegen
+ * (KI-Zielordner). Farbe preset3 = Gelb in Outlook Desktop.
+ */
+export const MICROSOFT_ABLEGEN_KATEGORIE = "ablegen";
+export const MICROSOFT_ABLEGEN_KATEGORIE_FARBE = "preset3";
+
+/**
  * Fester Ablagepfad für Rechnungen unter dem Gesellschafts-Root
  * (ohne KI-Ordnerwahl).
  */

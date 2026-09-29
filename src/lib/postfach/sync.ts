@@ -59,6 +59,7 @@ export function eintragAlsGraphNachricht(
     pdfAnhang: pdf,
     primaerAnhang: pdf,
     anhaenge: pdf ? [pdf] : [],
+    categories: [],
     vorschau: null,
     webLink: null,
   };
