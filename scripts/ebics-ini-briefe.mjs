@@ -138,37 +138,60 @@ function unterschrift(ortDatum, firmaName, teilnehmerName) {
 }
 
 const CSS = `
-@page { margin: 18mm 16mm; }
+@page {
+  size: A4 portrait;
+  margin: 15mm 14mm 16mm 14mm;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #e8e8e8; }
 body {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: 11pt;
-  line-height: 1.35;
+  font-size: 10.5pt;
+  line-height: 1.3;
   color: #111;
-  margin: 0;
-  padding: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
-h1 { font-size: 16pt; margin: 0 0 12pt; font-weight: 700; }
-h3 { font-size: 12pt; margin: 14pt 0 6pt; font-weight: 700; }
-.page { page-break-after: always; }
-.page:last-child { page-break-after: auto; }
-table.meta { width: 100%; border-collapse: collapse; margin: 0 0 14pt; }
+.sheet {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 8mm auto;
+  padding: 15mm 14mm 16mm 14mm;
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0,0,0,.18);
+}
+@media print {
+  html, body { background: #fff; }
+  .sheet {
+    width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none;
+    break-after: page; page-break-after: always;
+  }
+  .sheet:last-child { break-after: auto; page-break-after: auto; }
+  .print-hint { display: none; }
+}
+h1 { font-size: 14pt; margin: 0 0 10pt; font-weight: 700; }
+h3 { font-size: 11pt; margin: 10pt 0 4pt; font-weight: 700; }
+table.meta { width: 100%; border-collapse: collapse; margin: 0 0 10pt; }
 table.meta th, table.meta td {
-  border: 1px solid #333; padding: 5pt 8pt; text-align: left; vertical-align: top;
+  border: 1px solid #333; padding: 4pt 7pt; text-align: left; vertical-align: top;
 }
 table.meta th { width: 28%; background: #f2f2f2; font-weight: 600; }
-.label { margin: 8pt 0 3pt; font-weight: 600; }
+.label { margin: 6pt 0 2pt; font-weight: 600; }
 pre.hex {
   font-family: "SF Mono", Menlo, Consolas, "Courier New", monospace;
-  font-size: 8.5pt; line-height: 1.45; white-space: pre-wrap; word-break: break-all;
-  border: 1px solid #333; background: #fafafa; padding: 8pt; margin: 0 0 6pt;
+  font-size: 7.8pt; line-height: 1.38; white-space: pre-wrap; word-break: break-all;
+  border: 1px solid #333; background: #fafafa; padding: 6pt 7pt; margin: 0 0 4pt;
 }
-pre.hex.hash { font-size: 9.5pt; font-weight: 600; background: #f5f5f5; }
-.confirm { margin: 14pt 0 18pt; }
-table.sign { width: 100%; border-collapse: collapse; margin-top: 8pt; }
-table.sign td { width: 33.33%; vertical-align: bottom; padding: 0 8pt 0 0; font-size: 9.5pt; }
-table.sign td.line { border-bottom: 1px solid #111; height: 42pt; font-size: 10pt; padding-bottom: 4pt; }
-.muted { color: #444; font-size: 9pt; }
-.continued { margin-top: 16pt; font-style: italic; color: #444; }
+pre.hex.hash { font-size: 9pt; font-weight: 600; background: #f5f5f5; }
+.confirm { margin: 10pt 0 14pt; }
+table.sign { width: 100%; border-collapse: collapse; margin-top: 6pt; }
+table.sign td { width: 33.33%; vertical-align: bottom; padding: 0 8pt 0 0; font-size: 9pt; }
+table.sign td.line { border-bottom: 1px solid #111; height: 36pt; font-size: 9.5pt; padding-bottom: 3pt; }
+.muted { color: #444; font-size: 8.5pt; }
+.continued { margin-top: 12pt; font-style: italic; color: #444; }
+.print-hint {
+  width: 210mm; margin: 6mm auto 0; font-size: 9pt; color: #555; text-align: center;
+}
 `.trim();
 
 function renderBrief({ bankName, hostId, userId, partnerId, firmaName, A006, X002, E002 }) {
@@ -194,20 +217,21 @@ function renderBrief({ bankName, hostId, userId, partnerId, firmaName, A006, X00
   <style>${CSS}</style>
 </head>
 <body>
-  <div class="page">
+  <p class="print-hint">DIN A4 — zum Drucken: Cmd/Ctrl+P · Ziel „Als PDF speichern“ oder Drucker · Seitenformat A4</p>
+  <div class="sheet">
     <h1>EBICS-Initialisierungsbrief (INI)</h1>
     ${metaTabelle(meta)}
     ${schluesselBlock("Öffentlicher Schlüssel für die elektronische Unterschrift", "A006", A006)}
     <p class="confirm">Ich bestätige hiermit den obigen öffentlichen Schlüssel für meine elektronische Unterschrift.</p>
     ${unterschrift(ortDatum, firmaName, TEILNEHMER)}
   </div>
-  <div class="page">
+  <div class="sheet">
     <h1>EBICS-Initialisierungsbrief (HIA) — Seite 1/2</h1>
     ${metaTabelle(meta)}
     ${schluesselBlock("Öffentlicher Authentifikationsschlüssel", "X002", X002)}
     <p class="continued">Fortsetzung auf Seite 2 …</p>
   </div>
-  <div class="page">
+  <div class="sheet">
     <h1>EBICS-Initialisierungsbrief (HIA) — Seite 2/2</h1>
     ${metaTabelle(meta)}
     ${schluesselBlock("Öffentlicher Verschlüsselungsschlüssel", "E002", E002)}
