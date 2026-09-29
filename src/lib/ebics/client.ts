@@ -10,6 +10,11 @@ import type {
   Orders as OrdersType,
 } from "ebics-client";
 
+// Force-bundle nested CJS deps that ebics-client requires at runtime.
+import "asn1";
+import "node-rsa";
+import "node-forge";
+
 import { ebicsCipherMaterial } from "./config";
 import { EBICS_INI_BRIEF_DE } from "./ini-brief-de";
 import type { EbicsKundeRow } from "./kunden";

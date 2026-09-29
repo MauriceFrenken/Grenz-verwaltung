@@ -10,9 +10,13 @@ import { exposeAiDevPlugin } from "./vite-plugin-expose-ai-dev";
 import { salesforceOauthDevPlugin } from "./vite-plugin-salesforce-oauth-dev";
 import { microsoftOauthDevPlugin } from "./vite-plugin-microsoft-oauth-dev";
 
-/** CJS-Banking-Lib +Deps müssen ins Server-Bundle, sonst fehlt sie auf Vercel. */
+/**
+ * Kompletter Dependency-Baum von ebics-client (CJS).
+ * Muss ins Server-Bundle, sonst fehlen nested requires auf Vercel (z. B. asn1).
+ */
 const EBICS_BUNDLE = [
   "ebics-client",
+  "asn1",
   "node-forge",
   "node-rsa",
   "handlebars",
@@ -20,8 +24,15 @@ const EBICS_BUNDLE = [
   "js2xmlparser",
   "xpath",
   "@xmldom/xmldom",
+  "@xmldom/is-dom-node",
   "uuid",
   "rock-req",
+  "xmlcreate",
+  "minimist",
+  "neo-async",
+  "source-map",
+  "wordwrap",
+  "safer-buffer",
 ];
 
 export default defineConfig({
