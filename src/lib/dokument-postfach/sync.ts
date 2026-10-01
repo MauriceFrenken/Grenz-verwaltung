@@ -7,10 +7,15 @@ import {
   microsoftDokumentPosteingangQuellen,
   istAblageRootOrdner,
   microsoftOneDriveUser,
+  type DokumentPosteingangNachricht,
 } from "@/lib/microsoft/ablage";
 import { graphAnhangBinary, graphDriveRootKinder } from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
-import { microsoftCallerAusJwt, createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
+import {
+  createServiceRoleClient,
+  microsoftCallerAusJwt,
+  microsoftCronAuthToken,
+} from "@/lib/microsoft/supabase-admin";
 
 import {
   istTamAusFeldern,
@@ -452,11 +457,42 @@ export type DokumentPosteingangNachtlaufErgebnis = {
   fortsetzen: boolean;
   abgebrochen?: "zu_viele_fehler" | "persistenz";
   inboxSyncFehler?: string;
+  /** Auto-Ablegen via Outlook-Kategorie „ablegen“. */
+  kategorieAblegenVerarbeitet?: number;
+  kategorieAblegenFehlgeschlagen?: number;
 };
 
+async function nachtlaufOutlookKategorieAblegen(
+  nachrichten?: DokumentPosteingangNachricht[],
+): Promise<{ verarbeitet: number; fehlgeschlagen: number } | null> {
+  try {
+    const msgs =
+      nachrichten ??
+      (
+        await microsoftDokumentPosteingangLesenIntern({
+          anzahl: 50,
+        })
+      ).nachrichten;
+    const ergebnis = await dokumentPosteingangOutlookKategorieAblegen({
+      supabaseAccessToken: microsoftCronAuthToken(),
+      nachrichten: msgs,
+    });
+    if (ergebnis.verarbeitet > 0 || ergebnis.fehlgeschlagen > 0) {
+      console.info(
+        "[dokument-postfach] Nachtlauf Kategorie-Ablegen",
+        ergebnis,
+      );
+    }
+    return ergebnis;
+  } catch (err) {
+    console.error("[dokument-postfach] Nachtlauf Kategorie-Ablegen", err);
+    return null;
+  }
+}
+
 /**
- * Nachtlauf ohne User-JWT: Posteingang listen, dann nacheinander analysieren
- * bis keine offenen Mails mehr da sind oder das Zeitbudget endet.
+ * Nachtlauf ohne User-JWT: Posteingang listen, analysieren, dann Mails mit
+ * Kategorie „ablegen“ in OneDrive + Gesellschafts-Unterordner ablegen.
  * Einzelne Eintrag-Fehler werden übersprungen; nach 3 Fehlern in Folge Stopp.
  */
 export async function dokumentPosteingangNachtlauf(input?: {
@@ -472,6 +508,8 @@ export async function dokumentPosteingangNachtlauf(input?: {
   const deadlineMs =
     input?.deadlineMs ?? Date.now() + NACHTLAUF_DEFAULT_BUDGET_MS;
   let inboxSyncFehler: string | undefined;
+  let kategorieAblegenVerarbeitet = 0;
+  let kategorieAblegenFehlgeschlagen = 0;
 
   if (inboxSync) {
     try {
@@ -486,6 +524,12 @@ export async function dokumentPosteingangNachtlauf(input?: {
       });
       await dokumentPosteingangAblegenKategorieSicherstellen();
       await eintraegeAnlegen(nachrichten);
+      // Bereits analysierte, gelb markierte Mails sofort ablegen.
+      const frueh = await nachtlaufOutlookKategorieAblegen(nachrichten);
+      if (frueh) {
+        kategorieAblegenVerarbeitet += frueh.verarbeitet;
+        kategorieAblegenFehlgeschlagen += frueh.fehlgeschlagen;
+      }
     } catch (err) {
       inboxSyncFehler = fehlerText(err);
       console.error("[dokument-postfach] Inbox-Sync im Nachtlauf", err);
@@ -544,6 +588,13 @@ export async function dokumentPosteingangNachtlauf(input?: {
     }
   }
 
+  // Neu analysierte + gelb markierte Mails → Gesellschafts-Unterordner.
+  const spaet = await nachtlaufOutlookKategorieAblegen();
+  if (spaet) {
+    kategorieAblegenVerarbeitet += spaet.verarbeitet;
+    kategorieAblegenFehlgeschlagen += spaet.fehlgeschlagen;
+  }
+
   const nochOffen = await zaehleOffene();
   return {
     analysiert,
@@ -552,5 +603,7 @@ export async function dokumentPosteingangNachtlauf(input?: {
     fortsetzen: !abgebrochen && nochOffen > 0,
     abgebrochen,
     inboxSyncFehler,
+    kategorieAblegenVerarbeitet,
+    kategorieAblegenFehlgeschlagen,
   };
 }

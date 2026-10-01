@@ -1,12 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  Download,
-  Landmark,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -35,7 +29,6 @@ import type {
   SollstellungPosition,
   SollstellungPositionStatus,
 } from "@/types";
-import { EbicsBankDialog } from "./EbicsBankDialog";
 import { StammdatenFilter } from "./StammdatenFilter";
 import { VerwaltungTabellenLeiste } from "./TabellenSuche";
 import { useTabellenSuche } from "./useTabellenSuche";
@@ -135,11 +128,9 @@ export function SollstellungDetailPage({ id }: { id: string }) {
   const [statusFilter, setStatusFilter] = useState<
     SollstellungPositionStatus | "alle"
   >("fehlt");
-  const [ebicsOffen, setEbicsOffen] = useState(false);
   const [loeschenOffen, setLoeschenOffen] = useState(false);
   const [loeschenLaeuft, setLoeschenLaeuft] = useState(false);
-  const [abgleichLaeuft, setAbgleichLaeuft] = useState(false);
-  const [umsaetzeLaeuft, setUmsaetzeLaeuft] = useState(false);
+  const [aktualisierenLaeuft, setAktualisierenLaeuft] = useState(false);
   const [detail, setDetail] = useState<SollstellungPosition | null>(null);
   const [auszugLoeschenId, setAuszugLoeschenId] = useState<string | null>(null);
 
@@ -179,25 +170,12 @@ export function SollstellungDetailPage({ id }: { id: string }) {
     bankauszuege.reload();
   };
 
-  const abgleich = async () => {
-    setAbgleichLaeuft(true);
-    try {
-      await buchhaltungApi.gleicheAb(id);
-      toast.success("Abgleich aktualisiert");
-      reloadAlles();
-    } catch (err) {
-      toast.error(apiFehlermeldung(err));
-    } finally {
-      setAbgleichLaeuft(false);
-    }
-  };
-
-  const umsaetzeHolen = async () => {
+  const aktualisieren = async () => {
     if (!token) {
       toast.error("Nicht angemeldet");
       return;
     }
-    setUmsaetzeLaeuft(true);
+    setAktualisierenLaeuft(true);
     try {
       const { ebicsUmstaetzeHolenFn } = await import("@/lib/ebics/server-fn");
       const res = await ebicsUmstaetzeHolenFn({
@@ -205,9 +183,7 @@ export function SollstellungDetailPage({ id }: { id: string }) {
       });
       const fehler = res.ergebnisse.filter((e) => e.status === "fehler");
       if (fehler.length > 0) {
-        toast.error(
-          `${res.anzahlNeuGesamt} neu · ${fehler.length} Fehler`,
-        );
+        toast.error(`${res.anzahlNeuGesamt} neu · ${fehler.length} Fehler`);
       } else {
         toast.success(`${res.anzahlNeuGesamt} neue Buchungen`);
       }
@@ -215,7 +191,7 @@ export function SollstellungDetailPage({ id }: { id: string }) {
     } catch (err) {
       toast.error(apiFehlermeldung(err));
     } finally {
-      setUmsaetzeLaeuft(false);
+      setAktualisierenLaeuft(false);
     }
   };
 
@@ -288,42 +264,17 @@ export function SollstellungDetailPage({ id }: { id: string }) {
               variant="outline"
               size="sm"
               className="rounded-none border-foreground"
-              onClick={() => void umsaetzeHolen()}
-              disabled={umsaetzeLaeuft || l.status !== "offen"}
-            >
-              <Download
-                className={cn(
-                  "mr-2 h-4 w-4",
-                  umsaetzeLaeuft && "animate-pulse",
-                )}
-                strokeWidth={1.5}
-              />
-              Umsätze holen
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-none"
-              onClick={() => setEbicsOffen(true)}
-            >
-              <Landmark className="mr-2 h-4 w-4" strokeWidth={1.5} />
-              EBICS
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-none"
-              onClick={() => void abgleich()}
-              disabled={abgleichLaeuft}
+              onClick={() => void aktualisieren()}
+              disabled={aktualisierenLaeuft || l.status !== "offen"}
             >
               <RefreshCw
                 className={cn(
                   "mr-2 h-4 w-4",
-                  abgleichLaeuft && "animate-spin",
+                  aktualisierenLaeuft && "animate-spin",
                 )}
                 strokeWidth={1.5}
               />
-              Abgleich
+              Aktualisieren
             </Button>
             <Button
               variant="outline"
@@ -474,12 +425,6 @@ export function SollstellungDetailPage({ id }: { id: string }) {
           onRowClick={setDetail}
         />
       </PageWrapper>
-
-      <EbicsBankDialog
-        offen={ebicsOffen}
-        onOpenChange={setEbicsOffen}
-        gesellschaftId={l.gesellschaftId}
-      />
 
       <Dialog
         open={detail !== null}

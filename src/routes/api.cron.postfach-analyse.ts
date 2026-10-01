@@ -105,7 +105,8 @@ function ggfFortsetzen(
 
 /**
  * Halbtäglicher Lauf (00:00 + 12:00 Berlin/CEST): Dokumente › Postfach
- * listen + KI-Analyse. Pro Invocation Zeitbudget; Rest über bg-Folge-Runden.
+ * listen + KI-Analyse + Kategorie-Ablegen (Gesellschafts-Unterordner).
+ * Pro Invocation Zeitbudget; Rest über bg-Folge-Runden.
  */
 export const Route = createFileRoute("/api/cron/postfach-analyse")({
   server: {
@@ -145,6 +146,10 @@ export const Route = createFileRoute("/api/cron/postfach-analyse")({
                   fehlgeschlagen: ergebnis.fehlgeschlagen,
                   offen: ergebnis.offen,
                   fortsetzen: ergebnis.fortsetzen,
+                  kategorieAblegenVerarbeitet:
+                    ergebnis.kategorieAblegenVerarbeitet,
+                  kategorieAblegenFehlgeschlagen:
+                    ergebnis.kategorieAblegenFehlgeschlagen,
                 });
               } catch (err) {
                 console.error("[cron/postfach-analyse] bg-runde", err);

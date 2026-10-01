@@ -26,9 +26,30 @@ export type MicrosoftCaller = {
   darfVerbinden: boolean;
 };
 
+/**
+ * Server-only Auth für Cron-Jobs (Ablegen ohne User-JWT).
+ * Token = `cron:` + CRON_SECRET — nie clientseitig verwenden.
+ */
+export function microsoftCronAuthToken(): string {
+  const secret = readEnv("CRON_SECRET");
+  if (!secret) {
+    throw new Error("CRON_SECRET fehlt für Cron-Auth.");
+  }
+  return `cron:${secret}`;
+}
+
+function istCronAuthToken(token: string): boolean {
+  const secret = readEnv("CRON_SECRET");
+  return Boolean(secret) && token === `cron:${secret}`;
+}
+
 export async function microsoftCallerAusJwt(accessToken: string): Promise<MicrosoftCaller> {
   const token = accessToken?.trim();
   if (!token) throw new Error("Nicht angemeldet.");
+
+  if (istCronAuthToken(token)) {
+    return { userId: "cron", rolle: "system", darfVerbinden: true };
+  }
 
   const admin = createServiceRoleClient();
   const { data, error } = await admin.auth.getUser(token);

@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useApi } from "@/hooks/useApi";
+import { useAuth } from "@/hooks/useAuth";
 import { buchhaltungApi } from "@/api/buchhaltung";
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
@@ -113,6 +114,8 @@ function aktuellerMonat(): string {
 
 export function SollstellungPage() {
   const navigate = useNavigate();
+  const { session } = useAuth();
+  const token = session?.access_token ?? "";
   const [suche, setSuche] = useState("");
   const [erzeugenOffen, setErzeugenOffen] = useState(false);
   const [zeitraum, setZeitraum] = useState(aktuellerMonat);
@@ -137,7 +140,32 @@ export function SollstellungPage() {
         zeitraum,
         gesellschaftId,
       });
-      toast.success("Sollstellung erzeugt");
+
+      if (token) {
+        try {
+          const { ebicsUmstaetzeHolenFn } = await import(
+            "@/lib/ebics/server-fn"
+          );
+          const res = await ebicsUmstaetzeHolenFn({
+            data: { supabaseAccessToken: token, laufId: id },
+          });
+          const fehler = res.ergebnisse.filter((e) => e.status === "fehler");
+          if (fehler.length > 0) {
+            toast.error(
+              `Sollstellung erzeugt · ${res.anzahlNeuGesamt} neu · ${fehler.length} Fehler`,
+            );
+          } else {
+            toast.success(
+              `Sollstellung erzeugt · ${res.anzahlNeuGesamt} Buchungen`,
+            );
+          }
+        } catch (syncErr) {
+          toast.error(apiFehlermeldung(syncErr));
+        }
+      } else {
+        toast.success("Sollstellung erzeugt");
+      }
+
       setErzeugenOffen(false);
       reload();
       void navigate({ to: "/verwaltung/sollstellung/$id", params: { id } });

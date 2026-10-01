@@ -1,6 +1,7 @@
 /**
- * Outlook-Kategorie „ablegen“ (gelb): beim Postfach-Laden Mails mit
- * dieser Kategorie über den KI-Zielordner ablegen. Server-only.
+ * Outlook-Kategorie „ablegen“ (gelb): beim Postfach-Laden und im
+ * 12h-Cron Mails mit dieser Kategorie über den KI-Zielordner ablegen;
+ * fertige Mails → Gesellschafts-Unterordner. Server-only.
  */
 import {
   microsoftPostMailboxZweit,

@@ -19,8 +19,8 @@ export const MICROSOFT_DOKUMENT_POSTEINGANG_SEIT = "2025-08-20T00:00:00Z";
 export const MICROSOFT_ONEDRIVE_USER = "m.frenken@frenken-immobilien.com";
 
 /**
- * Outlook-Kategorie: Mail beim nächsten Postfach-Laden automatisch ablegen
- * (KI-Zielordner). Farbe preset3 = Gelb in Outlook Desktop.
+ * Outlook-Kategorie: Mails mit dieser Kategorie automatisch ablegen
+ * (Postfach-Laden + Cron 00:00/12:00 Berlin). Farbe preset3 = Gelb.
  */
 export const MICROSOFT_ABLEGEN_KATEGORIE = "ablegen";
 export const MICROSOFT_ABLEGEN_KATEGORIE_FARBE = "preset3";
