@@ -298,6 +298,7 @@ export function PostfachPage() {
   const queryKey = graphKeys.dokumentPosteingang(userId);
 
   const [analyseLaeuft, setAnalyseLaeuft] = useState(false);
+  const [ablegenLaeuft, setAblegenLaeuft] = useState(false);
   const [aktionId, setAktionId] = useState<string | null>(null);
   const analyseAbbruchRef = useRef(false);
 
@@ -381,7 +382,7 @@ export function PostfachPage() {
   }, []);
 
   const starteAnalyse = useCallback(async () => {
-    if (!token || analyseLaeuft) return;
+    if (!token || analyseLaeuft || ablegenLaeuft) return;
 
     analyseAbbruchRef.current = false;
     setAnalyseLaeuft(true);
@@ -420,7 +421,40 @@ export function PostfachPage() {
     } finally {
       if (!analyseAbbruchRef.current) setAnalyseLaeuft(false);
     }
-  }, [token, analyseLaeuft, offen, setEintraege, setOffen]);
+  }, [token, analyseLaeuft, ablegenLaeuft, offen, setEintraege, setOffen]);
+
+  const starteKategorieAblegen = useCallback(async () => {
+    if (!token || analyseLaeuft || ablegenLaeuft) return;
+
+    setAblegenLaeuft(true);
+    try {
+      const { dokumentPosteingangKategorieAblegenFn } = await import(
+        "@/lib/dokument-postfach/server-fn"
+      );
+      const ergebnis = await dokumentPosteingangKategorieAblegenFn({
+        data: { supabaseAccessToken: token },
+      });
+      await refetch();
+
+      if (ergebnis.verarbeitet === 0 && ergebnis.fehlgeschlagen === 0) {
+        toast.message("Keine Mails mit Kategorie Ablegen.");
+      } else if (ergebnis.fehlgeschlagen > 0) {
+        toast.error(
+          `${ergebnis.verarbeitet} abgelegt, ${ergebnis.fehlgeschlagen} fehlgeschlagen.`,
+          { duration: 12_000 },
+        );
+      } else {
+        toast.success(`${ergebnis.verarbeitet} abgelegt.`);
+      }
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Ablegen fehlgeschlagen.",
+        { duration: 12_000 },
+      );
+    } finally {
+      setAblegenLaeuft(false);
+    }
+  }, [token, analyseLaeuft, ablegenLaeuft, refetch]);
 
   const pruefen = useCallback(
     (eintrag: DokumentPosteingangEintrag) => {
@@ -861,7 +895,7 @@ export function PostfachPage() {
       className: "w-12 min-w-[3rem] pl-2 pr-3",
       render: (eintrag) => {
         const laedtZeile = aktionId === eintrag?.id;
-        const menueGesperrt = laedtZeile || analyseLaeuft;
+        const menueGesperrt = laedtZeile || analyseLaeuft || ablegenLaeuft;
         const kannAnalysieren = Boolean(eintrag && eintrag.status === "neu");
         const kannWiederholen = Boolean(
           eintrag &&
@@ -923,10 +957,10 @@ export function PostfachPage() {
       <PageHeader
         titel="Postfach"
         nebenTitel={
-          analyseLaeuft ? (
+          analyseLaeuft || ablegenLaeuft ? (
             <span className="inline-flex items-center gap-2 text-xs text-text-muted">
               <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} aria-hidden />
-              KI-Analyse läuft
+              {ablegenLaeuft ? "Ablegen läuft" : "KI-Analyse läuft"}
             </span>
           ) : undefined
         }
@@ -936,7 +970,7 @@ export function PostfachPage() {
               type="button"
               size="sm"
               className="bg-primary text-primary-foreground hover:bg-heading"
-              disabled={laedt || analyseLaeuft || !token || offen <= 0}
+              disabled={laedt || analyseLaeuft || ablegenLaeuft || !token || offen <= 0}
               onClick={() => void starteAnalyse()}
             >
               {analyseLaeuft ? (
@@ -946,10 +980,23 @@ export function PostfachPage() {
             </Button>
             <Button
               type="button"
+              size="sm"
+              variant="outline"
+              className="border-foreground text-foreground"
+              disabled={laedt || analyseLaeuft || ablegenLaeuft || !token}
+              onClick={() => void starteKategorieAblegen()}
+            >
+              {ablegenLaeuft ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.5} />
+              ) : null}
+              Ablegen
+            </Button>
+            <Button
+              type="button"
               variant="outline"
               size="sm"
               className="border-foreground text-foreground"
-              disabled={(laedt || isFetching) || analyseLaeuft || !token}
+              disabled={(laedt || isFetching) || analyseLaeuft || ablegenLaeuft || !token}
               onClick={() => void refetch()}
               aria-label="Aktualisieren"
             >

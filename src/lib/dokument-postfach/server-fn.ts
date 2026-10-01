@@ -10,6 +10,7 @@ import {
   dokumentRechnungsfreigabeVerschieben,
   dokumentRechnungsfreigabeZaehlen,
 } from "./freigabe";
+import { dokumentPosteingangKategorieAblegenJetzt } from "./kategorie-ablegen";
 import {
   dokumentPosteingangAnalyseWiederholen,
   dokumentPosteingangAusDbLaden,
@@ -101,6 +102,12 @@ export const dokumentPosteingangSchnellAusfuehrenFn = createServerFn({
       data as { supabaseAccessToken: string; eintragId: string },
   )
   .handler(async ({ data }) => dokumentPosteingangSchnellAusfuehren(data));
+
+export const dokumentPosteingangKategorieAblegenFn = createServerFn({
+  method: "POST",
+})
+  .validator((data: unknown) => data as { supabaseAccessToken: string })
+  .handler(async ({ data }) => dokumentPosteingangKategorieAblegenJetzt(data));
 
 export const dokumentPosteingangZuExposesVerschiebenFn = createServerFn({
   method: "POST",

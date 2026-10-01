@@ -4,6 +4,7 @@
  * fertige Mails → Gesellschafts-Unterordner. Server-only.
  */
 import {
+  microsoftDokumentPosteingangLesenIntern,
   microsoftPostMailboxZweit,
   type DokumentPosteingangNachricht,
 } from "@/lib/microsoft/ablage";
@@ -16,6 +17,7 @@ import {
   graphNachrichtHatKategorie,
 } from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
+import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
 
 import { dokumentPosteingangSchnellAusfuehren } from "./ausfuehren";
 import { leseEintraegeFuerNachricht } from "./store";
@@ -93,4 +95,24 @@ export async function dokumentPosteingangOutlookKategorieAblegen(input: {
   }
 
   return { verarbeitet, fehlgeschlagen };
+}
+
+/**
+ * Alle analysierten Anhänge von Mails mit Kategorie „ablegen“ ablegen
+ * (OneDrive + Gesellschafts-Unterordner). Für den Postfach-Button.
+ */
+export async function dokumentPosteingangKategorieAblegenJetzt(input: {
+  supabaseAccessToken: string;
+}): Promise<OutlookAblegenErgebnis> {
+  await microsoftCallerAusJwt(input.supabaseAccessToken);
+
+  const { nachrichten } = await microsoftDokumentPosteingangLesenIntern({
+    anzahl: 50,
+  });
+  await dokumentPosteingangAblegenKategorieSicherstellen();
+
+  return dokumentPosteingangOutlookKategorieAblegen({
+    supabaseAccessToken: input.supabaseAccessToken,
+    nachrichten,
+  });
 }
