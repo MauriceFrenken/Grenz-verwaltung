@@ -88,6 +88,19 @@ function fehler(kontext: string, message: string): Error {
   return new Error(`${kontext}: ${message}`);
 }
 
+/** PostgREST `.in()` über GET wird bei zu vielen IDs zu Bad Request. */
+const IN_QUERY_CHUNK = 80;
+const UPSERT_CHUNK = 150;
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  if (items.length === 0) return [];
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
+}
+
 export function zuEintrag(row: DokumentPosteingangRow): DokumentPosteingangEintrag {
   return {
     id: row.id,
@@ -168,13 +181,17 @@ export async function eintraegeAnlegen(
   if (neu.length === 0) return;
 
   const admin = createServiceRoleClient();
-  const { error } = await admin.from(TABELLE).upsert(neu, {
-    onConflict: "postfach,graph_nachricht_id,anhang_id",
-    ignoreDuplicates: true,
-  });
-
-  if (error) {
-    throw fehler("Dokument-Posteingang konnte nicht gespeichert werden", error.message);
+  for (const batch of chunkArray(neu, UPSERT_CHUNK)) {
+    const { error } = await admin.from(TABELLE).upsert(batch, {
+      onConflict: "postfach,graph_nachricht_id,anhang_id",
+      ignoreDuplicates: true,
+    });
+    if (error) {
+      throw fehler(
+        "Dokument-Posteingang konnte nicht gespeichert werden",
+        error.message,
+      );
+    }
   }
 }
 
@@ -185,28 +202,39 @@ export async function leseEintraege(
 
   const admin = createServiceRoleClient();
   const postfaecher = [...new Set(graphNachrichtIds.map((n) => n.postfach))];
-  const ids = graphNachrichtIds.map((n) => n.id);
+  const ids = [...new Set(graphNachrichtIds.map((n) => n.id))];
+  const alle: DokumentPosteingangRow[] = [];
 
-  const { data, error } = await admin
-    .from(TABELLE)
-    .select(SPALTEN)
-    .in("postfach", postfaecher)
-    .in("graph_nachricht_id", ids)
-    .order("eingegangen_am", { ascending: false })
-    .order("anhang_name", { ascending: true });
+  for (const idChunk of chunkArray(ids, IN_QUERY_CHUNK)) {
+    const { data, error } = await admin
+      .from(TABELLE)
+      .select(SPALTEN)
+      .in("postfach", postfaecher)
+      .in("graph_nachricht_id", idChunk)
+      .order("eingegangen_am", { ascending: false })
+      .order("anhang_name", { ascending: true });
 
-  if (error) {
-    throw fehler("Dokument-Posteingang konnte nicht gelesen werden", error.message);
+    if (error) {
+      throw fehler(
+        "Dokument-Posteingang konnte nicht gelesen werden",
+        error.message,
+      );
+    }
+    alle.push(...((data as unknown as DokumentPosteingangRow[]) ?? []));
   }
 
-  return (data as unknown as DokumentPosteingangRow[]) ?? [];
+  return alle.sort((a, b) => {
+    const da = a.eingegangen_am ? new Date(a.eingegangen_am).getTime() : 0;
+    const db = b.eingegangen_am ? new Date(b.eingegangen_am).getTime() : 0;
+    if (db !== da) return db - da;
+    return (a.anhang_name ?? "").localeCompare(b.anhang_name ?? "", "de");
+  });
 }
 
-/** Offene Postfach-Zeilen aus der DB (ohne Graph) — für schnelles Erstladen. */
 /** Alle aktiven Postfach-Zeilen (neu/analysiert/fehler), paginiert ohne Cap. */
 export async function leseAktiveEintraege(): Promise<DokumentPosteingangRow[]> {
   const admin = createServiceRoleClient();
-  const seitenGroesse = 1000;
+  const seitenGroesse = 500;
   const alle: DokumentPosteingangRow[] = [];
   let von = 0;
 
@@ -215,7 +243,7 @@ export async function leseAktiveEintraege(): Promise<DokumentPosteingangRow[]> {
       .from(TABELLE)
       .select(SPALTEN)
       .in("status", ["neu", "analysiert", "fehler"])
-      .order("eingegangen_am", { ascending: false, nullsFirst: false })
+      .order("eingegangen_am", { ascending: false })
       .range(von, von + seitenGroesse - 1);
 
     if (error) {
@@ -243,29 +271,30 @@ export async function existierendeNachrichtSchluessel(
   const admin = createServiceRoleClient();
   const postfaecher = [...new Set(schluessel.map((s) => s.postfach))];
   const ids = [...new Set(schluessel.map((s) => s.graphNachrichtId))];
+  const gefunden = new Set<string>();
 
-  const { data, error } = await admin
-    .from(TABELLE)
-    .select("postfach,graph_nachricht_id")
-    .in("postfach", postfaecher)
-    .in("graph_nachricht_id", ids);
+  for (const idChunk of chunkArray(ids, IN_QUERY_CHUNK)) {
+    const { data, error } = await admin
+      .from(TABELLE)
+      .select("postfach,graph_nachricht_id")
+      .in("postfach", postfaecher)
+      .in("graph_nachricht_id", idChunk);
 
-  if (error) {
-    throw fehler(
-      "Dokument-Posteingang-Schlüssel konnten nicht gelesen werden",
-      error.message,
-    );
-  }
+    if (error) {
+      throw fehler(
+        "Dokument-Posteingang-Schlüssel konnten nicht gelesen werden",
+        error.message,
+      );
+    }
 
-  const set = new Set<string>();
-  for (const row of data ?? []) {
-    const postfach = (row as { postfach?: string }).postfach;
-    const id = (row as { graph_nachricht_id?: string }).graph_nachricht_id;
-    if (postfach && id) {
-      set.add(`${postfach.toLowerCase()}|${id}`);
+    for (const row of data ?? []) {
+      const postfach = (row.postfach as string | null)?.toLowerCase() ?? "";
+      const id = (row.graph_nachricht_id as string | null) ?? "";
+      if (postfach && id) gefunden.add(`${postfach}|${id}`);
     }
   }
-  return set;
+
+  return gefunden;
 }
 
 export async function leseEintrag(id: string): Promise<DokumentPosteingangRow> {
