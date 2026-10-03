@@ -119,6 +119,18 @@ function TypIcon({
   );
 }
 
+function formatEingangsdatum(iso: string | null): string {
+  if (!iso) return "–";
+  try {
+    return new Intl.DateTimeFormat("de-DE", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return "–";
+  }
+}
+
 function normalisierePfadSegment(text: string): string {
   return text
     .toLowerCase()
@@ -816,6 +828,16 @@ export function PostfachPage() {
           className="text-foreground"
           title={absenderTitel(e)}
         />
+      ),
+    },
+    {
+      key: "datum",
+      header: "Datum",
+      className: "w-[9.5rem] min-w-[9.5rem] whitespace-nowrap",
+      render: (e) => (
+        <span className="text-sm text-foreground">
+          {formatEingangsdatum(e.eingegangenAm)}
+        </span>
       ),
     },
     {
