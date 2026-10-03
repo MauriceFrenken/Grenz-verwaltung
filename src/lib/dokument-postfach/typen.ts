@@ -6,10 +6,16 @@ export const ARCHIV_ORDNER = "Archiv";
 
 export type DokumentPosteingangStatus =
   | "neu"
+  | "in_analyse"
   | "analysiert"
   | "fehler"
   | "abgelegt"
   | "gebucht";
+
+/** Noch nicht fertig analysiert (Warteschlange oder laufender Claim). */
+export function istAnalyseOffen(status: DokumentPosteingangStatus): boolean {
+  return status === "neu" || status === "in_analyse";
+}
 
 /** Kanban-Spalten für Rechnungsfreigabe (nur Rechnungen). */
 export type DokumentFreigabeStatus =

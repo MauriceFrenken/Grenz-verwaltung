@@ -25,9 +25,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { hatAnalyseWerte } from "@/lib/dokument-postfach/client";
-import type {
-  DokumentPosteingangEintrag,
-  DokumentPosteingangSyncErgebnis,
+import {
+  istAnalyseOffen,
+  type DokumentPosteingangEintrag,
+  type DokumentPosteingangSyncErgebnis,
 } from "@/lib/dokument-postfach/typen";
 import {
   GRAPH_GC_MS,
@@ -39,13 +40,15 @@ import { cn } from "@/lib/utils";
 import { istTamAusFeldern } from "@/lib/trade-any-machine";
 
 const MAX_ANALYSE_RUNDEN = 500;
+/** Pro Server-Runde: bis zu 6 Mails, davon 3 parallel. */
+const ANALYSEN_PRO_RUNDE = 6;
 
 type DokumentTypAnzeige = "rechnung" | "expose" | "dokument" | "unbekannt";
 
 function dokumentTypAnzeige(
   eintrag: DokumentPosteingangEintrag | null,
 ): DokumentTypAnzeige {
-  if (!eintrag || eintrag.status === "neu") return "unbekannt";
+  if (!eintrag || istAnalyseOffen(eintrag.status)) return "unbekannt";
   if (eintrag.dokumentTyp === "rechnung" || eintrag.istRechnung) return "rechnung";
   if (eintrag.dokumentTyp === "expose") return "expose";
   if (eintrag.dokumentTyp === "dokument") return "dokument";
@@ -71,8 +74,8 @@ function TypIcon({
   const typ = dokumentTypAnzeige(eintrag);
   const label = typLabel(eintrag);
 
-  if (eintrag.status === "neu") {
-    if (analyseLaeuft) {
+  if (istAnalyseOffen(eintrag.status)) {
+    if (analyseLaeuft || eintrag.status === "in_analyse") {
       return (
         <span
           className="flex h-8 w-8 shrink-0 items-center justify-center text-text-muted"
@@ -252,17 +255,17 @@ function ZellText({
 }
 
 function gesellschaftText(eintrag: DokumentPosteingangEintrag | null): string {
-  if (!eintrag || eintrag.status === "neu") return "–";
+  if (!eintrag || istAnalyseOffen(eintrag.status)) return "–";
   return eintrag.felder?.gesellschaftName?.value?.trim() || "–";
 }
 
 function objektText(eintrag: DokumentPosteingangEintrag | null): string {
-  if (!eintrag || eintrag.status === "neu") return "–";
+  if (!eintrag || istAnalyseOffen(eintrag.status)) return "–";
   return eintrag.felder?.objektBezeichnung?.value?.trim() || "–";
 }
 
 function ablagePfad(eintrag: DokumentPosteingangEintrag | null): string | null {
-  if (!eintrag || eintrag.status === "neu") return null;
+  if (!eintrag || istAnalyseOffen(eintrag.status)) return null;
   if (eintrag.dokumentTyp === "expose") return null;
   return (
     eintrag.ablageOrdnerPfad?.trim() ||
@@ -272,7 +275,7 @@ function ablagePfad(eintrag: DokumentPosteingangEintrag | null): string | null {
 }
 
 function ablagePfadText(eintrag: DokumentPosteingangEintrag | null): string {
-  if (!eintrag || eintrag.status === "neu") return "–";
+  if (!eintrag || istAnalyseOffen(eintrag.status)) return "–";
 
   const pfad = ablagePfad(eintrag);
   if (!pfad) return "–";
@@ -430,7 +433,10 @@ export function PostfachPage() {
         if (runde > 0 && nochOffen <= 0) break;
 
         const weiter = await dokumentPosteingangSyncFn({
-          data: { supabaseAccessToken: token, maxAnalysen: 1 },
+          data: {
+            supabaseAccessToken: token,
+            maxAnalysen: ANALYSEN_PRO_RUNDE,
+          },
         });
         if (analyseAbbruchRef.current) return;
 
@@ -445,7 +451,8 @@ export function PostfachPage() {
         }
         nochOffen = weiter.offen;
         setOffen(nochOffen);
-        if (nochOffen <= 0) break;
+        // Nichts geclaimt (Race/Cron) oder Warteschlange leer → Stopp.
+        if (weiter.eintraege.length === 0 || nochOffen <= 0) break;
       }
     } catch (e) {
       if (analyseAbbruchRef.current) return;
@@ -503,7 +510,7 @@ export function PostfachPage() {
 
   const analyseWiederholen = useCallback(
     async (eintrag: DokumentPosteingangEintrag) => {
-      const warNeu = eintrag.status === "neu";
+      const warNeu = istAnalyseOffen(eintrag.status);
       setAktionId(eintrag.id);
       try {
         const { dokumentPosteingangAnalyseWiederholenFn } = await import(
@@ -519,7 +526,7 @@ export function PostfachPage() {
               : e,
           ),
         );
-        if (warNeu && aktualisiert.status !== "neu") {
+        if (warNeu && !istAnalyseOffen(aktualisiert.status)) {
           setOffen((n) => Math.max(0, n - 1));
         }
         if (aktualisiert.status === "fehler") {
@@ -713,7 +720,7 @@ export function PostfachPage() {
             (e) =>
               e.postfach === ergebnis.postfach &&
               e.graphNachrichtId === ergebnis.graphNachrichtId &&
-              e.status === "neu",
+              istAnalyseOffen(e.status),
           ).length;
           return prev.filter(
             (e) =>
@@ -962,7 +969,9 @@ export function PostfachPage() {
       render: (eintrag) => {
         const laedtZeile = aktionId === eintrag?.id;
         const menueGesperrt = laedtZeile || analyseLaeuft || ablegenLaeuft;
-        const kannAnalysieren = Boolean(eintrag && eintrag.status === "neu");
+        const kannAnalysieren = Boolean(
+          eintrag && eintrag.status === "neu",
+        );
         const kannWiederholen = Boolean(
           eintrag &&
             (eintrag.status === "analysiert" || eintrag.status === "fehler"),

@@ -231,7 +231,7 @@ export async function leseEintraege(
   });
 }
 
-/** Alle aktiven Postfach-Zeilen (neu/analysiert/fehler), paginiert ohne Cap. */
+/** Alle aktiven Postfach-Zeilen (neu/in_analyse/analysiert/fehler), paginiert ohne Cap. */
 export async function leseAktiveEintraege(): Promise<DokumentPosteingangRow[]> {
   const admin = createServiceRoleClient();
   const seitenGroesse = 500;
@@ -242,7 +242,7 @@ export async function leseAktiveEintraege(): Promise<DokumentPosteingangRow[]> {
     const { data, error } = await admin
       .from(TABELLE)
       .select(SPALTEN)
-      .in("status", ["neu", "analysiert", "fehler"])
+      .in("status", ["neu", "in_analyse", "analysiert", "fehler"])
       .order("eingegangen_am", { ascending: false })
       .range(von, von + seitenGroesse - 1);
 
@@ -594,6 +594,103 @@ export async function naechsteOffeneMail(): Promise<DokumentPosteingangRow | nul
     throw fehler("Offene Dokument-Mails konnten nicht gelesen werden", error.message);
   }
   return (data as DokumentPosteingangRow | null) ?? null;
+}
+
+/**
+ * Hängengebliebene Claims freigeben (z. B. nach Function-Timeout).
+ * @returns Anzahl zurückgesetzter Zeilen.
+ */
+export async function gebeVeralteteAnalysenFrei(
+  aelterAlsMs = 15 * 60 * 1000,
+): Promise<number> {
+  const admin = createServiceRoleClient();
+  const cutoff = new Date(Date.now() - aelterAlsMs).toISOString();
+  const { data, error } = await admin
+    .from(TABELLE)
+    .update({ status: "neu" })
+    .eq("status", "in_analyse")
+    .lt("updated_at", cutoff)
+    .select("id");
+
+  if (error) {
+    throw fehler(
+      "Veraltete Analyse-Claims konnten nicht freigegeben werden",
+      error.message,
+    );
+  }
+  return data?.length ?? 0;
+}
+
+/**
+ * Nächste offene Mail atomar claimen (`neu` → `in_analyse`).
+ * Bei Race mit anderem Worker: erneut versuchen.
+ */
+export async function claimNaechsteOffeneMail(): Promise<DokumentPosteingangRow | null> {
+  const admin = createServiceRoleClient();
+
+  for (let versuch = 0; versuch < 8; versuch++) {
+    const kandidat = await naechsteOffeneMail();
+    if (!kandidat) return null;
+
+    const { data, error } = await admin
+      .from(TABELLE)
+      .update({ status: "in_analyse" })
+      .eq("id", kandidat.id)
+      .eq("status", "neu")
+      .select(SPALTEN)
+      .maybeSingle();
+
+    if (error) {
+      throw fehler(
+        "Dokument-Mail konnte nicht für Analyse geclaimt werden",
+        error.message,
+      );
+    }
+    if (data) return data as unknown as DokumentPosteingangRow;
+  }
+
+  return null;
+}
+
+/** Bis zu `limit` offene Mails claimen (sequentiell, race-sicher). */
+export async function claimNaechsteOffeneMails(
+  limit: number,
+): Promise<DokumentPosteingangRow[]> {
+  const max = Math.max(0, Math.floor(limit));
+  const claimed: DokumentPosteingangRow[] = [];
+  for (let i = 0; i < max; i++) {
+    const row = await claimNaechsteOffeneMail();
+    if (!row) break;
+    claimed.push(row);
+  }
+  return claimed;
+}
+
+/** Gezielten Eintrag für Analyse claimen (Wiederholung / Einzelanalyse). */
+export async function claimEintragFuerAnalyse(
+  id: string,
+): Promise<DokumentPosteingangRow> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from(TABELLE)
+    .update({ status: "in_analyse", analyse_fehler: null })
+    .eq("id", id)
+    .in("status", ["neu", "fehler", "analysiert", "in_analyse"])
+    .select(SPALTEN)
+    .maybeSingle();
+
+  if (error) {
+    throw fehler(
+      "Dokument-Mail konnte nicht für Analyse geclaimt werden",
+      error.message,
+    );
+  }
+  if (!data) {
+    throw new Error(
+      "Eintrag ist nicht mehr für die Analyse verfügbar (bereits in Arbeit oder erledigt).",
+    );
+  }
+  return data as unknown as DokumentPosteingangRow;
 }
 
 export async function zaehleOffene(): Promise<number> {

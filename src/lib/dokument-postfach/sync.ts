@@ -45,14 +45,15 @@ import {
   ladeStammdatenKontext,
 } from "./ablage-kontext";
 import {
+  claimEintragFuerAnalyse,
+  claimNaechsteOffeneMails,
   eintraegeAnlegen,
+  gebeVeralteteAnalysenFrei,
   leseAktiveEintraege,
   leseEintrag,
   leseEintraege,
-  naechsteOffeneMail,
   speichereAnalyse,
   speichereAnalyseFehler,
-  setzeStatusNeu,
   zaehleOffene,
   zuEintrag,
   type DokumentPosteingangRow,
@@ -64,9 +65,51 @@ import type {
 } from "./typen";
 
 const MAX_ANHANG_BYTES = 25 * 1024 * 1024;
+/** Max. Analysen pro UI-/Sync-Servercall (innerhalb maxDuration). */
+const ANALYSE_BATCH_MAX = 6;
+/** Parallele Analysen pro Batch — spart Zeit ohne Anthropic zu überlasten. */
+const ANALYSE_CONCURRENCY = 3;
 
 function fehlerText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Geclaimte Einträge mit begrenzter Parallelität analysieren.
+ * UI aktualisiert nach dem Batch (Reihenfolge = Claim-Reihenfolge).
+ */
+async function analysiereClaimedBatch(
+  accessToken: string,
+  rows: DokumentPosteingangRow[],
+  concurrency = ANALYSE_CONCURRENCY,
+): Promise<ReturnType<typeof zuEintrag>[]> {
+  if (rows.length === 0) return [];
+
+  const ergebnisse: ReturnType<typeof zuEintrag>[] = new Array(rows.length);
+  let next = 0;
+  const workers = Math.min(Math.max(1, concurrency), rows.length);
+
+  async function worker(): Promise<void> {
+    for (;;) {
+      const i = next;
+      next += 1;
+      if (i >= rows.length) return;
+      const row = rows[i]!;
+      try {
+        await analysiereEintrag(accessToken, row);
+      } catch (err) {
+        console.error(
+          "[dokument-postfach] Unerwarteter Analysefehler",
+          row.id,
+          err,
+        );
+      }
+      ergebnisse[i] = zuEintrag(await leseEintrag(row.id));
+    }
+  }
+
+  await Promise.all(Array.from({ length: workers }, () => worker()));
+  return ergebnisse;
 }
 
 /** @returns true bei Erfolg, false wenn der Eintrag als Fehler gespeichert wurde. */
@@ -348,6 +391,7 @@ export async function dokumentPosteingangAnalyseWiederholen(input: {
   const row = await leseEintrag(input.eintragId);
   if (
     row.status !== "neu" &&
+    row.status !== "in_analyse" &&
     row.status !== "fehler" &&
     row.status !== "analysiert"
   ) {
@@ -356,12 +400,7 @@ export async function dokumentPosteingangAnalyseWiederholen(input: {
     );
   }
 
-  // Bereits analysiert / Fehler: Status zurücksetzen, dann erneut laufen lassen.
-  // Status „neu“: gezielt genau diese Mail analysieren (ohne Warteschlange).
-  if (row.status !== "neu") {
-    await setzeStatusNeu(row.id);
-  }
-  const bereit = await leseEintrag(row.id);
+  const bereit = await claimEintragFuerAnalyse(row.id);
   await analysiereEintrag(accessToken, bereit);
   return zuEintrag(await leseEintrag(row.id));
 }
@@ -399,16 +438,25 @@ export async function dokumentPosteingangSynchronisieren(input: {
   maxAnalysen?: number;
 }): Promise<DokumentPosteingangSyncErgebnis> {
   await microsoftCallerAusJwt(input.supabaseAccessToken);
-  const maxAnalysen = Math.max(0, Math.min(input.maxAnalysen ?? 1, 1));
+  const maxAnalysen = Math.max(
+    0,
+    Math.min(input.maxAnalysen ?? 1, ANALYSE_BATCH_MAX),
+  );
 
   if (maxAnalysen > 0) {
-    const { accessToken } = await microsoftAccessToken();
-    const offen = await naechsteOffeneMail();
-    let aktualisiert: ReturnType<typeof zuEintrag>[] = [];
-    if (offen) {
-      await analysiereEintrag(accessToken, offen);
-      aktualisiert = [zuEintrag(await leseEintrag(offen.id))];
+    try {
+      await gebeVeralteteAnalysenFrei();
+    } catch (err) {
+      console.error("[dokument-postfach] Veraltete Claims freigeben", err);
     }
+
+    const { accessToken } = await microsoftAccessToken();
+    const claimed = await claimNaechsteOffeneMails(maxAnalysen);
+    const aktualisiert = await analysiereClaimedBatch(
+      accessToken,
+      claimed,
+      ANALYSE_CONCURRENCY,
+    );
 
     return {
       postfaecher: [],
@@ -416,6 +464,12 @@ export async function dokumentPosteingangSynchronisieren(input: {
       eintraege: aktualisiert,
       offen: await zaehleOffene(),
     };
+  }
+
+  try {
+    await gebeVeralteteAnalysenFrei();
+  } catch (err) {
+    console.error("[dokument-postfach] Veraltete Claims freigeben", err);
   }
 
   const { postfaecher, nachrichten } =
@@ -447,11 +501,6 @@ export async function dokumentPosteingangSynchronisieren(input: {
   };
 }
 
-/**
- * Mindestabstand zwischen Anthropic-Starts (~5 Requests/Minute).
- * Dauert eine Analyse schon länger, wird nicht extra gewartet.
- */
-const ANTHROPIC_MIN_ABSTAND_MS = 12_000;
 /** Nach so vielen Fehlern in Folge: Lauf stoppen (vermutlich systemisch). */
 const NACHTLAUF_MAX_FEHLER_IN_FOLGE = 3;
 /**
@@ -465,10 +514,6 @@ export const NACHTLAUF_MAX_RUNDEN = 40;
  * ~4,5 Min. unter Hobby-maxDuration 300s — Rest geht über Folge-Invocations.
  */
 export const NACHTLAUF_DEFAULT_BUDGET_MS = 270_000;
-
-function warteMs(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export type DokumentPosteingangNachtlaufErgebnis = {
   analysiert: number;
@@ -550,55 +595,54 @@ export async function dokumentPosteingangNachtlauf(input?: {
     }
   }
 
+  try {
+    await gebeVeralteteAnalysenFrei();
+  } catch (err) {
+    console.error("[dokument-postfach] Veraltete Claims freigeben", err);
+  }
+
   const { accessToken } = await microsoftAccessToken();
   let analysiert = 0;
   let fehlgeschlagen = 0;
   let fehlerInFolge = 0;
-  let naechsterStartErlaubt = 0;
   let abgebrochen: DokumentPosteingangNachtlaufErgebnis["abgebrochen"];
   let analysenRest = NACHTLAUF_MAX_ANALYSEN_PRO_LAUF;
 
   async function analysiereOffene(): Promise<void> {
-    while (analysenRest > 0) {
+    while (analysenRest > 0 && !abgebrochen) {
       if (Date.now() >= deadlineMs) break;
 
-      const offen = await naechsteOffeneMail();
-      if (!offen) break;
+      const batchSize = Math.min(ANALYSE_BATCH_MAX, analysenRest);
+      const claimed = await claimNaechsteOffeneMails(batchSize);
+      if (claimed.length === 0) break;
 
-      const warte = naechsterStartErlaubt - Date.now();
-      if (warte > 0) {
-        if (Date.now() + warte >= deadlineMs) break;
-        await warteMs(warte);
-      }
-      naechsterStartErlaubt = Date.now() + ANTHROPIC_MIN_ABSTAND_MS;
-      analysenRest -= 1;
+      analysenRest -= claimed.length;
 
-      let ok: boolean;
-      try {
-        ok = await analysiereEintrag(accessToken, offen);
-      } catch (err) {
-        console.error(
-          "[dokument-postfach] Unerwarteter Analysefehler",
-          offen.id,
-          err,
-        );
-        abgebrochen = "persistenz";
-        break;
-      }
+      const ergebnisse = await analysiereClaimedBatch(
+        accessToken,
+        claimed,
+        ANALYSE_CONCURRENCY,
+      );
 
-      if (ok) {
-        analysiert += 1;
-        fehlerInFolge = 0;
-      } else {
-        fehlgeschlagen += 1;
-        fehlerInFolge += 1;
-        console.error(
-          "[dokument-postfach] Analyse fehlgeschlagen, überspringe",
-          offen.id,
-          `(${fehlerInFolge}/${NACHTLAUF_MAX_FEHLER_IN_FOLGE} in Folge)`,
-        );
-        if (fehlerInFolge >= NACHTLAUF_MAX_FEHLER_IN_FOLGE) {
-          abgebrochen = "zu_viele_fehler";
+      for (const eintrag of ergebnisse) {
+        if (eintrag.status === "analysiert") {
+          analysiert += 1;
+          fehlerInFolge = 0;
+        } else if (eintrag.status === "fehler") {
+          fehlgeschlagen += 1;
+          fehlerInFolge += 1;
+          console.error(
+            "[dokument-postfach] Analyse fehlgeschlagen, überspringe",
+            eintrag.id,
+            `(${fehlerInFolge}/${NACHTLAUF_MAX_FEHLER_IN_FOLGE} in Folge)`,
+          );
+          if (fehlerInFolge >= NACHTLAUF_MAX_FEHLER_IN_FOLGE) {
+            abgebrochen = "zu_viele_fehler";
+            break;
+          }
+        } else if (eintrag.status === "in_analyse") {
+          // Persistenzfehler: Claim hängt — Lauf stoppen, Stale-Reclaim räumt auf.
+          abgebrochen = "persistenz";
           break;
         }
       }
