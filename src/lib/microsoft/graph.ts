@@ -291,33 +291,125 @@ function mapNachricht(roh: RohNachricht): GraphNachricht | null {
 export async function graphPosteingangNachrichten(
   accessToken: string,
   postfach: string,
-  optionen: { anzahl?: number; seit?: string; nurMitAnhang?: boolean } = {},
+  optionen: {
+    anzahl?: number;
+    seit?: string;
+    nurMitAnhang?: boolean;
+    /** Gesamten Posteingang paginiert laden (ignoriere anzahl). */
+    alle?: boolean;
+    /** Nur mit `alle`: Max. Graph-Seiten à 50. Default 100. */
+    maxSeiten?: number;
+  } = {},
 ): Promise<GraphNachricht[]> {
-  const anzahl = Math.min(Math.max(optionen.anzahl ?? 25, 1), 100);
+  const alle = optionen.alle === true;
+  const seitenGroesse = alle
+    ? 50
+    : Math.min(Math.max(optionen.anzahl ?? 25, 1), 100);
+  const maxSeiten = alle
+    ? Math.min(Math.max(optionen.maxSeiten ?? 100, 1), 200)
+    : 1;
+
   const params = new URLSearchParams({
     $select:
       "id,internetMessageId,subject,from,receivedDateTime,hasAttachments,bodyPreview,webLink,categories",
     $expand: "attachments($select=id,name,contentType,size,isInline)",
     $orderby: "receivedDateTime desc",
-    $top: String(anzahl),
+    $top: String(seitenGroesse),
   });
   if (optionen.seit) {
     params.set("$filter", `receivedDateTime ge ${optionen.seit}`);
   }
 
-  const data = await graphGet<{ value?: RohNachricht[] }>(
-    `/users/${encodeURIComponent(postfach)}/mailFolders/inbox/messages?${params.toString()}`,
-    accessToken,
-    postfach,
-  );
+  const treffer: GraphNachricht[] = [];
+  let url: string | null =
+    `${GRAPH_BASIS}/users/${encodeURIComponent(postfach)}/mailFolders/inbox/messages?${params.toString()}`;
+  let seite = 0;
 
-  const nachrichten = (data.value ?? [])
-    .map(mapNachricht)
-    .filter((n): n is GraphNachricht => n !== null);
+  while (url && seite < maxSeiten) {
+    seite += 1;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const json: unknown = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw graphFehler(res.status, json as GraphFehlerJson, postfach);
+    }
+    const data = json as {
+      value?: RohNachricht[];
+      "@odata.nextLink"?: string;
+    };
 
-  return optionen.nurMitAnhang
-    ? nachrichten.filter((n) => n.anhaenge.length > 0)
-    : nachrichten;
+    for (const roh of data.value ?? []) {
+      const n = mapNachricht(roh);
+      if (!n) continue;
+      if (optionen.nurMitAnhang && n.anhaenge.length === 0) continue;
+      treffer.push(n);
+    }
+
+    url = alle ? (data["@odata.nextLink"] ?? null) : null;
+  }
+
+  return treffer;
+}
+
+/**
+ * Alle Inbox-Mails mit einer Outlook-Kategorie (paginiert, ohne Alters-Cutoff).
+ * Für Auto-Ablegen: Kategorie „ablegen“, unabhängig vom Top-N-Inbox-Fenster.
+ */
+export async function graphPosteingangNachrichtenMitKategorie(
+  accessToken: string,
+  postfach: string,
+  kategorie: string,
+  optionen: {
+    nurMitAnhang?: boolean;
+    /** Max. Graph-Seiten à 50. Default 20 (= bis 1000 Mails). */
+    maxSeiten?: number;
+  } = {},
+): Promise<GraphNachricht[]> {
+  const name = kategorie.trim();
+  if (!name) return [];
+
+  const escaped = name.replace(/'/g, "''");
+  const maxSeiten = Math.min(Math.max(optionen.maxSeiten ?? 20, 1), 40);
+  // Kein $orderby: Graph lehnt oft Filter auf categories + OrderBy ab.
+  const params = new URLSearchParams({
+    $select:
+      "id,internetMessageId,subject,from,receivedDateTime,hasAttachments,bodyPreview,webLink,categories",
+    $expand: "attachments($select=id,name,contentType,size,isInline)",
+    $top: "50",
+    $filter: `categories/any(c:c eq '${escaped}')`,
+  });
+
+  const treffer: GraphNachricht[] = [];
+  let url: string | null =
+    `${GRAPH_BASIS}/users/${encodeURIComponent(postfach)}/mailFolders/inbox/messages?${params.toString()}`;
+  let seite = 0;
+
+  while (url && seite < maxSeiten) {
+    seite += 1;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const json: unknown = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw graphFehler(res.status, json as GraphFehlerJson, postfach);
+    }
+    const data = json as {
+      value?: RohNachricht[];
+      "@odata.nextLink"?: string;
+    };
+
+    for (const roh of data.value ?? []) {
+      const n = mapNachricht(roh);
+      if (!n) continue;
+      if (optionen.nurMitAnhang && n.anhaenge.length === 0) continue;
+      treffer.push(n);
+    }
+
+    url = data["@odata.nextLink"] ?? null;
+  }
+
+  return treffer;
 }
 
 /**

@@ -104,8 +104,9 @@ function ggfFortsetzen(
 }
 
 /**
- * Halbtäglicher Lauf (00:00 + 12:00 Berlin/CEST): Dokumente › Postfach
- * listen + KI-Analyse + Kategorie-Ablegen (Gesellschafts-Unterordner).
+ * Halbtäglicher Lauf (00:00 + 12:00 Berlin/CEST):
+ * 1) Postfach listen + offene Mails analysieren
+ * 2) danach alle Mails mit Kategorie „ablegen“ ablegen (egal wie alt)
  * Pro Invocation Zeitbudget; Rest über bg-Folge-Runden.
  */
 export const Route = createFileRoute("/api/cron/postfach-analyse")({

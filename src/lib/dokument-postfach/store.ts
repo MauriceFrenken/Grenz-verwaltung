@@ -114,6 +114,7 @@ export function zuEintrag(row: DokumentPosteingangRow): DokumentPosteingangEintr
     ablageDateiname: row.ablage_dateiname,
     abgelegtAm: row.abgelegt_am,
     duplikatHinweis: row.duplikat_hinweis,
+    hatAblegenKategorie: false,
   };
 }
 
@@ -202,21 +203,35 @@ export async function leseEintraege(
 }
 
 /** Offene Postfach-Zeilen aus der DB (ohne Graph) — für schnelles Erstladen. */
-export async function leseAktiveEintraege(
-  limit = 100,
-): Promise<DokumentPosteingangRow[]> {
+/** Alle aktiven Postfach-Zeilen (neu/analysiert/fehler), paginiert ohne Cap. */
+export async function leseAktiveEintraege(): Promise<DokumentPosteingangRow[]> {
   const admin = createServiceRoleClient();
-  const { data, error } = await admin
-    .from(TABELLE)
-    .select(SPALTEN)
-    .in("status", ["neu", "analysiert", "fehler"])
-    .order("eingegangen_am", { ascending: false, nullsFirst: false })
-    .limit(Math.min(Math.max(limit, 1), 200));
+  const seitenGroesse = 1000;
+  const alle: DokumentPosteingangRow[] = [];
+  let von = 0;
 
-  if (error) {
-    throw fehler("Dokument-Posteingang konnte nicht gelesen werden", error.message);
+  for (;;) {
+    const { data, error } = await admin
+      .from(TABELLE)
+      .select(SPALTEN)
+      .in("status", ["neu", "analysiert", "fehler"])
+      .order("eingegangen_am", { ascending: false, nullsFirst: false })
+      .range(von, von + seitenGroesse - 1);
+
+    if (error) {
+      throw fehler(
+        "Dokument-Posteingang konnte nicht gelesen werden",
+        error.message,
+      );
+    }
+
+    const batch = (data as unknown as DokumentPosteingangRow[]) ?? [];
+    alle.push(...batch);
+    if (batch.length < seitenGroesse) break;
+    von += seitenGroesse;
   }
-  return (data as unknown as DokumentPosteingangRow[]) ?? [];
+
+  return alle;
 }
 
 /** Welche Graph-Nachrichten bereits als Zeile existieren (`postfach|id`). */

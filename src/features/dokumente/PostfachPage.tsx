@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Archive, Building2, FileText, Loader2, MoreVertical, Receipt, RefreshCw } from "lucide-react";
+import {
+  Archive,
+  Building2,
+  FileText,
+  Flag,
+  Loader2,
+  MoreVertical,
+  Receipt,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -29,7 +38,7 @@ import {
 import { cn } from "@/lib/utils";
 import { istTamAusFeldern } from "@/lib/trade-any-machine";
 
-const MAX_ANALYSE_RUNDEN = 50;
+const MAX_ANALYSE_RUNDEN = 500;
 
 type DokumentTypAnzeige = "rechnung" | "expose" | "dokument" | "unbekannt";
 
@@ -289,6 +298,17 @@ function istBereit(eintrag: DokumentPosteingangEintrag | null): eintrag is Dokum
   return hatAnalyseWerte(eintrag.felder);
 }
 
+/** Server-Updates ohne Graph-Kategorien — Flag aus der Liste behalten. */
+function mitErhaltenemAblegenFlag(
+  bisher: DokumentPosteingangEintrag,
+  neu: DokumentPosteingangEintrag,
+): DokumentPosteingangEintrag {
+  return {
+    ...neu,
+    hatAblegenKategorie: bisher.hatAblegenKategorie || neu.hatAblegenKategorie,
+  };
+}
+
 export function PostfachPage() {
   const { session, benutzer } = useAuth();
   const navigate = useNavigate();
@@ -405,7 +425,10 @@ export function PostfachPage() {
         if (weiter.eintraege.length > 0) {
           const aktualisiert = new Map(weiter.eintraege.map((e) => [e.id, e]));
           setEintraege((prev) =>
-            prev.map((e) => aktualisiert.get(e.id) ?? e),
+            prev.map((e) => {
+              const neu = aktualisiert.get(e.id);
+              return neu ? mitErhaltenemAblegenFlag(e, neu) : e;
+            }),
           );
         }
         nochOffen = weiter.offen;
@@ -478,7 +501,11 @@ export function PostfachPage() {
           data: { supabaseAccessToken: token, eintragId: eintrag.id },
         });
         setEintraege((prev) =>
-          prev.map((e) => (e.id === aktualisiert.id ? aktualisiert : e)),
+          prev.map((e) =>
+            e.id === aktualisiert.id
+              ? mitErhaltenemAblegenFlag(e, aktualisiert)
+              : e,
+          ),
         );
         if (warNeu && aktualisiert.status !== "neu") {
           setOffen((n) => Math.max(0, n - 1));
@@ -706,6 +733,23 @@ export function PostfachPage() {
       header: "Typ",
       className: "w-12 min-w-[3rem] px-2",
       render: (e) => <TypIcon eintrag={e} analyseLaeuft={analyseLaeuft} />,
+    },
+    {
+      key: "ablegen",
+      header: "",
+      className: "w-10 min-w-[2.5rem] px-1",
+      render: (e) =>
+        e.hatAblegenKategorie ? (
+          <span
+            className="flex h-8 w-8 items-center justify-center text-amber-500"
+            title="Ablegen"
+            aria-label="Ablegen"
+          >
+            <Flag className="h-4 w-4 fill-current" strokeWidth={1.5} aria-hidden />
+          </span>
+        ) : (
+          <span className="block h-8 w-8" aria-hidden />
+        ),
     },
     {
       key: "datei",

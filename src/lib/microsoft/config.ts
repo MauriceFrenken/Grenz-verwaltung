@@ -25,6 +25,7 @@ export const MICROSOFT_ONEDRIVE_USER = "m.frenken@frenken-immobilien.com";
 export const MICROSOFT_ABLEGEN_KATEGORIE = "ablegen";
 export const MICROSOFT_ABLEGEN_KATEGORIE_FARBE = "preset3";
 
+
 /**
  * Fester Ablagepfad für Rechnungen unter dem Gesellschafts-Root
  * (ohne KI-Ordnerwahl).

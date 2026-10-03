@@ -99,6 +99,8 @@ export type DokumentPosteingangEintrag = {
   ablageDateiname: string | null;
   abgelegtAm: string | null;
   duplikatHinweis: RechnungDuplikatHinweis | null;
+  /** Outlook-Kategorie „ablegen“ (gelb) — aus Graph-Sync. */
+  hatAblegenKategorie: boolean;
 };
 
 export type DokumentRechnungsfreigabe = {

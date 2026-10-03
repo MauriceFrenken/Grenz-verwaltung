@@ -4,7 +4,7 @@
  * fertige Mails → Gesellschafts-Unterordner. Server-only.
  */
 import {
-  microsoftDokumentPosteingangLesenIntern,
+  microsoftAblegenKategorieMailsLesen,
   microsoftPostMailboxZweit,
   type DokumentPosteingangNachricht,
 } from "@/lib/microsoft/ablage";
@@ -20,11 +20,13 @@ import { microsoftAccessToken } from "@/lib/microsoft/postfach";
 import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
 
 import { dokumentPosteingangSchnellAusfuehren } from "./ausfuehren";
-import { leseEintraegeFuerNachricht } from "./store";
+import { eintraegeAnlegen, leseEintraegeFuerNachricht } from "./store";
 
 export type OutlookAblegenErgebnis = {
   verarbeitet: number;
   fehlgeschlagen: number;
+  /** Gefundene Mails mit Kategorie „ablegen“. */
+  mailsGefunden?: number;
 };
 
 /**
@@ -94,7 +96,24 @@ export async function dokumentPosteingangOutlookKategorieAblegen(input: {
     }
   }
 
-  return { verarbeitet, fehlgeschlagen };
+  return { verarbeitet, fehlgeschlagen, mailsGefunden: tagged.length };
+}
+
+/**
+ * Alle Inbox-Mails mit Kategorie „ablegen“ laden (egal wie alt),
+ * DB-Einträge anlegen und analysierte Anhänge ablegen.
+ */
+export async function dokumentPosteingangOutlookKategorieAblegenAlle(input: {
+  supabaseAccessToken: string;
+}): Promise<OutlookAblegenErgebnis> {
+  await dokumentPosteingangAblegenKategorieSicherstellen();
+  const nachrichten = await microsoftAblegenKategorieMailsLesen();
+  await eintraegeAnlegen(nachrichten);
+
+  return dokumentPosteingangOutlookKategorieAblegen({
+    supabaseAccessToken: input.supabaseAccessToken,
+    nachrichten,
+  });
 }
 
 /**
@@ -106,13 +125,7 @@ export async function dokumentPosteingangKategorieAblegenJetzt(input: {
 }): Promise<OutlookAblegenErgebnis> {
   await microsoftCallerAusJwt(input.supabaseAccessToken);
 
-  const { nachrichten } = await microsoftDokumentPosteingangLesenIntern({
-    anzahl: 50,
-  });
-  await dokumentPosteingangAblegenKategorieSicherstellen();
-
-  return dokumentPosteingangOutlookKategorieAblegen({
+  return dokumentPosteingangOutlookKategorieAblegenAlle({
     supabaseAccessToken: input.supabaseAccessToken,
-    nachrichten,
   });
 }

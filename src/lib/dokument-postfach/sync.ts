@@ -3,6 +3,8 @@
  */
 import { handleAnalyzeDokumentRequest } from "@/lib/dokument-ai";
 import {
+  ablegenKategorieNachrichtSchluessel,
+  microsoftAblegenKategorieMailsLesen,
   microsoftDokumentPosteingangLesenIntern,
   microsoftDokumentPosteingangQuellen,
   istAblageRootOrdner,
@@ -27,6 +29,7 @@ import { baueAnhangAnalyseKontext } from "./anhang-kontext";
 import {
   dokumentPosteingangAblegenKategorieSicherstellen,
   dokumentPosteingangOutlookKategorieAblegen,
+  dokumentPosteingangOutlookKategorieAblegenAlle,
 } from "./kategorie-ablegen";
 import {
   loescheAlteRechnungsHistorie,
@@ -55,6 +58,7 @@ import {
   type DokumentPosteingangRow,
 } from "./store";
 import type {
+  DokumentPosteingangEintrag,
   DokumentPosteingangSyncErgebnis,
   RechnungDuplikatHinweis,
 } from "./typen";
@@ -362,12 +366,26 @@ export async function dokumentPosteingangAnalyseWiederholen(input: {
   return zuEintrag(await leseEintrag(row.id));
 }
 
+function mitAblegenKategorie(
+  eintraege: DokumentPosteingangEintrag[],
+  nachrichten: DokumentPosteingangNachricht[],
+): DokumentPosteingangEintrag[] {
+  const tagged = ablegenKategorieNachrichtSchluessel(nachrichten);
+  if (tagged.size === 0) return eintraege;
+  return eintraege.map((e) => ({
+    ...e,
+    hatAblegenKategorie: tagged.has(
+      `${e.postfach.toLowerCase()}|${e.graphNachrichtId}`,
+    ),
+  }));
+}
+
 /** Schnelles Erstladen nur aus Supabase — ohne Graph. */
 export async function dokumentPosteingangAusDbLaden(input: {
   supabaseAccessToken: string;
 }): Promise<DokumentPosteingangSyncErgebnis> {
   await microsoftCallerAusJwt(input.supabaseAccessToken);
-  const rows = await leseAktiveEintraege(100);
+  const rows = await leseAktiveEintraege();
   return {
     postfaecher: microsoftDokumentPosteingangQuellen().map((q) => q.postfach),
     nachrichten: [],
@@ -401,12 +419,14 @@ export async function dokumentPosteingangSynchronisieren(input: {
   }
 
   const { postfaecher, nachrichten } =
-    await microsoftDokumentPosteingangLesenIntern({ anzahl: 50 });
+    await microsoftDokumentPosteingangLesenIntern();
 
   await dokumentPosteingangAblegenKategorieSicherstellen();
   await eintraegeAnlegen(nachrichten);
 
   try {
+    // Beim Sync: gelb markierte Mails aus dem geladenen Posteingang ablegen.
+    // Vollständige Kategorie-Suche (auch außerhalb Top-Fenster) über Button/Cron.
     await dokumentPosteingangOutlookKategorieAblegen({
       supabaseAccessToken: input.supabaseAccessToken,
       nachrichten,
@@ -422,7 +442,7 @@ export async function dokumentPosteingangSynchronisieren(input: {
   return {
     postfaecher,
     nachrichten,
-    eintraege: rows.map(zuEintrag),
+    eintraege: mitAblegenKategorie(rows.map(zuEintrag), nachrichten),
     offen: await zaehleOffene(),
   };
 }
@@ -462,27 +482,27 @@ export type DokumentPosteingangNachtlaufErgebnis = {
   kategorieAblegenFehlgeschlagen?: number;
 };
 
-async function nachtlaufOutlookKategorieAblegen(
-  nachrichten?: DokumentPosteingangNachricht[],
-): Promise<{ verarbeitet: number; fehlgeschlagen: number } | null> {
+async function nachtlaufAblegenMailsSeeden(): Promise<number> {
+  await dokumentPosteingangAblegenKategorieSicherstellen();
+  const nachrichten = await microsoftAblegenKategorieMailsLesen();
+  await eintraegeAnlegen(nachrichten);
+  console.info(
+    "[dokument-postfach] Nachtlauf Ablegen-Mails geladen",
+    nachrichten.length,
+  );
+  return nachrichten.length;
+}
+
+async function nachtlaufOutlookKategorieAblegen(): Promise<{
+  verarbeitet: number;
+  fehlgeschlagen: number;
+  mailsGefunden?: number;
+} | null> {
   try {
-    const msgs =
-      nachrichten ??
-      (
-        await microsoftDokumentPosteingangLesenIntern({
-          anzahl: 50,
-        })
-      ).nachrichten;
-    const ergebnis = await dokumentPosteingangOutlookKategorieAblegen({
+    const ergebnis = await dokumentPosteingangOutlookKategorieAblegenAlle({
       supabaseAccessToken: microsoftCronAuthToken(),
-      nachrichten: msgs,
     });
-    if (ergebnis.verarbeitet > 0 || ergebnis.fehlgeschlagen > 0) {
-      console.info(
-        "[dokument-postfach] Nachtlauf Kategorie-Ablegen",
-        ergebnis,
-      );
-    }
+    console.info("[dokument-postfach] Nachtlauf Kategorie-Ablegen", ergebnis);
     return ergebnis;
   } catch (err) {
     console.error("[dokument-postfach] Nachtlauf Kategorie-Ablegen", err);
@@ -491,8 +511,9 @@ async function nachtlaufOutlookKategorieAblegen(
 }
 
 /**
- * Nachtlauf ohne User-JWT: Posteingang listen, analysieren, dann Mails mit
- * Kategorie „ablegen“ in OneDrive + Gesellschafts-Unterordner ablegen.
+ * Nachtlauf ohne User-JWT:
+ * 1) Posteingang listen + offene Mails analysieren
+ * 2) erst danach alle Mails mit Kategorie „ablegen“ laden/analysieren/ablegen
  * Einzelne Eintrag-Fehler werden übersprungen; nach 3 Fehlern in Folge Stopp.
  */
 export async function dokumentPosteingangNachtlauf(input?: {
@@ -519,17 +540,9 @@ export async function dokumentPosteingangNachtlauf(input?: {
     }
 
     try {
-      const { nachrichten } = await microsoftDokumentPosteingangLesenIntern({
-        anzahl: 50,
-      });
+      const { nachrichten } = await microsoftDokumentPosteingangLesenIntern();
       await dokumentPosteingangAblegenKategorieSicherstellen();
       await eintraegeAnlegen(nachrichten);
-      // Bereits analysierte, gelb markierte Mails sofort ablegen.
-      const frueh = await nachtlaufOutlookKategorieAblegen(nachrichten);
-      if (frueh) {
-        kategorieAblegenVerarbeitet += frueh.verarbeitet;
-        kategorieAblegenFehlgeschlagen += frueh.fehlgeschlagen;
-      }
     } catch (err) {
       inboxSyncFehler = fehlerText(err);
       console.error("[dokument-postfach] Inbox-Sync im Nachtlauf", err);
@@ -543,64 +556,91 @@ export async function dokumentPosteingangNachtlauf(input?: {
   let fehlerInFolge = 0;
   let naechsterStartErlaubt = 0;
   let abgebrochen: DokumentPosteingangNachtlaufErgebnis["abgebrochen"];
+  let analysenRest = NACHTLAUF_MAX_ANALYSEN_PRO_LAUF;
 
-  for (let i = 0; i < NACHTLAUF_MAX_ANALYSEN_PRO_LAUF; i++) {
-    if (Date.now() >= deadlineMs) break;
+  async function analysiereOffene(): Promise<void> {
+    while (analysenRest > 0) {
+      if (Date.now() >= deadlineMs) break;
 
-    const offen = await naechsteOffeneMail();
-    if (!offen) break;
+      const offen = await naechsteOffeneMail();
+      if (!offen) break;
 
-    const warte = naechsterStartErlaubt - Date.now();
-    if (warte > 0) {
-      if (Date.now() + warte >= deadlineMs) break;
-      await warteMs(warte);
-    }
-    naechsterStartErlaubt = Date.now() + ANTHROPIC_MIN_ABSTAND_MS;
+      const warte = naechsterStartErlaubt - Date.now();
+      if (warte > 0) {
+        if (Date.now() + warte >= deadlineMs) break;
+        await warteMs(warte);
+      }
+      naechsterStartErlaubt = Date.now() + ANTHROPIC_MIN_ABSTAND_MS;
+      analysenRest -= 1;
 
-    let ok: boolean;
-    try {
-      ok = await analysiereEintrag(accessToken, offen);
-    } catch (err) {
-      console.error(
-        "[dokument-postfach] Unerwarteter Analysefehler",
-        offen.id,
-        err,
-      );
-      abgebrochen = "persistenz";
-      break;
-    }
-
-    if (ok) {
-      analysiert += 1;
-      fehlerInFolge = 0;
-    } else {
-      fehlgeschlagen += 1;
-      fehlerInFolge += 1;
-      console.error(
-        "[dokument-postfach] Analyse fehlgeschlagen, überspringe",
-        offen.id,
-        `(${fehlerInFolge}/${NACHTLAUF_MAX_FEHLER_IN_FOLGE} in Folge)`,
-      );
-      if (fehlerInFolge >= NACHTLAUF_MAX_FEHLER_IN_FOLGE) {
-        abgebrochen = "zu_viele_fehler";
+      let ok: boolean;
+      try {
+        ok = await analysiereEintrag(accessToken, offen);
+      } catch (err) {
+        console.error(
+          "[dokument-postfach] Unerwarteter Analysefehler",
+          offen.id,
+          err,
+        );
+        abgebrochen = "persistenz";
         break;
+      }
+
+      if (ok) {
+        analysiert += 1;
+        fehlerInFolge = 0;
+      } else {
+        fehlgeschlagen += 1;
+        fehlerInFolge += 1;
+        console.error(
+          "[dokument-postfach] Analyse fehlgeschlagen, überspringe",
+          offen.id,
+          `(${fehlerInFolge}/${NACHTLAUF_MAX_FEHLER_IN_FOLGE} in Folge)`,
+        );
+        if (fehlerInFolge >= NACHTLAUF_MAX_FEHLER_IN_FOLGE) {
+          abgebrochen = "zu_viele_fehler";
+          break;
+        }
       }
     }
   }
 
-  // Neu analysierte + gelb markierte Mails → Gesellschafts-Unterordner.
-  const spaet = await nachtlaufOutlookKategorieAblegen();
-  if (spaet) {
-    kategorieAblegenVerarbeitet += spaet.verarbeitet;
-    kategorieAblegenFehlgeschlagen += spaet.fehlgeschlagen;
+  // Phase 1: offene Inbox-Mails analysieren.
+  await analysiereOffene();
+
+  let nochOffen = await zaehleOffene();
+  let fortsetzen = !abgebrochen && nochOffen > 0;
+
+  // Phase 2: erst wenn die normale Warteschlange leer ist —
+  // alle „ablegen“-Mails laden (egal wie alt), ggf. analysieren, dann ablegen.
+  if (!fortsetzen) {
+    try {
+      await nachtlaufAblegenMailsSeeden();
+    } catch (err) {
+      console.error("[dokument-postfach] Ablegen-Mails seeden", err);
+    }
+
+    if (!abgebrochen) {
+      await analysiereOffene();
+    }
+
+    nochOffen = await zaehleOffene();
+    fortsetzen = !abgebrochen && nochOffen > 0;
+
+    if (!fortsetzen) {
+      const spaet = await nachtlaufOutlookKategorieAblegen();
+      if (spaet) {
+        kategorieAblegenVerarbeitet += spaet.verarbeitet;
+        kategorieAblegenFehlgeschlagen += spaet.fehlgeschlagen;
+      }
+    }
   }
 
-  const nochOffen = await zaehleOffene();
   return {
     analysiert,
     fehlgeschlagen,
     offen: nochOffen,
-    fortsetzen: !abgebrochen && nochOffen > 0,
+    fortsetzen,
     abgebrochen,
     inboxSyncFehler,
     kategorieAblegenVerarbeitet,

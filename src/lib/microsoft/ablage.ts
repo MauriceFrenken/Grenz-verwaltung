@@ -1,6 +1,7 @@
 import {
   MICROSOFT_ABLAGE_ROOT_AUSSCHLUSS,
   MICROSOFT_ABLAGE_ROOT_MUSTER,
+  MICROSOFT_ABLEGEN_KATEGORIE,
   MICROSOFT_DOKUMENT_POSTEINGANG_SEIT,
   MICROSOFT_ONEDRIVE_USER,
   MICROSOFT_POST_MAILBOX,
@@ -12,7 +13,9 @@ import {
   graphDriveItemKinder,
   graphDriveRootKinder,
   graphNachrichtAnhaenge,
+  graphNachrichtHatKategorie,
   graphPosteingangNachrichten,
+  graphPosteingangNachrichtenMitKategorie,
   type GraphDriveItem,
   type GraphNachricht,
 } from "./graph";
@@ -128,19 +131,20 @@ export async function microsoftOneDriveKinderLesen(input: {
 }
 
 /**
- * Posteingang lesen (ohne User-Auth — für Cron / interne Aufrufe).
+ * Gesamten Posteingang lesen (ohne User-Auth — für Cron / interne Aufrufe).
+ * Paginiert alle offenen Mails mit Anhang; kein Top-N-Cap.
  */
-export async function microsoftDokumentPosteingangLesenIntern(input?: {
+export async function microsoftDokumentPosteingangLesenIntern(_input?: {
+  /** @deprecated Ignoriert — es werden alle Inbox-Mails geladen. */
   anzahl?: number;
 }): Promise<{ postfaecher: string[]; nachrichten: DokumentPosteingangNachricht[] }> {
   const { accessToken } = await microsoftAccessToken();
   const quellen = microsoftDokumentPosteingangQuellen();
-  const anzahl = input?.anzahl ?? 50;
 
   const bloecke = await Promise.all(
     quellen.map(async ({ postfach, seit }) => {
       const liste = await graphPosteingangNachrichten(accessToken, postfach, {
-        anzahl,
+        alle: true,
         seit,
         nurMitAnhang: true,
       });
@@ -148,8 +152,40 @@ export async function microsoftDokumentPosteingangLesenIntern(input?: {
     }),
   );
 
-  const nachrichten = dokumentPosteingangSortieren(bloecke.flat()).slice(0, anzahl);
+  const nachrichten = dokumentPosteingangSortieren(bloecke.flat());
   return { postfaecher: quellen.map((q) => q.postfach), nachrichten };
+}
+
+/** Graph-Nachrichten-IDs (postfach|id) mit Outlook-Kategorie „ablegen“. */
+export function ablegenKategorieNachrichtSchluessel(
+  nachrichten: DokumentPosteingangNachricht[],
+): Set<string> {
+  const keys = new Set<string>();
+  for (const n of nachrichten) {
+    if (!graphNachrichtHatKategorie(n, MICROSOFT_ABLEGEN_KATEGORIE)) continue;
+    keys.add(`${n.postfach.toLowerCase()}|${n.id}`);
+  }
+  return keys;
+}
+
+/**
+ * Alle Inbox-Mails mit Kategorie „ablegen“ im m.frenken-Postfach
+ * (paginiert, ohne Top-N- und ohne Alters-Cutoff).
+ */
+export async function microsoftAblegenKategorieMailsLesen(): Promise<
+  DokumentPosteingangNachricht[]
+> {
+  const postfach = microsoftPostMailboxZweit();
+  if (!postfach) return [];
+
+  const { accessToken } = await microsoftAccessToken();
+  const liste = await graphPosteingangNachrichtenMitKategorie(
+    accessToken,
+    postfach,
+    MICROSOFT_ABLEGEN_KATEGORIE,
+    { nurMitAnhang: true },
+  );
+  return liste.map((n) => ({ ...n, postfach }));
 }
 
 /** Liest den Posteingang aller Dokument-Postfächer (Dokumente › Postfach). */
