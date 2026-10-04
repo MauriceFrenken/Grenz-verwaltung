@@ -76,6 +76,7 @@ export const STATUS_LABEL: Record<string, string> = {
   ueberzahlung: "Überzahlung",
   ohne_iban: "Ohne IBAN",
   abgeschlossen: "Abgeschlossen",
+  neu: "Neu",
   analysiert: "Analysiert",
   in_analyse: "Analyse…",
   abgelegt: "Abgelegt",

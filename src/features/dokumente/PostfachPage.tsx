@@ -16,7 +16,9 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { STATUS_LABEL } from "@/lib/constants";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -769,6 +771,19 @@ export function PostfachPage() {
         ) : (
           <span className="block h-8 w-8" aria-hidden />
         ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      className: "w-[7.5rem] min-w-[7.5rem] px-2",
+      render: (e) => (
+        <span title={e.status === "fehler" ? e.analyseFehler || undefined : undefined}>
+          <StatusBadge
+            status={e.status}
+            label={STATUS_LABEL[e.status] ?? e.status}
+          />
+        </span>
+      ),
     },
     {
       key: "datei",
