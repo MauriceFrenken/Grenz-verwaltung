@@ -773,19 +773,6 @@ export function PostfachPage() {
         ),
     },
     {
-      key: "status",
-      header: "Status",
-      className: "w-[7.5rem] min-w-[7.5rem] px-2",
-      render: (e) => (
-        <span title={e.status === "fehler" ? e.analyseFehler || undefined : undefined}>
-          <StatusBadge
-            status={e.status}
-            label={STATUS_LABEL[e.status] ?? e.status}
-          />
-        </span>
-      ),
-    },
-    {
       key: "datei",
       header: "Dateiname",
       className: "min-w-[10rem] max-w-[14rem]",
@@ -859,6 +846,19 @@ export function PostfachPage() {
       render: (e) => (
         <span className="text-sm text-foreground">
           {formatEingangsdatum(e.eingegangenAm)}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      className: "w-[7.5rem] min-w-[7.5rem] px-2",
+      render: (e) => (
+        <span title={e.status === "fehler" ? e.analyseFehler || undefined : undefined}>
+          <StatusBadge
+            status={e.status}
+            label={STATUS_LABEL[e.status] ?? e.status}
+          />
         </span>
       ),
     },
