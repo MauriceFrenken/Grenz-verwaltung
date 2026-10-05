@@ -113,6 +113,8 @@ export type AnalyzeDokumentRequest = {
   modelContext?: string;
   vision?: DokumentVisionBlock[];
   stammdatenKontext: string;
+  /** Scan/Bild ohne verlässlichen PDF-Text — Prompt betont Mail+Vision. */
+  istScanVision?: boolean;
 };
 
 export type OrdnerWahlSchrittRequest = {
@@ -388,6 +390,22 @@ export async function handleAnalyzeDokumentRequest(
     throw new Error("Kein Analyse-Kontext für dieses Dokument.");
   }
 
+  const scanRegeln = input.istScanVision
+    ? `
+Scan-/Bild-Modus (wichtig):
+- Primär den Scan/die Bilder lesen; E-Mail-Betreff und Mail-Text sind zusätzlicher Kontext zur Einordnung.
+- Wenn Betreff/Dateiname/Mail klar eine Gesellschaft nennen (z. B. „Gründung MTF Capital GmbH“) und der Scan dazu passt: genau diese Gesellschaft wählen.
+- Gesellschafter, Notarparteien, Mitunterzeichner oder deren Adressen sind NICHT die Ziel-Gesellschaft und KEIN Stammdaten-Objekt — außer das Dokument betrifft eindeutig genau dieses Objekt.
+- Gründung, Gesellschafterliste, Gesellschaftsvertrag, Handelsregister, Sitzverlegung, Beglaubigung: objektBezeichnung = null, gesellschaftName = die gegründete/betroffene Gesellschaft.
+- Nichts erfinden: keine Straße/Objektadresse setzen, die im Scan nicht klar als Objektbezug steht.
+- verbatimQuote muss zum gewählten gesellschaftName passen (nicht eine andere Firma zitieren).
+- Abschnitt „ANDERE ANHÄNGE DIESER MAIL“: bei Unsicherheit die sichere Geschwister-Zuordnung übernehmen, wenn der Inhalt nicht klar widerspricht.
+`
+    : `
+- Nutze E-Mail-Betreff, Absender und Mail-Text für die Zuordnung.
+- Abschnitt „ANDERE ANHÄNGE DIESER MAIL“: bei Unsicherheit die sichere Geschwister-Zuordnung übernehmen.
+`;
+
   const systemPrompt = `Du analysierst eingehende E-Mail-Anhänge für die FRENKEN-Gruppe.
 
 Schritt 1: Klassifiziere den Anhang in genau einen Typ:
@@ -403,20 +421,19 @@ ${ABLAGESTRUKTUR}
 
 Regeln:
 - dokumentTitel: nur für allgemeine Dokumente einen kurzen, präzisen Dateinamen-Titel aus dem Inhalt bilden (z. B. "Nachtrag Wohngebäudeversicherung Alt-Pempelfort 7" oder "Versicherungsbestätigung Alt-Pempelfort 7"). Keine Dateiendung, kein Datum, keine internen IDs erfinden. Für Rechnungen und Exposés null.
-- gesellschaftName = die im Dokument adressierte / empfangende FRENKEN-Gesellschaft (Briefempfänger, Vertragspartner), exakt aus STAMMDATEN. Nicht der Absender/Versicherer/Rechnungssteller.
+- gesellschaftName = die FRENKEN-Gesellschaft, DER das Dokument gehört / die betroffen ist (Briefempfänger, Vertragspartner, gegründete Gesellschaft), exakt aus STAMMDATEN. Nicht Absender/Versicherer/Rechnungssteller, nicht bloß ein Gesellschafter oder Notar.
 - Spezifische Marker nutzen (Immobilien, Holding, Investment, Capital, MTF). „Frenken“ allein reicht nicht — Holding nur wenn klar Holding ohne Objektbezug.
-- Objektadresse im Dokument (Straße/Ort) → zugehörige Objekt-Gesellschaft (meist Immobilien), nicht Holding.
+- Objektadresse nur wenn das Dokument dieses Immobilienobjekt betrifft (Straße/Ort als Objektbezug) → zugehörige Objekt-Gesellschaft (meist Immobilien), nicht Holding.
 - Ausnahme: eindeutig an TradeAnyMachine GmbH (TAM) adressiert → gesellschaftName exakt "TradeAnyMachine GmbH" (steht nicht in Stammdaten).
-- objektBezeichnung: bei Scans/Bildern die im Dokument sichtbare Objektadresse oder Objektbezeichnung (Straße + ggf. Ort, z. B. „Alt-Pempelfort 7, Düsseldorf“). Bei digitalem Text null lassen — Zuordnung läuft dann serverseitig aus dem Text. Keine erfundenen Namen.
+- objektBezeichnung: nur bei echtem Objektbezug (z. B. „Alt-Pempelfort 7, Düsseldorf“). Bei digitalem Text oft null — Zuordnung läuft dann serverseitig. Keine erfundenen Namen. Keine Gesellschafter-Privat-/Firmenadressen als Objekt.
 - Adressen, Maschinen, Fahrzeuge oder Objekte aus Exposés/Verkaufsunterlagen sind KEINE Stammdaten-Objekte.
 - ordnerPfad: immer null lassen (wird separat über OneDrive ermittelt).
 - Bei Rechnungen (Eingangsrechnungen an FRENKEN): zahlungsempfaenger = FRENKEN-Gesellschaft an die gezahlt/adressiert wird, rechnungssteller = Aussteller/Lieferant.
 - rechnungsbetrag: nur Zahl mit Dezimalpunkt, keine Währung.
 - waehrung: z. B. EUR.
-- Nur Informationen aus dem Dokument — nichts erfinden. Bei Unsicherheit: value null, konfidenz niedrig.
+- Nur Informationen aus Dokument + E-Mail — nichts erfinden. Bei Unsicherheit: value null, konfidenz niedrig.
 - Bei Scans/Bildern ohne Text: verbatimQuote darf null sein.
-- Nutze auch E-Mail-Betreff, Absender und Mail-Text für die Zuordnung.
-
+${scanRegeln}
 Antworte NUR mit JSON:
 {
   "dokumentTyp": "rechnung" | "dokument" | "expose",
@@ -441,8 +458,9 @@ Antworte NUR mit JSON:
 
 === STAMMDATEN (Gesellschaften) ===
 ${stammdatenKontext}
-${mailKontext ? `\n=== E-MAIL ===\n${mailKontext}\n` : ""}
-${kontext ? `\n=== KONTEXT ===\n${kontext}` : ""}`;
+${mailKontext ? `\n=== E-MAIL (Betreff, Absender, Inhalt — wichtig für die Einordnung) ===\n${mailKontext}\n` : ""}
+${kontext ? `\n=== DOKUMENT / ANHANG-KONTEXT ===\n${kontext}` : ""}
+${input.istScanVision ? "\n(Scan: Bilder/PDF-Seiten sind oben angehängt — zuerst lesen, dann mit E-Mail abgleichen.)\n" : ""}`;
 
   const textTokenSchaetzung =
     schaetzeTextTokens(systemPrompt) + schaetzeTextTokens(userPrompt);

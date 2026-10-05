@@ -11,7 +11,11 @@ import {
   microsoftOneDriveUser,
   type DokumentPosteingangNachricht,
 } from "@/lib/microsoft/ablage";
-import { graphAnhangBinary, graphDriveRootKinder } from "@/lib/microsoft/graph";
+import {
+  graphAnhangBinary,
+  graphDriveRootKinder,
+  graphNachrichtBodyText,
+} from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
 import {
   createServiceRoleClient,
@@ -38,10 +42,7 @@ import {
 import {
   ermittleZielordnerIterativ,
   findeEingangsrechnungenOrdner,
-  findeGesellschaftId,
   findeGesellschaftRootDeterministisch,
-  findeObjektIdAusKontext,
-  findeObjektIdGlobalAusKontext,
   ladeStammdatenKontext,
 } from "./ablage-kontext";
 import {
@@ -52,8 +53,10 @@ import {
   leseAktiveEintraege,
   leseEintrag,
   leseEintraege,
+  leseEintraegeFuerNachricht,
   speichereAnalyse,
   speichereAnalyseFehler,
+  speichereEmailTextFuerNachricht,
   zaehleOffene,
   zuEintrag,
   type DokumentPosteingangRow,
@@ -63,6 +66,10 @@ import type {
   DokumentPosteingangSyncErgebnis,
   RechnungDuplikatHinweis,
 } from "./typen";
+import {
+  ermittleGeschwisterHinweis,
+  finalisiereZuordnung,
+} from "./zuordnung";
 
 const MAX_ANHANG_BYTES = 25 * 1024 * 1024;
 /** Max. Analysen pro UI-/Sync-Servercall (innerhalb maxDuration). */
@@ -74,9 +81,38 @@ function fehlerText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+type StammdatenCache = {
+  gesellschaften: Array<{ id: string; name: string; kuerzel: string }>;
+  objekte: Array<{
+    id: string;
+    bezeichnung: string;
+    gesellschaft_id: string;
+    strasse?: string | null;
+    ort?: string | null;
+  }>;
+  stammdatenKontext: string;
+};
+
+async function ladeStammdatenCache(): Promise<StammdatenCache> {
+  const admin = createServiceRoleClient();
+  const [{ data: gesellschaften }, { data: objekte }, stammdatenKontext] =
+    await Promise.all([
+      admin.from("v_gesellschaften").select("id,name,kuerzel"),
+      admin
+        .from("v_objekte")
+        .select("id,bezeichnung,gesellschaft_id,strasse,ort"),
+      ladeStammdatenKontext(),
+    ]);
+  return {
+    gesellschaften: gesellschaften ?? [],
+    objekte: objekte ?? [],
+    stammdatenKontext,
+  };
+}
+
 /**
- * Geclaimte Einträge mit begrenzter Parallelität analysieren.
- * UI aktualisiert nach dem Batch (Reihenfolge = Claim-Reihenfolge).
+ * Geclaimte Einträge analysieren.
+ * Anhänge derselben Mail nacheinander (Sibling-Kontext), verschiedene Mails parallel.
  */
 async function analysiereClaimedBatch(
   accessToken: string,
@@ -85,26 +121,44 @@ async function analysiereClaimedBatch(
 ): Promise<ReturnType<typeof zuEintrag>[]> {
   if (rows.length === 0) return [];
 
+  const stammdaten = await ladeStammdatenCache();
+  const indexById = new Map(rows.map((r, i) => [r.id, i]));
   const ergebnisse: ReturnType<typeof zuEintrag>[] = new Array(rows.length);
+
+  const gruppen = new Map<string, DokumentPosteingangRow[]>();
+  for (const row of rows) {
+    const key = `${row.postfach.toLowerCase()}|${row.graph_nachricht_id}`;
+    const liste = gruppen.get(key) ?? [];
+    liste.push(row);
+    gruppen.set(key, liste);
+  }
+
+  const mailGruppen = [...gruppen.values()];
   let next = 0;
-  const workers = Math.min(Math.max(1, concurrency), rows.length);
+  const workers = Math.min(Math.max(1, concurrency), mailGruppen.length);
 
   async function worker(): Promise<void> {
     for (;;) {
-      const i = next;
+      const gi = next;
       next += 1;
-      if (i >= rows.length) return;
-      const row = rows[i]!;
-      try {
-        await analysiereEintrag(accessToken, row);
-      } catch (err) {
-        console.error(
-          "[dokument-postfach] Unerwarteter Analysefehler",
-          row.id,
-          err,
-        );
+      if (gi >= mailGruppen.length) return;
+      const gruppe = mailGruppen[gi]!;
+      // Geschwister strikt nacheinander — spätere Anhänge sehen frühere Zuordnung.
+      for (const row of gruppe) {
+        try {
+          await analysiereEintrag(accessToken, row, stammdaten);
+        } catch (err) {
+          console.error(
+            "[dokument-postfach] Unerwarteter Analysefehler",
+            row.id,
+            err,
+          );
+        }
+        const idx = indexById.get(row.id);
+        if (idx != null) {
+          ergebnisse[idx] = zuEintrag(await leseEintrag(row.id));
+        }
       }
-      ergebnisse[i] = zuEintrag(await leseEintrag(row.id));
     }
   }
 
@@ -112,10 +166,44 @@ async function analysiereClaimedBatch(
   return ergebnisse;
 }
 
+async function ladeVollenMailText(
+  accessToken: string,
+  row: DokumentPosteingangRow,
+): Promise<string | null> {
+  const vorhanden = row.email_text?.trim() ?? "";
+  // bodyPreview ist typisch ~255 Zeichen — vollen Body nachladen.
+  if (vorhanden.length >= 600) return vorhanden;
+
+  try {
+    const body = await graphNachrichtBodyText(
+      accessToken,
+      row.postfach,
+      row.graph_nachricht_id,
+    );
+    const text = body?.trim() || null;
+    if (text && text.length > vorhanden.length) {
+      try {
+        await speichereEmailTextFuerNachricht(
+          row.postfach,
+          row.graph_nachricht_id,
+          text,
+        );
+      } catch (err) {
+        console.error("[dokument-postfach] E-Mail-Text speichern", row.id, err);
+      }
+      return text;
+    }
+  } catch (err) {
+    console.error("[dokument-postfach] E-Mail-Body laden", row.id, err);
+  }
+  return vorhanden || null;
+}
+
 /** @returns true bei Erfolg, false wenn der Eintrag als Fehler gespeichert wurde. */
 async function analysiereEintrag(
   accessToken: string,
   row: DokumentPosteingangRow,
+  stammdaten?: StammdatenCache,
 ): Promise<boolean> {
   try {
     if (!row.anhang_id) {
@@ -136,6 +224,20 @@ async function analysiereEintrag(
       throw new Error("Anhang ist größer als 25 MB und wurde nicht analysiert.");
     }
 
+    const emailText = await ladeVollenMailText(accessToken, row);
+    const cache = stammdaten ?? (await ladeStammdatenCache());
+
+    const siblings = await leseEintraegeFuerNachricht(
+      row.postfach,
+      row.graph_nachricht_id,
+    );
+    const geschwister = ermittleGeschwisterHinweis(
+      siblings,
+      row.id,
+      cache.gesellschaften,
+      cache.objekte,
+    );
+
     const kontext = await baueAnhangAnalyseKontext({
       name: anhang.name || row.anhang_name || "Dokument",
       contentType: anhang.contentType ?? row.anhang_content_type,
@@ -144,47 +246,22 @@ async function analysiereEintrag(
         betreff: row.betreff,
         absenderName: row.absender_name,
         absenderMail: row.absender_mail,
-        emailText: row.email_text,
+        emailText,
       },
+      geschwisterHinweis: geschwister?.hinweisText ?? null,
     });
-
-    const stammdatenKontext = await ladeStammdatenKontext();
 
     const ergebnis = await handleAnalyzeDokumentRequest({
       documentTitle: kontext.titel,
       mailKontext: kontext.mailKontext,
       modelContext: kontext.modelContext,
       vision: kontext.vision,
-      stammdatenKontext,
+      stammdatenKontext: cache.stammdatenKontext,
+      istScanVision: kontext.istScanVision,
     });
 
     ergebnis.felder.ordnerPfad = {
       ...ergebnis.felder.ordnerPfad,
-      value: null,
-    };
-
-    const admin = createServiceRoleClient();
-    const [{ data: gesellschaften }, { data: objekte }] = await Promise.all([
-      admin.from("v_gesellschaften").select("id,name,kuerzel"),
-      admin
-        .from("v_objekte")
-        .select("id,bezeichnung,gesellschaft_id,strasse,ort"),
-    ]);
-
-    const kiObjektAusScan =
-      ergebnis.felder.objektBezeichnung?.value?.trim() || null;
-    const kiAdressenAusScan = [
-      ergebnis.felder.zahlungsempfaengerAdresse?.value,
-      ergebnis.felder.zahlungsempfaenger?.value,
-      ergebnis.felder.rechnungsstellerAdresse?.value,
-    ]
-      .map((v) => (typeof v === "string" ? v.trim() : ""))
-      .filter(Boolean);
-
-    // Text-PDF: Objekt weiterhin nur serverseitig aus Dokumenttext matchen.
-    // Scan-Vision: KI-Adresse vor dem Match merken (unten in kontextTexte).
-    ergebnis.felder.objektBezeichnung = {
-      ...ergebnis.felder.objektBezeichnung,
       value: null,
     };
 
@@ -201,78 +278,30 @@ async function analysiereEintrag(
       };
     }
 
-    const kontextTexte = [kontext.modelContext, kontext.mailKontext];
-    if (kontext.istScanVision) {
-      // Scan hat keinen PDF-Text — Adresse/Objekt aus der Bildanalyse einbeziehen.
-      if (kiObjektAusScan) kontextTexte.push(kiObjektAusScan);
-      kontextTexte.push(...kiAdressenAusScan);
-      const gsName = ergebnis.felder.gesellschaftName?.value?.trim();
-      if (gsName) kontextTexte.push(gsName);
-    }
+    const zuordnung = finalisiereZuordnung({
+      felder: ergebnis.felder,
+      dokumentTyp: ergebnis.dokumentTyp,
+      istScanVision: kontext.istScanVision,
+      istTam,
+      betreff: row.betreff,
+      anhangName: row.anhang_name ?? anhang.name,
+      mailKontext: kontext.mailKontext,
+      modelContext: kontext.modelContext,
+      geschwister,
+      gesellschaften: cache.gesellschaften,
+      objekte: cache.objekte,
+    });
 
-    // Objektadresse zuerst (z. B. Alt-Pempelfort) — korrigiert falsche Holding-Zuordnung
-    let gesellschaftId: string | null = null;
-    let objektId: string | null = null;
-
-    if (!istTam && ergebnis.dokumentTyp !== "expose") {
-      const globalObjekt = findeObjektIdGlobalAusKontext(
-        kontextTexte,
-        objekte ?? [],
-      );
-      if (globalObjekt) {
-        objektId = globalObjekt.objektId;
-        gesellschaftId = globalObjekt.gesellschaftId;
-      }
-    }
-
-    if (!gesellschaftId && !istTam) {
-      gesellschaftId = findeGesellschaftId(
-        ergebnis.felder.gesellschaftName.value,
-        gesellschaften ?? [],
-      );
-    }
-
-    if (
-      !objektId &&
-      gesellschaftId &&
-      ergebnis.dokumentTyp !== "expose" &&
-      !istTam
-    ) {
-      objektId = findeObjektIdAusKontext(
-        kontextTexte,
-        gesellschaftId,
-        objekte ?? [],
-      );
-    }
-
+    ergebnis.felder = zuordnung.felder;
+    const gesellschaftId = zuordnung.gesellschaftId;
+    const objektId = zuordnung.objektId;
     const gematchtesObjekt =
-      objekte?.find((o) => o.id === objektId) ?? null;
-
-    if (gematchtesObjekt) {
-      gesellschaftId = gematchtesObjekt.gesellschaft_id;
-      ergebnis.felder.gesellschaftName = {
-        ...ergebnis.felder.gesellschaftName,
-        value:
-          gesellschaften?.find((g) => g.id === gematchtesObjekt.gesellschaft_id)
-            ?.name ?? ergebnis.felder.gesellschaftName.value,
-      };
-      ergebnis.felder.objektBezeichnung = {
-        ...ergebnis.felder.objektBezeichnung,
-        value: gematchtesObjekt.bezeichnung,
-      };
-    }
+      cache.objekte.find((o) => o.id === objektId) ?? null;
 
     const gesellschaftName =
-      gesellschaften?.find((g) => g.id === gesellschaftId)?.name ??
+      cache.gesellschaften.find((g) => g.id === gesellschaftId)?.name ??
       ergebnis.felder.gesellschaftName.value ??
       "";
-
-    if (gesellschaftName && !gematchtesObjekt) {
-      ergebnis.felder.gesellschaftName = {
-        ...ergebnis.felder.gesellschaftName,
-        value: gesellschaftName || ergebnis.felder.gesellschaftName.value,
-      };
-    }
 
     let ablageOrdnerId: string | null = null;
     let ablageOrdnerPfad: string | null = null;
@@ -327,7 +356,7 @@ async function analysiereEintrag(
           mailKontext: kontext.mailKontext,
           modelContext: kontext.modelContext,
         },
-        gesellschaften ?? [],
+        cache.gesellschaften,
       );
       if (ziel) {
         ablageOrdnerId = ziel.id;

@@ -32,7 +32,13 @@ export function nutzbarerDokumentText(text: string): string {
 
 /** Ob der extrahierte Text reicht, um Vision/Scan-OCR zu überspringen. */
 export function istDokumentTextAusreichendFuerKi(text: string): boolean {
-  return nutzbarerDokumentText(text).length >= KI_MIN_TEXT_SKIP_VISION;
+  const nutzbar = nutzbarerDokumentText(text);
+  if (nutzbar.length < KI_MIN_TEXT_SKIP_VISION) return false;
+  // OCR-/Scan-Müll: zu wenig Buchstaben → trotzdem Vision nutzen.
+  const buchstaben = (nutzbar.match(/\p{L}/gu) ?? []).length;
+  if (buchstaben < 120) return false;
+  if (buchstaben / nutzbar.length < 0.5) return false;
+  return true;
 }
 
 /** Vision nur für kleinere Scans — große PDFs sprengen das Token-Limit. */

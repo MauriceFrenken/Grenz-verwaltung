@@ -498,6 +498,70 @@ export function graphNachrichtHatKategorie(
   );
 }
 
+function htmlZuText(html: string): string {
+  return html
+    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/tr>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function bodyInhaltZuText(
+  body:
+    | { contentType?: string | null; content?: string | null }
+    | null
+    | undefined,
+): string {
+  const content = body?.content?.trim() ?? "";
+  if (!content) return "";
+  const typ = (body?.contentType ?? "").toLowerCase();
+  if (typ === "html" || /<\/?[a-z][\s\S]*>/i.test(content)) {
+    return htmlZuText(content);
+  }
+  return content.replace(/\r/g, "").trim();
+}
+
+/**
+ * Vollen Mailtext laden (uniqueBody/body), nicht nur bodyPreview.
+ * Für KI-Zuordnung bei Scans entscheidend.
+ */
+export async function graphNachrichtBodyText(
+  accessToken: string,
+  postfach: string,
+  nachrichtId: string,
+): Promise<string | null> {
+  const data = await graphGet<{
+    uniqueBody?: { contentType?: string; content?: string };
+    body?: { contentType?: string; content?: string };
+    bodyPreview?: string;
+  }>(
+    `/users/${encodeURIComponent(postfach)}/messages/${encodeURIComponent(nachrichtId)}` +
+      `?$select=uniqueBody,body,bodyPreview`,
+    accessToken,
+    postfach,
+  );
+
+  const unique = bodyInhaltZuText(data.uniqueBody);
+  if (unique) return unique;
+  const full = bodyInhaltZuText(data.body);
+  if (full) return full;
+  const preview = data.bodyPreview?.trim();
+  return preview || null;
+}
+
 export async function graphNachrichtAnhaenge(
   accessToken: string,
   postfach: string,

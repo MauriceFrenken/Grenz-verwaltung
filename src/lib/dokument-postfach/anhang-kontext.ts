@@ -59,6 +59,8 @@ export async function baueAnhangAnalyseKontext(input: {
   contentType: string | null;
   bytes: Uint8Array;
   mail: MailKontextQuelle;
+  /** Hinweis zu bereits analysierten Anhängen derselben Mail. */
+  geschwisterHinweis?: string | null;
 }): Promise<AnhangAnalyseKontext> {
   const titel = input.name.trim() || "Dokument";
   const mailKontext = baueMailKontext(input.mail);
@@ -136,11 +138,15 @@ export async function baueAnhangAnalyseKontext(input: {
     return null;
   })();
 
+  // Mail bewusst NICHT in modelContext — wird separat als mailKontext
+  // an die KI übergeben (spart Vision-Token-Budget, kein Doppeltext).
   const modelContext = [
     ...metaZeilen,
-    mailKontext,
     dokumentTextHinweis,
     visionHinweis,
+    input.geschwisterHinweis?.trim()
+      ? `=== ANDERE ANHÄNGE DIESER MAIL ===\n${input.geschwisterHinweis.trim()}`
+      : null,
   ]
     .filter(Boolean)
     .join("\n\n");

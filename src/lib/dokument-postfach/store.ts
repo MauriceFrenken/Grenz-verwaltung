@@ -312,6 +312,26 @@ export async function leseEintrag(id: string): Promise<DokumentPosteingangRow> {
   return data as unknown as DokumentPosteingangRow;
 }
 
+/** Vollen Mailtext für alle Anhänge derselben Graph-Nachricht speichern. */
+export async function speichereEmailTextFuerNachricht(
+  postfach: string,
+  graphNachrichtId: string,
+  emailText: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from(TABELLE)
+    .update({ email_text: emailText })
+    .eq("postfach", postfach)
+    .eq("graph_nachricht_id", graphNachrichtId);
+  if (error) {
+    throw fehler(
+      "E-Mail-Text der Nachricht konnte nicht gespeichert werden",
+      error.message,
+    );
+  }
+}
+
 export async function speichereAnalyse(
   id: string,
   input: {
@@ -652,17 +672,104 @@ export async function claimNaechsteOffeneMail(): Promise<DokumentPosteingangRow 
   return null;
 }
 
-/** Bis zu `limit` offene Mails claimen (sequentiell, race-sicher). */
+/**
+ * Offene Anhänge derselben Graph-Nachricht claimen (Geschwister zuerst),
+ * damit Sibling-Kontext in einem Batch greift.
+ */
+async function claimOffeneGeschwister(
+  postfach: string,
+  graphNachrichtId: string,
+  excludeIds: Set<string>,
+  rest: number,
+): Promise<DokumentPosteingangRow[]> {
+  if (rest <= 0) return [];
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from(TABELLE)
+    .select(SPALTEN)
+    .eq("postfach", postfach)
+    .eq("graph_nachricht_id", graphNachrichtId)
+    .eq("status", "neu")
+    .order("anhang_name", { ascending: true })
+    .limit(rest);
+
+  if (error) {
+    throw fehler(
+      "Geschwister-Anhänge konnten nicht gelesen werden",
+      error.message,
+    );
+  }
+
+  const claimed: DokumentPosteingangRow[] = [];
+  for (const kandidat of (data as unknown as DokumentPosteingangRow[]) ?? []) {
+    if (excludeIds.has(kandidat.id)) continue;
+    const { data: row, error: claimErr } = await admin
+      .from(TABELLE)
+      .update({ status: "in_analyse" })
+      .eq("id", kandidat.id)
+      .eq("status", "neu")
+      .select(SPALTEN)
+      .maybeSingle();
+    if (claimErr) {
+      throw fehler(
+        "Geschwister-Anhang konnte nicht geclaimt werden",
+        claimErr.message,
+      );
+    }
+    if (row) {
+      const claimedRow = row as unknown as DokumentPosteingangRow;
+      claimed.push(claimedRow);
+      excludeIds.add(claimedRow.id);
+      if (claimed.length >= rest) break;
+    }
+  }
+  return claimed;
+}
+
+/**
+ * Bis zu `limit` offene Anhänge claimen.
+ * Nach dem ersten Claim: restliche Anhänge derselben Mail bevorzugt
+ * (für Sibling-Zuordnung in einem Batch).
+ */
 export async function claimNaechsteOffeneMails(
   limit: number,
 ): Promise<DokumentPosteingangRow[]> {
   const max = Math.max(0, Math.floor(limit));
+  if (max === 0) return [];
+
   const claimed: DokumentPosteingangRow[] = [];
-  for (let i = 0; i < max; i++) {
+  const excludeIds = new Set<string>();
+
+  const erste = await claimNaechsteOffeneMail();
+  if (!erste) return [];
+  claimed.push(erste);
+  excludeIds.add(erste.id);
+
+  const geschwister = await claimOffeneGeschwister(
+    erste.postfach,
+    erste.graph_nachricht_id,
+    excludeIds,
+    max - claimed.length,
+  );
+  claimed.push(...geschwister);
+
+  while (claimed.length < max) {
     const row = await claimNaechsteOffeneMail();
     if (!row) break;
+    if (excludeIds.has(row.id)) continue;
     claimed.push(row);
+    excludeIds.add(row.id);
+
+    if (claimed.length >= max) break;
+    const weitere = await claimOffeneGeschwister(
+      row.postfach,
+      row.graph_nachricht_id,
+      excludeIds,
+      max - claimed.length,
+    );
+    claimed.push(...weitere);
   }
+
   return claimed;
 }
 

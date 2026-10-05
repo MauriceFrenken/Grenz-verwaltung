@@ -14,10 +14,10 @@ import {
   schaetzeVisionTokens,
 } from "@/lib/ki-kontext";
 
-const PDF_SEITEN_KANDIDATEN = [8, 6, 5, 4, 3, 2, 1] as const;
-const BILD_SEITEN_KANDIDATEN = [6, 5, 4, 3, 2, 1] as const;
-const BILD_BREITE_KANDIDATEN = [1_400, 1_200, 1_000, 850] as const;
-const JPEG_QUALITAET_KANDIDATEN = [72, 62, 52] as const;
+const PDF_SEITEN_KANDIDATEN = [10, 8, 6, 5, 4, 3, 2, 1] as const;
+const BILD_SEITEN_KANDIDATEN = [8, 6, 5, 4, 3, 2, 1] as const;
+const BILD_BREITE_KANDIDATEN = [1_600, 1_400, 1_200, 1_000, 850] as const;
+const JPEG_QUALITAET_KANDIDATEN = [78, 72, 62, 52] as const;
 
 function bytesZuBase64(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("base64");
