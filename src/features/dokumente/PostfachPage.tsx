@@ -301,13 +301,6 @@ function absenderTitel(eintrag: DokumentPosteingangEintrag): string | undefined 
   return name || mail || undefined;
 }
 
-function kannPruefen(
-  eintrag: DokumentPosteingangEintrag | null,
-): eintrag is DokumentPosteingangEintrag {
-  if (!eintrag) return false;
-  return eintrag.status === "analysiert" || eintrag.status === "fehler";
-}
-
 function istBereit(eintrag: DokumentPosteingangEintrag | null): eintrag is DokumentPosteingangEintrag {
   if (!eintrag || eintrag.status !== "analysiert") return false;
   if (eintrag.dokumentTyp === "expose") return true;
@@ -870,22 +863,14 @@ export function PostfachPage() {
       stickyBreitePx: 88,
       className: "w-[5.5rem] min-w-[5.5rem] px-2",
       render: (eintrag) => {
-        const pruefbar = kannPruefen(eintrag);
         const laedtZeile = aktionId === eintrag?.id;
-        const istExpose = eintrag?.dokumentTyp === "expose";
-        const bereit = istBereit(eintrag);
-        const zeigeCheck = !(istExpose && bereit);
-
-        if (!zeigeCheck) {
-          return <span className="block h-8" aria-hidden />;
-        }
 
         return (
           <Button
             size="sm"
             variant="outline"
             className="h-8 w-full border-foreground text-foreground"
-            disabled={!pruefbar || laedtZeile}
+            disabled={!eintrag || laedtZeile}
             onClick={() => eintrag && pruefen(eintrag)}
           >
             Check
