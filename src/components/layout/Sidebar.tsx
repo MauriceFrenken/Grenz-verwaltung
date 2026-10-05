@@ -56,10 +56,11 @@ const sections: NavSection[] = [
       { to: "/verwaltung/gesellschaften", label: "Gesellschaften", icon: Landmark },
       { to: "/verwaltung/objekte", label: "Objekte", icon: Building2 },
       { to: "/verwaltung/einheiten", label: "Einheiten", icon: Home },
+      { to: "/verwaltung/mieter", label: "Mieter", icon: Users },
       {
         to: "/verwaltung/mietverhaeltnisse",
         label: "Mietverhältnisse",
-        icon: Users,
+        icon: ScrollText,
       },
     ],
   },

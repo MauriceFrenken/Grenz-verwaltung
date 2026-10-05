@@ -212,3 +212,38 @@ where not exists (
   select 1 from public.mietverhaeltnisse m
   where m.einheit_id = q.einheit_id and m.status = 'aktiv'
 );
+
+-- Mieter-Profile + Hauptmieter-Links aus Seed-Mietverhältnissen
+with distinct_mieter as (
+  select distinct on (lower(btrim(m.mieter_name)), coalesce(m.iban, ''))
+    btrim(m.mieter_name) as name,
+    m.iban
+  from public.mietverhaeltnisse m
+  where coalesce(btrim(m.mieter_name), '') <> ''
+  order by lower(btrim(m.mieter_name)), coalesce(m.iban, ''), m.id
+)
+insert into public.personen (typ, nachname, iban)
+select 'mieter', d.name, d.iban
+from distinct_mieter d
+where not exists (
+  select 1
+  from public.personen p
+  where p.typ = 'mieter'
+    and p.nachname = d.name
+    and coalesce(p.iban, '') = coalesce(d.iban, '')
+);
+
+insert into public.mietverhaeltnis_personen (mietverhaeltnis_id, person_id, rolle)
+select m.id, p.id, 'hauptmieter'
+from public.mietverhaeltnisse m
+join public.personen p
+  on p.typ = 'mieter'
+ and lower(p.nachname) = lower(btrim(m.mieter_name))
+ and coalesce(p.iban, '') = coalesce(m.iban, '')
+where coalesce(btrim(m.mieter_name), '') <> ''
+  and not exists (
+    select 1
+    from public.mietverhaeltnis_personen mp
+    where mp.mietverhaeltnis_id = m.id
+      and mp.rolle = 'hauptmieter'
+  );

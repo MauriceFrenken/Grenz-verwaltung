@@ -36,14 +36,15 @@ import { Route as TransaktionenListeRouteImport } from './routes/transaktionen.l
 import { Route as VerwaltungIndexRouteImport } from './routes/verwaltung.index'
 import { Route as VerwaltungEinheitenRouteImport } from './routes/verwaltung.einheiten'
 import { Route as VerwaltungGesellschaftenRouteImport } from './routes/verwaltung.gesellschaften'
+import { Route as VerwaltungMieterRouteImport } from './routes/verwaltung.mieter'
 import { Route as VerwaltungMietverhaeltnisseRouteImport } from './routes/verwaltung.mietverhaeltnisse'
 import { Route as VerwaltungNebenkostenRouteImport } from './routes/verwaltung.nebenkosten'
 import { Route as VerwaltungObjekteRouteImport } from './routes/verwaltung.objekte'
 import { Route as VerwaltungSollstellungRouteImport } from './routes/verwaltung.sollstellung'
 import { Route as VerwaltungZahlungenRouteImport } from './routes/verwaltung.zahlungen'
+import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
 import { Route as ApiCronPostfachAnalyseRouteImport } from './routes/api.cron.postfach-analyse'
-import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as TransaktionenExposeImportIndexRouteImport } from './routes/transaktionen.expose-import.index'
 import { Route as TransaktionenExposeImportSalesforceRouteImport } from './routes/transaktionen.expose-import.salesforce'
 import { Route as VerwaltungObjekteIndexRouteImport } from './routes/verwaltung.objekte.index'
@@ -190,6 +191,11 @@ const VerwaltungGesellschaftenRoute =
     path: '/gesellschaften',
     getParentRoute: () => VerwaltungRoute,
   } as any)
+const VerwaltungMieterRoute = VerwaltungMieterRouteImport.update({
+  id: '/mieter',
+  path: '/mieter',
+  getParentRoute: () => VerwaltungRoute,
+} as any)
 const VerwaltungMietverhaeltnisseRoute =
   VerwaltungMietverhaeltnisseRouteImport.update({
     id: '/mietverhaeltnisse',
@@ -216,6 +222,11 @@ const VerwaltungZahlungenRoute = VerwaltungZahlungenRouteImport.update({
   path: '/zahlungen',
   getParentRoute: () => VerwaltungRoute,
 } as any)
+const ApiCronEbicsUmsaetzeRoute = ApiCronEbicsUmsaetzeRouteImport.update({
+  id: '/api/cron/ebics-umsaetze',
+  path: '/api/cron/ebics-umsaetze',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronExposeAnalyseRoute = ApiCronExposeAnalyseRouteImport.update({
   id: '/api/cron/expose-analyse',
   path: '/api/cron/expose-analyse',
@@ -224,11 +235,6 @@ const ApiCronExposeAnalyseRoute = ApiCronExposeAnalyseRouteImport.update({
 const ApiCronPostfachAnalyseRoute = ApiCronPostfachAnalyseRouteImport.update({
   id: '/api/cron/postfach-analyse',
   path: '/api/cron/postfach-analyse',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCronEbicsUmsaetzeRoute = ApiCronEbicsUmsaetzeRouteImport.update({
-  id: '/api/cron/ebics-umsaetze',
-  path: '/api/cron/ebics-umsaetze',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TransaktionenExposeImportIndexRoute =
@@ -290,6 +296,7 @@ export interface FileRoutesByFullPath {
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
+  '/verwaltung/mieter': typeof VerwaltungMieterRoute
   '/verwaltung/mietverhaeltnisse': typeof VerwaltungMietverhaeltnisseRoute
   '/verwaltung/nebenkosten': typeof VerwaltungNebenkostenRoute
   '/verwaltung/objekte': typeof VerwaltungObjekteRouteWithChildren
@@ -299,9 +306,9 @@ export interface FileRoutesByFullPath {
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/transaktionen/': typeof TransaktionenIndexRoute
   '/verwaltung/': typeof VerwaltungIndexRoute
+  '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
-  '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
@@ -328,6 +335,7 @@ export interface FileRoutesByTo {
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
+  '/verwaltung/mieter': typeof VerwaltungMieterRoute
   '/verwaltung/mietverhaeltnisse': typeof VerwaltungMietverhaeltnisseRoute
   '/verwaltung/nebenkosten': typeof VerwaltungNebenkostenRoute
   '/verwaltung/zahlungen': typeof VerwaltungZahlungenRoute
@@ -335,9 +343,9 @@ export interface FileRoutesByTo {
   '/einstellungen': typeof EinstellungenIndexRoute
   '/transaktionen': typeof TransaktionenIndexRoute
   '/verwaltung': typeof VerwaltungIndexRoute
+  '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
-  '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
@@ -370,6 +378,7 @@ export interface FileRoutesById {
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
+  '/verwaltung/mieter': typeof VerwaltungMieterRoute
   '/verwaltung/mietverhaeltnisse': typeof VerwaltungMietverhaeltnisseRoute
   '/verwaltung/nebenkosten': typeof VerwaltungNebenkostenRoute
   '/verwaltung/objekte': typeof VerwaltungObjekteRouteWithChildren
@@ -379,9 +388,9 @@ export interface FileRoutesById {
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/transaktionen/': typeof TransaktionenIndexRoute
   '/verwaltung/': typeof VerwaltungIndexRoute
+  '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
-  '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
   '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
   '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
@@ -415,6 +424,7 @@ export interface FileRouteTypes {
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
     | '/verwaltung/gesellschaften'
+    | '/verwaltung/mieter'
     | '/verwaltung/mietverhaeltnisse'
     | '/verwaltung/nebenkosten'
     | '/verwaltung/objekte'
@@ -424,9 +434,9 @@ export interface FileRouteTypes {
     | '/einstellungen/'
     | '/transaktionen/'
     | '/verwaltung/'
+    | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/postfach-analyse'
-    | '/api/cron/ebics-umsaetze'
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/verwaltung/sollstellung/$id'
@@ -453,6 +463,7 @@ export interface FileRouteTypes {
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
     | '/verwaltung/gesellschaften'
+    | '/verwaltung/mieter'
     | '/verwaltung/mietverhaeltnisse'
     | '/verwaltung/nebenkosten'
     | '/verwaltung/zahlungen'
@@ -460,9 +471,9 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/transaktionen'
     | '/verwaltung'
+    | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/postfach-analyse'
-    | '/api/cron/ebics-umsaetze'
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/verwaltung/sollstellung/$id'
@@ -494,6 +505,7 @@ export interface FileRouteTypes {
     | '/transaktionen/liste'
     | '/verwaltung/einheiten'
     | '/verwaltung/gesellschaften'
+    | '/verwaltung/mieter'
     | '/verwaltung/mietverhaeltnisse'
     | '/verwaltung/nebenkosten'
     | '/verwaltung/objekte'
@@ -503,9 +515,9 @@ export interface FileRouteTypes {
     | '/einstellungen/'
     | '/transaktionen/'
     | '/verwaltung/'
+    | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/postfach-analyse'
-    | '/api/cron/ebics-umsaetze'
     | '/transaktionen/expose-import/salesforce'
     | '/verwaltung/objekte/$id'
     | '/verwaltung/sollstellung/$id'
@@ -527,9 +539,9 @@ export interface RootRouteChildren {
   VerwaltungRoute: typeof VerwaltungRouteWithChildren
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
+  ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
   ApiCronPostfachAnalyseRoute: typeof ApiCronPostfachAnalyseRoute
-  ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -723,6 +735,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerwaltungGesellschaftenRouteImport
       parentRoute: typeof VerwaltungRoute
     }
+    '/verwaltung/mieter': {
+      id: '/verwaltung/mieter'
+      path: '/mieter'
+      fullPath: '/verwaltung/mieter'
+      preLoaderRoute: typeof VerwaltungMieterRouteImport
+      parentRoute: typeof VerwaltungRoute
+    }
     '/verwaltung/mietverhaeltnisse': {
       id: '/verwaltung/mietverhaeltnisse'
       path: '/mietverhaeltnisse'
@@ -758,6 +777,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerwaltungZahlungenRouteImport
       parentRoute: typeof VerwaltungRoute
     }
+    '/api/cron/ebics-umsaetze': {
+      id: '/api/cron/ebics-umsaetze'
+      path: '/api/cron/ebics-umsaetze'
+      fullPath: '/api/cron/ebics-umsaetze'
+      preLoaderRoute: typeof ApiCronEbicsUmsaetzeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/expose-analyse': {
       id: '/api/cron/expose-analyse'
       path: '/api/cron/expose-analyse'
@@ -770,13 +796,6 @@ declare module '@tanstack/react-router' {
       path: '/api/cron/postfach-analyse'
       fullPath: '/api/cron/postfach-analyse'
       preLoaderRoute: typeof ApiCronPostfachAnalyseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cron/ebics-umsaetze': {
-      id: '/api/cron/ebics-umsaetze'
-      path: '/api/cron/ebics-umsaetze'
-      fullPath: '/api/cron/ebics-umsaetze'
-      preLoaderRoute: typeof ApiCronEbicsUmsaetzeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/transaktionen/expose-import/': {
@@ -927,6 +946,7 @@ const VerwaltungSollstellungRouteWithChildren =
 interface VerwaltungRouteChildren {
   VerwaltungEinheitenRoute: typeof VerwaltungEinheitenRoute
   VerwaltungGesellschaftenRoute: typeof VerwaltungGesellschaftenRoute
+  VerwaltungMieterRoute: typeof VerwaltungMieterRoute
   VerwaltungMietverhaeltnisseRoute: typeof VerwaltungMietverhaeltnisseRoute
   VerwaltungNebenkostenRoute: typeof VerwaltungNebenkostenRoute
   VerwaltungObjekteRoute: typeof VerwaltungObjekteRouteWithChildren
@@ -938,6 +958,7 @@ interface VerwaltungRouteChildren {
 const VerwaltungRouteChildren: VerwaltungRouteChildren = {
   VerwaltungEinheitenRoute: VerwaltungEinheitenRoute,
   VerwaltungGesellschaftenRoute: VerwaltungGesellschaftenRoute,
+  VerwaltungMieterRoute: VerwaltungMieterRoute,
   VerwaltungMietverhaeltnisseRoute: VerwaltungMietverhaeltnisseRoute,
   VerwaltungNebenkostenRoute: VerwaltungNebenkostenRoute,
   VerwaltungObjekteRoute: VerwaltungObjekteRouteWithChildren,
@@ -963,9 +984,9 @@ const rootRouteChildren: RootRouteChildren = {
   VerwaltungRoute: VerwaltungRouteWithChildren,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
+  ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
   ApiCronPostfachAnalyseRoute: ApiCronPostfachAnalyseRoute,
-  ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

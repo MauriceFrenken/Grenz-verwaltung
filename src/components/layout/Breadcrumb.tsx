@@ -7,6 +7,7 @@ const LABELS: Record<string, string> = {
   "/verwaltung/gesellschaften": "Gesellschaften",
   "/verwaltung/objekte": "Objekte",
   "/verwaltung/einheiten": "Einheiten",
+  "/verwaltung/mieter": "Mieter",
   "/verwaltung/mietverhaeltnisse": "Mietverhältnisse",
   "/verwaltung/sollstellung": "Sollstellung",
   "/verwaltung/zahlungen": "Zahlungen & Rückstände",

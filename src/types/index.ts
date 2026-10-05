@@ -5,6 +5,7 @@ export type GesellschaftId = string;
 export type ObjektId = string;
 export type EinheitId = string;
 export type MietverhaeltnisId = string;
+export type MieterId = string;
 export type DokumentId = string;
 export type TransaktionId = string;
 export type BenutzerId = string;
@@ -132,6 +133,34 @@ export type EinheitEingabe = Pick<
   | "bemerkung"
 >;
 
+export interface Mieter {
+  id: MieterId;
+  anrede: string | null;
+  vorname: string | null;
+  nachname: string | null;
+  firma: string | null;
+  anzeigename: string;
+  iban: string | null;
+  telefon: string | null;
+  eMail: string | null;
+  anschrift: string | null;
+  bemerkung: string | null;
+  anzahlMietverhaeltnisse: number;
+}
+
+export type MieterEingabe = {
+  id?: MieterId;
+  anrede?: string | null;
+  vorname?: string | null;
+  nachname?: string | null;
+  firma?: string | null;
+  iban?: string | null;
+  telefon?: string | null;
+  eMail?: string | null;
+  anschrift?: string | null;
+  bemerkung?: string | null;
+};
+
 export interface Mietverhaeltnis {
   id: MietverhaeltnisId;
   einheitId: EinheitId;
@@ -143,6 +172,7 @@ export interface Mietverhaeltnis {
   objektBezeichnung: string;
   gesellschaftId: GesellschaftId;
   gesellschaftName: string;
+  mieterId: MieterId | null;
   mieterName: string;
   iban: string | null;
   beginn: string | null; // ISO-Datum
@@ -159,8 +189,6 @@ export interface Mietverhaeltnis {
 export type MietverhaeltnisEingabe = Pick<
   Mietverhaeltnis,
   | "einheitId"
-  | "mieterName"
-  | "iban"
   | "beginn"
   | "ende"
   | "letzteMieterhoehung"
@@ -168,7 +196,7 @@ export type MietverhaeltnisEingabe = Pick<
   | "nkVorauszahlung"
   | "status"
   | "bemerkung"
-> & { id?: MietverhaeltnisId };
+> & { id?: MietverhaeltnisId; mieterId: MieterId };
 
 export interface SollstellungLauf {
   id: string;

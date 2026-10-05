@@ -18,7 +18,8 @@ import {
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import { STATUS_LABEL } from "@/lib/constants";
-import type { Einheit, Mietverhaeltnis, MietverhaeltnisStatus } from "@/types";
+import type { Einheit, Mieter, Mietverhaeltnis, MietverhaeltnisStatus } from "@/types";
+import { text } from "./format";
 
 const STATUS: MietverhaeltnisStatus[] = [
   "aktiv",
@@ -35,25 +36,9 @@ const zahlFeld = z
     "Bitte Zahl angeben",
   );
 
-function ibanNormalisieren(wert: string): string {
-  return wert.replace(/\s+/g, "").toUpperCase();
-}
-
 const schema = z.object({
   einheitId: z.string().trim().min(1, "Bitte Einheit wählen"),
-  mieterName: z.string().trim().min(2, "Bitte Mieter angeben"),
-  iban: z
-    .string()
-    .trim()
-    .transform(ibanNormalisieren)
-    .refine(
-      (v) =>
-        v === "" ||
-        (v.length >= 15 &&
-          v.length <= 34 &&
-          /^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(v)),
-      "Bitte gültige IBAN angeben",
-    ),
+  mieterId: z.string().trim().min(1, "Bitte Mieter wählen"),
   beginn: z.string(),
   ende: z.string(),
   letzteMieterhoehung: z.string(),
@@ -84,6 +69,7 @@ function alsText(wert: number | null | undefined): string {
 export function MietverhaeltnisForm({
   mietverhaeltnis,
   einheiten,
+  mieter,
   vorauswahlEinheitId,
   formId = "mietverhaeltnis",
   onDone,
@@ -91,6 +77,7 @@ export function MietverhaeltnisForm({
 }: {
   mietverhaeltnis?: Mietverhaeltnis;
   einheiten: Einheit[];
+  mieter: Mieter[];
   vorauswahlEinheitId?: string | null;
   formId?: string;
   onDone: () => void;
@@ -103,8 +90,7 @@ export function MietverhaeltnisForm({
     resolver: zodResolver(schema),
     defaultValues: {
       einheitId: mietverhaeltnis?.einheitId ?? vorauswahlEinheitId ?? "",
-      mieterName: mietverhaeltnis?.mieterName ?? "",
-      iban: mietverhaeltnis?.iban ?? "",
+      mieterId: mietverhaeltnis?.mieterId ?? "",
       beginn: mietverhaeltnis?.beginn ?? "",
       ende: mietverhaeltnis?.ende ?? "",
       letzteMieterhoehung: mietverhaeltnis?.letzteMieterhoehung ?? "",
@@ -115,13 +101,16 @@ export function MietverhaeltnisForm({
     },
   });
 
+  const gewaehlterMieterId = form.watch("mieterId");
+  const gewaehlterMieter =
+    mieter.find((m) => m.id === gewaehlterMieterId) ?? null;
+
   const onSubmit = async (values: FormValues) => {
     try {
       await verwaltungApi.saveMietverhaeltnis({
         id: mietverhaeltnis?.id,
         einheitId: values.einheitId,
-        mieterName: values.mieterName,
-        iban: values.iban || null,
+        mieterId: values.mieterId,
         beginn: values.beginn || null,
         ende: values.ende || null,
         letzteMieterhoehung: values.letzteMieterhoehung || null,
@@ -177,23 +166,35 @@ export function MietverhaeltnisForm({
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="mieterName">Mieter</Label>
-        <Input id="mieterName" {...form.register("mieterName")} />
-        {fehler.mieterName ? (
-          <p className="text-xs text-danger">{fehler.mieterName.message}</p>
-        ) : null}
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor={`${formId}-iban`}>IBAN</Label>
-        <Input
-          id={`${formId}-iban`}
-          autoComplete="off"
-          spellCheck={false}
-          {...form.register("iban")}
+        <Label htmlFor={`${formId}-mieter`}>Mieter</Label>
+        <Controller
+          control={form.control}
+          name="mieterId"
+          render={({ field }) => (
+            <Select
+              value={field.value || undefined}
+              onValueChange={field.onChange}
+            >
+              <SelectTrigger id={`${formId}-mieter`} className="rounded-none">
+                <SelectValue placeholder="Mieter wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {mieter.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.anzeigename}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         />
-        {fehler.iban ? (
-          <p className="text-xs text-danger">{fehler.iban.message}</p>
+        {fehler.mieterId ? (
+          <p className="text-xs text-danger">{fehler.mieterId.message}</p>
+        ) : null}
+        {gewaehlterMieter ? (
+          <p className="text-xs text-text-muted">
+            IBAN: {text(gewaehlterMieter.iban)}
+          </p>
         ) : null}
       </div>
 

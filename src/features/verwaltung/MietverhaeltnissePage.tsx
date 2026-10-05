@@ -137,6 +137,7 @@ export function MietverhaeltnissePage() {
   const gesellschaften = useApi(() => verwaltungApi.listGesellschaften(), []);
   const objekte = useApi(() => verwaltungApi.listObjekte(), []);
   const einheiten = useApi(() => verwaltungApi.listEinheiten(), []);
+  const mieterListe = useApi(() => verwaltungApi.listMieter(), []);
   const { data, isLoading, isEmpty, reload } = useApi(
     () =>
       verwaltungApi.listMietverhaeltnisse({
@@ -236,6 +237,7 @@ export function MietverhaeltnissePage() {
               key="anlegen"
               formId="mietverhaeltnis-anlegen"
               einheiten={einheitenListe}
+              mieter={mieterListe.data?.items ?? []}
               onDone={() => {
                 setAnlegenOffen(false);
                 reload();
@@ -259,6 +261,7 @@ export function MietverhaeltnissePage() {
               formId={`mietverhaeltnis-bearbeiten-${bearbeiten.id}`}
               mietverhaeltnis={bearbeiten}
               einheiten={einheiten.data?.items ?? []}
+              mieter={mieterListe.data?.items ?? []}
               onDone={() => {
                 schliessen();
                 reload();

@@ -4,6 +4,8 @@ import type {
   EinheitEingabe,
   Gesellschaft,
   GesellschaftEingabe,
+  Mieter,
+  MieterEingabe,
   Mietverhaeltnis,
   MietverhaeltnisEingabe,
   Objekt,
@@ -101,6 +103,23 @@ function mapEinheit(row: Record<string, unknown>): Einheit {
   };
 }
 
+function mapMieter(row: Record<string, unknown>): Mieter {
+  return {
+    id: String(row.id),
+    anrede: (row.anrede as string | null) ?? null,
+    vorname: (row.vorname as string | null) ?? null,
+    nachname: (row.nachname as string | null) ?? null,
+    firma: (row.firma as string | null) ?? null,
+    anzeigename: String(row.anzeigename ?? ""),
+    iban: (row.iban as string | null) ?? null,
+    telefon: (row.telefon as string | null) ?? null,
+    eMail: (row.e_mail as string | null) ?? null,
+    anschrift: (row.anschrift as string | null) ?? null,
+    bemerkung: (row.bemerkung as string | null) ?? null,
+    anzahlMietverhaeltnisse: zahl(row.anzahl_mietverhaeltnisse),
+  };
+}
+
 function mapMietverhaeltnis(row: Record<string, unknown>): Mietverhaeltnis {
   return {
     id: String(row.id),
@@ -113,7 +132,8 @@ function mapMietverhaeltnis(row: Record<string, unknown>): Mietverhaeltnis {
     objektBezeichnung: (row.objekt_bezeichnung as string | null) ?? "",
     gesellschaftId: String(row.gesellschaft_id ?? ""),
     gesellschaftName: (row.gesellschaft_name as string | null) ?? "",
-    mieterName: String(row.mieter_name),
+    mieterId: (row.mieter_id as string | null) ?? null,
+    mieterName: String(row.mieter_name ?? ""),
     iban: (row.iban as string | null) ?? null,
     beginn: (row.beginn as string | null) ?? null,
     ende: (row.ende as string | null) ?? null,
@@ -125,6 +145,18 @@ function mapMietverhaeltnis(row: Record<string, unknown>): Mietverhaeltnis {
     status: row.status as Mietverhaeltnis["status"],
     bemerkung: (row.bemerkung as string | null) ?? null,
   };
+}
+
+function mieterAnzeigename(input: {
+  vorname?: string | null;
+  nachname?: string | null;
+  firma?: string | null;
+}): string {
+  const person = [input.vorname, input.nachname]
+    .map((t) => t?.trim())
+    .filter(Boolean)
+    .join(" ");
+  return person || input.firma?.trim() || "";
 }
 
 // ------------------------------------------------------------------- API
@@ -254,6 +286,95 @@ export const verwaltungApi = {
     if (error) throw error;
   },
 
+  // --------------------------------------------------------------- Mieter
+  async listMieter(): Promise<Paginated<Mieter>> {
+    const { data, error, count } = await supabase
+      .from("v_mieter")
+      .select("*", { count: "exact" })
+      .order("anzeigename", { ascending: true });
+    if (error) throw error;
+    const items = (data ?? []).map(mapMieter);
+    return { items, gesamt: count ?? items.length };
+  },
+
+  async saveMieter(input: MieterEingabe): Promise<string> {
+    const vorname = textOderNull(input.vorname);
+    const nachname = textOderNull(input.nachname);
+    const firma = textOderNull(input.firma);
+    if (!nachname && !firma) {
+      throw new Error("Bitte Nachname oder Firma angeben");
+    }
+    const iban = textOderNull(input.iban?.replace(/\s+/g, "").toUpperCase());
+    const anzeigename = mieterAnzeigename({ vorname, nachname, firma });
+    const werte = {
+      typ: "mieter",
+      anrede: textOderNull(input.anrede),
+      vorname,
+      nachname,
+      firma,
+      iban,
+      telefon: textOderNull(input.telefon),
+      e_mail: textOderNull(input.eMail),
+      anschrift: textOderNull(input.anschrift),
+      bemerkung: textOderNull(input.bemerkung),
+    };
+
+    let mieterId = input.id;
+    if (mieterId) {
+      const { error } = await supabase
+        .from("personen")
+        .update(werte)
+        .eq("id", mieterId)
+        .eq("typ", "mieter");
+      if (error) throw error;
+    } else {
+      const { data, error } = await supabase
+        .from("personen")
+        .insert(werte)
+        .select("id")
+        .single();
+      if (error) throw error;
+      mieterId = String(data.id);
+    }
+
+    // Denorm auf verknüpfte Mietverhältnisse (Sollstellung-Snapshot)
+    const { data: links, error: linkError } = await supabase
+      .from("mietverhaeltnis_personen")
+      .select("mietverhaeltnis_id")
+      .eq("person_id", mieterId)
+      .eq("rolle", "hauptmieter");
+    if (linkError) throw linkError;
+    const mvIds = (links ?? []).map((r) => r.mietverhaeltnis_id as string);
+    if (mvIds.length > 0) {
+      const { error: denormError } = await supabase
+        .from("mietverhaeltnisse")
+        .update({ mieter_name: anzeigename, iban })
+        .in("id", mvIds);
+      if (denormError) throw denormError;
+    }
+
+    return mieterId;
+  },
+
+  async deleteMieter(id: string): Promise<void> {
+    const { count, error: countError } = await supabase
+      .from("mietverhaeltnis_personen")
+      .select("*", { count: "exact", head: true })
+      .eq("person_id", id);
+    if (countError) throw countError;
+    if ((count ?? 0) > 0) {
+      throw new Error(
+        "Mieter ist noch mit Mietverhältnissen verknüpft und kann nicht gelöscht werden",
+      );
+    }
+    const { error } = await supabase
+      .from("personen")
+      .delete()
+      .eq("id", id)
+      .eq("typ", "mieter");
+    if (error) throw error;
+  },
+
   // ------------------------------------------------------- Mietverhältnisse
   async listMietverhaeltnisse(filter?: {
     gesellschaftId?: string | null;
@@ -277,10 +398,25 @@ export const verwaltungApi = {
   },
 
   async saveMietverhaeltnis(input: MietverhaeltnisEingabe): Promise<void> {
+    const { data: person, error: personError } = await supabase
+      .from("personen")
+      .select("id, vorname, nachname, firma, iban")
+      .eq("id", input.mieterId)
+      .eq("typ", "mieter")
+      .single();
+    if (personError) throw personError;
+
+    const anzeigename = mieterAnzeigename({
+      vorname: person.vorname as string | null,
+      nachname: person.nachname as string | null,
+      firma: person.firma as string | null,
+    });
+    const iban = (person.iban as string | null) ?? null;
+
     const werte = {
       einheit_id: input.einheitId,
-      mieter_name: input.mieterName.trim(),
-      iban: textOderNull(input.iban?.replace(/\s+/g, "").toUpperCase()),
+      mieter_name: anzeigename,
+      iban,
       beginn: input.beginn || null,
       ende: input.ende || null,
       letzte_mieterhoehung: input.letzteMieterhoehung || null,
@@ -290,13 +426,42 @@ export const verwaltungApi = {
       bemerkung: textOderNull(input.bemerkung),
     };
 
-    const { error } = input.id
-      ? await supabase
-          .from("mietverhaeltnisse")
-          .update(werte)
-          .eq("id", input.id)
-      : await supabase.from("mietverhaeltnisse").insert(werte);
-    if (error) throw error;
+    let mietverhaeltnisId = input.id;
+    if (mietverhaeltnisId) {
+      const { error } = await supabase
+        .from("mietverhaeltnisse")
+        .update(werte)
+        .eq("id", mietverhaeltnisId);
+      if (error) throw error;
+    } else {
+      const { data, error } = await supabase
+        .from("mietverhaeltnisse")
+        .insert(werte)
+        .select("id")
+        .single();
+      if (error) throw error;
+      mietverhaeltnisId = String(data.id);
+    }
+
+    // Hauptmieter-Junction ersetzen
+    const { error: delError } = await supabase
+      .from("mietverhaeltnis_personen")
+      .delete()
+      .eq("mietverhaeltnis_id", mietverhaeltnisId)
+      .eq("rolle", "hauptmieter");
+    if (delError) throw delError;
+
+    const { error: linkError } = await supabase
+      .from("mietverhaeltnis_personen")
+      .upsert(
+        {
+          mietverhaeltnis_id: mietverhaeltnisId,
+          person_id: input.mieterId,
+          rolle: "hauptmieter",
+        },
+        { onConflict: "mietverhaeltnis_id,person_id" },
+      );
+    if (linkError) throw linkError;
   },
 
   async deleteMietverhaeltnis(id: string): Promise<void> {
