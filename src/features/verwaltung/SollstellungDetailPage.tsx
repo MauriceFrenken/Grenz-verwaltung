@@ -24,6 +24,7 @@ import { buchhaltungApi } from "@/api/buchhaltung";
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import { STATUS_LABEL } from "@/lib/constants";
+import { meldeEbicsSync } from "@/lib/ebics/sync-toast";
 import { cn } from "@/lib/utils";
 import type {
   SollstellungPosition,
@@ -181,12 +182,9 @@ export function SollstellungDetailPage({ id }: { id: string }) {
       const res = await ebicsUmstaetzeHolenFn({
         data: { supabaseAccessToken: token, laufId: id },
       });
-      const fehler = res.ergebnisse.filter((e) => e.status === "fehler");
-      if (fehler.length > 0) {
-        toast.error(`${res.anzahlNeuGesamt} neu · ${fehler.length} Fehler`);
-      } else {
-        toast.success(`${res.anzahlNeuGesamt} neue Buchungen`);
-      }
+      meldeEbicsSync(res, {
+        zeitraumLabel: monatLabel(lauf.data?.zeitraum ?? ""),
+      });
       reloadAlles();
     } catch (err) {
       toast.error(apiFehlermeldung(err));
@@ -353,7 +351,11 @@ export function SollstellungDetailPage({ id }: { id: string }) {
               ))}
             </ul>
           </div>
-        ) : null}
+        ) : (
+          <p className="mb-6 text-sm text-text-muted">
+            Keine Bankauszüge für {monatLabel(l.zeitraum)}
+          </p>
+        )}
 
         <div className="mb-4 flex flex-wrap gap-1">
           {STATUS_FILTER.map((s) => {

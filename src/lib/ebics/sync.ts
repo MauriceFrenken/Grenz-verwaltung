@@ -19,6 +19,15 @@ export type EbicsSyncKundeErgebnis = {
   status: "ok" | "skip" | "fehler";
   anzahlNeu: number;
   meldung?: string;
+  /** Bank-Antwort ohne Auszugsdateien (nicht: schon importiert). */
+  leer?: boolean;
+};
+
+export type EbicsSyncLaufErgebnis = {
+  ergebnisse: EbicsSyncKundeErgebnis[];
+  anzahlNeuGesamt: number;
+  /** Abruf ok, Bank lieferte keine Dateien, Lauf hat weiterhin 0 Auszüge. */
+  bankLeer: boolean;
 };
 
 function monatsgrenzen(zeitraum: string): { von: string; bis: string } {
@@ -146,8 +155,9 @@ async function syncEinKunde(
     const { ebicsC53Abrufen } = await import("@/lib/ebics/client");
     const orderData = await ebicsC53Abrufen(admin, kunde, von, bis);
 
+    const bankLeer = orderData.length === 0;
     let anzahlNeu = 0;
-    if (orderData.length > 0) {
+    if (!bankLeer) {
       const known = await bestehendeFingerprints(admin, laufId);
       const xmls = await extractCamt053Xmls(orderData);
 
@@ -190,6 +200,7 @@ async function syncEinKunde(
       gesellschaftId: kunde.gesellschaft_id,
       status: "ok",
       anzahlNeu,
+      leer: bankLeer,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -215,10 +226,7 @@ async function syncEinKunde(
 export async function syncEbicsFuerLauf(
   admin: SupabaseClient,
   laufId: string,
-): Promise<{
-  ergebnisse: EbicsSyncKundeErgebnis[];
-  anzahlNeuGesamt: number;
-}> {
+): Promise<EbicsSyncLaufErgebnis> {
   const { data: lauf, error: laufErr } = await admin
     .from("sollstellung_laeufe")
     .select("id, zeitraum, gesellschaft_id, status")
@@ -246,9 +254,25 @@ export async function syncEbicsFuerLauf(
   });
   if (matchErr) throw new Error(matchErr.message);
 
+  const anzahlNeuGesamt = ergebnisse.reduce((s, e) => s + e.anzahlNeu, 0);
+  const ok = ergebnisse.filter((e) => e.status === "ok");
+  const alleAbrufeLeer =
+    ok.length > 0 && ok.every((e) => e.leer === true) && anzahlNeuGesamt === 0;
+
+  let bankLeer = false;
+  if (alleAbrufeLeer) {
+    const { count, error: countErr } = await admin
+      .from("bankauszuege")
+      .select("id", { count: "exact", head: true })
+      .eq("lauf_id", laufId);
+    if (countErr) throw new Error(countErr.message);
+    bankLeer = (count ?? 0) === 0;
+  }
+
   return {
     ergebnisse,
-    anzahlNeuGesamt: ergebnisse.reduce((s, e) => s + e.anzahlNeu, 0),
+    anzahlNeuGesamt,
+    bankLeer,
   };
 }
 

@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { buchhaltungApi } from "@/api/buchhaltung";
 import { verwaltungApi } from "@/api/verwaltung";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
+import { meldeEbicsSync } from "@/lib/ebics/sync-toast";
 import type { SollstellungLauf } from "@/types";
 import { ALLE } from "./StammdatenFilter";
 import { VerwaltungTabellenLeiste } from "./TabellenSuche";
@@ -149,16 +150,10 @@ export function SollstellungPage() {
           const res = await ebicsUmstaetzeHolenFn({
             data: { supabaseAccessToken: token, laufId: id },
           });
-          const fehler = res.ergebnisse.filter((e) => e.status === "fehler");
-          if (fehler.length > 0) {
-            toast.error(
-              `Sollstellung erzeugt · ${res.anzahlNeuGesamt} neu · ${fehler.length} Fehler`,
-            );
-          } else {
-            toast.success(
-              `Sollstellung erzeugt · ${res.anzahlNeuGesamt} Buchungen`,
-            );
-          }
+          meldeEbicsSync(res, {
+            zeitraumLabel: monatLabel(zeitraum),
+            prefix: "Sollstellung erzeugt",
+          });
         } catch (syncErr) {
           toast.error(apiFehlermeldung(syncErr));
         }
