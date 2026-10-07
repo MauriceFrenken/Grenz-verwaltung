@@ -14,7 +14,7 @@ Branch: `nightly/management-board`
 - [x] M6 Salesforce – Board-Adapter `src/lib/integrations/salesforce.ts` mit Mock und Live-Gerüst (REST, Upsert über External ID `Board_ID__c` auf `Real_Estate__c`), getrennt vom bestehenden Exposé-Export. `/board/pipeline` zeigt die Ankäufe als Kanban nach Phase mit Faktor, EK-Bedarf und „passt das Eigenkapital?“ aus der Liquiditätsplanung sowie Käufer und Reservierungen je Aufteiler-Einheit mit Statusabgleich; Feldliste in docs/salesforce-feldliste.md, 8 Tests.
 - [x] M7 Cockpit – `/board` zeigt die sechs Kern-KPIs in der Reihenfolge des Briefs, ein Lagebild mit drei Aussagen samt Konsequenz (Liquiditätslücke, EK-Bedarf der Pipeline gegen freies EK, auslaufende Finanzierungen), „Fällig diese Woche“, „Zu entscheiden“ und die 13-Wochen-Kurve. Die gemeinsame Prüfliste `/board/pruefliste` führt Fälle aus Darlehen, Immobilien, Liquidität, Ablage und Salesforce zusammen, verlinkt ins Modul und lässt sich abhaken (Repository `pruefStatusSetzen`); 5 Tests.
 - [x] M8 Politur – Alle Board-Seiten in Hell und Dunkel bei 768 px, 1024 px und 1280 px durchgeklickt: horizontales Überlaufen auf Tablet behoben (Kopfzeile, Cockpit-Spalten, Ampel-Screenreadertexte), KPI-Raster und Leerzustände bei Gesellschaftsfilter (z. B. Muster Makler) geprüft, keine Laufzeitfehler. Einzige Konsolenmeldung ist ein Hydration-Hinweis der Entwickler-Werkzeuge (`data-tsd-source`) in `__root.tsx`, der nur im Dev-Server auftritt und den Build nicht betrifft.
-- [ ] Morgenbericht
+- [x] Morgenbericht – `docs/MORGENBERICHT.md` mit den drei Kernerkenntnissen, Stand je Meilenstein, Startbefehlen, offenen Annahmen und Hinweisen für Bens Review. Alle Meilensteine sind erledigt, nichts ist blockiert.
 
 ## Annahmen
 
@@ -29,4 +29,4 @@ Branch: `nightly/management-board`
 
 ## Blockiert / offen
 
-(noch nichts)
+Nichts blockiert. Offene Punkte für echte Daten stehen in `docs/MORGENBERICHT.md`, Abschnitt 6.
