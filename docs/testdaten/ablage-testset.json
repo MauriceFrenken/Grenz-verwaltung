@@ -1,0 +1,275 @@
+{
+  "beschreibung": "30 fiktive Eingangs-Mails für die Messung von Ablage v2. Alle Namen, Adressen und Beträge sind erfunden. 'erwartet' ist die fachlich richtige Ablage; 'ordner' ist relativ zum Gesellschaftsordner in OneDrive.",
+  "mails": [
+    {
+      "id": "M01",
+      "empfangen": "2026-09-14T08:12:00",
+      "absender": "rechnung@dachdecker-beispiel.example",
+      "betreff": "Rechnung 2026-4411 Dachrinnenreinigung IM-2018-002",
+      "text": "Sehr geehrte Damen und Herren, anbei unsere Rechnung vom 12.09.2026 für die Reinigung der Dachrinnen im Objekt IM-2018-002. Rechnungsbetrag: 1.428,00 €. Zahlbar bis 26.09.2026.",
+      "anhang": "Rechnung_2026-4411.pdf",
+      "erwartet": { "gesellschaft": "MI", "dokumenttyp": "Rechnung", "bezugId": "IM-2018-002", "ordner": "Objekte/IM-2018-002/Rechnungen/2026" }
+    },
+    {
+      "id": "M02",
+      "empfangen": "2026-09-15T10:40:00",
+      "absender": "info@sanitaer-probe.example",
+      "betreff": "Ihre Rechnung Heizungswartung",
+      "text": "Guten Tag, für die Wartung der Heizungsanlage in der Lindenallee 5, Köln berechnen wir 2.180,50 €. Rechnungsdatum 15.09.2026.",
+      "anhang": "RE-77812.pdf",
+      "erwartet": { "gesellschaft": "MI", "dokumenttyp": "Rechnung", "bezugId": "IM-2018-002", "ordner": "Objekte/IM-2018-002/Rechnungen/2026" }
+    },
+    {
+      "id": "M03",
+      "empfangen": "2026-09-30T16:05:00",
+      "absender": "firmenkunden@vb-beispieltal.example",
+      "betreff": "Zinsmitteilung zum Darlehen BK-2018-014",
+      "text": "Sehr geehrte Kundin, sehr geehrter Kunde, zum 30.09.2026 werden Zinsen in Höhe von 9.412,77 € für Ihr Darlehen BK-2018-014 fällig. Volksbank Beispieltal eG",
+      "anhang": "Zinsmitteilung_Q3_2026.pdf",
+      "erwartet": { "gesellschaft": "MI", "dokumenttyp": "Zinsmitteilung", "bezugId": "DL-2018-002", "ordner": "Finanzen/Darlehen/DL-2018-002" }
+    },
+    {
+      "id": "M04",
+      "empfangen": "2026-10-01T07:30:00",
+      "absender": "noreply@sparkasse-musterstadt.example",
+      "betreff": "Ihr Kontoauszug September 2026",
+      "text": "Für das Konto der Muster Capital GmbH steht der Kontoauszug Nr. 9/2026 vom 30.09.2026 bereit.",
+      "anhang": "Kontoauszug_09_2026.pdf",
+      "erwartet": { "gesellschaft": "MC", "dokumenttyp": "Kontoauszug", "bezugId": null, "ordner": "Finanzen/Bank/2026" }
+    },
+    {
+      "id": "M05",
+      "empfangen": "2026-07-24T19:02:00",
+      "absender": "rosa.vorlage@post.example",
+      "betreff": "Kündigung meiner Wohnung",
+      "text": "Hiermit kündige ich, Rosa Vorlage, meine Wohnung fristgerecht zum nächstmöglichen Termin. Bitte bestätigen Sie mir den Eingang. Datum: 24.07.2026",
+      "anhang": "Kuendigung_Vorlage.pdf",
+      "erwartet": { "gesellschaft": "MI", "dokumenttyp": "Kündigung", "bezugId": "IM-2018-002", "ordner": "Objekte/IM-2018-002/Mietverträge" }
+    },
+    {
+      "id": "M06",
+      "empfangen": "2026-09-02T11:20:00",
+      "absender": "felix.fiktiv@post.example",
+      "betreff": "Antwort auf Ihr Mieterhöhungsverlangen",
+      "text": "Sehr geehrte Damen und Herren, ich habe Ihr Schreiben zur Mieterhöhung für meine Wohnung in der Uferstraße 12 erhalten und stimme zu. Felix Fiktiv, 02.09.2026",
+      "anhang": "Zustimmung_Mieterhoehung.pdf",
+      "erwartet": { "gesellschaft": "MO", "dokumenttyp": "Mieterhöhung", "bezugId": "IM-2016-001", "ordner": "Objekte/IM-2016-001/Mietverträge" }
+    },
+    {
+      "id": "M07",
+      "empfangen": "2026-08-18T09:00:00",
+      "absender": "abrechnung@hausverwaltung-muster.example",
+      "betreff": "Nebenkostenabrechnung 2025 IM-2021-004",
+      "text": "Anbei die Nebenkostenabrechnung 2025 für das Objekt Kastanienhof (IM-2021-004) vom 15.08.2026. Gesamtkosten 38.214,60 €.",
+      "anhang": "NK_2025_Kastanienhof.pdf",
+      "erwartet": { "gesellschaft": "GbR", "dokumenttyp": "Nebenkostenabrechnung", "bezugId": "IM-2021-004", "ordner": "Objekte/IM-2021-004/Nebenkosten" }
+    },
+    {
+      "id": "M08",
+      "empfangen": "2026-09-21T14:45:00",
+      "absender": "kanzlei@notarin-beispiel.example",
+      "betreff": "Kaufvertrag WE 05 Gartenstraße 21 – beurkundete Fassung",
+      "text": "Sehr geehrte Damen und Herren, anbei erhalten Sie die beglaubigte Abschrift des Kaufvertrags über die Wohnung WE 05 in der Gartenstraße 21, Düsseldorf, beurkundet am 18.09.2026. Notarin Dr. Erika Beispiel",
+      "anhang": "UR_1123_2026_Kaufvertrag.pdf",
+      "erwartet": { "gesellschaft": "MV", "dokumenttyp": "Kaufvertrag", "bezugId": "IM-2025-006", "ordner": "Objekte/IM-2025-006/Kaufvertrag" }
+    },
+    {
+      "id": "M09",
+      "empfangen": "2026-09-10T12:00:00",
+      "absender": "poststelle@finanzamt-musterstadt.example",
+      "betreff": "Bescheid über Körperschaftsteuer 2025",
+      "text": "Bescheid für 2025 über Körperschaftsteuer und Solidaritätszuschlag für die Muster Holding GmbH vom 08.09.2026. Festgesetzt: 41.880,00 €.",
+      "anhang": "KSt_Bescheid_2025.pdf",
+      "erwartet": { "gesellschaft": "MH", "dokumenttyp": "Steuerbescheid", "bezugId": null, "ordner": "Steuern/2026" }
+    },
+    {
+      "id": "M10",
+      "empfangen": "2026-09-25T15:10:00",
+      "absender": "buchhaltung@ersatzteile-muster.example",
+      "betreff": "Rechnung 55102 Hydraulikpumpe",
+      "text": "Rechnung an Muster Baumaschinen GmbH über eine Hydraulikpumpe für Bagger. Rechnungsdatum 24.09.2026, Betrag 6.940,00 € netto.",
+      "anhang": "Rechnung_55102.pdf",
+      "erwartet": { "gesellschaft": "MB", "dokumenttyp": "Rechnung", "bezugId": null, "ordner": "Buchhaltung/Eingangsrechnungen/2026" }
+    },
+    {
+      "id": "M11",
+      "empfangen": "2026-08-03T08:55:00",
+      "absender": "service@versicherung-beispiel.example",
+      "betreff": "Versicherungsschein Wohngebäudeversicherung",
+      "text": "Ihr neuer Versicherungsschein für das Wohngebäude Uferstraße 12, 40000 Düsseldorf, gültig ab 01.08.2026. Jahresprämie 7.312,00 €.",
+      "anhang": "Versicherungsschein_2026.pdf",
+      "erwartet": { "gesellschaft": "MO", "dokumenttyp": "Versicherung", "bezugId": "IM-2016-001", "ordner": "Objekte/IM-2016-001/Versicherungen" }
+    },
+    {
+      "id": "M12",
+      "empfangen": "2026-03-02T17:30:00",
+      "absender": "max.mustermann@muster-holding.example",
+      "betreff": "Darlehensvertrag DL-2026-021 unterschrieben",
+      "text": "Anbei der unterschriebene Darlehensvertrag DL-2026-021 zur Sanierung Gartenquartier vom 01.03.2026.",
+      "anhang": "Darlehensvertrag_DL-2026-021.pdf",
+      "erwartet": { "gesellschaft": "MV", "dokumenttyp": "Darlehensvertrag", "bezugId": "DL-2026-021", "ordner": "Finanzen/Darlehen/DL-2026-021" }
+    },
+    {
+      "id": "M13",
+      "empfangen": "2026-09-28T13:00:00",
+      "absender": "billing@softwarehaus-beispiel.example",
+      "betreff": "Invoice / Rechnung 2026-0931 Entwicklung Auktionsplattform",
+      "text": "Rechnung an Muster Beteiligungs GmbH für Entwicklungsleistungen September. Datum 28.09.2026, Betrag 28.000,00 €.",
+      "anhang": "Rechnung_2026-0931.pdf",
+      "erwartet": { "gesellschaft": "MBT", "dokumenttyp": "Rechnung", "bezugId": null, "ordner": "Buchhaltung/Eingangsrechnungen/2026" }
+    },
+    {
+      "id": "M14",
+      "empfangen": "2026-09-29T09:15:00",
+      "absender": "info@handwerk-probe.example",
+      "betreff": "Rechnung Reparatur Dachrinne Düsseldorf",
+      "text": "Für die Reparatur der Dachrinne an Ihrem Haus in Düsseldorf erlauben wir uns 640,00 € zu berechnen. Datum 29.09.2026.",
+      "anhang": "Rechnung_8812.pdf",
+      "erwartet": { "gesellschaft": "MV", "dokumenttyp": "Rechnung", "bezugId": "IM-2025-006", "ordner": "Objekte/IM-2025-006/Rechnungen/2026" }
+    },
+    {
+      "id": "M15",
+      "empfangen": "2026-10-01T07:31:00",
+      "absender": "noreply@vb-rhein-muster.example",
+      "betreff": "Kontoauszug 9/2026",
+      "text": "Der Kontoauszug 9/2026 für die Muster Investment GmbH vom 30.09.2026 liegt im Postfach bereit.",
+      "anhang": "Kontoauszug_9_2026.pdf",
+      "erwartet": { "gesellschaft": "MV", "dokumenttyp": "Kontoauszug", "bezugId": null, "ordner": "Finanzen/Bank/2026" }
+    },
+    {
+      "id": "M16",
+      "empfangen": "2026-01-12T10:00:00",
+      "absender": "max.mustermann@muster-holding.example",
+      "betreff": "Zinsbescheinigung 2025 Gesellschafterdarlehen DL-2020-024",
+      "text": "Anbei die Zinsbescheinigung 2025 für das Gesellschafterdarlehen DL-2020-024 vom 10.01.2026.",
+      "anhang": "Zinsbescheinigung_2025.pdf",
+      "erwartet": { "gesellschaft": "MV", "dokumenttyp": "Zinsmitteilung", "bezugId": "DL-2020-024", "ordner": "Finanzen/Darlehen/DL-2020-024" }
+    },
+    {
+      "id": "M17",
+      "empfangen": "2026-09-19T11:11:00",
+      "absender": "rechnung@bau-muster.example",
+      "betreff": "Abschlagsrechnung Nr. 6 Sanierung",
+      "text": "Abschlagsrechnung Nr. 6 für die Sanierung Bonner Straße 40, Bonn. Rechnungsdatum 18.09.2026, Betrag 148.500,00 €.",
+      "anhang": "AR_06_Bonner_Strasse.pdf",
+      "erwartet": { "gesellschaft": "MV", "dokumenttyp": "Rechnung", "bezugId": "IM-2024-005", "ordner": "Objekte/IM-2024-005/Rechnungen/2026" }
+    },
+    {
+      "id": "M18",
+      "empfangen": "2026-09-30T18:00:00",
+      "absender": "buchhaltung@muster-makler.example",
+      "betreff": "Rechnung Provision ETW Beispielweg",
+      "text": "Rechnung der Muster Makler GmbH über die Käuferprovision zur ETW Beispielweg. Datum 30.09.2026, Betrag 11.900,00 €.",
+      "anhang": "Provision_Beispielweg.pdf",
+      "erwartet": { "gesellschaft": "MM", "dokumenttyp": "Rechnung", "bezugId": null, "ordner": "Buchhaltung/Eingangsrechnungen/2026" }
+    },
+    {
+      "id": "M19",
+      "empfangen": "2026-09-05T16:20:00",
+      "absender": "vermietung@muster-immobilien.example",
+      "betreff": "Mietvertrag WE 07 unterschrieben",
+      "text": "Anbei der unterschriebene Mietvertrag für die Wohnung WE 07 im Parkweg 3, Mönchengladbach, Mietbeginn 01.10.2026.",
+      "anhang": "Mietvertrag_WE07.pdf",
+      "erwartet": { "gesellschaft": "MI", "dokumenttyp": "Mietvertrag", "bezugId": "IM-2019-003", "ordner": "Objekte/IM-2019-003/Mietverträge" }
+    },
+    {
+      "id": "M20",
+      "empfangen": "2026-09-22T06:00:00",
+      "absender": "newsletter@immobilienmesse.example",
+      "betreff": "Einladung: Immobilienmesse Rhein 2026",
+      "text": "Sichern Sie sich jetzt Ihr Ticket für die Immobilienmesse am 12.11.2026. Vorträge, Networking und mehr.",
+      "anhang": "",
+      "erwartet": { "gesellschaft": null, "dokumenttyp": "Sonstiges", "bezugId": null, "ordner": "Eingang/Zu klären" }
+    },
+    {
+      "id": "M21",
+      "empfangen": "2026-09-08T09:30:00",
+      "absender": "kundenservice@stadtwerke-krefeld.example",
+      "betreff": "Rechnung Wasser Kastanienweg 8",
+      "text": "Ihre Jahresrechnung Wasser und Abwasser für die Abnahmestelle Kastanienweg 8, Krefeld. Rechnungsdatum 05.09.2026, Betrag 4.112,30 €.",
+      "anhang": "Jahresrechnung_Wasser.pdf",
+      "erwartet": { "gesellschaft": "GbR", "dokumenttyp": "Rechnung", "bezugId": "IM-2021-004", "ordner": "Objekte/IM-2021-004/Rechnungen/2026" }
+    },
+    {
+      "id": "M22",
+      "empfangen": "2026-07-29T10:10:00",
+      "absender": "vermietung@muster-immobilien.example",
+      "betreff": "Mieterhöhungsverlangen Tilda Testmann IM-2018-002",
+      "text": "Kopie des Mieterhöhungsverlangens nach § 558 BGB an Tilda Testmann, Lindenhof WE 06, vom 29.07.2026.",
+      "anhang": "Mieterhoehung_Testmann.pdf",
+      "erwartet": { "gesellschaft": "MI", "dokumenttyp": "Mieterhöhung", "bezugId": "IM-2018-002", "ordner": "Objekte/IM-2018-002/Mietverträge" }
+    },
+    {
+      "id": "M23",
+      "empfangen": "2026-02-16T08:00:00",
+      "absender": "steueramt@stadt-koeln.example",
+      "betreff": "Grundsteuerbescheid 2026",
+      "text": "Grundsteuerbescheid für das Grundstück Lindenallee 5, Köln, Eigentümerin Muster Immobilien GmbH, vom 12.02.2026. Jahresbetrag 3.940,00 €.",
+      "anhang": "Grundsteuer_2026.pdf",
+      "erwartet": { "gesellschaft": "MI", "dokumenttyp": "Steuerbescheid", "bezugId": "IM-2018-002", "ordner": "Steuern/2026" }
+    },
+    {
+      "id": "M24",
+      "empfangen": "2026-10-01T07:32:00",
+      "absender": "noreply@vb-musterland.example",
+      "betreff": "Kontoauszug September",
+      "text": "Kontoauszug für Muster Baumaschinen GmbH, Auszug 9 vom 30.09.2026.",
+      "anhang": "Kontoauszug_MB_09.pdf",
+      "erwartet": { "gesellschaft": "MB", "dokumenttyp": "Kontoauszug", "bezugId": null, "ordner": "Finanzen/Bank/2026" }
+    },
+    {
+      "id": "M25",
+      "empfangen": "2026-06-20T12:00:00",
+      "absender": "firmenkunden@sparkasse-musterstadt.example",
+      "betreff": "Zinsanpassung Darlehen BK-2020-004",
+      "text": "Für Ihr Darlehen BK-2020-004 passen wir den Sollzins zum 01.07.2026 an. Die neue Rate beträgt 3.120,00 €.",
+      "anhang": "Zinsanpassung.pdf",
+      "erwartet": { "gesellschaft": "MO", "dokumenttyp": "Zinsmitteilung", "bezugId": "DL-2020-009", "ordner": "Finanzen/Darlehen/DL-2020-009" }
+    },
+    {
+      "id": "M26",
+      "empfangen": "2026-09-17T15:00:00",
+      "absender": "kanzlei@stb-muster.example",
+      "betreff": "Honorarrechnung Jahresabschluss 2025",
+      "text": "Honorarrechnung für die Erstellung des Jahresabschlusses 2025 der Muster Holding GmbH. Datum 16.09.2026, Betrag 8.330,00 €.",
+      "anhang": "Honorar_JA_2025.pdf",
+      "erwartet": { "gesellschaft": "MH", "dokumenttyp": "Rechnung", "bezugId": null, "ordner": "Buchhaltung/Eingangsrechnungen/2026" }
+    },
+    {
+      "id": "M27",
+      "empfangen": "2026-05-04T09:40:00",
+      "absender": "service@versicherung-beispiel.example",
+      "betreff": "Versicherungsschein Maschinenbruchversicherung",
+      "text": "Versicherungsschein für die Maschinenbruchversicherung der Muster Baumaschinen GmbH ab 01.05.2026.",
+      "anhang": "VS_Maschinenbruch.pdf",
+      "erwartet": { "gesellschaft": "MB", "dokumenttyp": "Versicherung", "bezugId": null, "ordner": "Verträge/Versicherungen" }
+    },
+    {
+      "id": "M28",
+      "empfangen": "2026-09-26T10:05:00",
+      "absender": "hausmeister@service-beispiel.example",
+      "betreff": "Rechnung Hausmeisterdienst September",
+      "text": "Hausmeisterdienst September für Am Stadtpark, Mönchengladbach. Rechnungsdatum 25.09.2026, Betrag 690,00 €.",
+      "anhang": "HM_09_2026.pdf",
+      "erwartet": { "gesellschaft": "MI", "dokumenttyp": "Rechnung", "bezugId": "IM-2019-003", "ordner": "Objekte/IM-2019-003/Rechnungen/2026" }
+    },
+    {
+      "id": "M29",
+      "empfangen": "2026-09-30T20:15:00",
+      "absender": "kanzlei@notarin-beispiel.example",
+      "betreff": "Entwurf Kaufvertrag Mehrfamilienhaus Wuppertal",
+      "text": "Sehr geehrter Herr Mustermann, anbei der Entwurf des Kaufvertrags über das Mehrfamilienhaus in Wuppertal für die Muster Holding GmbH. Beurkundungstermin vorgesehen am 20.10.2026.",
+      "anhang": "Entwurf_KV_Wuppertal.pdf",
+      "erwartet": { "gesellschaft": "MH", "dokumenttyp": "Kaufvertrag", "bezugId": null, "ordner": "Verträge" }
+    },
+    {
+      "id": "M30",
+      "empfangen": "2026-10-02T08:20:00",
+      "absender": "hausmeister@service-beispiel.example",
+      "betreff": "Sammelrechnung Winterdienst Lindenhof und Am Stadtpark",
+      "text": "Sammelrechnung Winterdienst-Pauschale für Lindenhof und Am Stadtpark der Muster Immobilien GmbH. Datum 01.10.2026, Betrag 1.840,00 €.",
+      "anhang": "Sammelrechnung_Winter.pdf",
+      "erwartet": { "gesellschaft": "MI", "dokumenttyp": "Rechnung", "bezugId": null, "ordner": "Buchhaltung/Eingangsrechnungen/2026" }
+    }
+  ]
+}
