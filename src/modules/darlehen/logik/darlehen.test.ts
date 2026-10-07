@@ -374,7 +374,7 @@ describe("Auswertung auf Seed-Daten", () => {
     const f = faelligkeiten(staende, stichtag);
     expect(f[0].datum <= f.at(-1)!.datum).toBe(true);
     expect(f.find((x) => x.loan.id === "DL-2024-006")!.restschuld).toBe(
-      2_800_000,
+      2_000_000,
     );
   });
 

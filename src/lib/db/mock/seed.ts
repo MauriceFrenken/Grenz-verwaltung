@@ -261,8 +261,8 @@ const OBJEKTE: ObjektVorlage[] = [
     mieteQm: 10.8,
     zielQm: 12.0,
     kostenQm: 1.5,
-    kaufpreisQm: 3400,
-    marktQm: 5600,
+    kaufpreisQm: 2900,
+    marktQm: 6400,
   },
   {
     id: "IM-2025-006",
@@ -278,8 +278,8 @@ const OBJEKTE: ObjektVorlage[] = [
     mieteQm: 0,
     zielQm: 0,
     kostenQm: 1.2,
-    kaufpreisQm: 3900,
-    marktQm: 6300,
+    kaufpreisQm: 3300,
+    marktQm: 7200,
   },
 ];
 
@@ -534,7 +534,7 @@ function darlehen(stichtag: IsoDatum): Loan[] {
       lenderPartyId: "p-vb1",
       borrowerCompanyId: "c-mv",
       propertyId: "IM-2024-005",
-      principal: 2_800_000,
+      principal: 2_000_000,
       disbursementDate: "2024-05-10",
       rate: 0.046,
       fixedUntil: monatsendeIn(stichtag, 5),
@@ -551,7 +551,7 @@ function darlehen(stichtag: IsoDatum): Loan[] {
       lenderPartyId: "p-vb1",
       borrowerCompanyId: "c-mv",
       propertyId: "IM-2025-006",
-      principal: 3_200_000,
+      principal: 2_200_000,
       disbursementDate: "2025-08-20",
       rate: 0.041,
       fixedUntil: "2027-12-31",
@@ -723,7 +723,8 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
   const r = zufall(seed);
   const companies = gesellschaften();
   const parties = parteien();
-  const fensterStart = plusTage(stichtag, -365);
+  // volle 12 Vormonate plus laufender Monat, damit Monatsauswertungen vollständig sind
+  const fensterStart = monatsanfang(plusMonate(stichtag, -12));
 
   // --- Konten ---------------------------------------------------------------
   const hausbank: Record<string, string> = {
@@ -1083,7 +1084,7 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
       name: "Aufteilung Gartenquartier",
       purchasePrice: properties.find((p) => p.id === "IM-2025-006")!
         .purchasePrice,
-      renovationBudget: 1_650_000,
+      renovationBudget: 1_200_000,
       equity: 1_500_000,
       start: "2025-08-20",
       plannedEnd: "2027-12-31",
@@ -1138,7 +1139,7 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
     // Sanierung Aufteiler
     for (const pj of projects) {
       if (monat < monatsanfang(pj.start)) continue;
-      const anteil = pj.id === "pj-suedstadt" ? 0.045 : 0.06;
+      const anteil = pj.id === "pj-suedstadt" ? 0.045 : 0.075;
       buche(
         "c-mv",
         plusTage(monat, r.ganz(12, 25)),

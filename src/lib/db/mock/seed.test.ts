@@ -24,7 +24,7 @@ describe("Seed-Daten", () => {
 
   it("deckt 12 Monate Kontoumsätze ab", () => {
     const daten = d.transactions.map((t) => t.bookingDate).sort();
-    expect(daten[0] >= "2025-10-07").toBe(true);
+    expect(daten[0] >= "2025-10-01").toBe(true);
     expect(daten.at(-1)! <= STICHTAG).toBe(true);
     expect(
       new Set(daten.map((x) => x.slice(0, 7))).size,
