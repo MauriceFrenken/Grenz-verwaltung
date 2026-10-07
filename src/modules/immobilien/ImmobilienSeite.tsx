@@ -120,7 +120,7 @@ export function ImmobilienSeite() {
         unterzeile={`${bestand.length} Bestandsobjekte · ${projekte.length} Aufteiler-Projekte · ${objekte.reduce((s, o) => s + o.units.length, 0)} Einheiten`}
       />
 
-      <div className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <KpiKarte
           label="Soll-Miete / Monat"
           wert={euroKompakt(sollMiete)}

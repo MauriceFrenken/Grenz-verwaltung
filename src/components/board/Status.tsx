@@ -44,10 +44,18 @@ export function StatusBadge({
 }
 
 /** Nur der Punkt, z. B. in dichten Tabellen; Label für Screenreader. */
-export function AmpelPunkt({ ampel, label }: { ampel: Ampel; label?: string }) {
+export function AmpelPunkt({
+  ampel,
+  label,
+  className,
+}: {
+  ampel: Ampel;
+  label?: string;
+  className?: string;
+}) {
   return (
     <span
-      className="inline-flex items-center"
+      className={cn("inline-flex items-center", className)}
       title={label ?? AMPEL_LABEL[ampel]}
     >
       <span className={cn("size-2 rounded-full", PUNKT[ampel])} aria-hidden />

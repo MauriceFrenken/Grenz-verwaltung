@@ -132,7 +132,7 @@ export function DarlehenSeite() {
         }
       />
 
-      <div className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <KpiKarte
           label="Bankverbindlichkeiten"
           wert={euroKompakt(bankSumme)}
