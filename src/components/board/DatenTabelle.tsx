@@ -229,7 +229,8 @@ export function DatenTabelle<T>({
                       key={s.id}
                       className={cn(
                         "h-11 px-3 align-middle first:pl-4 last:pr-4",
-                        s.ausrichtung === "rechts" && "text-right tabular-nums",
+                        s.ausrichtung === "rechts" &&
+                          "whitespace-nowrap text-right tabular-nums",
                         s.optional && "hidden lg:table-cell",
                       )}
                     >
