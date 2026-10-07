@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, FolderInput, Info } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -16,24 +15,15 @@ import { Leerzustand } from "@/components/board/Leerzustand";
 import { SeitenSkelett } from "@/components/board/Skelett";
 import { StatusBadge } from "@/components/board/Status";
 import type { Ampel } from "@/components/board/ampel";
-import {
-  DOKUMENTTYPEN,
-  dokumentKlassifikator,
-  type Dokumenttyp,
-} from "@/lib/ai/klassifikation";
+import { DOKUMENTTYPEN, type Dokumenttyp } from "@/lib/ai/klassifikation";
 import type { BoardDaten } from "@/lib/db/typen";
 import { datum, euro, prozent } from "@/lib/format/de";
-import {
-  graphPostfach,
-  oneDriveAblage,
-} from "@/lib/integrations/microsoft-graph";
+import { oneDriveAblage } from "@/lib/integrations/microsoft-graph";
 import { cn } from "@/lib/utils";
 import { useBoardDaten, useGesellschaftsFilter } from "@/modules/shell/daten";
 import {
-  ablageVorschlag,
   AUTO_SCHWELLE,
   dateiname,
-  kontextAus,
   messen,
   ordnerFuer,
   ordnerGruppe,
@@ -43,6 +33,7 @@ import {
   type Quote,
 } from "./logik/ablage";
 import { ABLAGE_ERWARTUNGEN, ABLAGE_MAILS } from "./testset";
+import { useAblageVorschlaege } from "./useAblage";
 
 type Reiter = "alle" | "pruefen" | "auto" | "messung";
 type Status = { art: "abgelegt"; url: string; korrigiert: boolean };
@@ -71,28 +62,9 @@ function KonfidenzBalken({ wert }: { wert: number }) {
   );
 }
 
-function useVorschlaege(daten: BoardDaten | undefined) {
-  return useQuery({
-    queryKey: ["board", "ablage-v2", daten?.stichtag],
-    enabled: Boolean(daten),
-    queryFn: async () => {
-      const kontext = kontextAus(daten!);
-      const mails = await graphPostfach(ABLAGE_MAILS).neueMails();
-      const ki = dokumentKlassifikator();
-      return Promise.all(
-        mails.map(async (m) =>
-          ablageVorschlag(m, kontext, await ki.klassifiziere(m, kontext)),
-        ),
-      );
-    },
-    staleTime: Number.POSITIVE_INFINITY,
-    retry: false,
-  });
-}
-
 export function AblageSeite() {
   const { data, isLoading, error } = useBoardDaten();
-  const vorschlaege = useVorschlaege(data);
+  const vorschlaege = useAblageVorschlaege(data);
   const filter = useGesellschaftsFilter();
   const [reiter, setReiter] = useState<Reiter>("alle");
   const [offen, setOffen] = useState<string | null>(null);

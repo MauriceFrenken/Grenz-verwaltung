@@ -79,7 +79,7 @@ export function ZeitreihenDiagramm<T extends Record<string, unknown>>({
             tick={{ fontSize: 11, fill: "var(--text-subtle)" }}
             tickLine={false}
             axisLine={false}
-            width={kompakt ? 76 : 84}
+            width={kompakt ? 84 : 88}
           />
           <Tooltip
             cursor={{ stroke: "var(--input)" }}
