@@ -245,7 +245,7 @@ export function BoardShell({ children }: { children: ReactNode }) {
         </header>
         <main
           id="board-inhalt"
-          className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-8 md:px-8"
+          className="mx-auto w-full min-w-0 max-w-[1320px] flex-1 px-4 py-8 md:px-8"
         >
           {children}
         </main>

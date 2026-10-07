@@ -55,7 +55,7 @@ export function AmpelPunkt({
 }) {
   return (
     <span
-      className={cn("inline-flex items-center", className)}
+      className={cn("relative inline-flex items-center", className)}
       title={label ?? AMPEL_LABEL[ampel]}
     >
       <span className={cn("size-2 rounded-full", PUNKT[ampel])} aria-hidden />

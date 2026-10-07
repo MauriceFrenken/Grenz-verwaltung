@@ -1644,7 +1644,7 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
       id: `crm-p-${i + 1}`,
       entityType: "property" as const,
       entityId: p.id,
-      sfObject: "Immobilie__c",
+      sfObject: "Real_Estate__c",
       sfId: `a0B5g00000Muster${String(i + 1).padStart(2, "0")}`,
       externalId: p.id,
     })),
