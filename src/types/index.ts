@@ -510,3 +510,69 @@ export interface Filter {
   bis?: string;
 }
 
+
+// ------------------------------------------------------------------ Darlehen
+
+export type DarlehenArt = "bank" | "intercompany" | "gesellschafter" | "sonstige";
+export type DarlehenStatus = "entwurf" | "aktiv" | "beendet" | "ersetzt";
+export type DarlehenHinweis =
+  | "überfällig"
+  | "vermutlich zurückgezahlt"
+  | "Zinsbindung endet"
+  | "bald fällig"
+  | "Buchung prüfen";
+export type DarlehenBuchungTyp =
+  | "Auszahlung"
+  | "Rückzahlung"
+  | "Zinsen"
+  | "Tilgung"
+  | "Rate"
+  | "unklar";
+
+/** Eine Zeile der View `darlehen_stand` inkl. aufgelöster Namen. */
+export interface Darlehen {
+  id: string;
+  art: DarlehenArt;
+  status: DarlehenStatus;
+  geberId: string | null;
+  geberName: string;
+  nehmerId: string | null;
+  nehmerName: string;
+  objektId: string | null;
+  objektBezeichnung: string | null;
+  betrag: number;
+  zinsPa: number | null;
+  zinsArt: "fest" | "variabel" | null;
+  zinsbindungBis: string | null;
+  vertragsdatum: string | null;
+  ende: string | null;
+  tilgung: string | null;
+  rateMonatlich: number | null;
+  tilgungMonatlich: number | null;
+  nichtAbgerufen: number | null;
+  saldoBank: number | null;
+  saldoAm: string | null;
+  saldoAktuell: number;
+  rueckzahlungen: number;
+  zinsenLfdJahr: number;
+  letzteZinszahlung: string | null;
+  letzteBuchung: string | null;
+  unklareBuchungen: number;
+  zinsenPaRechnerisch: number | null;
+  hinweis: DarlehenHinweis | null;
+}
+
+export interface DarlehenBuchung {
+  id: string;
+  darlehenId: string;
+  buchungsdatum: string;
+  betrag: number;
+  seite: "geber" | "nehmer" | "bank";
+  typ: DarlehenBuchungTyp;
+  zinsAnteil: number | null;
+  tilgungAnteil: number | null;
+  zuordnung: "auto" | "manuell";
+  regel: string | null;
+  auftraggeberName: string | null;
+  verwendungszweck: string | null;
+}

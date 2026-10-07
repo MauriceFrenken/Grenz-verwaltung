@@ -34,6 +34,7 @@ import { Route as TransaktionenIndexRouteImport } from './routes/transaktionen.i
 import { Route as TransaktionenExposeImportRouteImport } from './routes/transaktionen.expose-import'
 import { Route as TransaktionenListeRouteImport } from './routes/transaktionen.liste'
 import { Route as VerwaltungIndexRouteImport } from './routes/verwaltung.index'
+import { Route as VerwaltungDarlehenRouteImport } from './routes/verwaltung.darlehen'
 import { Route as VerwaltungEinheitenRouteImport } from './routes/verwaltung.einheiten'
 import { Route as VerwaltungGesellschaftenRouteImport } from './routes/verwaltung.gesellschaften'
 import { Route as VerwaltungMieterRouteImport } from './routes/verwaltung.mieter'
@@ -180,6 +181,11 @@ const VerwaltungIndexRoute = VerwaltungIndexRouteImport.update({
   path: '/',
   getParentRoute: () => VerwaltungRoute,
 } as any)
+const VerwaltungDarlehenRoute = VerwaltungDarlehenRouteImport.update({
+  id: '/darlehen',
+  path: '/darlehen',
+  getParentRoute: () => VerwaltungRoute,
+} as any)
 const VerwaltungEinheitenRoute = VerwaltungEinheitenRouteImport.update({
   id: '/einheiten',
   path: '/einheiten',
@@ -294,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
+  '/verwaltung/darlehen': typeof VerwaltungDarlehenRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
   '/verwaltung/mieter': typeof VerwaltungMieterRoute
@@ -333,6 +340,7 @@ export interface FileRoutesByTo {
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/liste': typeof TransaktionenListeRoute
+  '/verwaltung/darlehen': typeof VerwaltungDarlehenRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
   '/verwaltung/mieter': typeof VerwaltungMieterRoute
@@ -376,6 +384,7 @@ export interface FileRoutesById {
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
+  '/verwaltung/darlehen': typeof VerwaltungDarlehenRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
   '/verwaltung/mieter': typeof VerwaltungMieterRoute
@@ -422,6 +431,7 @@ export interface FileRouteTypes {
     | '/salesforce/callback'
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
+    | '/verwaltung/darlehen'
     | '/verwaltung/einheiten'
     | '/verwaltung/gesellschaften'
     | '/verwaltung/mieter'
@@ -461,6 +471,7 @@ export interface FileRouteTypes {
     | '/microsoft/callback'
     | '/salesforce/callback'
     | '/transaktionen/liste'
+    | '/verwaltung/darlehen'
     | '/verwaltung/einheiten'
     | '/verwaltung/gesellschaften'
     | '/verwaltung/mieter'
@@ -503,6 +514,7 @@ export interface FileRouteTypes {
     | '/salesforce/callback'
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
+    | '/verwaltung/darlehen'
     | '/verwaltung/einheiten'
     | '/verwaltung/gesellschaften'
     | '/verwaltung/mieter'
@@ -719,6 +731,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/verwaltung/'
       preLoaderRoute: typeof VerwaltungIndexRouteImport
+      parentRoute: typeof VerwaltungRoute
+    }
+    '/verwaltung/darlehen': {
+      id: '/verwaltung/darlehen'
+      path: '/darlehen'
+      fullPath: '/verwaltung/darlehen'
+      preLoaderRoute: typeof VerwaltungDarlehenRouteImport
       parentRoute: typeof VerwaltungRoute
     }
     '/verwaltung/einheiten': {
@@ -944,6 +963,7 @@ const VerwaltungSollstellungRouteWithChildren =
   )
 
 interface VerwaltungRouteChildren {
+  VerwaltungDarlehenRoute: typeof VerwaltungDarlehenRoute
   VerwaltungEinheitenRoute: typeof VerwaltungEinheitenRoute
   VerwaltungGesellschaftenRoute: typeof VerwaltungGesellschaftenRoute
   VerwaltungMieterRoute: typeof VerwaltungMieterRoute
@@ -956,6 +976,7 @@ interface VerwaltungRouteChildren {
 }
 
 const VerwaltungRouteChildren: VerwaltungRouteChildren = {
+  VerwaltungDarlehenRoute: VerwaltungDarlehenRoute,
   VerwaltungEinheitenRoute: VerwaltungEinheitenRoute,
   VerwaltungGesellschaftenRoute: VerwaltungGesellschaftenRoute,
   VerwaltungMieterRoute: VerwaltungMieterRoute,
@@ -991,3 +1012,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
