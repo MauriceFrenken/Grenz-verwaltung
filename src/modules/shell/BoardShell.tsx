@@ -218,7 +218,7 @@ export function BoardShell({ children }: { children: ReactNode }) {
           <GesellschaftsAuswahl companies={data?.companies ?? []} />
           <button
             onClick={() => setPaletteOffen(true)}
-            className="ml-auto flex h-8 w-full max-w-[320px] cursor-pointer items-center gap-2 border border-hairline bg-surface px-2.5 text-sm text-text-subtle transition-colors hover:bg-surface-muted md:ml-4 md:mr-auto"
+            className="ml-auto flex h-8 w-full min-w-0 max-w-[320px] cursor-pointer items-center gap-2 border border-hairline bg-surface px-2.5 text-sm text-text-subtle transition-colors hover:bg-surface-muted md:ml-4 md:mr-auto"
           >
             <Search className="size-3.5" />
             <span className="truncate">Suchen oder springen…</span>

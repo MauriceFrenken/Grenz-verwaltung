@@ -182,7 +182,7 @@ export function CockpitSeite() {
         </p>
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
         <KpiKarte
           label="Liquidität heute"
           wert={euroKompakt(heute)}
@@ -253,7 +253,7 @@ export function CockpitSeite() {
         </Karte>
       ) : null}
 
-      <div className="mb-8 grid gap-4 xl:grid-cols-2">
+      <div className="mb-8 grid gap-4 *:min-w-0 xl:grid-cols-2">
         <Karte className="p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-[15px] font-semibold text-heading">

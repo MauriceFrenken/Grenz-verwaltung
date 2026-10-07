@@ -12,7 +12,7 @@ export function GesellschaftsAuswahl({ companies }: { companies: Company[] }) {
   return (
     <Menu.Root>
       <Menu.Trigger
-        className="flex h-8 max-w-[260px] cursor-pointer items-center gap-2 border border-hairline bg-surface pl-2.5 pr-2 text-sm text-foreground transition-colors hover:bg-surface-muted"
+        className="flex h-8 min-w-0 max-w-[260px] cursor-pointer items-center gap-2 border border-hairline bg-surface pl-2.5 pr-2 text-sm text-foreground transition-colors hover:bg-surface-muted"
         aria-label="Gesellschaft auswählen"
       >
         <span

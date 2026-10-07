@@ -252,6 +252,7 @@ function DarlehenListe({
   offenId: string | undefined;
   onOeffnen: (id: string) => void;
 }) {
+  const filter = useGesellschaftsFilter();
   const spalten: Spalte<DarlehenStand>[] = [
     {
       id: "id",
@@ -413,7 +414,11 @@ function DarlehenListe({
         <Leerzustand
           icon={Landmark}
           titel="Keine Darlehen"
-          text="Darlehensregister per Excel importieren."
+          text={
+            filter.alle
+              ? "Darlehensregister per Excel importieren."
+              : "Diese Gesellschaft ist weder Darlehensgeber noch -nehmer."
+          }
           kompakt
         />
       }
