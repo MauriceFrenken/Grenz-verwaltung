@@ -19,7 +19,7 @@ import { AppShell } from "../components/layout/AppShell";
 import { OpAdminZensurSync } from "../components/op-admin/OpAdminZensurSync";
 import { Toaster } from "../components/ui/sonner";
 import { useAuth } from "../hooks/useAuth";
-import { istOeffentlicherAuthPfad, sichererRueckweg } from "../lib/auth-pfade";
+import { istBoardPfad, istOeffentlicherAuthPfad, sichererRueckweg } from "../lib/auth-pfade";
 
 function NotFoundComponent() {
   return (
@@ -166,6 +166,11 @@ function AuthGate({ children }: { children: ReactNode }) {
 
   if (!istAngemeldet && !istAuthSeite) {
     return <Navigate to="/anmelden" search={{ von: pathname }} replace />;
+  }
+
+  // Management Board bringt eine eigene Shell mit (src/modules/shell/BoardShell.tsx).
+  if (istBoardPfad(pathname)) {
+    return children;
   }
 
   // Invite / recovery links establish a session and must set a password first.

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnmeldenRouteImport } from './routes/anmelden'
+import { Route as BoardRouteImport } from './routes/board'
 import { Route as DatenschutzRouteImport } from './routes/datenschutz'
 import { Route as DokumenteRouteImport } from './routes/dokumente'
 import { Route as EinladungRouteImport } from './routes/einladung'
@@ -19,6 +20,14 @@ import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zur
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TransaktionenRouteImport } from './routes/transaktionen'
 import { Route as VerwaltungRouteImport } from './routes/verwaltung'
+import { Route as BoardIndexRouteImport } from './routes/board.index'
+import { Route as BoardAblageRouteImport } from './routes/board.ablage'
+import { Route as BoardDarlehenRouteImport } from './routes/board.darlehen'
+import { Route as BoardDesignRouteImport } from './routes/board.design'
+import { Route as BoardImmobilienRouteImport } from './routes/board.immobilien'
+import { Route as BoardLiquiditaetRouteImport } from './routes/board.liquiditaet'
+import { Route as BoardPipelineRouteImport } from './routes/board.pipeline'
+import { Route as BoardPrueflisteRouteImport } from './routes/board.pruefliste'
 import { Route as DokumenteIndexRouteImport } from './routes/dokumente.index'
 import { Route as DokumenteAblageRouteImport } from './routes/dokumente.ablage'
 import { Route as DokumentePruefordnerRouteImport } from './routes/dokumente.pruefordner'
@@ -62,6 +71,11 @@ const AnmeldenRoute = AnmeldenRouteImport.update({
   path: '/anmelden',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BoardRoute = BoardRouteImport.update({
+  id: '/board',
+  path: '/board',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DatenschutzRoute = DatenschutzRouteImport.update({
   id: '/datenschutz',
   path: '/datenschutz',
@@ -101,6 +115,46 @@ const VerwaltungRoute = VerwaltungRouteImport.update({
   id: '/verwaltung',
   path: '/verwaltung',
   getParentRoute: () => rootRouteImport,
+} as any)
+const BoardIndexRoute = BoardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BoardRoute,
+} as any)
+const BoardAblageRoute = BoardAblageRouteImport.update({
+  id: '/ablage',
+  path: '/ablage',
+  getParentRoute: () => BoardRoute,
+} as any)
+const BoardDarlehenRoute = BoardDarlehenRouteImport.update({
+  id: '/darlehen',
+  path: '/darlehen',
+  getParentRoute: () => BoardRoute,
+} as any)
+const BoardDesignRoute = BoardDesignRouteImport.update({
+  id: '/design',
+  path: '/design',
+  getParentRoute: () => BoardRoute,
+} as any)
+const BoardImmobilienRoute = BoardImmobilienRouteImport.update({
+  id: '/immobilien',
+  path: '/immobilien',
+  getParentRoute: () => BoardRoute,
+} as any)
+const BoardLiquiditaetRoute = BoardLiquiditaetRouteImport.update({
+  id: '/liquiditaet',
+  path: '/liquiditaet',
+  getParentRoute: () => BoardRoute,
+} as any)
+const BoardPipelineRoute = BoardPipelineRouteImport.update({
+  id: '/pipeline',
+  path: '/pipeline',
+  getParentRoute: () => BoardRoute,
+} as any)
+const BoardPrueflisteRoute = BoardPrueflisteRouteImport.update({
+  id: '/pruefliste',
+  path: '/pruefliste',
+  getParentRoute: () => BoardRoute,
 } as any)
 const DokumenteIndexRoute = DokumenteIndexRouteImport.update({
   id: '/',
@@ -275,6 +329,7 @@ const VerwaltungSollstellungIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
+  '/board': typeof BoardRouteWithChildren
   '/datenschutz': typeof DatenschutzRoute
   '/dokumente': typeof DokumenteRouteWithChildren
   '/einladung': typeof EinladungRoute
@@ -283,6 +338,13 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/transaktionen': typeof TransaktionenRouteWithChildren
   '/verwaltung': typeof VerwaltungRouteWithChildren
+  '/board/ablage': typeof BoardAblageRoute
+  '/board/darlehen': typeof BoardDarlehenRoute
+  '/board/design': typeof BoardDesignRoute
+  '/board/immobilien': typeof BoardImmobilienRoute
+  '/board/liquiditaet': typeof BoardLiquiditaetRoute
+  '/board/pipeline': typeof BoardPipelineRoute
+  '/board/pruefliste': typeof BoardPrueflisteRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
   '/dokumente/pruefung': typeof DokumentePruefungRoute
@@ -302,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/verwaltung/objekte': typeof VerwaltungObjekteRouteWithChildren
   '/verwaltung/sollstellung': typeof VerwaltungSollstellungRouteWithChildren
   '/verwaltung/zahlungen': typeof VerwaltungZahlungenRoute
+  '/board/': typeof BoardIndexRoute
   '/dokumente/': typeof DokumenteIndexRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/transaktionen/': typeof TransaktionenIndexRoute
@@ -323,6 +386,13 @@ export interface FileRoutesByTo {
   '/einladung': typeof EinladungRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/board/ablage': typeof BoardAblageRoute
+  '/board/darlehen': typeof BoardDarlehenRoute
+  '/board/design': typeof BoardDesignRoute
+  '/board/immobilien': typeof BoardImmobilienRoute
+  '/board/liquiditaet': typeof BoardLiquiditaetRoute
+  '/board/pipeline': typeof BoardPipelineRoute
+  '/board/pruefliste': typeof BoardPrueflisteRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
   '/dokumente/pruefung': typeof DokumentePruefungRoute
@@ -339,6 +409,7 @@ export interface FileRoutesByTo {
   '/verwaltung/mietverhaeltnisse': typeof VerwaltungMietverhaeltnisseRoute
   '/verwaltung/nebenkosten': typeof VerwaltungNebenkostenRoute
   '/verwaltung/zahlungen': typeof VerwaltungZahlungenRoute
+  '/board': typeof BoardIndexRoute
   '/dokumente': typeof DokumenteIndexRoute
   '/einstellungen': typeof EinstellungenIndexRoute
   '/transaktionen': typeof TransaktionenIndexRoute
@@ -357,6 +428,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
+  '/board': typeof BoardRouteWithChildren
   '/datenschutz': typeof DatenschutzRoute
   '/dokumente': typeof DokumenteRouteWithChildren
   '/einladung': typeof EinladungRoute
@@ -365,6 +437,13 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/transaktionen': typeof TransaktionenRouteWithChildren
   '/verwaltung': typeof VerwaltungRouteWithChildren
+  '/board/ablage': typeof BoardAblageRoute
+  '/board/darlehen': typeof BoardDarlehenRoute
+  '/board/design': typeof BoardDesignRoute
+  '/board/immobilien': typeof BoardImmobilienRoute
+  '/board/liquiditaet': typeof BoardLiquiditaetRoute
+  '/board/pipeline': typeof BoardPipelineRoute
+  '/board/pruefliste': typeof BoardPrueflisteRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
   '/dokumente/pruefung': typeof DokumentePruefungRoute
@@ -384,6 +463,7 @@ export interface FileRoutesById {
   '/verwaltung/objekte': typeof VerwaltungObjekteRouteWithChildren
   '/verwaltung/sollstellung': typeof VerwaltungSollstellungRouteWithChildren
   '/verwaltung/zahlungen': typeof VerwaltungZahlungenRoute
+  '/board/': typeof BoardIndexRoute
   '/dokumente/': typeof DokumenteIndexRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/transaktionen/': typeof TransaktionenIndexRoute
@@ -403,6 +483,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/anmelden'
+    | '/board'
     | '/datenschutz'
     | '/dokumente'
     | '/einladung'
@@ -411,6 +492,13 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/transaktionen'
     | '/verwaltung'
+    | '/board/ablage'
+    | '/board/darlehen'
+    | '/board/design'
+    | '/board/immobilien'
+    | '/board/liquiditaet'
+    | '/board/pipeline'
+    | '/board/pruefliste'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
     | '/dokumente/pruefung'
@@ -430,6 +518,7 @@ export interface FileRouteTypes {
     | '/verwaltung/objekte'
     | '/verwaltung/sollstellung'
     | '/verwaltung/zahlungen'
+    | '/board/'
     | '/dokumente/'
     | '/einstellungen/'
     | '/transaktionen/'
@@ -451,6 +540,13 @@ export interface FileRouteTypes {
     | '/einladung'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
+    | '/board/ablage'
+    | '/board/darlehen'
+    | '/board/design'
+    | '/board/immobilien'
+    | '/board/liquiditaet'
+    | '/board/pipeline'
+    | '/board/pruefliste'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
     | '/dokumente/pruefung'
@@ -467,6 +563,7 @@ export interface FileRouteTypes {
     | '/verwaltung/mietverhaeltnisse'
     | '/verwaltung/nebenkosten'
     | '/verwaltung/zahlungen'
+    | '/board'
     | '/dokumente'
     | '/einstellungen'
     | '/transaktionen'
@@ -484,6 +581,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/anmelden'
+    | '/board'
     | '/datenschutz'
     | '/dokumente'
     | '/einladung'
@@ -492,6 +590,13 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/transaktionen'
     | '/verwaltung'
+    | '/board/ablage'
+    | '/board/darlehen'
+    | '/board/design'
+    | '/board/immobilien'
+    | '/board/liquiditaet'
+    | '/board/pipeline'
+    | '/board/pruefliste'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
     | '/dokumente/pruefung'
@@ -511,6 +616,7 @@ export interface FileRouteTypes {
     | '/verwaltung/objekte'
     | '/verwaltung/sollstellung'
     | '/verwaltung/zahlungen'
+    | '/board/'
     | '/dokumente/'
     | '/einstellungen/'
     | '/transaktionen/'
@@ -529,6 +635,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnmeldenRoute: typeof AnmeldenRoute
+  BoardRoute: typeof BoardRouteWithChildren
   DatenschutzRoute: typeof DatenschutzRoute
   DokumenteRoute: typeof DokumenteRouteWithChildren
   EinladungRoute: typeof EinladungRoute
@@ -558,6 +665,13 @@ declare module '@tanstack/react-router' {
       path: '/anmelden'
       fullPath: '/anmelden'
       preLoaderRoute: typeof AnmeldenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/board': {
+      id: '/board'
+      path: '/board'
+      fullPath: '/board'
+      preLoaderRoute: typeof BoardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/datenschutz': {
@@ -615,6 +729,62 @@ declare module '@tanstack/react-router' {
       fullPath: '/verwaltung'
       preLoaderRoute: typeof VerwaltungRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/board/': {
+      id: '/board/'
+      path: '/'
+      fullPath: '/board/'
+      preLoaderRoute: typeof BoardIndexRouteImport
+      parentRoute: typeof BoardRoute
+    }
+    '/board/ablage': {
+      id: '/board/ablage'
+      path: '/ablage'
+      fullPath: '/board/ablage'
+      preLoaderRoute: typeof BoardAblageRouteImport
+      parentRoute: typeof BoardRoute
+    }
+    '/board/darlehen': {
+      id: '/board/darlehen'
+      path: '/darlehen'
+      fullPath: '/board/darlehen'
+      preLoaderRoute: typeof BoardDarlehenRouteImport
+      parentRoute: typeof BoardRoute
+    }
+    '/board/design': {
+      id: '/board/design'
+      path: '/design'
+      fullPath: '/board/design'
+      preLoaderRoute: typeof BoardDesignRouteImport
+      parentRoute: typeof BoardRoute
+    }
+    '/board/immobilien': {
+      id: '/board/immobilien'
+      path: '/immobilien'
+      fullPath: '/board/immobilien'
+      preLoaderRoute: typeof BoardImmobilienRouteImport
+      parentRoute: typeof BoardRoute
+    }
+    '/board/liquiditaet': {
+      id: '/board/liquiditaet'
+      path: '/liquiditaet'
+      fullPath: '/board/liquiditaet'
+      preLoaderRoute: typeof BoardLiquiditaetRouteImport
+      parentRoute: typeof BoardRoute
+    }
+    '/board/pipeline': {
+      id: '/board/pipeline'
+      path: '/pipeline'
+      fullPath: '/board/pipeline'
+      preLoaderRoute: typeof BoardPipelineRouteImport
+      parentRoute: typeof BoardRoute
+    }
+    '/board/pruefliste': {
+      id: '/board/pruefliste'
+      path: '/pruefliste'
+      fullPath: '/board/pruefliste'
+      preLoaderRoute: typeof BoardPrueflisteRouteImport
+      parentRoute: typeof BoardRoute
     }
     '/dokumente/': {
       id: '/dokumente/'
@@ -843,6 +1013,30 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface BoardRouteChildren {
+  BoardAblageRoute: typeof BoardAblageRoute
+  BoardDarlehenRoute: typeof BoardDarlehenRoute
+  BoardDesignRoute: typeof BoardDesignRoute
+  BoardImmobilienRoute: typeof BoardImmobilienRoute
+  BoardLiquiditaetRoute: typeof BoardLiquiditaetRoute
+  BoardPipelineRoute: typeof BoardPipelineRoute
+  BoardPrueflisteRoute: typeof BoardPrueflisteRoute
+  BoardIndexRoute: typeof BoardIndexRoute
+}
+
+const BoardRouteChildren: BoardRouteChildren = {
+  BoardAblageRoute: BoardAblageRoute,
+  BoardDarlehenRoute: BoardDarlehenRoute,
+  BoardDesignRoute: BoardDesignRoute,
+  BoardImmobilienRoute: BoardImmobilienRoute,
+  BoardLiquiditaetRoute: BoardLiquiditaetRoute,
+  BoardPipelineRoute: BoardPipelineRoute,
+  BoardPrueflisteRoute: BoardPrueflisteRoute,
+  BoardIndexRoute: BoardIndexRoute,
+}
+
+const BoardRouteWithChildren = BoardRoute._addFileChildren(BoardRouteChildren)
+
 interface DokumenteRouteChildren {
   DokumenteAblageRoute: typeof DokumenteAblageRoute
   DokumentePruefordnerRoute: typeof DokumentePruefordnerRoute
@@ -974,6 +1168,7 @@ const VerwaltungRouteWithChildren = VerwaltungRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnmeldenRoute: AnmeldenRoute,
+  BoardRoute: BoardRouteWithChildren,
   DatenschutzRoute: DatenschutzRoute,
   DokumenteRoute: DokumenteRouteWithChildren,
   EinladungRoute: EinladungRoute,
@@ -991,3 +1186,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

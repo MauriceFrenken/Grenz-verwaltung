@@ -19,6 +19,7 @@ import {
   UserCog,
   ChevronsLeft,
   ChevronsRight,
+  Gauge,
 } from "lucide-react";
 
 import type { LucideIcon } from "lucide-react";
@@ -48,7 +49,10 @@ interface NavSection {
 const sections: NavSection[] = [
   {
     label: "Übersicht",
-    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard }],
+    items: [
+      { to: "/", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/board", label: "Management Board", icon: Gauge },
+    ],
   },
   {
     label: "Verwaltung",

@@ -13,7 +13,7 @@ const env = {
 console.log(
   "\nFRENKEN Management Board (Demodaten): http://localhost:8080/board\n",
 );
-const kind = spawn("npx", ["vite", "dev"], {
+const kind = spawn("npx", ["vite", "dev", ...process.argv.slice(2)], {
   stdio: "inherit",
   env,
   shell: process.platform === "win32",
