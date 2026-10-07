@@ -5,7 +5,7 @@ Branch: `nightly/management-board`
 ## Meilensteine
 
 - [x] **S0 Strategie-Brief**: `docs/STRATEGIE-BRIEF.md` mit Werttreiberbäumen, 15 Managementfragen, KPI-Set mit Ampeln, Seitenableitung und Risiken. Kernthese: Die Gruppe ist eine EK-Allokationsmaschine, das Board beantwortet zuerst „wie viel Geld ist wo frei“.
-- [ ] M0 Fundament
+- [x] **M0 Fundament**: Datenmodell als Migration (Schema `board`, nicht angewendet), zod-Typen, Repository-Muster (Mock aktiv, Live wirft „nicht konfiguriert“, Umschaltung `VITE_BOARD_DATENQUELLE`), Format- und Kalender-Helfer, Integrations-Gerüste (EBICS, Qonto). Deterministische Seed-Daten: 9 Gesellschaften, 6 Objekte, 61 Einheiten, 41 Mietverträge, 25 Darlehen, rund 1.070 Kontoumsätze über 12 Monate, Vitest eingerichtet.
 - [ ] M1 App-Shell und Designsystem
 - [ ] M2 Darlehen
 - [ ] M3 Immobilien
