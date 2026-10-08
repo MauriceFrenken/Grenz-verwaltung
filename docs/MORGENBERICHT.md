@@ -79,4 +79,4 @@ In einem Container ohne Browser `npm run board -- --host 127.0.0.1` verwenden. O
 - **Pakete:** Installation mit npm, `package-lock.json` synchronisiert und um `vitest` ergänzt. `bun.lock` bitte mit `bun install` nachziehen.
 - **Nicht angefasst:** produktive Gelb-Ablage (`src/lib/dokument-postfach`, `src/lib/microsoft`), bestehender Salesforce-Exposé-Export (`src/lib/salesforce`), keine Datenbank angewendet, keine `.env` gelesen.
 - **Datenbank:** nur die Migrationsdatei im Repo, Schema `board`, nicht angewendet.
-- Kein Pull Request geöffnet, kein Push auf `main`. Für Vercel gilt weiter: Commits auf `main` mit Author und Committer BitBenByte.
+- Pull Request #2 (https://github.com/BitBenByte/frenken-expose-ai/pull/2) wurde am 08.10.2026 über die Oberfläche angelegt; kein Push auf `main`. Für Vercel gilt weiter: Commits auf `main` mit Author und Committer BitBenByte.
