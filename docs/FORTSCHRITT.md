@@ -30,3 +30,33 @@ Branch: `nightly/management-board`
 ## Blockiert / offen
 
 Nichts blockiert. Offene Punkte für echte Daten stehen in `docs/MORGENBERICHT.md`, Abschnitt 6.
+
+---
+
+# Phase 2: Integration, Baumaschinen, Transaktionen, Datengrundlage (08.10.2026)
+
+Branch: `claude/project-thread-gxnziv` (statt `maurice/board-integration`, siehe A20). Enthält PR #1 (`darlehen-seite`) und PR #2 (`nightly/management-board`) als Merge.
+
+## Meilensteine
+
+- [x] **A Gruppenanalyse:** `docs/STRATEGIE-BRIEF.md` neu mit echter Gruppe, Kapitalfluss aus 54 Darlehen, Werttreiber und KPIs für Baumaschinenhandel und Plattform, Fragen je Segment und Rhythmus, Abweichungen zum Nachtlauf.
+- [x] **B Integration:** Sechs Drift-Migrationen mit Remote-Versionsnummer im Repo, Schema `board` gestrichen, `20261008120000_board_steuerung.sql` (additiv). Live-Repository auf `public` mit Abbildung und Lückenliste. Steuerung in Bens AppShell, Cockpit auf `/`, Sidebar-Bereiche Steuerung, Immobilien, Baumaschinen. Darlehen auf einer Seite inklusive Kontobewegungen aus PR #1. Prüfliste aus echten Fällen und Datenlücken. Ablage v2 als Labor.
+- [x] **C Transaktionen:** `/board/transaktionen` unter Immobilien mit Ankauf (`ankauf_pipeline`), Exposé-Eingang mit Übernahme in die Pipeline und Verkauf; Salesforce nur lesend per Link/ID.
+- [x] **D Baumaschinen:** `/board/baumaschinen` mit Handel (Lagerwert, Lagerdauer, Rohertrag, Umschlag, IC-Finanzierung) und Plattform (Bestand, Burn-Rate, Runway), Import Excel/CSV mit Vorlage.
+- [x] **E Datengrundlage:** `docs/DATENGRUNDLAGE.md` (Datenlandkarte, Vorschläge, Abstimmungen, Fragen). Seite Datenqualität. Kontosalden aus camt.053. Eindeutige Bankbuchungen. Abstimmung Darlehensstand gegen Zinsplan.
+- [x] **F Cockpit und Übergabe:** Cockpit mit Segmenten und „Daten fehlen“, Quelle je KPI im Tooltip, `docs/UEBERGABE-PHASE-2.md`, Demo-Modus und Tests laufen.
+
+## Annahmen Phase 2
+
+- **A10 Tageskonvention Darlehen:** Die Datenbank führt keine Zinsmethode; der Zinsplan rechnet 30/360.
+- **A11 EK-Quote:** fehlt sie am Ankauf, gilt 30 % (gekennzeichnet als „nicht erfasst“).
+- **A12 Strategie:** Objekte ohne Strategie gelten als Bestand und erscheinen als Datenlücke.
+- **A13 Segmente:** Zuordnung wie im Strategie-Brief, per Migration gesetzt, nur wo leer.
+- **A14 Design:** Bens Farbwelt ist die Basis, Statusfarben global; Dunkelmodus und Petrol-Akzent entfallen.
+- **A15 Pfade:** Steuerungsseiten behalten `/board/*`, `/board` und `/verwaltung/darlehen` leiten weiter; nur das Cockpit zieht auf `/`.
+- **A16 DashboardTeaser:** Die einzige echte Zahl (offene Rechnungsfreigaben) ist ins Cockpit übernommen, die übrigen Platzhalter entfallen. Die Datei bleibt unbenutzt im Repo.
+- **A17 Kontosalden:** Gespeichert wird der Tagesendsaldo (CLBD). Manuelle Salden schlagen camt.053 am selben Tag.
+- **A18 Dubletten:** Das Board zählt eine Buchung je Konto-IBAN und Fingerprint. Bens Abruf bleibt unverändert, Vorschlag in DATENGRUNDLAGE 2.3.
+- **A19 Maschinen-Ansicht:** Tabelle mit Statusfilter und Lagerdauer-Ampel statt Kanban; bei unter 50 Maschinen schneller lesbar.
+- **A20 Branch:** Die Arbeitsumgebung erlaubt nur Pushes auf `claude/project-thread-gxnziv`; der PR kommt von dort.
+- **A21 Immobilien-Navigation:** „Portfolio“ (Bestand und Aufteiler als Reiter) und „Transaktionen“ statt vier einzelner Einträge.

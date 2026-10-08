@@ -1,26 +1,56 @@
 # Strategie-Brief FRENKEN Management Board
 
-Stand: 07.10.2026 · Verbindlich für alle Meilensteine des Boards · Alle Zahlen im Board sind fiktiv.
+Stand: 08.10.2026 (Phase 2) · Grundlage sind die echten Stammdaten in Bens Datenbank (lesend ausgewertet) · Musterdaten gibt es nur noch im Demo-Modus.
 
-**Kernthese:** Die FRENKEN-Gruppe ist im Kern eine **Eigenkapital-Allokationsmaschine**. Sie verdient Geld, indem sie Eigenkapital und Bankkredit in Immobilien und Maschinen bindet und über Miete, Wertsteigerung und Handelsmarge zurückholt. Der Engpass ist nicht Ertrag, sondern **freie Liquidität zum richtigen Zeitpunkt in der richtigen Gesellschaft**. Das Board muss deshalb zuerst eine Frage beantworten: *Wie viel Geld ist frei, wo liegt es, und was bindet es in den nächsten Monaten?*
+**Kernthese (bestätigt):** Die FRENKEN-Gruppe ist eine **Eigenkapital-Allokationsmaschine**. Die Holding sammelt Geld von Gesellschaftern und Banken und verteilt es per Intercompany-Darlehen an die Segmente. Der Engpass ist **freie Liquidität zum richtigen Zeitpunkt in der richtigen Gesellschaft**. Neu in Phase 2: Die Antwort ist nur so gut wie die Daten. Heute fehlen Kontosalden, Mindestliquidität und jede Zahl zu Baumaschinen. Das Board zeigt deshalb zu jeder Zahl ihre Quelle und macht Lücken sichtbar, statt sie zu schätzen.
 
 ---
 
-## 1. Geschäftsmodell auf einer Seite
+## 1. Die echte Gruppe in Segmenten
 
-| Geschäftsfeld | Wie entsteht Wert | Wo wird Kapital gebunden | Typische Rendite-Logik |
+Segmentzuordnung als Daten (Spalte `gesellschaften.segment`, in der App unter Steuerung → Datenqualität änderbar). Zahlen: Stand 08.10.2026, aktive Datensätze.
+
+| Segment | Gesellschaften | Geschäft | Datenlage heute |
 |---|---|---|---|
-| **Immobilien Bestand** (Buy-and-hold, je Objekt eine GmbH) | Laufender Mietüberschuss nach Kapitaldienst, Mietsteigerung (§ 558 BGB), Wertsteigerung, Tilgung als Vermögensaufbau | Eigenkapital beim Ankauf (typisch 20–30 % plus Nebenkosten), Instandhaltung, Tilgung | Cashflow-Rendite auf EK; Hebel über Bankdarlehen |
-| **Immobilien Aufteiler** (WEG-Aufteilung) | Spanne zwischen Einkauf je m² + Sanierung und Einzelverkauf je m² | EK + Sanierungsbudget bis zum Verkauf der letzten Einheit; Bindungsdauer ist der größte Hebel | Marge pro Projekt, annualisiert über die Bindungsdauer |
-| **Baumaschinen** (Gebrauchtmaschinenhandel) | Handelsmarge je Maschine, Umschlagshäufigkeit | Lagerbestand, finanziert über Intercompany-Darlehen der Holding | Rohertrag × Lagerumschlag |
-| **Beteiligungen** (Auktionsplattform, Maklergesellschaft) | Optionswert (Plattform), Provisionen (Makler) | Anschubfinanzierung, Burn-Rate der Plattform | Meilenstein-basiert; Makler mit eigener Liquidität |
-| **Holding** | Bündelt Liquidität, verteilt sie per Gesellschafter- und IC-Darlehen (meist 3 % p.a.) | Forderungen gegen Töchter | Interne Zinsen, Steuerungsfunktion |
+| **Holding / Finanzierung** | G-05 FRENKEN Holding (FHG) | bündelt Liquidität, vergibt IC-Darlehen | EBICS; 0,89 Mio. € Gesellschafter- und sonstige Darlehen aufgenommen, rund 1,07 Mio. € IC-Darlehen vergeben |
+| **Immobilien Bestand** | G-01 FIG, G-02 FIM, G-03 FCM, G-04 MTF, G-07 SBS, G-08 IPS | Buy-and-hold, Miete | 7 Objekte, 81 Einheiten, 73 aktive Mietverträge, Soll-Kaltmiete rund 28.650 €/Monat; Bankdarlehen 4,8 Mio. € (G-01 bis G-04). SBS und IPS haben noch keine Einheiten erfasst |
+| **Immobilien Aufteiler** | O-02 in G-01 (`strategie = aufteiler`) | WEG-Aufteilung, Einzelverkauf | 5 Einheiten, 1 vermietet; `einheiten_verkauf` leer, kein Projektplan |
+| **Immobilien Transaktionen** | Zielgesellschaft je Deal | Ankauf (Exposé → Notar), Verkauf | 75 Exposés im Postfach, 377 Salesforce-Transaktionen, `ankauf_pipeline` leer |
+| **Baumaschinenhandel** | G-09 FRENKEN Baumaschinen (FB) | An- und Verkauf gebrauchter Maschinen | 4 IC-Darlehen der Holding über 767.500 €; kein Bestand, kein Konto im System |
+| **Baumaschinen-Plattform** | G-06 TradeAnyMachine (TAM) | digitale Handelsplattform, Start-up | 1 IC-Darlehen über 50.000 €; kein Konto, keine Plattformzahlen |
+| **Makler (getrennt)** | G-10 Grenz & Co. (GC) | Provisionen | 1 IC-Darlehen über 66.666 €; eigene Liquidität, nicht Teil der freien Gruppenliquidität |
 
-**So what:** Drei Geldkreisläufe laufen gleichzeitig: Mieten (stetig, planbar), Projektverkäufe (klumpig, unsicher im Zeitpunkt) und Maschinenhandel (schnell drehend). Das dichte IC-Darlehensnetz (≈ 50 Verträge) macht die Gruppe flexibel, aber unübersichtlich: Ohne Konsolidierung sieht man Liquidität doppelt und Zinsen, die niemand bucht.
+**Korrekturen gegenüber der Ausgangshypothese:**
+- EBICS läuft für G-01 bis G-05 (inklusive Holding), 14 Konten.
+- Die Objektgesellschaften sind nicht „je Objekt eine GmbH“: G-01 hält zwei Objekte (Bestand O-01 und Aufteiler O-02).
+- Strategie ist nur bei O-02 (Aufteiler) und O-04 (Bestand) gesetzt; die übrigen fünf Objekte rechnet das Board als Bestand und meldet die Lücke.
 
-## 2. Werttreiberbäume
+## 2. Kapitalfluss der Gruppe
 
-### 2.1 Immobilien Bestand: Free Cashflow je Objekt
+Grundlage: 54 Darlehen, davon aktiv rund 7,9 Mio. €.
+
+```
+ Banken ──4,8 Mio. € Bankdarlehen──► G-01 (2,6) · G-03 (1,0) · G-04 (0,7) · G-02 (0,5)
+
+ Gesellschafter / Dritte ──1,7 Mio. €──► G-05 Holding (0,89) · G-02 (0,38) · G-03 (0,35) · G-01 (0,04)
+
+ G-05 Holding ──IC 1,07 Mio. €──► G-09 Baumaschinen (0,77)
+                                 G-04 MTF (0,17)
+                                 G-10 Makler (0,07)
+                                 G-06 Plattform (0,05)
+                                 G-01 FIG (0,02)
+
+ G-01 FIG ──IC 0,30 Mio. € (Rückfluss)──► G-05 Holding
+```
+
+**So what:**
+1. Die Baumaschinen binden 72 % der IC-Mittel der Holding, ohne dass die Gruppe Bestand, Marge oder Lagerdauer sieht. Das ist das größte Steuerungsloch.
+2. Rückflüsse kommen heute aus dem Immobilienbestand (G-01 an G-05). Die Holding finanziert sich zusätzlich über Gesellschafterdarlehen; deren Fälligkeiten sind Teil der Liquiditätsplanung.
+3. Die Bankfinanzierung hängt an vier Gesellschaften. Zinsbindungsenden dort sind das größte Zinsänderungsrisiko.
+
+## 3. Werttreiberbäume
+
+### 3.1 Immobilien Bestand: Free Cashflow je Objekt
 ```
 Free Cashflow Objekt
 ├── Ist-Mieteinnahmen
@@ -37,7 +67,7 @@ Steuerbar: Miete je m², Leerstandstage, Instandhaltung €/m², Zinssatz/Zinsbi
 Kennzahlen: DSCR = Mietüberschuss / Kapitaldienst; LTV = Restschuld / Marktwert
 ```
 
-### 2.2 Immobilien Aufteiler: Projektmarge und EK-Bindung
+### 3.2 Immobilien Aufteiler: Projektmarge und EK-Bindung
 ```
 Projektergebnis (annualisierte EK-Rendite)
 ├── Verkaufserlös = Σ verkaufte m² × Verkaufspreis je m²
@@ -49,16 +79,28 @@ Projektergebnis (annualisierte EK-Rendite)
 Steuerbar: Einkaufspreis/m², Budgettreue, Verkaufspreis/m², Verkaufstempo (Einheiten/Monat)
 ```
 
-### 2.3 Baumaschinen: Handelsergebnis
+### 3.3 Baumaschinenhandel: Handelsergebnis
 ```
-Ergebnis Handel = Rohertrag − Lager- und Finanzierungskosten
-├── Rohertrag = Σ (Verkaufspreis − Einkaufspreis)
-├── Lagerdauer (Tage) × IC-Zins 3 % auf Bestandswert
-└── Umschlag = Umsatz / Ø Lagerbestand
-Steuerbar: Einkaufsdisziplin, Lagerdauer, Bestand je Kategorie
+Ergebnis Handel = Rohertrag − Finanzierungs- und Lagerkosten
+├── Rohertrag je Maschine = Verkaufspreis − (Einkaufspreis + Transport + Aufbereitung)
+├── Lagerdauer (Tage) → Finanzierungskosten = Einstand × IC-Zins (3 %) × Tage / 365
+├── Lagerumschlag = Wareneinsatz 12 Monate / Lagerwert
+└── gebundenes Kapital = Lagerwert zu Einstandspreisen  ⇄  IC-Darlehen der Holding an G-09
+Steuerbar: Einkaufspreis, Aufbereitungskosten, Angebotspreis, Zeit bis Inserat, Preisnachlass ab Tag 90
 ```
 
-### 2.4 Gruppe: freie Liquidität
+### 3.4 Baumaschinen-Plattform: Runway
+```
+Runway (Monate) = Bankbestand / Burn-Rate
+├── Bankbestand = Saldo aller Konten der Plattform
+├── Burn-Rate = Ø monatlicher Nettoabfluss der letzten 3 Monate
+│   ├── Kosten (Personal, Entwicklung, Marketing)
+│   └── − Erlöse (Provisionen, Gebühren aus GMV)
+└── Finanzierung durch die Gruppe (IC-Darlehen) verlängert den Runway
+Steuerbar: Kosten, Monetarisierung (Take Rate × GMV), Zeitpunkt der nächsten Finanzierung
+```
+
+### 3.5 Gruppe: freie Liquidität
 ```
 Freie Liquidität (konsolidiert)
 ├── Bankguthaben aller Gesellschaften
@@ -68,38 +110,27 @@ Freie Liquidität (konsolidiert)
 └── IC-Darlehen und IC-Zinsen werden eliminiert (Geld bleibt in der Gruppe)
 ```
 
-## 3. Die 15 wichtigsten Managementfragen
+## 4. Managementfragen je Segment und Rhythmus
 
-| # | Rhythmus | Frage | Antwort im Board |
+| Rhythmus | Gruppe / Holding | Immobilien | Baumaschinen |
 |---|---|---|---|
-| 1 | täglich | Wie viel Liquidität haben wir heute, je Gesellschaft und konsolidiert? | Cockpit-KPI, `/board/liquiditaet` |
-| 2 | täglich | Welche Zahlungen sind heute/diese Woche fällig oder überfällig (Zinsen, Raten, Rechnungen)? | Cockpit „Heute zu tun“ |
-| 3 | täglich | Was muss ich prüfen oder bestätigen (unklare Buchungen, Dokumente)? | gemeinsame Prüfliste `/board/pruefliste` |
-| 4 | wöchentlich | Unterschreitet eine Gesellschaft in den nächsten 13 Wochen ihre Mindestliquidität? | Liquidität, Warnungen |
-| 5 | wöchentlich | Wie viel Eigenkapital ist frei für den nächsten Ankauf, und ab wann? | Liquidität, Szenario „Ankauf“ |
-| 6 | wöchentlich | Welche Mieter sind im Rückstand, und wie hoch? | Immobilien, Rückstände |
-| 7 | wöchentlich | Welche Fristen laufen (Mieterhöhung Zustimmung, Kündigungen, Auszüge)? | Immobilien, Mieterereignisse |
-| 8 | wöchentlich | Wo steht die Ankaufspipeline? | `/board/pipeline` |
-| 9 | monatlich | Welche Intercompany-Zinsen sind offen oder nicht gebucht? | Darlehen, Abgleich |
-| 10 | monatlich | Welches Objekt bleibt hinter Plan (Miete, Leerstand, Cashflow nach Kapitaldienst)? | Immobilien, Objekt-Cashflow |
-| 11 | monatlich | Wo hängt Eigenkapital in Aufteiler-Projekten fest (Budget, Verkaufsstand)? | Immobilien, Aufteiler |
-| 12 | monatlich | Wie entwickelt sich der Leerstand, und welche Wohnungen werden frei? | Immobilien, Leerstandsprognose |
-| 13 | jährlich/halbjährlich | Welche Darlehen werden in 6–12 Monaten fällig oder verlieren die Zinsbindung? | Darlehen, Fälligkeiten |
-| 14 | jährlich | Wie hoch ist unser Zinsänderungsrisiko (Volumen mit auslaufender Bindung × Zinsdelta)? | Darlehen, Zinsbindung |
-| 15 | jährlich | Wie konzentriert sind Risiken (Bank, Gesellschaft, Bürgschaften)? | Darlehen, Matrix Geber × Nehmer |
+| **täglich** | Wie viel Geld ist heute wo frei? Was ist heute fällig? Was muss ich bestätigen? | Welche Exposés sind neu, welche verfolgen wir? | Was ist verkauft oder reserviert? |
+| **wöchentlich** | Unterschreitet eine Gesellschaft in 13 Wochen ihren Puffer? Passt das Eigenkapital für den nächsten Ankauf? | Wer ist im Rückstand? Welche Deals stocken? Welche Fristen laufen (§ 558, § 573c BGB)? | Welche Maschinen stehen über 90 Tage? Wie lange reicht das Geld der Plattform? |
+| **monatlich** | Sind alle IC-Zinsen gezahlt? Stimmen Darlehensstände mit der Bank? Welche Daten fehlen noch? | Welches Objekt bleibt hinter Plan? Wie läuft der Abverkauf im Aufteiler? | Rohertrag und Marge der Verkäufe, Lagerumschlag, gebundenes Kapital gegen IC-Darlehen |
+| **jährlich** | Welche Darlehen enden oder verlieren die Zinsbindung? Wie konzentriert sind Risiken? | Potenzialmiete, Bewertung, Strategie je Objekt | Weiter finanzieren oder Bestand abbauen? Plattform: nächste Finanzierungsrunde |
 
-## 4. KPI-Set (max. 5 Kern-KPIs je Feld)
+## 5. KPI-Set (max. 5 Kern-KPIs je Segment)
 
-Ampel: **Grün** ok · **Gelb** prüfen · **Rot** handeln.
+Ampel: **Grün** ok · **Gelb** prüfen · **Rot** handeln · **Grau** Daten fehlen.
 
 ### Gruppe / Liquidität
-| KPI | Formel | Quelle | Ziel / Ampel |
+| KPI | Formel | Quelle | Ampel |
 |---|---|---|---|
-| Liquidität heute (konsolidiert) | Σ Kontosalden aller Gesellschaften außer getrennten Bereichen | Kontoumsätze (EBICS/Qonto) | Grün ≥ Σ Mindestliquidität × 1,5 · Gelb ≥ 1,0× · Rot < 1,0× |
-| Liquidität in 13 Wochen | Saldo heute + Σ Planzahlungen bis T+91 | Planung M4 | wie oben |
-| Tiefster Saldo je Gesellschaft (13 W) | min(Tagessaldo) im Horizont | Planung M4 | Rot, wenn < Mindestliquidität |
-| Freies Eigenkapital für Ankauf | min(Saldo im Horizont) − Mindestliquidität (konsolidiert) | Planung M4 | informativ, Szenario |
-| Offene Prüffälle | Anzahl offener Review-Items, davon rot | alle Module | Gelb > 10 · Rot > 0 rote Fälle älter 7 Tage |
+| Liquidität heute | Σ Kontosalden ohne getrennte Bereiche | `kontosalden` (camt.053 CLBD) + Umsätze | Grün ≥ 1,5 × Mindestliquidität · Rot < 1,0× · Grau ohne Saldo |
+| Liquidität in 13 Wochen / Tiefpunkt | Saldo heute + Planbewegungen | Mieten, Zinspläne, Rechnungen, `planposten` | wie oben |
+| Offene Prüffälle | Anzahl, davon rot | alle Module | Rot bei roten Fällen |
+| Datenlücken | Anzahl, davon kritisch | Abbildung der Live-Daten | Rot bei kritischen Lücken |
+| Freies Eigenkapital | min(Saldo im Horizont) − Mindestliquidität | Planung | informativ |
 
 ### Immobilien Bestand
 | KPI | Formel | Quelle | Ziel / Ampel |
@@ -127,36 +158,39 @@ Ampel: **Grün** ok · **Gelb** prüfen · **Rot** handeln.
 | Ø Zinssatz Bank | volumengewichtet | Darlehen | informativ |
 | Offene IC-Zinsen | Σ fällige, nicht gezahlte IC-Zinsen | Abgleich M2 | Gelb > 0 |
 
-### Baumaschinen und Beteiligungen
-Heute keine Daten im Board-Scope. Im Board sichtbar über die Liquidität der Gesellschaften und die IC-Darlehen (Bestandsfinanzierung). Kern-KPIs für später: Lagerdauer, Rohertrag je Maschine, Burn-Rate/Runway der Plattform.
+### Baumaschinenhandel (G-09)
+| KPI | Formel | Quelle | Ampel |
+|---|---|---|---|
+| Lagerwert | Σ Einstand der Maschinen im Bestand | `maschinen`, `maschinen_kosten` | informativ, gegen IC-Darlehen |
+| Ø Lagerdauer | Tage seit Ankauf, Bestand | `maschinen` | Grün < 90 · Gelb < 180 · Rot ≥ 180 |
+| Rohertrag und Marge 12 Monate | Σ (Verkaufspreis − Einstand) / Umsatz | `maschinen` | gegen Plan |
+| Lagerumschlag | Wareneinsatz 12 M / Lagerwert | `maschinen` | Ziel ≥ 3× |
+| Gebundenes IC-Kapital | Restschuld IC-Darlehen an G-09, Zinsen p. a. | `darlehen` | gegen Lagerwert |
 
-## 5. Ableitung für die App
+### Baumaschinen-Plattform (G-06)
+| KPI | Formel | Quelle | Ampel |
+|---|---|---|---|
+| Bankbestand | Σ Kontosalden | Kontoauszug (Upload oder Saldo manuell) | Grau ohne Saldo |
+| Burn-Rate | Ø Nettoabfluss 3 Monate | Umsätze | informativ |
+| Runway | Bestand / Burn-Rate | berechnet | Grün ≥ 12 · Gelb ≥ 6 · Rot < 6 Monate |
+| Finanzierung durch die Gruppe | Restschuld IC-Darlehen | `darlehen` | informativ |
+| Umsatz / GMV | Plattform-Auswertung | **keine Quelle** | erst nach Anbindung |
 
-| Seite | Beantwortet Fragen |
-|---|---|
-| **Cockpit** `/board` | 1, 2, 3, 4, 5 (oben), Kurzfassung 6, 7, 13 |
-| **Liquidität** `/board/liquiditaet` | 1, 4, 5 |
-| **Darlehen** `/board/darlehen` | 9, 13, 14, 15 |
-| **Immobilien** `/board/immobilien` | 6, 7, 10, 11, 12 |
-| **Ankaufspipeline** `/board/pipeline` | 5, 8 |
-| **Ablage v2** `/board/ablage` | 3 (Dokumente) |
-| **Prüfliste** `/board/pruefliste` | 3 |
+## 6. Ableitung für die App
 
-**Cockpit ganz oben (Reihenfolge nach Häufigkeit der Frage):**
-1. Liquidität heute (konsolidiert) · 2. Liquidität in 13 Wochen · 3. Offene Prüffälle · 4. Aktive Darlehen (Restschuld) · 5. Soll-Miete/Monat · 6. Leerstand.
+| Bereich | Seite | Beantwortet |
+|---|---|---|
+| Steuerung | **Cockpit** `/` | tägliche Fragen aller Segmente, je Segment 2–4 KPIs |
+| Steuerung | **Liquidität** `/board/liquiditaet` | Geld heute, 13 Wochen, 24 Monate, Ankaufs-Szenario |
+| Steuerung | **Darlehen** `/board/darlehen` | Fälligkeiten, Zinsabgleich, Matrix Geber × Nehmer, Kontobewegungen |
+| Steuerung | **Prüfliste** `/board/pruefliste` | was zu bestätigen ist, inklusive Datenlücken und Abstimmungen |
+| Steuerung | **Datenqualität** `/board/daten` | Quelle und Stand je Datenart, Lücken, Eingabe fehlender Werte |
+| Immobilien | **Portfolio** `/board/immobilien` | Bestand, Aufteiler, Mieten, Fristen |
+| Immobilien | **Transaktionen** `/board/transaktionen` | Ankauf vom Exposé bis Notar, Verkauf von Objekten und Einheiten |
+| Immobilien | Offene Exposés, Exposé-Import | Bens Seiten, unverändert |
+| Baumaschinen | **Handel & Plattform** `/board/baumaschinen` | Lager, Rohertrag, IC-Kapital, Runway |
 
-**Warnungen (Cockpit und Prüfliste):**
-- Gesellschaft unterschreitet Mindestliquidität im 13-Wochen-Horizont (rot).
-- Soll-Zins/Rate fällig und nach 5 Tagen kein passender Umsatz (rot), Betrag abweichend (gelb).
-- Darlehen endet oder Zinsbindung läuft in ≤ 6 Monaten aus (rot), ≤ 12 Monaten (gelb).
-- Mietrückstand ≥ 2 Monatsmieten (rot), ≥ 1 (gelb).
-- Zustimmungsfrist Mieterhöhung läuft in ≤ 14 Tagen ab (gelb); Kündigungs-Fristende in ≤ 30 Tagen (gelb).
-- Aufteiler-Budget > 110 % (rot).
-- KI-Erkennung mit Konfidenz < 90 % (gelb).
-
-**OKRs später im Board:** Eigene Tabelle `okrs` (Objective, Key Results mit Messgröße aus dem KPI-Set, Zielwert, Quartal, Verantwortlicher). Key Results verweisen auf eine KPI-Definition, sodass der Ist-Wert automatisch aus dem Board kommt (z. B. „Leerstandsquote < 3 % bis Q2“). Darstellung: ein Abschnitt im Cockpit mit Fortschrittsbalken je KR; Review monatlich. Vorschlag für die ersten drei Objectives: *Liquidität planbar machen*, *Bestand auf Potenzialmiete heben*, *Aufteiler-Kapital schneller drehen*.
-
-## 6. Risiken, die das Board sichtbar machen muss
+## 7. Risiken, die das Board sichtbar machen muss
 
 1. **Fälligkeits- und Zinsbindungsrisiko:** Anschlussfinanzierung bei höherem Zins; Liste aller Enden ≤ 24 Monate mit Zinsdelta (+1 %/+2 %) als Mehrbelastung p.a.
 2. **Konzentrationsrisiko:** Anteil einer Bank an Bankverbindlichkeiten; Anteil der größten Gesellschaft an IC-Forderungen der Holding (Matrix Geber × Nehmer).
@@ -165,8 +199,22 @@ Heute keine Daten im Board-Scope. Im Board sichtbar über die Liquidität der Ge
 5. **Aufteiler-Bindung:** Langsamer Verkauf bindet EK und frisst Marge über Finanzierungskosten.
 6. **Bürgschaften und Mithaftung:** Gesellschafter- oder Holdingbürgschaften für Objektdarlehen machen Einzelrisiken zu Gruppenrisiken; im Datenmodell als Feld `buergschaft` am Darlehen, Anzeige im Darlehens-Detail und als Summe.
 7. **Getrennter Bereich Maklergesellschaft:** eigene Liquidität, nicht in die freie Gruppenliquidität einrechnen.
+8. **Blindflug Baumaschinen:** 0,8 Mio. € IC-Mittel ohne Bestandsdaten. Bis zum ersten Import zeigt das Board „Daten fehlen“.
+9. **Doppelte Bankbuchungen:** Werden sie mitgezählt, sind Umsätze und Liquidität falsch. Das Board zählt jede Buchung nur einmal (Fingerprint je Konto).
 
-## Abweichungen gegenüber dem Auftrag (bewusst)
+## 8. Abweichungen zum Nachtlauf
 
-- Baumaschinen-Handel und Auktionsplattform erhalten **keine eigene Seite**, weil heute keine Datenquelle existiert und keine Wochenentscheidung davon abhängt, die das Board besser beantwortet als Liquidität und Darlehen. Sie erscheinen als Gesellschaften in Liquidität und Darlehen.
-- Die **Prüfliste** wird eine eigene Seite (nicht nur Cockpit-Kasten), weil Frage 3 täglich gestellt wird.
+**Fällt weg**
+- Eigenes Schema `board` mit englischen Tabellen: ersetzt durch Bens `public`-Tabellen plus wenige Ergänzungen.
+- Eigene Shell mit Petrol-Design und Dunkelmodus: Das Board läuft in Bens App und Stil, nur Statusfarben kommen dazu.
+- Eigener Salesforce-Mock und eigene Darlehensseite neben PR #1.
+- „Ankaufspipeline“ als eigener Bereich: jetzt „Transaktionen“ unter Immobilien.
+- Ablage v2 in der Hauptnavigation: nur noch Labor (`VITE_BOARD_LABOR=1`).
+
+**Neu**
+- Baumaschinen mit Handel und Plattform, Import aus Excel/CSV.
+- Datenqualität als eigene Seite, Lücken als Prüffälle, Quelle je KPI.
+- Kontosalden aus camt.053, eindeutige Bankbuchungen, Abstimmung Darlehensstand gegen Zinsplan.
+- Cockpit ist die Startseite und zeigt die drei Segmente.
+
+**Warum:** Eine App mit einem Datenmodell verhindert, dass Zahlen doppelt gepflegt werden und auseinanderlaufen. Und ohne benannte Quelle ist eine schöne Zahl wertlos.
