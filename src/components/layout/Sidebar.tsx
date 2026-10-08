@@ -20,6 +20,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Gauge,
+  HandCoins,
 } from "lucide-react";
 
 import type { LucideIcon } from "lucide-react";
@@ -78,6 +79,7 @@ const sections: NavSection[] = [
         label: "Nebenkostenabrechnung",
         icon: Calculator,
       },
+      { to: "/verwaltung/darlehen", label: "Darlehen", icon: HandCoins },
     ],
   },
   {

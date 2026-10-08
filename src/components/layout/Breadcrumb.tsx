@@ -12,6 +12,7 @@ const LABELS: Record<string, string> = {
   "/verwaltung/sollstellung": "Sollstellung",
   "/verwaltung/zahlungen": "Zahlungen & Rückstände",
   "/verwaltung/nebenkosten": "Nebenkostenabrechnung",
+  "/verwaltung/darlehen": "Darlehen",
 
   "/dokumente": "Dokumente",
   "/dokumente/ablage": "Dokumentenablage",
