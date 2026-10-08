@@ -7,7 +7,8 @@ import {
   type CrmDaten,
   type Kaeufer,
   type Reservierung,
-} from "@/lib/integrations/salesforce";
+  RESERVIERUNG_LABEL,
+} from "@/lib/db/transaktionen";
 import { tageZwischen, type IsoDatum } from "@/lib/kalender";
 
 /** Aktive Phasen (Kanban-Spalten) */
@@ -17,9 +18,8 @@ export const AKTIVE_PHASEN: readonly AnkaufPhase[] = ANKAUF_PHASEN.filter(
 
 /** Abschlusswahrscheinlichkeit je Phase für das gewichtete Volumen (Annahme). */
 export const WAHRSCHEINLICHKEIT: Record<AnkaufPhase, number> = {
-  eingang: 0.05,
-  pruefung: 0.1,
-  besichtigung: 0.2,
+  expose: 0.05,
+  bewertung: 0.15,
   angebot: 0.35,
   due_diligence: 0.6,
   notar: 0.9,
@@ -39,7 +39,7 @@ export interface AnkaufKennzahlen {
   /** Kaufpreisfaktor = Preis / Jahresnettokaltmiete */
   faktor: number | null;
   bruttoRendite: number | null;
-  preisJeQm: number;
+  preisJeQm: number | null;
   gesamtInvest: number;
   ekBedarf: number;
   tageInPhase: number;
@@ -58,12 +58,15 @@ export function ankaufKennzahlen(
   return {
     ankauf: a,
     faktor:
-      a.jahresnettokaltmiete > 0
+      a.jahresnettokaltmiete && a.angebotspreis > 0
         ? a.angebotspreis / a.jahresnettokaltmiete
         : null,
     bruttoRendite:
-      a.angebotspreis > 0 ? a.jahresnettokaltmiete / a.angebotspreis : null,
-    preisJeQm: a.angebotspreis / a.flaeche,
+      a.jahresnettokaltmiete != null && a.angebotspreis > 0
+        ? a.jahresnettokaltmiete / a.angebotspreis
+        : null,
+    preisJeQm:
+      a.flaeche && a.angebotspreis > 0 ? a.angebotspreis / a.flaeche : null,
     gesamtInvest,
     ekBedarf: gesamtInvest * a.ekQuote,
     tageInPhase,
@@ -132,11 +135,13 @@ export interface EinheitVertrieb {
 }
 
 const RANG: Record<Reservierung["status"], number> = {
-  storniert: -1,
-  interessent: 0,
+  abgebrochen: -1,
+  in_vermarktung: 0,
   reserviert: 1,
-  notartermin: 2,
-  beurkundet: 3,
+  kaufvertrag_in_vorbereitung: 2,
+  notartermin: 3,
+  beurkundet: 4,
+  uebergeben: 5,
 };
 
 const BOARD_STATUS_LABEL: Record<Unit["status"], string> = {
@@ -147,19 +152,18 @@ const BOARD_STATUS_LABEL: Record<Unit["status"], string> = {
   reserviert: "reserviert",
   verkauft: "verkauft",
 };
-const CRM_STATUS_LABEL: Record<Reservierung["status"], string> = {
-  interessent: "Interessent",
-  reserviert: "reserviert",
-  notartermin: "Notartermin",
-  beurkundet: "beurkundet",
-  storniert: "storniert",
-};
+const CRM_STATUS_LABEL = RESERVIERUNG_LABEL;
 
 function crmZuBoard(
   s: Reservierung["status"] | undefined,
 ): Unit["status"] | null {
-  if (s === "beurkundet") return "verkauft";
-  if (s === "reserviert" || s === "notartermin") return "reserviert";
+  if (s === "beurkundet" || s === "uebergeben") return "verkauft";
+  if (
+    s === "reserviert" ||
+    s === "kaufvertrag_in_vorbereitung" ||
+    s === "notartermin"
+  )
+    return "reserviert";
   return null;
 }
 
@@ -174,28 +178,28 @@ export function einheitenVertrieb(
     .filter((u) => aufteiler.has(u.propertyId))
     .map((unit) => {
       const res = crm.reservierungen.filter(
-        (r) => r.unitId === unit.id && r.status !== "storniert",
+        (r) => r.unitId === unit.id && r.status !== "abgebrochen",
       );
       const fuehrend =
         [...res].sort((a, b) => RANG[b.status] - RANG[a.status])[0] ?? null;
       const crmStatus = crmZuBoard(fuehrend?.status);
       let abweichung: string | null = null;
       if (crmStatus && crmStatus !== unit.status)
-        abweichung = `CRM meldet „${CRM_STATUS_LABEL[fuehrend!.status]}“, Board führt „${BOARD_STATUS_LABEL[unit.status]}“`;
+        abweichung = `Verkauf meldet „${CRM_STATUS_LABEL[fuehrend!.status]}“, Einheit steht auf „${BOARD_STATUS_LABEL[unit.status]}“`;
       else if (
         !crmStatus &&
         (unit.status === "reserviert" || unit.status === "verkauft")
       )
-        abweichung = `Board führt „${BOARD_STATUS_LABEL[unit.status]}“, im CRM fehlt die Reservierung`;
+        abweichung = `Einheit steht auf „${BOARD_STATUS_LABEL[unit.status]}“, im Verkauf fehlt die Reservierung`;
       return {
         unit,
         fuehrend:
-          fuehrend && fuehrend.status !== "interessent" ? fuehrend : null,
+          fuehrend && fuehrend.status !== "in_vermarktung" ? fuehrend : null,
         kaeufer:
-          fuehrend && fuehrend.status !== "interessent"
+          fuehrend && fuehrend.status !== "in_vermarktung"
             ? (crm.kaeufer.find((k) => k.id === fuehrend.kaeuferId) ?? null)
             : null,
-        interessenten: res.filter((r) => r.status === "interessent").length,
+        interessenten: res.filter((r) => r.status === "in_vermarktung").length,
         crmStatus,
         abweichung,
       };
@@ -214,8 +218,8 @@ export function pipelinePruefFaelle(
     if (!v.abweichung) continue;
     const prop = daten.properties.find((p) => p.id === v.unit.propertyId);
     faelle.push({
-      id: `salesforce:status:${v.unit.id}`,
-      source: "salesforce",
+      id: `transaktionen:status:${v.unit.id}`,
+      source: "transaktionen",
       severity: "gelb",
       title: `Vertriebsstatus abweichend: ${prop?.name ?? ""} ${v.unit.label}`,
       detail: v.abweichung,
@@ -236,11 +240,11 @@ export function pipelinePruefFaelle(
     )
       continue;
     faelle.push({
-      id: `salesforce:stockt:${k.ankauf.id}`,
-      source: "salesforce",
+      id: `transaktionen:stockt:${k.ankauf.id}`,
+      source: "transaktionen",
       severity: k.ampel === "rot" ? "rot" : "gelb",
       title: `Ankauf stockt: ${k.ankauf.name}`,
-      detail: `${k.tageInPhase} Tage in Phase; nächster Schritt: ${k.ankauf.naechsterSchritt}`,
+      detail: `${k.tageInPhase} Tage in Phase; nächster Schritt: ${k.ankauf.naechsterSchritt || "nicht erfasst"}`,
       companyId: k.ankauf.zielGesellschaftId,
       refType: "ankauf",
       refId: k.ankauf.id,

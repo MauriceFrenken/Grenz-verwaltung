@@ -1,6 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight, ExternalLink, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Download,
+  ExternalLink,
+  XCircle,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { DatenTabelle, type Spalte } from "@/components/board/DatenTabelle";
@@ -25,12 +31,15 @@ import {
   flaeche,
   prozent,
 } from "@/lib/format/de";
+import { boardRepository } from "@/lib/db/config";
 import {
   PHASE_LABEL,
-  salesforceAdapter,
+  RESERVIERUNG_LABEL,
   type AnkaufPhase,
   type CrmDaten,
-} from "@/lib/integrations/salesforce";
+  type Expose,
+} from "@/lib/db/transaktionen";
+import { salesforceLink } from "@/lib/integrations/salesforce";
 import { cn } from "@/lib/utils";
 import { useDarlehenAuswertung } from "@/modules/darlehen/useDarlehen";
 import { useImmobilienAuswertung } from "@/modules/immobilien/useImmobilien";
@@ -40,7 +49,11 @@ import {
   type LiquiditaetsAuswertung,
 } from "@/modules/liquiditaet/logik/liquiditaet";
 import { useLiquiditaetAuswertung } from "@/modules/liquiditaet/useLiquiditaet";
-import { useBoardDaten, useGesellschaftsFilter } from "@/modules/shell/daten";
+import {
+  BOARD_DATEN_KEY,
+  useBoardDaten,
+  useGesellschaftsFilter,
+} from "@/modules/shell/daten";
 import {
   AKTIVE_PHASEN,
   ankaufKennzahlen,
@@ -51,12 +64,12 @@ import {
   WAHRSCHEINLICHKEIT,
   type AnkaufKennzahlen,
   type EinheitVertrieb,
-} from "./logik/pipeline";
-import { CRM_KEY, useCrmDaten } from "./useCrm";
+} from "./logik/transaktionen";
+import { useCrmDaten } from "./useCrm";
 
-type Reiter = "ankauf" | "abverkauf";
+type Reiter = "ankauf" | "eingang" | "abverkauf";
 
-export function PipelineSeite() {
+export function TransaktionenSeite() {
   const { data, isLoading, error } = useBoardDaten();
   const crm = useCrmDaten(data);
   const darlehen = useDarlehenAuswertung(data);
@@ -67,17 +80,16 @@ export function PipelineSeite() {
     immobilien,
   );
   const filter = useGesellschaftsFilter();
-  const search = useSearch({ from: "/board/pipeline" });
-  const navigate = useNavigate({ from: "/board/pipeline" });
+  const search = useSearch({ from: "/board/transaktionen" });
+  const navigate = useNavigate({ from: "/board/transaktionen" });
   const [reiter, setReiter] = useState<Reiter>("ankauf");
 
-  const fehler = error ?? crm.error;
-  if (fehler)
+  if (error)
     return (
       <Leerzustand
         icon={AlertTriangle}
-        titel="Pipeline nicht verfügbar"
-        text={(fehler as Error).message}
+        titel="Transaktionen nicht verfügbar"
+        text={(error as Error).message}
       />
     );
   if (isLoading || !data || !crm.data || !liquiditaet) return <SeitenSkelett />;
@@ -109,8 +121,8 @@ export function PipelineSeite() {
   return (
     <>
       <SeitenKopf
-        titel="Ankaufspipeline"
-        unterzeile="Ankäufe nach Phase und Abverkauf der Aufteiler-Einheiten · Daten aus Salesforce (Demo)"
+        titel="Transaktionen"
+        unterzeile={`Immobilien: Ankauf vom Exposé bis zum Notar, Verkauf von Objekten und Einheiten${data.quelle === "mock" ? " · Musterdaten" : ""}`}
       />
 
       <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
@@ -168,7 +180,11 @@ export function PipelineSeite() {
           onChange={setReiter}
           optionen={[
             { wert: "ankauf", label: "Ankauf" },
-            { wert: "abverkauf", label: "Abverkauf" },
+            {
+              wert: "eingang",
+              label: `Exposé-Eingang (${crm.data.exposes.filter((e) => !e.ankaufId).length})`,
+            },
+            { wert: "abverkauf", label: "Verkauf" },
           ]}
         />
       </div>
@@ -231,6 +247,14 @@ export function PipelineSeite() {
             .
           </p>
         </>
+      ) : reiter === "eingang" ? (
+        <ExposeEingang
+          exposes={crm.data.exposes}
+          onUebernommen={(id) => {
+            setReiter("ankauf");
+            oeffne(id);
+          }}
+        />
       ) : (
         <Abverkauf daten={data} crm={crm.data} filter={filter.passt} />
       )}
@@ -270,26 +294,37 @@ function DealKarte({
             {k.ankauf.name}
           </div>
           <div className="truncate text-xs text-text-muted">
-            {k.ankauf.ort} · {k.ankauf.einheiten} WE ·{" "}
-            {flaeche(k.ankauf.flaeche)}
+            {[
+              k.ankauf.ort,
+              k.ankauf.einheiten != null ? `${k.ankauf.einheiten} WE` : null,
+              k.ankauf.flaeche ? flaeche(k.ankauf.flaeche) : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </div>
         </div>
         <AmpelPunkt ampel={k.ampel} label={`${k.tageInPhase} Tage in Phase`} />
       </div>
       <div className="mt-2 flex items-baseline justify-between text-sm tabular-nums">
         <span className="font-medium">
-          {euroKompakt(k.ankauf.angebotspreis)}
+          {k.ankauf.angebotspreis
+            ? euroKompakt(k.ankauf.angebotspreis)
+            : "Preis offen"}
         </span>
         <span className="text-xs text-text-muted">
           {k.faktor ? `${dezimal(k.faktor, 1)}-fach` : "–"}
         </span>
       </div>
       <div className="mt-1.5 line-clamp-2 text-xs text-text-muted">
-        {k.ankauf.naechsterSchritt}
+        {k.ankauf.naechsterSchritt || "Nächster Schritt fehlt"}
       </div>
       <div className="mt-2 flex items-center justify-between text-[11px] text-text-subtle">
         <span>
-          {k.ankauf.strategie === "aufteiler" ? "Aufteiler" : "Bestand"}
+          {k.ankauf.strategie === "aufteiler"
+            ? "Aufteiler"
+            : k.ankauf.strategie === "gewerbe"
+              ? "Gewerbe"
+              : "Bestand"}
         </span>
         <span
           className={cn(
@@ -333,11 +368,9 @@ function AnkaufDetail({
   const phaseSetzen = async (phase: AnkaufPhase) => {
     if (!a) return;
     try {
-      await salesforceAdapter(daten).phaseSetzen(a.id, phase, daten.stichtag);
-      await qc.invalidateQueries({ queryKey: CRM_KEY });
-      toast.success(`${a.name}: ${PHASE_LABEL[phase]}`, {
-        description: "In Salesforce aktualisiert (Demo)",
-      });
+      await boardRepository().ankaufStufeSetzen(a.id, phase);
+      await qc.invalidateQueries({ queryKey: BOARD_DATEN_KEY });
+      toast.success(`${a.name}: ${PHASE_LABEL[phase]}`);
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -351,7 +384,13 @@ function AnkaufDetail({
       titel={a ? a.name : ""}
       unterzeile={
         a
-          ? `${a.strasse}, ${a.ort} · ${a.id} · verantwortlich ${a.verantwortlich}`
+          ? [
+              a.strasse,
+              a.ort,
+              a.verantwortlich ? `verantwortlich ${a.verantwortlich}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")
           : undefined
       }
       kopfzeile={
@@ -370,13 +409,19 @@ function AnkaufDetail({
               eintraege={[
                 {
                   label: "Angebotspreis",
-                  wert: euro(a.angebotspreis),
+                  wert: a.angebotspreis ? euro(a.angebotspreis) : "offen",
                   hervorheben: true,
                 },
-                { label: "Preis je m²", wert: euro(Math.round(k.preisJeQm)) },
+                {
+                  label: "Preis je m²",
+                  wert: k.preisJeQm ? euro(Math.round(k.preisJeQm)) : "–",
+                },
                 {
                   label: "Jahresnettokaltmiete",
-                  wert: euro(a.jahresnettokaltmiete),
+                  wert:
+                    a.jahresnettokaltmiete != null
+                      ? euro(a.jahresnettokaltmiete)
+                      : "–",
                 },
                 {
                   label: "Kaufpreisfaktor",
@@ -392,7 +437,7 @@ function AnkaufDetail({
                 },
                 {
                   label: "EK-Bedarf",
-                  wert: `${euro(Math.round(k.ekBedarf))} (${prozent(a.ekQuote, 0)})`,
+                  wert: `${euro(Math.round(k.ekBedarf))} (${prozent(a.ekQuote, 0)}${a.ekQuoteGesetzt ? "" : ", angenommen"})`,
                 },
                 { label: "Zielgesellschaft", wert: ziel?.name ?? "–" },
                 { label: "Makler", wert: a.makler ?? "ohne Makler" },
@@ -423,7 +468,12 @@ function AnkaufDetail({
           </PanelAbschnitt>
 
           <PanelAbschnitt titel="Nächster Schritt">
-            <p className="text-sm">{a.naechsterSchritt}</p>
+            <p className="text-sm">
+              {a.naechsterSchritt || "Kein nächster Schritt erfasst."}
+              {a.naechsterSchrittAm
+                ? ` · bis ${datum(a.naechsterSchrittAm)}`
+                : ""}
+            </p>
             {a.notartermin ? (
               <p className="mt-1 text-xs text-text-muted">
                 Notartermin {datum(a.notartermin)}
@@ -441,16 +491,22 @@ function AnkaufDetail({
                   <XCircle className="size-4" aria-hidden /> Absagen
                 </Knopf>
               ) : null}
-              <Knopf variante="geist" asChild>
-                <a
-                  href={`${crm.instanzUrl}/lightning/r/Real_Estate__c/${a.sfId}/view`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <ExternalLink className="size-4" aria-hidden /> In Salesforce
-                  öffnen
-                </a>
-              </Knopf>
+              {salesforceLink(crm.instanzUrl, a.sfId) ? (
+                <Knopf variante="geist" asChild>
+                  <a
+                    href={salesforceLink(crm.instanzUrl, a.sfId)!}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ExternalLink className="size-4" aria-hidden /> In
+                    Salesforce öffnen
+                  </a>
+                </Knopf>
+              ) : a.sfId ? (
+                <span className="self-center text-xs text-text-muted">
+                  Salesforce-Transaktion {a.sfId}
+                </span>
+              ) : null}
             </div>
           </PanelAbschnitt>
         </>
@@ -463,14 +519,140 @@ const FINANZIERUNG_LABEL = {
   bestaetigt: "bestätigt",
   offen: "offen",
   bar: "Barkauf",
+  unbekannt: "unbekannt",
 } as const;
-const RESERVIERUNG_LABEL: Record<string, string> = {
-  interessent: "Interessent",
-  reserviert: "reserviert",
-  notartermin: "Notartermin",
-  beurkundet: "beurkundet",
-  storniert: "storniert",
-};
+
+function ExposeEingang({
+  exposes,
+  onUebernommen,
+}: {
+  exposes: Expose[];
+  onUebernommen: (ankaufId: string) => void;
+}) {
+  const qc = useQueryClient();
+  const [laeuft, setLaeuft] = useState<string | null>(null);
+  const offen = exposes.filter((e) => !e.ankaufId);
+  const uebernehmen = async (e: Expose) => {
+    setLaeuft(e.id);
+    try {
+      const id = await boardRepository().ankaufAusExpose({
+        exposeId: e.id,
+        name: e.adresse || e.betreff || "Exposé",
+        strasse: e.adresse,
+        ort: e.ort,
+        angebotspreis: e.angebotspreis,
+        jahresnettokaltmiete: e.jahresnettokaltmiete,
+        flaeche: e.flaeche,
+        einheiten: e.einheiten,
+        makler: e.makler,
+        sfId: e.sfTransaktionId,
+      });
+      await qc.invalidateQueries({ queryKey: BOARD_DATEN_KEY });
+      toast.success("In die Pipeline übernommen", {
+        description: e.adresse || e.betreff,
+      });
+      onUebernommen(id);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setLaeuft(null);
+    }
+  };
+  const spalten: Spalte<Expose>[] = [
+    {
+      id: "objekt",
+      kopf: "Objekt",
+      zelle: (e) => (
+        <div>
+          <div className="font-medium">
+            {e.adresse || e.betreff || "ohne Adresse"}
+          </div>
+          <div className="text-xs text-text-muted">
+            {[e.ort, e.makler ?? e.absender].filter(Boolean).join(" · ")}
+          </div>
+        </div>
+      ),
+      sortierWert: (e) => e.adresse,
+    },
+    {
+      id: "eingang",
+      kopf: "Eingang",
+      zelle: (e) => (e.eingegangenAm ? datum(e.eingegangenAm) : "–"),
+      sortierWert: (e) => e.eingegangenAm ?? "",
+    },
+    {
+      id: "preis",
+      kopf: "Angebotspreis",
+      ausrichtung: "rechts",
+      zelle: (e) => (e.angebotspreis ? euroKompakt(e.angebotspreis) : "–"),
+      sortierWert: (e) => e.angebotspreis ?? 0,
+    },
+    {
+      id: "faktor",
+      kopf: "Faktor",
+      ausrichtung: "rechts",
+      zelle: (e) =>
+        e.angebotspreis && e.jahresnettokaltmiete
+          ? `${dezimal(e.angebotspreis / e.jahresnettokaltmiete, 1)}-fach`
+          : "–",
+      sortierWert: (e) =>
+        e.angebotspreis && e.jahresnettokaltmiete
+          ? e.angebotspreis / e.jahresnettokaltmiete
+          : 999,
+      optional: true,
+    },
+    {
+      id: "flaeche",
+      kopf: "Fläche",
+      ausrichtung: "rechts",
+      zelle: (e) => (e.flaeche ? flaeche(e.flaeche) : "–"),
+      sortierWert: (e) => e.flaeche ?? 0,
+      optional: true,
+    },
+    {
+      id: "aktion",
+      kopf: "",
+      ausrichtung: "rechts",
+      zelle: (e) => (
+        <Knopf
+          variante="geist"
+          disabled={laeuft === e.id}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            void uebernehmen(e);
+          }}
+        >
+          <Download className="size-4" aria-hidden /> In Pipeline
+        </Knopf>
+      ),
+    },
+  ];
+  return (
+    <Abschnitt
+      titel="Eingegangene Exposés"
+      beschreibung={`${offen.length} Exposés aus dem Postfach noch nicht in der Pipeline · Analyse und Salesforce-Export laufen weiter über Bens Exposé-Import`}
+    >
+      {offen.length === 0 ? (
+        <Leerzustand
+          icon={Download}
+          titel="Alles übernommen"
+          text="Neue Exposés erscheinen hier, sobald das Postfach sie analysiert hat."
+        />
+      ) : (
+        <DatenTabelle
+          label="Exposé-Eingang"
+          zeilen={offen}
+          spalten={spalten}
+          schluessel={(e) => e.id}
+          startSortierung={{ id: "eingang", richtung: "ab" }}
+          suchText={(e) =>
+            `${e.adresse} ${e.ort} ${e.betreff} ${e.makler ?? ""}`
+          }
+        />
+      )}
+    </Abschnitt>
+  );
+}
 
 const STATUS_LABEL: Record<string, string> = {
   vermietet: "vermietet",
@@ -528,7 +710,7 @@ function Abverkauf({
     },
     {
       id: "board",
-      kopf: "Status Board",
+      kopf: "Status Einheit",
       zelle: (v) => STATUS_LABEL[v.unit.status],
       sortierWert: (v) => v.unit.status,
     },
@@ -573,7 +755,7 @@ function Abverkauf({
   return (
     <Abschnitt
       titel="Käufer und Reservierungen je Einheit"
-      beschreibung={`${verkauft.length} von ${zeilen.length} Einheiten beurkundet · Board-Status gegen Salesforce abgeglichen`}
+      beschreibung={`${verkauft.length} von ${zeilen.length} Einheiten beurkundet · Einheitenstatus gegen Verkaufsstand abgeglichen`}
     >
       <DatenTabelle
         label="Abverkauf"

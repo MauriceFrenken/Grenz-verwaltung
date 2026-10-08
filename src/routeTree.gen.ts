@@ -28,6 +28,7 @@ import { Route as BoardImmobilienRouteImport } from './routes/board.immobilien'
 import { Route as BoardLiquiditaetRouteImport } from './routes/board.liquiditaet'
 import { Route as BoardPipelineRouteImport } from './routes/board.pipeline'
 import { Route as BoardPrueflisteRouteImport } from './routes/board.pruefliste'
+import { Route as BoardTransaktionenRouteImport } from './routes/board.transaktionen'
 import { Route as DokumenteIndexRouteImport } from './routes/dokumente.index'
 import { Route as DokumenteAblageRouteImport } from './routes/dokumente.ablage'
 import { Route as DokumentePruefordnerRouteImport } from './routes/dokumente.pruefordner'
@@ -155,6 +156,11 @@ const BoardPipelineRoute = BoardPipelineRouteImport.update({
 const BoardPrueflisteRoute = BoardPrueflisteRouteImport.update({
   id: '/pruefliste',
   path: '/pruefliste',
+  getParentRoute: () => BoardRoute,
+} as any)
+const BoardTransaktionenRoute = BoardTransaktionenRouteImport.update({
+  id: '/transaktionen',
+  path: '/transaktionen',
   getParentRoute: () => BoardRoute,
 } as any)
 const DokumenteIndexRoute = DokumenteIndexRouteImport.update({
@@ -351,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/board/liquiditaet': typeof BoardLiquiditaetRoute
   '/board/pipeline': typeof BoardPipelineRoute
   '/board/pruefliste': typeof BoardPrueflisteRoute
+  '/board/transaktionen': typeof BoardTransaktionenRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
   '/dokumente/pruefung': typeof DokumentePruefungRoute
@@ -400,6 +407,7 @@ export interface FileRoutesByTo {
   '/board/liquiditaet': typeof BoardLiquiditaetRoute
   '/board/pipeline': typeof BoardPipelineRoute
   '/board/pruefliste': typeof BoardPrueflisteRoute
+  '/board/transaktionen': typeof BoardTransaktionenRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
   '/dokumente/pruefung': typeof DokumentePruefungRoute
@@ -452,6 +460,7 @@ export interface FileRoutesById {
   '/board/liquiditaet': typeof BoardLiquiditaetRoute
   '/board/pipeline': typeof BoardPipelineRoute
   '/board/pruefliste': typeof BoardPrueflisteRoute
+  '/board/transaktionen': typeof BoardTransaktionenRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
   '/dokumente/pruefung': typeof DokumentePruefungRoute
@@ -508,6 +517,7 @@ export interface FileRouteTypes {
     | '/board/liquiditaet'
     | '/board/pipeline'
     | '/board/pruefliste'
+    | '/board/transaktionen'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
     | '/dokumente/pruefung'
@@ -557,6 +567,7 @@ export interface FileRouteTypes {
     | '/board/liquiditaet'
     | '/board/pipeline'
     | '/board/pruefliste'
+    | '/board/transaktionen'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
     | '/dokumente/pruefung'
@@ -608,6 +619,7 @@ export interface FileRouteTypes {
     | '/board/liquiditaet'
     | '/board/pipeline'
     | '/board/pruefliste'
+    | '/board/transaktionen'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
     | '/dokumente/pruefung'
@@ -796,6 +808,13 @@ declare module '@tanstack/react-router' {
       path: '/pruefliste'
       fullPath: '/board/pruefliste'
       preLoaderRoute: typeof BoardPrueflisteRouteImport
+      parentRoute: typeof BoardRoute
+    }
+    '/board/transaktionen': {
+      id: '/board/transaktionen'
+      path: '/transaktionen'
+      fullPath: '/board/transaktionen'
+      preLoaderRoute: typeof BoardTransaktionenRouteImport
       parentRoute: typeof BoardRoute
     }
     '/dokumente/': {
@@ -1040,6 +1059,7 @@ interface BoardRouteChildren {
   BoardLiquiditaetRoute: typeof BoardLiquiditaetRoute
   BoardPipelineRoute: typeof BoardPipelineRoute
   BoardPrueflisteRoute: typeof BoardPrueflisteRoute
+  BoardTransaktionenRoute: typeof BoardTransaktionenRoute
   BoardIndexRoute: typeof BoardIndexRoute
 }
 
@@ -1051,6 +1071,7 @@ const BoardRouteChildren: BoardRouteChildren = {
   BoardLiquiditaetRoute: BoardLiquiditaetRoute,
   BoardPipelineRoute: BoardPipelineRoute,
   BoardPrueflisteRoute: BoardPrueflisteRoute,
+  BoardTransaktionenRoute: BoardTransaktionenRoute,
   BoardIndexRoute: BoardIndexRoute,
 }
 

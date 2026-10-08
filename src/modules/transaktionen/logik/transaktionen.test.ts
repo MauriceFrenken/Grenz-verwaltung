@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { erzeugeSeed } from "@/lib/db/mock/seed";
-import {
-  ankaufAusSalesforce,
-  ankaufZuSalesforce,
-  erzeugeCrmMock,
-  SalesforceMock,
-  upsertPfad,
-} from "@/lib/integrations/salesforce";
+import { erzeugeCrmMock } from "@/lib/db/mock/transaktionen";
 import {
   ankaufKennzahlen,
   ekBedarfAbAngebot,
@@ -14,35 +8,17 @@ import {
   naechstePhase,
   pipelinePruefFaelle,
   pipelineSummen,
-} from "./pipeline";
+} from "./transaktionen";
 
 const STICHTAG = "2026-10-07";
 const d = erzeugeSeed(STICHTAG);
 const crm = erzeugeCrmMock(d);
 const k = crm.ankaeufe.map((a) => ankaufKennzahlen(a, STICHTAG));
 
-describe("Salesforce-Adapter", () => {
-  it("bildet Ankäufe verlustfrei auf Real_Estate__c ab (Upsert über Board_ID__c)", () => {
-    for (const a of crm.ankaeufe) {
-      const rec = ankaufZuSalesforce(a);
-      expect(rec.Board_ID__c).toBe(a.id);
-      expect(
-        ankaufAusSalesforce({ ...rec, Id: a.sfId }, a.verantwortlich),
-      ).toEqual(a);
-    }
-    expect(upsertPfad("Real_Estate__c", "AK-2026-001")).toBe(
-      "/services/data/v61.0/sobjects/Real_Estate__c/Board_ID__c/AK-2026-001",
-    );
-  });
-
-  it("Mock ist deterministisch und Phasenwechsel bleiben im Speicher", async () => {
+describe("Muster-Transaktionen", () => {
+  it("sind deterministisch", () => {
     expect(erzeugeCrmMock(d)).toEqual(crm);
-    const sf = new SalesforceMock(d);
-    await sf.phaseSetzen("AK-2026-009", "pruefung", STICHTAG);
-    const neu = await sf.laden();
-    expect(neu.ankaeufe.find((a) => a.id === "AK-2026-009")?.phase).toBe(
-      "pruefung",
-    );
+    expect(crm).toEqual(d.crm);
   });
 });
 
@@ -79,7 +55,7 @@ describe("Ankaufspipeline", () => {
   });
 
   it("führt Phasen der Reihe nach bis „gekauft“", () => {
-    expect(naechstePhase("eingang")).toBe("pruefung");
+    expect(naechstePhase("expose")).toBe("bewertung");
     expect(naechstePhase("notar")).toBe("gekauft");
     expect(naechstePhase("abgesagt")).toBeNull();
   });
@@ -99,21 +75,22 @@ describe("Abverkauf", () => {
     }
   });
 
-  it("meldet Statusabweichungen zwischen Board und CRM als Prüffall", () => {
+  it("meldet Statusabweichungen zwischen Einheit und Verkauf als Prüffall", () => {
     const abw = v.filter((x) => x.abweichung);
     expect(abw).toHaveLength(1);
     expect(abw[0].unit.status).toBe("im_vertrieb");
     const faelle = pipelinePruefFaelle(v, k, d, STICHTAG);
     expect(
-      faelle.some((f) => f.id === `salesforce:status:${abw[0].unit.id}`),
+      faelle.some((f) => f.id === `transaktionen:status:${abw[0].unit.id}`),
     ).toBe(true);
     expect(
       faelle.some(
-        (f) => f.id === "salesforce:stockt:AK-2026-008" && f.severity === "rot",
+        (f) =>
+          f.id === "transaktionen:stockt:AK-2026-008" && f.severity === "rot",
       ),
     ).toBe(true);
-    expect(faelle.some((f) => f.id === "salesforce:stockt:AK-2026-004")).toBe(
-      true,
-    );
+    expect(
+      faelle.some((f) => f.id === "transaktionen:stockt:AK-2026-004"),
+    ).toBe(true);
   });
 });

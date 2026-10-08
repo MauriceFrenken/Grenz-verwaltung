@@ -163,6 +163,7 @@ export function objektKennzahlen(
   );
   const potenzialMonat = leases.reduce((s, l) => {
     const u = units.find((x) => x.id === l.unitId)!;
+    if (property.targetRentPerSqm == null) return s;
     return (
       s +
       erhoehungsPotenzial(
@@ -208,7 +209,7 @@ export function objektKennzahlen(
     rueckstand: runden(rueckstand),
     restschuldBank: runden(restschuldBank),
     ltv:
-      property.marketValue > 0 && restschuldBank > 0
+      property.marketValue && restschuldBank > 0
         ? restschuldBank / property.marketValue
         : null,
     dscr,

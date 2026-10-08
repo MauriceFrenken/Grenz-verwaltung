@@ -1,4 +1,9 @@
-import type { BoardDaten, ReviewItem, ReviewQuelle } from "@/lib/db/typen";
+import type {
+  BoardDaten,
+  DatenLuecke,
+  ReviewItem,
+  ReviewQuelle,
+} from "@/lib/db/typen";
 import { plusTage, type IsoDatum } from "@/lib/kalender";
 import { euro } from "@/lib/format/de";
 import type { AblageVorschlag } from "@/modules/ablage-v2/logik/ablage";
@@ -15,7 +20,31 @@ export const QUELLE_LABEL: Record<ReviewQuelle, string> = {
   liquiditaet: "Liquidität",
   ablage: "Ablage",
   salesforce: "Salesforce",
+  transaktionen: "Transaktionen",
+  baumaschinen: "Baumaschinen",
+  daten: "Datenqualität",
 };
+
+/** Datenlücken als Prüffälle: Was fehlt, damit die Zahlen stimmen. */
+export function datenPruefFaelle(
+  luecken: DatenLuecke[],
+  stichtag: IsoDatum,
+): ReviewItem[] {
+  return luecken.map((l) => ({
+    id: `daten:${l.id}`,
+    source: "daten",
+    severity: l.schwere,
+    title: l.titel,
+    detail: `${l.detail} Nächster Schritt: ${l.naechsterSchritt}`,
+    companyId: l.companyId,
+    refType: l.refType,
+    refId: l.refId,
+    dueDate: null,
+    createdAt: stichtag,
+    status: "offen",
+    confidence: null,
+  }));
+}
 
 /** Liquiditätswarnungen als Prüffälle (rot: ≤ 13 Wochen, gelb: ≤ 24 Monate). */
 export function liquiditaetPruefFaelle(
@@ -133,9 +162,16 @@ export function pruefFallZiel(
         search: f.refId ? { firma: f.refId } : undefined,
       };
     case "salesforce":
+    case "transaktionen":
       return f.refType === "ankauf" && f.refId
-        ? { to: "/board/pipeline", search: { ankauf: f.refId } }
-        : { to: "/board/pipeline" };
+        ? { to: "/board/transaktionen", search: { ankauf: f.refId } }
+        : { to: "/board/transaktionen" };
+    case "baumaschinen":
+      return f.refId
+        ? { to: "/board/baumaschinen", search: { maschine: f.refId } }
+        : { to: "/board/baumaschinen" };
+    case "daten":
+      return { to: "/board/daten" };
     case "ablage":
       return { to: "/board/ablage" };
   }

@@ -303,6 +303,7 @@ export function darlehenZuZeile(
       bank: "Bank",
       intercompany: "Intercompany",
       gesellschafter: "Gesellschafter",
+      sonstige: "Sonstige",
     }[l.kind],
     [SPALTEN.geber]: name(l.lenderCompanyId, l.lenderPartyId),
     [SPALTEN.nehmer]: name(l.borrowerCompanyId, l.borrowerPartyId),

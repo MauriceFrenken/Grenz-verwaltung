@@ -223,7 +223,7 @@ export function planBewegungen(
 
   // Bewirtschaftung Bestandsobjekte (Plankosten je m²), zum 15.
   for (const p of daten.properties) {
-    if (projektProps.has(p.id)) continue;
+    if (projektProps.has(p.id) || !p.costPerSqmMonth) continue;
     const flaeche = daten.units
       .filter((u) => u.propertyId === p.id)
       .reduce((s, u) => s + u.area, 0);
@@ -231,7 +231,7 @@ export function planBewegungen(
       add({
         datum: tag,
         companyId: p.companyId,
-        betrag: -flaeche * p.costPerSqmMonth,
+        betrag: -flaeche * (p.costPerSqmMonth ?? 0),
         kategorie: "bewirtschaftung",
         label: `Bewirtschaftung ${p.name}`,
         ic: false,

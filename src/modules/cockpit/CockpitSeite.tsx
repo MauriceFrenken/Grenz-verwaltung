@@ -31,7 +31,7 @@ import { leerstandAmpel } from "@/modules/immobilien/logik/objekte";
 import {
   ankaufKennzahlen,
   ekBedarfAbAngebot,
-} from "@/modules/pipeline/logik/pipeline";
+} from "@/modules/transaktionen/logik/transaktionen";
 import {
   faelligDieseWoche,
   pruefFallZiel,
@@ -155,7 +155,7 @@ export function CockpitSeite() {
       text: `Pipeline braucht ab Angebot ${euroKompakt(ek)} Eigenkapital; frei verfügbar sind ${euroKompakt(tragbar)}${
         ek > tragbar ? ", also priorisieren oder Fremdkapital erhöhen" : ""
       }.`,
-      href: "/board/pipeline",
+      href: "/board/transaktionen",
     });
   }
   const fristen = aktiveDarlehen.filter(

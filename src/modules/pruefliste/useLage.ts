@@ -6,15 +6,17 @@ import { useAblageVorschlaege } from "@/modules/ablage-v2/useAblage";
 import { useDarlehenAuswertung } from "@/modules/darlehen/useDarlehen";
 import { useImmobilienAuswertung } from "@/modules/immobilien/useImmobilien";
 import { useLiquiditaetAuswertung } from "@/modules/liquiditaet/useLiquiditaet";
+import { baumaschinenPruefFaelle } from "@/modules/baumaschinen/logik/baumaschinen";
 import {
   ankaufKennzahlen,
   einheitenVertrieb,
   pipelinePruefFaelle,
-} from "@/modules/pipeline/logik/pipeline";
-import { useCrmDaten } from "@/modules/pipeline/useCrm";
+} from "@/modules/transaktionen/logik/transaktionen";
+import { useCrmDaten } from "@/modules/transaktionen/useCrm";
 import { useBoardDaten } from "@/modules/shell/daten";
 import {
   ablagePruefFaelle,
+  datenPruefFaelle,
   liquiditaetPruefFaelle,
   prueflisteZusammenfuehren,
 } from "./logik/pruefliste";
@@ -50,7 +52,7 @@ export function useLage() {
       !immobilien ||
       !liquiditaet ||
       !crm.data ||
-      !ablage.data ||
+      (data.quelle === "mock" && !ablage.data) ||
       !erledigt.data
     )
       return null;
@@ -67,7 +69,12 @@ export function useLage() {
           data,
           data.stichtag,
         ),
-        ablagePruefFaelle(ablage.data, data.stichtag),
+        baumaschinenPruefFaelle(data),
+        datenPruefFaelle(data.luecken, data.stichtag),
+        // Ablage v2 ist ein Labor mit Musterpost: nur im Demo-Modus in der Prüfliste
+        data.quelle === "mock" && ablage.data
+          ? ablagePruefFaelle(ablage.data, data.stichtag)
+          : [],
       ],
       new Set(erledigt.data),
     );
@@ -88,7 +95,7 @@ export function useLage() {
     liquiditaet,
     crm: crm.data,
     faelle,
-    fehler: daten.error ?? crm.error ?? ablage.error ?? erledigt.error,
+    fehler: daten.error ?? erledigt.error,
     laedt: !faelle,
   };
 }

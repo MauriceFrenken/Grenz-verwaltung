@@ -1,11 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
-import { PipelineSeite } from "@/modules/pipeline/PipelineSeite";
 
+/** Alter Pfad der Ankaufspipeline; sie heißt jetzt Transaktionen und liegt unter Immobilien. */
 export const Route = createFileRoute("/board/pipeline")({
   validateSearch: z.object({ ankauf: z.string().optional() }),
-  head: () => ({
-    meta: [{ title: "Ankaufspipeline — FRENKEN Management Board" }],
-  }),
-  component: PipelineSeite,
+  beforeLoad: ({ search }) => {
+    throw redirect({ to: "/board/transaktionen", search, replace: true });
+  },
 });

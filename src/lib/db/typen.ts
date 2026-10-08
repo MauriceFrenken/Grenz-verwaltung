@@ -1,9 +1,11 @@
 /**
  * Zentrales Datenmodell des Management Boards.
- * Spiegelt das SQL-Schema `board` (supabase/migrations/20261007120000_board_kerndatenmodell.sql).
+ * Live-Quelle sind Bens Tabellen im Schema `public` (Abbildung in
+ * src/lib/db/live/abbildung.ts, Übersicht in docs/ARCHITEKTUR.md).
  * Beträge in EUR als Zahl, Zinssätze als Anteil (0,03 = 3 % p.a.), Daten als ISO-String.
  */
 import { z } from "zod";
+import type { CrmDaten } from "./transaktionen";
 
 const isoDatum = z
   .string()
@@ -11,31 +13,48 @@ const isoDatum = z
 
 export const SEGMENTE = [
   "holding",
-  "bestand",
-  "aufteiler",
-  "baumaschinen",
-  "beteiligungen",
+  "immobilien_bestand",
+  "immobilien_aufteiler",
+  "baumaschinen_handel",
+  "baumaschinen_plattform",
   "makler",
 ] as const;
 export type Segment = (typeof SEGMENTE)[number];
 
 export const SEGMENT_LABEL: Record<Segment, string> = {
-  holding: "Holding",
-  bestand: "Immobilien Bestand",
-  aufteiler: "Immobilien Aufteiler",
-  baumaschinen: "Baumaschinen",
-  beteiligungen: "Beteiligungen",
+  holding: "Holding / Finanzierung",
+  immobilien_bestand: "Immobilien Bestand",
+  immobilien_aufteiler: "Immobilien Aufteiler",
+  baumaschinen_handel: "Baumaschinenhandel",
+  baumaschinen_plattform: "Baumaschinen-Plattform",
   makler: "Makler (getrennt)",
 };
+
+/** Oberbereiche für Cockpit und Filter */
+export const BEREICHE = ["immobilien", "baumaschinen", "holding"] as const;
+export type Bereich = (typeof BEREICHE)[number];
+export const BEREICH_LABEL: Record<Bereich, string> = {
+  immobilien: "Immobilien",
+  baumaschinen: "Baumaschinen",
+  holding: "Holding / Finanzierung",
+};
+export function bereichVon(segment: Segment): Bereich {
+  if (segment.startsWith("immobilien") || segment === "makler")
+    return "immobilien";
+  if (segment.startsWith("baumaschinen")) return "baumaschinen";
+  return "holding";
+}
 
 export const companySchema = z.object({
   id: z.string(),
   shortName: z.string(),
   name: z.string(),
-  legalForm: z.enum(["GmbH", "GbR", "GmbH & Co. KG"]),
+  legalForm: z.string(),
   segment: z.enum(SEGMENTE),
-  /** Mindestliquidität (Puffer), unter der gewarnt wird */
+  /** Mindestliquidität (Puffer), unter der gewarnt wird; 0 = nicht festgelegt */
   minLiquidity: z.number().nonnegative(),
+  /** false, solange niemand die Mindestliquidität festgelegt hat */
+  minLiquidityGesetzt: z.boolean().default(true),
   /** Getrennter Bereich: nicht Teil der freien Gruppenliquidität */
   separateArea: z.boolean(),
   oneDriveFolder: z.string(),
@@ -52,21 +71,26 @@ export const partySchema = z.object({
 export type Party = z.infer<typeof partySchema>;
 
 export const propertySchema = z.object({
-  id: z.string().regex(/^IM-\d{4}-\d{3}$/),
+  /** interne ID (live: O-01 …, Muster: IM-JJJJ-NNN) */
+  id: z.string(),
+  /** Ablage-Nummer IM-JJJJ-NNN */
+  ablageId: z.string().nullable().default(null),
   companyId: z.string(),
   name: z.string(),
   street: z.string(),
   zip: z.string(),
   city: z.string(),
   strategy: z.enum(["bestand", "aufteiler"]),
-  yearBuilt: z.number().int(),
-  purchaseDate: isoDatum,
-  purchasePrice: z.number(),
-  marketValue: z.number(),
+  /** false = Strategie in den Stammdaten leer, als Bestand angenommen */
+  strategyGesetzt: z.boolean().default(true),
+  yearBuilt: z.number().int().nullable(),
+  purchaseDate: isoDatum.nullable(),
+  purchasePrice: z.number().nullable(),
+  marketValue: z.number().nullable(),
   /** Ziel-/Potenzialmiete je m² (Mietspiegel-Oberwert) */
-  targetRentPerSqm: z.number(),
+  targetRentPerSqm: z.number().nullable(),
   /** monatliche Bewirtschaftungskosten je m² (Plan) */
-  costPerSqmMonth: z.number(),
+  costPerSqmMonth: z.number().nullable(),
   oneDriveUrl: z.string(),
 });
 export type Property = z.infer<typeof propertySchema>;
@@ -158,12 +182,18 @@ export const repaymentSchema = z.discriminatedUnion("kind", [
 ]);
 export type Repayment = z.infer<typeof repaymentSchema>;
 
-export const LOAN_KINDS = ["bank", "intercompany", "gesellschafter"] as const;
+export const LOAN_KINDS = [
+  "bank",
+  "intercompany",
+  "gesellschafter",
+  "sonstige",
+] as const;
 export type LoanKind = (typeof LOAN_KINDS)[number];
 export const LOAN_KIND_LABEL: Record<LoanKind, string> = {
   bank: "Bank",
   intercompany: "Intercompany",
   gesellschafter: "Gesellschafter",
+  sonstige: "Sonstige",
 };
 
 export const DAY_COUNTS = ["30/360", "act/360", "act/365"] as const;
@@ -176,7 +206,10 @@ export const loanSchema = z
   .object({
     id: z
       .string()
-      .regex(/^DL-\d{4}-\d{3}$/, "Darlehens-ID im Format DL-JJJJ-NNN"),
+      .regex(
+        /^(DL|BK)-\d{4}-\d{3}$/,
+        "Darlehens-ID im Format DL-JJJJ-NNN oder BK-JJJJ-NNN",
+      ),
     bankRef: z
       .string()
       .regex(/^BK-\d{4}-\d{3}$/, "Bank-ID im Format BK-JJJJ-NNN")
@@ -203,6 +236,12 @@ export const loanSchema = z
       .nullable(),
     purpose: z.string(),
     oneDriveUrl: z.string().nullable(),
+    /** Ist-Restschuld aus Bank bzw. Buchungen (live: View darlehen_stand); hat Vorrang vor dem Zinsplan */
+    istSaldo: z.number().nullable().optional(),
+    istSaldoAm: isoDatum.nullable().optional(),
+    /** Hinweis aus der Datenbank (z. B. „Buchung prüfen“) */
+    hinweis: z.string().nullable().optional(),
+    unklareBuchungen: z.number().int().optional(),
   })
   .refine((l) => Boolean(l.lenderCompanyId) !== Boolean(l.lenderPartyId), {
     message: "Genau ein Darlehensgeber (Gesellschaft oder Partei) erforderlich",
@@ -243,6 +282,13 @@ export const bankAccountSchema = z.object({
   label: z.string(),
   openingBalance: z.number(),
   openingDate: isoDatum,
+  /** false = kein Kontosaldo bekannt, der Bestand ist nur die Summe der Umsätze */
+  saldoBekannt: z.boolean().default(true),
+  /** Datum des letzten bekannten Saldos */
+  saldoStichtag: isoDatum.nullable().default(null),
+  zugang: z
+    .enum(["ebics", "qonto", "csv", "manuell", "muster"])
+    .default("muster"),
 });
 export type BankAccount = z.infer<typeof bankAccountSchema>;
 
@@ -309,6 +355,9 @@ export const REVIEW_QUELLEN = [
   "liquiditaet",
   "ablage",
   "salesforce",
+  "transaktionen",
+  "baumaschinen",
+  "daten",
 ] as const;
 export type ReviewQuelle = (typeof REVIEW_QUELLEN)[number];
 
@@ -367,9 +416,103 @@ export const plannedPaymentSchema = z.object({
 });
 export type PlannedPayment = z.infer<typeof plannedPaymentSchema>;
 
+// ---------------------------------------------------------------------------
+// Baumaschinen
+// ---------------------------------------------------------------------------
+
+export const MASCHINEN_STATUS = [
+  "einkauf",
+  "lager",
+  "inseriert",
+  "reserviert",
+  "verkauft",
+] as const;
+export type MaschinenStatus = (typeof MASCHINEN_STATUS)[number];
+export const MASCHINEN_STATUS_LABEL: Record<MaschinenStatus, string> = {
+  einkauf: "Einkauf",
+  lager: "Lager",
+  inseriert: "Inseriert",
+  reserviert: "Reserviert",
+  verkauft: "Verkauft",
+};
+
+export const machineSchema = z.object({
+  id: z
+    .string()
+    .regex(/^BM-\d{4}-\d{3}$/, "Maschinen-ID im Format BM-JJJJ-NNN"),
+  companyId: z.string(),
+  hersteller: z.string().min(1),
+  modell: z.string().min(1),
+  kategorie: z.string().nullable(),
+  baujahr: z.number().int().nullable(),
+  betriebsstunden: z.number().int().nullable(),
+  seriennummer: z.string().nullable(),
+  standort: z.string().nullable(),
+  status: z.enum(MASCHINEN_STATUS),
+  ankaufAm: isoDatum.nullable(),
+  einkaufspreis: z.number().nonnegative().nullable(),
+  lieferant: z.string().nullable(),
+  angebotspreis: z.number().nonnegative().nullable(),
+  inseratUrl: z.string().nullable(),
+  verkaufAm: isoDatum.nullable(),
+  verkaufspreis: z.number().nonnegative().nullable(),
+  kaeufer: z.string().nullable(),
+  bemerkung: z.string().nullable(),
+});
+export type Machine = z.infer<typeof machineSchema>;
+
+export interface MachineCost {
+  id: string;
+  machineId: string;
+  datum: string;
+  art: string;
+  betrag: number;
+}
+
+// ---------------------------------------------------------------------------
+// Datengrundlage: Stand je Quelle und erkannte Lücken
+// ---------------------------------------------------------------------------
+
+export type QuellenStatus = "ok" | "warn" | "fehlt";
+
+export interface QuellenStand {
+  id: string;
+  label: string;
+  /** führendes System */
+  system: string;
+  /** Zeitpunkt der letzten Aktualisierung (ISO) */
+  stand: string | null;
+  anzahl: number;
+  status: QuellenStatus;
+  hinweis: string;
+}
+
+export interface DatenLuecke {
+  id: string;
+  bereich:
+    | "gesellschaften"
+    | "konten"
+    | "darlehen"
+    | "immobilien"
+    | "transaktionen"
+    | "baumaschinen"
+    | "liquiditaet"
+    | "system";
+  schwere: "rot" | "gelb";
+  titel: string;
+  detail: string;
+  companyId: string | null;
+  refType: string | null;
+  refId: string | null;
+  /** Was zu tun ist, damit die Lücke verschwindet */
+  naechsterSchritt: string;
+}
+
 /** Gesamter Datenbestand, wie ihn das Board lädt. */
 export interface BoardDaten {
   stichtag: string;
+  /** Herkunft: Musterdaten oder Bens Datenbank */
+  quelle: "mock" | "live";
   companies: Company[];
   parties: Party[];
   properties: Property[];
@@ -386,4 +529,10 @@ export interface BoardDaten {
   crmLinks: CrmLink[];
   projects: Project[];
   plannedPayments: PlannedPayment[];
+  machines: Machine[];
+  machineCosts: MachineCost[];
+  /** Transaktionspipeline (Ankauf, Verkauf) */
+  crm: CrmDaten;
+  datenstand: QuellenStand[];
+  luecken: DatenLuecke[];
 }

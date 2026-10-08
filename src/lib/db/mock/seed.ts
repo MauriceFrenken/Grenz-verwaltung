@@ -5,6 +5,8 @@
  * deterministisch (fester Zufalls-Seed) relativ zu einem Stichtag erzeugt,
  * damit Fristen und Fälligkeiten immer "aktuell" wirken.
  */
+import { erzeugeCrmMock } from "./transaktionen";
+import { erzeugeMaschinenMock } from "./maschinen";
 import {
   datum,
   istBankarbeitstag,
@@ -97,18 +99,38 @@ function gesellschaften(): Company[] {
     legalForm,
     segment,
     minLiquidity,
+    minLiquidityGesetzt: true,
     separateArea,
     oneDriveFolder: `${ONEDRIVE}/${shortName}`,
   });
   return [
     c("c-mh", "MH", "Muster Holding GmbH", "holding", 250_000),
-    c("c-mi", "MI", "Muster Immobilien GmbH", "bestand", 100_000),
-    c("c-mv", "MV", "Muster Investment GmbH", "aufteiler", 150_000),
+    c("c-mi", "MI", "Muster Immobilien GmbH", "immobilien_bestand", 100_000),
+    c("c-mv", "MV", "Muster Investment GmbH", "immobilien_aufteiler", 150_000),
     c("c-mc", "MC", "Muster Capital GmbH", "holding", 50_000),
-    c("c-mo", "MO", "Muster Objekt Rheinblick GmbH", "bestand", 40_000),
-    c("c-mb", "MB", "Muster Baumaschinen GmbH", "baumaschinen", 150_000),
-    c("c-mbt", "MBT", "Muster Beteiligungs GmbH", "beteiligungen", 30_000),
-    c("c-gbr", "GbR", "Grundbesitz Mustermann GbR", "bestand", 20_000, "GbR"),
+    c(
+      "c-mo",
+      "MO",
+      "Muster Objekt Rheinblick GmbH",
+      "immobilien_bestand",
+      40_000,
+    ),
+    c("c-mb", "MB", "Muster Baumaschinen GmbH", "baumaschinen_handel", 150_000),
+    c(
+      "c-mbt",
+      "MBT",
+      "Muster Beteiligungs GmbH",
+      "baumaschinen_plattform",
+      30_000,
+    ),
+    c(
+      "c-gbr",
+      "GbR",
+      "Grundbesitz Mustermann GbR",
+      "immobilien_bestand",
+      20_000,
+      "GbR",
+    ),
     c("c-mm", "MM", "Muster Makler GmbH", "makler", 25_000, "GmbH", true),
   ];
 }
@@ -746,6 +768,9 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
     label: "Geschäftskonto",
     openingBalance: 0,
     openingDate: fensterStart,
+    saldoBekannt: true,
+    saldoStichtag: stichtag,
+    zugang: "muster" as const,
   }));
   bankAccounts.push({
     id: "k-mh-2",
@@ -755,6 +780,9 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
     label: "Festgeld/Tagesgeld",
     openingBalance: 0,
     openingDate: fensterStart,
+    saldoBekannt: true,
+    saldoStichtag: stichtag,
+    zugang: "muster",
   });
   const konto = (companyId: string) =>
     bankAccounts.find((k) => k.companyId === companyId)!;
@@ -839,7 +867,9 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
       street: o.street,
       zip: o.zip,
       city: o.city,
+      ablageId: o.id,
       strategy: o.strategy,
+      strategyGesetzt: true,
       yearBuilt: o.yearBuilt,
       purchaseDate: o.purchaseDate,
       purchasePrice:
@@ -1069,7 +1099,7 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
       propertyId: "IM-2024-005",
       name: "Aufteilung Altbau Südstadt",
       purchasePrice: properties.find((p) => p.id === "IM-2024-005")!
-        .purchasePrice,
+        .purchasePrice!,
       renovationBudget: 980_000,
       equity: 1_400_000,
       start: "2024-05-10",
@@ -1083,7 +1113,7 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
       propertyId: "IM-2025-006",
       name: "Aufteilung Gartenquartier",
       purchasePrice: properties.find((p) => p.id === "IM-2025-006")!
-        .purchasePrice,
+        .purchasePrice!,
       renovationBudget: 1_200_000,
       equity: 1_500_000,
       start: "2025-08-20",
@@ -1111,7 +1141,7 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
       const flaeche = units
         .filter((u) => u.propertyId === p.id)
         .reduce((s, u) => s + u.area, 0);
-      const kosten = flaeche * p.costPerSqmMonth * r.zwischen(0.7, 1.3);
+      const kosten = flaeche * (p.costPerSqmMonth ?? 0) * r.zwischen(0.7, 1.3);
       buche(
         p.companyId,
         plusTage(monat, r.ganz(8, 20)),
@@ -1621,7 +1651,7 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
         companyId: p.companyId,
         title: `Kaufvertrag ${p.name}`,
         docType: "Kaufvertrag",
-        date: p.purchaseDate,
+        date: p.purchaseDate!,
         oneDriveUrl: `${p.oneDriveUrl}/Kaufvertrag.pdf`,
         refType: "property" as const,
         refId: p.id,
@@ -1664,8 +1694,10 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
       })),
   ];
 
+  const maschinen = erzeugeMaschinenMock(stichtag, "c-mb");
   return {
     stichtag,
+    quelle: "mock",
     companies,
     parties,
     properties,
@@ -1682,6 +1714,11 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
     crmLinks,
     projects,
     plannedPayments,
+    machines: maschinen.machines,
+    machineCosts: maschinen.costs,
+    crm: erzeugeCrmMock({ stichtag, properties, units }),
+    datenstand: [],
+    luecken: [],
   };
 }
 
