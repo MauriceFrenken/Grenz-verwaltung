@@ -4,10 +4,20 @@ import {
   ArrowRight,
   CalendarClock,
   DatabaseZap,
+  Gavel,
   ListChecks,
 } from "lucide-react";
+import {
+  Buehne,
+  Countdown,
+  Etikett,
+  GrosseZahl,
+  GrosserBetrag,
+  Laufband,
+  LivePunkt,
+  LosKarte,
+} from "@/components/board/Auktion";
 import { ZeitreihenDiagramm } from "@/components/board/Diagramm";
-import { KpiKarte } from "@/components/board/KpiKarte";
 import { Karte, Kennzahlen } from "@/components/board/Layout";
 import { Leerzustand } from "@/components/board/Leerzustand";
 import { SeitenSkelett } from "@/components/board/Skelett";
@@ -18,6 +28,7 @@ import {
   datumLang,
   euro,
   euroKompakt,
+  euroMitVorzeichen,
   prozent,
   tagKurz,
 } from "@/lib/format/de";
@@ -44,7 +55,36 @@ import {
   handelAuswerten,
   plattformAuswerten,
 } from "@/modules/baumaschinen/logik/baumaschinen";
+import { fristenBis, kapitalbindung, letzteBuchungen } from "./logik/antworten";
+import { saalLose } from "./SaalLose";
 import { useRechnungsfreigabeOffen } from "./useRechnungsfreigabe";
+
+/** Orange-Abstufungen für die Kapitalbindung (größter Posten in Signal-Orange). */
+const BINDUNG_FARBEN = ["#ff6600", "#ff9a52", "#ffc699", "#a3a3ad", "#6b6b75"];
+
+function AntwortKopf({
+  nr,
+  titel,
+  href,
+}: {
+  nr: string;
+  titel: string;
+  href: string;
+}) {
+  return (
+    <Link
+      to={href}
+      className="group flex items-center gap-2 text-stage-muted hover:text-stage-foreground"
+    >
+      <span className="ziffern text-[11px] font-semibold text-brand">{nr}</span>
+      <Etikett>{titel}</Etikett>
+      <ArrowRight
+        className="size-3.5 opacity-0 transition-opacity group-hover:opacity-100"
+        aria-hidden
+      />
+    </Link>
+  );
+}
 
 function gruss(): string {
   const h = new Date().getHours();
@@ -107,7 +147,7 @@ export function CockpitSeite() {
           ? "gelb"
           : "gruen";
   const liqHinweis = ohneSaldo
-    ? `Daten fehlen: ${ohneSaldo} Konto${ohneSaldo > 1 ? "en" : ""} ohne Saldo`
+    ? `Daten fehlen: ${ohneSaldo} ${ohneSaldo > 1 ? "Konten" : "Konto"} ohne Saldo`
     : minFehlt
       ? `Mindestliquidität bei ${minFehlt} Gesellschaft${minFehlt > 1 ? "en" : ""} nicht festgelegt`
       : `Mindestens ${euroKompakt(min)}`;
@@ -212,76 +252,355 @@ export function CockpitSeite() {
       href: "/board/darlehen",
     });
 
+  // Die drei Antworten
+  const bindung = kapitalbindung(darlehen.staende, daten.companies);
+  const fristen90 = fristenBis(darlehen.staende, stichtag, 90, passt);
+  // Liste: nächste Fristen im Jahr, damit die Spalte nicht leer bleibt
+  const fristenJahr = fristenBis(darlehen.staende, stichtag, 365, passt);
+  const ticker = letzteBuchungen(daten, 14, passt);
+  const naechste = faellig
+    .filter((p) => !p.ueberfaellig)
+    .sort((x, y) => x.datum.localeCompare(y.datum))[0];
+  const bankStand = daten.datenstand.find(
+    (x) => x.id === "bankumsaetze",
+  )?.stand;
+  const geldKreis = l.gesellschaften
+    .filter((g) => ids.includes(g.company.id))
+    .sort((x, y) => y.heute - x.heute)
+    .slice(0, 5);
+  const geldMax = Math.max(
+    1,
+    ...geldKreis.map((g) => Math.max(g.heute, g.company.minLiquidity)),
+  );
+  const lose = saalLose({
+    stichtag,
+    fristen: fristen90,
+    ankaeufe: crm.ankaeufe.filter(
+      (a) => passt(a.zielGesellschaftId) || filter.alle,
+    ),
+    maschinen: handel.bestand.filter((m) => passt(m.machine.companyId)),
+    kurzName,
+  });
+  const top = aussagen[0];
+
   return (
     <>
-      <div className="mb-8">
-        <h1 className="text-[22px] font-semibold tracking-[-0.015em] text-heading">
-          {gruss()}
-        </h1>
-        <p className="mt-1 text-sm text-text-muted">
-          {datumLang(stichtag)} ·{" "}
-          {filter.alle
-            ? "Gruppe (frei verfügbar, ohne Maklerbereich)"
-            : daten.companies.find((c) => c.id === filter.gesellschaft)?.name}
-        </p>
-      </div>
+      <Buehne className="mb-0 pb-8">
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-2 text-brand">
+              <LivePunkt />
+              <Etikett>
+                Live
+                <span className="mx-2 text-stage-line">/</span>
+                <span className="text-stage-muted">
+                  {bankStand
+                    ? `Bankstand ${datum(bankStand.slice(0, 10))}`
+                    : daten.quelle === "mock"
+                      ? "Demodaten"
+                      : "Bankstand unbekannt"}
+                </span>
+              </Etikett>
+            </div>
+            <h1 className="text-[34px] font-semibold leading-tight tracking-[-0.03em] text-stage-foreground">
+              {gruss()}
+            </h1>
+            <p className="mt-1 text-sm text-stage-muted">
+              {datumLang(stichtag)} ·{" "}
+              {filter.alle
+                ? "Gruppe (frei verfügbar, ohne Maklerbereich)"
+                : daten.companies.find((c) => c.id === filter.gesellschaft)
+                    ?.name}
+            </p>
+          </div>
+          {naechste ? (
+            <div className="min-w-[240px] border border-stage-line bg-stage-raised px-4 py-3">
+              <Etikett className="text-stage-muted">Nächste Zahlung</Etikett>
+              <div className="mt-1.5 text-[26px] font-semibold leading-none tracking-[-0.02em]">
+                <Countdown
+                  ziel={naechste.datum}
+                  stichtag={stichtag}
+                  className="text-brand"
+                />
+              </div>
+              <div className="mt-2 flex items-baseline justify-between gap-3 text-xs text-stage-muted">
+                <span className="max-w-[200px] truncate">{naechste.label}</span>
+                <span className="ziffern shrink-0 font-semibold text-stage-foreground">
+                  {euro(naechste.betrag)}
+                </span>
+              </div>
+            </div>
+          ) : null}
+        </div>
 
-      {daten.quelle === "live" && lueckenRot ? (
-        <Link
-          to="/board/daten"
-          className="mb-6 flex items-center gap-3 border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad"
-        >
-          <DatabaseZap className="size-4 shrink-0" aria-hidden />
-          <span className="flex-1">
+        {top ? (
+          <Link
+            to={top.href}
+            className="group mt-6 flex max-w-4xl items-start gap-3 text-[17px] leading-snug text-stage-foreground"
+          >
+            <AmpelPunkt ampel={top.ampel} className="mt-2" />
+            <span className="flex-1 group-hover:underline group-hover:decoration-brand group-hover:underline-offset-4">
+              {top.text}
+            </span>
+          </Link>
+        ) : null}
+
+        {daten.quelle === "live" && lueckenRot ? (
+          <Link
+            to="/board/daten"
+            className="mt-4 inline-flex items-center gap-2 border border-bad/50 px-3 py-1.5 text-xs text-[#ff8a80] hover:border-bad"
+          >
+            <DatabaseZap className="size-3.5 shrink-0" aria-hidden />
             {lueckenRot} kritische Datenlücke{lueckenRot > 1 ? "n" : ""}:
-            einzelne Zahlen sind unvollständig und entsprechend markiert.
-          </span>
-          <ArrowRight className="size-4 shrink-0" aria-hidden />
-        </Link>
-      ) : null}
+            betroffene Zahlen sind markiert
+            <ArrowRight className="size-3.5 shrink-0" aria-hidden />
+          </Link>
+        ) : null}
 
-      <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <KpiKarte
-          label="Liquidität heute"
-          wert={euroKompakt(heute)}
-          hinweis={liqHinweis}
-          ampel={liqAmpel(heute)}
-          quelle={quelle("kontosalden")}
-          href="/board/liquiditaet"
-        />
-        <KpiKarte
-          label="In 13 Wochen"
-          wert={euroKompakt(in13)}
-          hinweis={`Tiefpunkt ${euroKompakt(tief13.saldo)} am ${datum(tief13.datum)}`}
-          ampel={liqAmpel(tief13.saldo)}
-          href="/board/liquiditaet"
-          quelle={quelle("planposten")}
-        />
-        <KpiKarte
-          label="Offene Prüffälle"
-          wert={String(offen.length)}
-          hinweis={`${rot.length} rot`}
-          ampel={rot.length ? "rot" : offen.length > 10 ? "gelb" : "gruen"}
-          href="/board/pruefliste"
-        />
-        {rechnungenOffen != null ? (
-          <KpiKarte
-            label="Rechnungen zur Freigabe"
-            wert={String(rechnungenOffen)}
-            hinweis="aus dem Postfach"
-            ampel={rechnungenOffen ? "gelb" : "gruen"}
-            href="/dokumente/rechnungsfreigabe"
-          />
-        ) : (
-          <KpiKarte
-            label="Datenlücken"
-            wert={String(daten.luecken.length)}
-            hinweis={`${lueckenRot} kritisch`}
-            ampel={lueckenRot ? "rot" : daten.luecken.length ? "gelb" : "gruen"}
-            href="/board/daten"
-          />
-        )}
-      </div>
+        <div className="mt-8 grid gap-8 border-t border-stage-line pt-6 *:min-w-0 lg:grid-cols-3 lg:gap-0 lg:*:px-6 lg:*:first:pl-0 lg:*:last:pr-0 lg:[&>*+*]:border-l lg:[&>*+*]:border-stage-line">
+          {/* 01 Geld */}
+          <div>
+            <AntwortKopf nr="01" titel="Geld" href="/board/liquiditaet" />
+            <div
+              className="mt-3 text-[46px] font-semibold leading-none tracking-[-0.035em]"
+              title={quelle("kontosalden")}
+            >
+              <GrosserBetrag wert={heute} />
+            </div>
+            <p className="ziffern mt-2 text-xs text-stage-muted">
+              frei heute · Tiefpunkt 13 Wochen{" "}
+              <span
+                className={cn(
+                  "font-semibold",
+                  liqAmpel(tief13.saldo) === "rot"
+                    ? "text-[#ff8a80]"
+                    : "text-stage-foreground",
+                )}
+              >
+                {euroKompakt(tief13.saldo)}
+              </span>{" "}
+              am {datum(tief13.datum)}
+            </p>
+            <p className="mt-0.5 text-xs text-stage-muted">{liqHinweis}</p>
+            <ul className="mt-4 space-y-2">
+              {geldKreis.map((g) => (
+                <li key={g.company.id} className="text-xs">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-stage-muted">
+                      <span className="mr-1.5 font-semibold text-stage-foreground">
+                        {g.company.shortName}
+                      </span>
+                      {g.company.name}
+                    </span>
+                    <span className="ziffern shrink-0 text-stage-foreground">
+                      {euroKompakt(g.heute)}
+                    </span>
+                  </div>
+                  <div className="relative mt-1 h-1 bg-stage-line">
+                    <div
+                      className={cn(
+                        "absolute inset-y-0 left-0",
+                        g.ampel === "rot"
+                          ? "bg-bad"
+                          : g.ampel === "gelb"
+                            ? "bg-warn"
+                            : "bg-stage-foreground/80",
+                      )}
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (g.heute / geldMax) * 100))}%`,
+                      }}
+                    />
+                    {g.company.minLiquidityGesetzt ? (
+                      <div
+                        className="absolute -inset-y-1 w-px bg-brand"
+                        style={{
+                          left: `${Math.min(100, (g.company.minLiquidity / geldMax) * 100)}%`,
+                        }}
+                        title={`Mindestliquidität ${euroKompakt(g.company.minLiquidity)}`}
+                      />
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {geldKreis.some((g) => g.company.minLiquidityGesetzt) ? (
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-stage-muted">
+                <span
+                  className="inline-block h-2.5 w-px bg-brand"
+                  aria-hidden
+                />
+                Mindestliquidität
+              </p>
+            ) : null}
+          </div>
+
+          {/* 02 Risiko */}
+          <div>
+            <AntwortKopf nr="02" titel="Risiko" href="/board/darlehen" />
+            <div className="mt-3 flex items-baseline gap-5">
+              <div>
+                <div className="text-[46px] font-semibold leading-none tracking-[-0.035em]">
+                  <GrosseZahl wert={fristen90.length} />
+                </div>
+                <div className="mt-1 text-xs text-stage-muted">
+                  Fristen ≤ 90 Tage
+                </div>
+              </div>
+              <div>
+                <div
+                  className={cn(
+                    "text-[46px] font-semibold leading-none tracking-[-0.035em]",
+                    rot.length ? "text-[#ff8a80]" : "",
+                  )}
+                >
+                  <GrosseZahl wert={rot.length} />
+                </div>
+                <div className="mt-1 text-xs text-stage-muted">
+                  rote Prüffälle
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 mb-1 text-[11px] text-stage-muted">
+              Nächste Fristen (12 Monate)
+            </div>
+            <ul className="divide-y divide-stage-line border-y border-stage-line">
+              {fristenJahr.slice(0, 4).map((f) => (
+                <li key={f.stand.loan.id}>
+                  <Link
+                    to="/board/darlehen"
+                    search={{ darlehen: f.stand.loan.id } as never}
+                    className="flex items-center gap-3 py-2 text-xs hover:bg-stage-raised"
+                  >
+                    <span className="ziffern w-[86px] shrink-0 font-semibold text-stage-foreground">
+                      {f.stand.loan.id}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-stage-muted">
+                      {f.ereignis} · {kurzName(f.stand.loan.borrowerCompanyId)}{" "}
+                      · {euroKompakt(f.stand.restschuld)}
+                    </span>
+                    <Countdown
+                      ziel={f.datum}
+                      stichtag={stichtag}
+                      className="text-stage-foreground"
+                    />
+                  </Link>
+                </li>
+              ))}
+              {fristenJahr.length === 0 ? (
+                <li className="py-2 text-xs text-stage-muted">
+                  Keine Fristen in den nächsten 12 Monaten.
+                </li>
+              ) : null}
+            </ul>
+            <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-stage-muted">
+              <Link
+                to="/board/pruefliste"
+                className="hover:text-stage-foreground"
+              >
+                {offen.length} offene Prüffälle
+              </Link>
+              <Link to="/board/daten" className="hover:text-stage-foreground">
+                {daten.luecken.length} Datenlücken ({lueckenRot} kritisch)
+              </Link>
+              {rechnungenOffen != null ? (
+                <Link
+                  to="/dokumente/rechnungsfreigabe"
+                  className="hover:text-stage-foreground"
+                >
+                  {rechnungenOffen} Rechnungen zur Freigabe
+                </Link>
+              ) : null}
+            </p>
+          </div>
+
+          {/* 03 Kapitalbindung */}
+          <div>
+            <AntwortKopf
+              nr="03"
+              titel="Kapitalbindung"
+              href="/board/darlehen"
+            />
+            <div className="mt-3 text-[46px] font-semibold leading-none tracking-[-0.035em]">
+              <GrosserBetrag wert={bindung.summe} />
+            </div>
+            <p className="mt-2 text-xs text-stage-muted">
+              interne Darlehen der Holding an die Segmente
+            </p>
+            {bindung.posten.length ? (
+              <>
+                <div
+                  className="mt-4 flex h-2.5 w-full gap-px"
+                  role="img"
+                  aria-label={bindung.posten
+                    .map((p) => `${p.label} ${prozent(p.anteil, 0)}`)
+                    .join(", ")}
+                >
+                  {bindung.posten.map((p, i) => (
+                    <div
+                      key={p.segment}
+                      className="h-full"
+                      style={{
+                        width: `${p.anteil * 100}%`,
+                        background: BINDUNG_FARBEN[i % BINDUNG_FARBEN.length],
+                      }}
+                    />
+                  ))}
+                </div>
+                <ul className="mt-3 space-y-1.5">
+                  {bindung.posten.map((p, i) => (
+                    <li
+                      key={p.segment}
+                      className="flex items-center gap-2 text-xs"
+                    >
+                      <span
+                        className="size-2 shrink-0"
+                        style={{
+                          background: BINDUNG_FARBEN[i % BINDUNG_FARBEN.length],
+                        }}
+                        aria-hidden
+                      />
+                      <span className="min-w-0 flex-1 truncate text-stage-muted">
+                        {p.label}
+                      </span>
+                      <span className="ziffern text-stage-foreground">
+                        {euroKompakt(p.betrag)}
+                      </span>
+                      <span className="ziffern w-10 text-right font-semibold text-stage-foreground">
+                        {prozent(p.anteil, 0)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {bindung.posten[0].anteil >= 0.5 ? (
+                  <p className="mt-3 border-l-2 border-brand pl-2.5 text-xs text-stage-foreground">
+                    {prozent(bindung.posten[0].anteil, 0)} stecken in{" "}
+                    {bindung.posten[0].label}.
+                    {bindung.posten[0].segment.startsWith("baumaschinen") &&
+                    daten.machines.length === 0
+                      ? " Zu Bestand und Standzeit gibt es noch keine Zahl."
+                      : ""}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="mt-4 text-xs text-stage-muted">
+                Keine internen Darlehen der Holding.
+              </p>
+            )}
+          </div>
+        </div>
+      </Buehne>
+
+      <Laufband
+        eintraege={ticker.map((t) => ({
+          id: t.id,
+          datum: tagKurz(t.datum),
+          kuerzel: t.kuerzel,
+          text: t.text,
+          betrag: t.betrag,
+        }))}
+        format={euroMitVorzeichen}
+      />
 
       <div className="mb-8 grid gap-3 *:min-w-0 lg:grid-cols-3">
         <SegmentKarte titel="Immobilien" href="/board/immobilien">
@@ -373,13 +692,41 @@ export function CockpitSeite() {
         </SegmentKarte>
       </div>
 
-      {aussagen.length ? (
+      {lose.length ? (
+        <section className="mb-8">
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-[15px] font-semibold text-heading">
+                <Gavel className="size-4 text-brand-text" aria-hidden />
+                Im Saal
+              </h2>
+              <p className="mt-0.5 text-xs text-text-muted">
+                Die nächsten Lose: Fristen, Deals und Maschinen, nach
+                Dringlichkeit
+              </p>
+            </div>
+            <Link
+              to="/board/runde"
+              className="text-xs text-brand-text hover:underline"
+            >
+              Zur Wochenrunde
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {lose.slice(0, 4).map((los) => (
+              <LosKarte key={los.los} {...los} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {aussagen.length > 1 ? (
         <Karte className="mb-8 p-5">
           <h2 className="mb-3 text-[15px] font-semibold text-heading">
             Lagebild
           </h2>
           <ul className="space-y-2.5">
-            {aussagen.map((a) => (
+            {aussagen.slice(1).map((a) => (
               <li key={a.href}>
                 <Link
                   to={a.href}
@@ -521,7 +868,7 @@ export function CockpitSeite() {
             {
               schluessel: "saldo",
               label: "Saldo",
-              farbe: "var(--primary)",
+              farbe: "var(--brand)",
               flaeche: true,
             },
           ]}
