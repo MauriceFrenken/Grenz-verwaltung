@@ -536,3 +536,32 @@ export interface BoardDaten {
   datenstand: QuellenStand[];
   luecken: DatenLuecke[];
 }
+
+// ---------------------------------------------------------------------------
+// Wochenrunde (Phase 3): Beschlüsse der Geschäftsführung
+// ---------------------------------------------------------------------------
+
+export const BESCHLUSS_BEZUEGE = [
+  "darlehen",
+  "objekt",
+  "ankauf",
+  "maschine",
+  "gesellschaft",
+] as const;
+export type BeschlussBezug = (typeof BESCHLUSS_BEZUEGE)[number];
+
+export const beschlussSchema = z.object({
+  id: z
+    .string()
+    .regex(/^BE-\d{4}-\d{3}$/, "Beschluss-ID im Format BE-JJJJ-NNN"),
+  rundeAm: isoDatum,
+  text: z.string().min(3),
+  verantwortlich: z.string().nullable(),
+  faelligAm: isoDatum.nullable(),
+  bezugTyp: z.enum(BESCHLUSS_BEZUEGE).nullable(),
+  bezugId: z.string().nullable(),
+  companyId: z.string().nullable(),
+  status: z.enum(["offen", "erledigt"]),
+  erledigtAm: isoDatum.nullable(),
+});
+export type Beschluss = z.infer<typeof beschlussSchema>;

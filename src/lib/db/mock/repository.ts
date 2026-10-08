@@ -1,12 +1,22 @@
 import { plusTage } from "@/lib/kalender";
-import type {
-  AnkaufAusExposeEingabe,
-  BoardRepository,
-  KontosaldoEingabe,
-  PlanpostenEingabe,
+import {
+  naechsteBeschlussId,
+  type AnkaufAusExposeEingabe,
+  type BeschlussEingabe,
+  type BoardRepository,
+  type KontosaldoEingabe,
+  type PlanpostenEingabe,
 } from "../repository";
 import type { AnkaufPhase } from "../transaktionen";
-import type { BoardDaten, Loan, Machine, ReviewItem, Segment } from "../typen";
+import type {
+  Beschluss,
+  BoardDaten,
+  Loan,
+  Machine,
+  ReviewItem,
+  Segment,
+} from "../typen";
+import { musterBeschluesse } from "./beschluesse";
 import { erzeugeSeed } from "./seed";
 
 function upsert<T extends { id: string }>(liste: T[], neu: T[]) {
@@ -30,9 +40,11 @@ export class MockRepository implements BoardRepository {
   readonly quelle = "mock" as const;
   private daten: BoardDaten;
   private erledigt = new Set<string>();
+  private beschlussListe: Beschluss[];
 
   constructor(stichtag: string) {
     this.daten = erzeugeSeed(stichtag);
+    this.beschlussListe = musterBeschluesse(this.daten);
   }
 
   async laden(): Promise<BoardDaten> {
@@ -133,5 +145,32 @@ export class MockRepository implements BoardRepository {
 
   async maschinenSpeichern(maschinen: Machine[]) {
     return upsert(this.daten.machines, maschinen);
+  }
+
+  async beschluesse() {
+    return {
+      eintraege: structuredClone(this.beschlussListe),
+      tabelleFehlt: false,
+    };
+  }
+
+  async beschlussAnlegen(e: BeschlussEingabe) {
+    const id = naechsteBeschlussId(
+      this.beschlussListe.map((b) => b.id),
+      e.rundeAm,
+    );
+    this.beschlussListe.push({ ...e, id, status: "offen", erledigtAm: null });
+    return id;
+  }
+
+  async beschlussStatusSetzen(
+    id: string,
+    status: Beschluss["status"],
+    am: string,
+  ) {
+    const b = this.beschlussListe.find((x) => x.id === id);
+    if (!b) throw new Error(`Beschluss ${id} nicht gefunden`);
+    b.status = status;
+    b.erledigtAm = status === "erledigt" ? am : null;
   }
 }

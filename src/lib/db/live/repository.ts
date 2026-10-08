@@ -1,13 +1,23 @@
 import { heuteIso } from "@/lib/kalender";
 import { supabase } from "@/lib/supabase";
-import type {
-  AnkaufAusExposeEingabe,
-  BoardRepository,
-  KontosaldoEingabe,
-  PlanpostenEingabe,
+import {
+  naechsteBeschlussId,
+  type AnkaufAusExposeEingabe,
+  type BeschlussEingabe,
+  type BeschlussListe,
+  type BoardRepository,
+  type KontosaldoEingabe,
+  type PlanpostenEingabe,
 } from "../repository";
 import type { AnkaufPhase } from "../transaktionen";
-import type { BoardDaten, Loan, Machine, ReviewItem, Segment } from "../typen";
+import type {
+  Beschluss,
+  BoardDaten,
+  Loan,
+  Machine,
+  ReviewItem,
+  Segment,
+} from "../typen";
 import {
   abbilden,
   ibanAusDateiname,
@@ -460,4 +470,74 @@ export class LiveRepository implements BoardRepository {
     const neu = ids.filter((id) => !alt.has(id)).length;
     return { neu, aktualisiert: ids.length - neu };
   }
+
+  // --- Wochenrunde (Tabelle board_beschluesse, Migration 20261009070000) ---
+
+  async beschluesse(): Promise<BeschlussListe> {
+    const { data, error } = await supabase
+      .from("board_beschluesse")
+      .select("*")
+      .order("runde_am", { ascending: false })
+      .order("id");
+    if (fehltTabelle(error)) return { eintraege: [], tabelleFehlt: true };
+    if (error) throw new Error(error.message);
+    return {
+      eintraege: ((data as Row[]) ?? []).map(beschlussAusZeile),
+      tabelleFehlt: false,
+    };
+  }
+
+  async beschlussAnlegen(e: BeschlussEingabe): Promise<string> {
+    const vorhanden = await this.beschluesse();
+    if (vorhanden.tabelleFehlt)
+      throw new Error(
+        "Beschlüsse können erst gespeichert werden, wenn die Datenbank-Erweiterung 20261009070000_board_wochenrunde angewendet ist.",
+      );
+    const id = naechsteBeschlussId(
+      vorhanden.eintraege.map((b) => b.id),
+      e.rundeAm,
+    );
+    const { error } = await supabase.from("board_beschluesse").insert({
+      id,
+      runde_am: e.rundeAm,
+      text: e.text,
+      verantwortlich: e.verantwortlich,
+      faellig_am: e.faelligAm,
+      bezug_typ: e.bezugTyp,
+      bezug_id: e.bezugId,
+      gesellschaft_id: e.companyId,
+      status: "offen",
+    });
+    if (error) throw new Error(error.message);
+    return id;
+  }
+
+  async beschlussStatusSetzen(
+    id: string,
+    status: Beschluss["status"],
+    am: string,
+  ): Promise<void> {
+    const { error } = await supabase
+      .from("board_beschluesse")
+      .update({ status, erledigt_am: status === "erledigt" ? am : null })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+  }
+}
+
+function beschlussAusZeile(r: Row): Beschluss {
+  const text = (v: unknown) => (v == null || v === "" ? null : String(v));
+  const bezug = text(r.bezug_typ);
+  return {
+    id: String(r.id),
+    rundeAm: String(r.runde_am).slice(0, 10),
+    text: String(r.text ?? ""),
+    verantwortlich: text(r.verantwortlich),
+    faelligAm: text(r.faellig_am)?.slice(0, 10) ?? null,
+    bezugTyp: (bezug as Beschluss["bezugTyp"]) ?? null,
+    bezugId: text(r.bezug_id),
+    companyId: text(r.gesellschaft_id),
+    status: r.status === "erledigt" ? "erledigt" : "offen",
+    erledigtAm: text(r.erledigt_am)?.slice(0, 10) ?? null,
+  };
 }
