@@ -359,6 +359,7 @@ export async function parseCamt053OrderData(
     zeitraumVon: null,
     zeitraumBis: null,
     kontoIban: null,
+    salden: [],
     warnungen: [],
   };
   const gesehen = new Set<string>();
@@ -367,6 +368,7 @@ export async function parseCamt053OrderData(
     const part = parseCamt053Xml(xml);
     if (!merged.kontoIban) merged.kontoIban = part.kontoIban;
     merged.warnungen.push(...part.warnungen);
+    merged.salden.push(...part.salden);
     for (const b of part.buchungen) {
       if (gesehen.has(b.fingerprint)) continue;
       gesehen.add(b.fingerprint);
