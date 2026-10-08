@@ -9,9 +9,10 @@ import { useMemo, useState } from "react";
 import { DatenTabelle, type Spalte } from "@/components/board/DatenTabelle";
 import { DetailPanel, PanelAbschnitt } from "@/components/board/DetailPanel";
 import { Knopf } from "@/components/board/Knopf";
-import { KpiKarte } from "@/components/board/KpiKarte";
+import { GrosserBetrag, LosKarte } from "@/components/board/Auktion";
 import {
   Abschnitt,
+  BuehnenKennzahl,
   Karte,
   Kennzahlen,
   SeitenKopf,
@@ -54,6 +55,7 @@ export function BaumaschinenSeite() {
   const navigate = useNavigate({ from: "/board/baumaschinen" });
   const [reiter, setReiter] = useState<Reiter>("handel");
   const [importOffen, setImportOffen] = useState(false);
+  const [ansicht, setAnsicht] = useState<"saal" | "tabelle">("saal");
 
   const handel = useMemo(
     () => (data ? handelAuswerten(data, filter.passt) : null),
@@ -178,7 +180,86 @@ export function BaumaschinenSeite() {
             <FileSpreadsheet /> Bestand importieren
           </Knopf>
         }
-      />
+      >
+        {reiter === "handel" && !keinBestand ? (
+          <>
+            <div className="grid grid-cols-2 gap-6 md:grid-cols-3 xl:grid-cols-5">
+              <BuehnenKennzahl
+                label="Lagerwert"
+                wert={<GrosserBetrag wert={handel.lagerwert} />}
+                hinweis={`${handel.bestand.length} Maschinen zu Einstandspreisen`}
+              />
+              <BuehnenKennzahl
+                label="Ø Standzeit"
+                wert={
+                  handel.lagerDauerSchnitt == null
+                    ? "–"
+                    : `${handel.lagerDauerSchnitt} T`
+                }
+                hinweis={`gelb ab ${LAGER_GELB}, rot ab ${LAGER_ROT} Tagen`}
+                ampel={
+                  handel.lagerDauerSchnitt == null
+                    ? "grau"
+                    : handel.lagerDauerSchnitt >= LAGER_ROT
+                      ? "rot"
+                      : handel.lagerDauerSchnitt >= LAGER_GELB
+                        ? "gelb"
+                        : "gruen"
+                }
+              />
+              <BuehnenKennzahl
+                label="Rohertrag 12 M"
+                wert={<GrosserBetrag wert={handel.rohertrag12} />}
+                hinweis={`${handel.verkauft12.length} Verkäufe · Marge ${prozent(handel.marge12)}`}
+              />
+              <BuehnenKennzahl
+                label="Lagerumschlag"
+                wert={
+                  handel.umschlag == null
+                    ? "–"
+                    : `${dezimal(handel.umschlag, 1)}×`
+                }
+                hinweis="Wareneinsatz 12 M / Lagerwert"
+              />
+              <BuehnenKennzahl
+                label="Finanzierung Gruppe"
+                wert={<GrosserBetrag wert={handel.icFinanzierung} />}
+                hinweis={
+                  handel.icFinanzierung > 0
+                    ? `${euroKompakt(handel.icZinsenPa)} Zinsen p. a.`
+                    : "keine IC-Darlehen erfasst"
+                }
+                href="/board/darlehen"
+              />
+            </div>
+            {handel.icFinanzierung > 0 ? (
+              <div className="mt-6">
+                <div className="mb-1.5 flex justify-between text-[11px] text-stage-muted">
+                  <span>
+                    Lagerwert deckt{" "}
+                    <span className="font-semibold text-stage-foreground">
+                      {prozent(handel.lagerwert / handel.icFinanzierung, 0)}
+                    </span>{" "}
+                    der Finanzierung durch die Gruppe
+                  </span>
+                  <span className="ziffern">
+                    {euroKompakt(handel.lagerwert)} /{" "}
+                    {euroKompakt(handel.icFinanzierung)}
+                  </span>
+                </div>
+                <div className="relative h-1.5 bg-stage-line">
+                  <div
+                    className="absolute inset-y-0 left-0 bg-brand"
+                    style={{
+                      width: `${Math.min(100, (handel.lagerwert / handel.icFinanzierung) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </SeitenKopf>
 
       <div className="mb-4">
         <Segmente
@@ -208,84 +289,87 @@ export function BaumaschinenSeite() {
           </Karte>
         ) : (
           <>
-            <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-              <KpiKarte
-                label="Lagerwert"
-                wert={euroKompakt(handel.lagerwert)}
-                hinweis={`${handel.bestand.length} Maschinen zu Einstandspreisen`}
-              />
-              <KpiKarte
-                label="Ø Lagerdauer"
-                wert={
-                  handel.lagerDauerSchnitt == null
-                    ? "–"
-                    : `${handel.lagerDauerSchnitt} Tage`
-                }
-                hinweis={`gelb ab ${LAGER_GELB}, rot ab ${LAGER_ROT} Tagen`}
-                ampel={
-                  handel.lagerDauerSchnitt == null
-                    ? "grau"
-                    : handel.lagerDauerSchnitt >= LAGER_ROT
-                      ? "rot"
-                      : handel.lagerDauerSchnitt >= LAGER_GELB
-                        ? "gelb"
-                        : "gruen"
-                }
-              />
-              <KpiKarte
-                label="Rohertrag 12 Monate"
-                wert={euroKompakt(handel.rohertrag12)}
-                hinweis={`${handel.verkauft12.length} Verkäufe · Marge ${prozent(handel.marge12)}`}
-              />
-              <KpiKarte
-                label="Lagerumschlag"
-                wert={
-                  handel.umschlag == null
-                    ? "–"
-                    : `${dezimal(handel.umschlag, 1)}×`
-                }
-                hinweis="Wareneinsatz 12 Monate / Lagerwert"
-              />
-              <KpiKarte
-                label="Finanzierung durch Gruppe"
-                wert={euroKompakt(handel.icFinanzierung)}
-                hinweis={
-                  handel.icFinanzierung > 0
-                    ? `${euroKompakt(handel.icZinsenPa)} Zinsen p. a.`
-                    : "keine IC-Darlehen erfasst"
-                }
-                href="/board/darlehen"
-              />
-            </div>
-
             <Abschnitt
               titel="Maschinen"
               beschreibung={`Erwarteter Rohertrag des Bestands ${euroKompakt(handel.rohertragBestand)} zu Angebotspreisen. Finanzierungskosten kalkulatorisch mit ${prozent(IC_ZINS)} p. a.`}
             >
-              <DatenTabelle
-                label="Maschinen"
-                zeilen={handel.maschinen}
-                spalten={spalten}
-                schluessel={(k) => k.machine.id}
-                onZeileKlick={(k) => setOffen(k.machine.id)}
-                aktiveZeile={offenId ?? null}
-                suchText={(k) =>
-                  `${k.machine.id} ${k.machine.hersteller} ${k.machine.modell} ${k.machine.kategorie ?? ""} ${k.machine.seriennummer ?? ""}`
-                }
-                suchPlatzhalter="Maschine, Modell, Seriennummer…"
-                filter={[
-                  {
-                    id: "status",
-                    label: "Status",
-                    optionen: MASCHINEN_STATUS.map((s) => ({
-                      wert: s,
-                      label: MASCHINEN_STATUS_LABEL[s],
-                    })),
-                    passt: (k, w) => k.machine.status === w,
-                  },
-                ]}
-                startSortierung={{ id: "lager", richtung: "ab" }}
-              />
+              <div className="mb-3">
+                <Segmente
+                  label="Ansicht"
+                  wert={ansicht}
+                  onChange={setAnsicht}
+                  optionen={[
+                    { wert: "saal", label: "Saal" },
+                    { wert: "tabelle", label: "Tabelle" },
+                  ]}
+                />
+              </div>
+              {ansicht === "saal" ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                  {[...handel.bestand]
+                    .sort((a, b) => (b.lagerTage ?? -1) - (a.lagerTage ?? -1))
+                    .map((k) => (
+                      <LosKarte
+                        key={k.machine.id}
+                        los={k.machine.id}
+                        titel={`${k.machine.hersteller} ${k.machine.modell}`}
+                        untertitel={[
+                          k.machine.kategorie,
+                          k.machine.baujahr ? `Bj. ${k.machine.baujahr}` : null,
+                          k.machine.betriebsstunden != null
+                            ? `${ganzzahl(k.machine.betriebsstunden)} Bh`
+                            : null,
+                          n.gesellschaftKurz(k.machine.companyId),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                        wert={euroKompakt(k.einstand)}
+                        wertLabel="Einstand"
+                        uhr={k.lagerTage == null ? "–" : `${k.lagerTage} T`}
+                        uhrLabel="Standzeit"
+                        ampel={k.ampel}
+                        status={MASCHINEN_STATUS_LABEL[k.machine.status]}
+                        schritt={
+                          k.lagerTage == null
+                            ? "Ankaufsdatum fehlt"
+                            : k.lagerTage >= LAGER_ROT
+                              ? `Preis senken oder in die Auktion · Zinsen bisher ${euroKompakt(k.zinskosten)}`
+                              : k.lagerTage >= LAGER_GELB
+                                ? `nächste Preisstufe prüfen · Zinsen bisher ${euroKompakt(k.zinskosten)}`
+                                : k.rohertrag != null
+                                  ? `erwarteter Rohertrag ${euroKompakt(k.rohertrag)}`
+                                  : "Angebotspreis fehlt"
+                        }
+                        onClick={() => setOffen(k.machine.id)}
+                      />
+                    ))}
+                </div>
+              ) : (
+                <DatenTabelle
+                  label="Maschinen"
+                  zeilen={handel.maschinen}
+                  spalten={spalten}
+                  schluessel={(k) => k.machine.id}
+                  onZeileKlick={(k) => setOffen(k.machine.id)}
+                  aktiveZeile={offenId ?? null}
+                  suchText={(k) =>
+                    `${k.machine.id} ${k.machine.hersteller} ${k.machine.modell} ${k.machine.kategorie ?? ""} ${k.machine.seriennummer ?? ""}`
+                  }
+                  suchPlatzhalter="Maschine, Modell, Seriennummer…"
+                  filter={[
+                    {
+                      id: "status",
+                      label: "Status",
+                      optionen: MASCHINEN_STATUS.map((s) => ({
+                        wert: s,
+                        label: MASCHINEN_STATUS_LABEL[s],
+                      })),
+                      passt: (k, w) => k.machine.status === w,
+                    },
+                  ]}
+                  startSortierung={{ id: "lager", richtung: "ab" }}
+                />
+              )}
             </Abschnitt>
           </>
         )
