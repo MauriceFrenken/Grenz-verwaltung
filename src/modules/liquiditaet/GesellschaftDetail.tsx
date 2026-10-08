@@ -80,7 +80,7 @@ export function GesellschaftDetail({
       titel={c?.name ?? ""}
       unterzeile={
         c
-          ? `Mindestliquidität ${euro(c.minLiquidity)}${c.separateArea ? " · getrennter Bereich, nicht Teil der freien Gruppenliquidität" : ""}`
+          ? `Mindestliquidität ${c.minLiquidityGesetzt ? euro(c.minLiquidity) : "nicht festgelegt"}${c.separateArea ? " · getrennter Bereich, nicht Teil der freien Gruppenliquidität" : ""}`
           : undefined
       }
       kopfzeile={
@@ -103,7 +103,9 @@ export function GesellschaftDetail({
               eintraege={[
                 {
                   label: "Bankbestand heute",
-                  wert: euro(g.heute),
+                  wert: konten.every((k) => k.saldoBekannt)
+                    ? euro(g.heute)
+                    : `${euro(g.heute)} (unvollständig)`,
                   hervorheben: true,
                 },
                 { label: "In 13 Wochen", wert: euro(g.in13Wochen) },
@@ -145,6 +147,12 @@ export function GesellschaftDetail({
           </PanelAbschnitt>
 
           <PanelAbschnitt titel="Konten">
+            {konten.length === 0 ? (
+              <p className="text-sm text-text-muted">
+                Kein Bankkonto angebunden. Konto und Saldo unter Datenqualität
+                erfassen.
+              </p>
+            ) : null}
             <ul className="divide-y divide-hairline rounded-[8px] border border-hairline">
               {konten.map((k) => (
                 <li
@@ -155,11 +163,18 @@ export function GesellschaftDetail({
                     <div className="truncate font-medium">{k.label}</div>
                     <div className="truncate text-xs text-text-muted">
                       {k.bankName} · {k.iban}
+                      {k.saldoBekannt && k.saldoStichtag
+                        ? ` · Saldo vom ${datum(k.saldoStichtag)}`
+                        : ""}
                     </div>
                   </div>
-                  <span className="shrink-0 tabular-nums">
-                    {euro(ist.get(k.id)?.at(-1)?.saldo ?? 0)}
-                  </span>
+                  {k.saldoBekannt ? (
+                    <span className="shrink-0 tabular-nums">
+                      {euro(ist.get(k.id)?.at(-1)?.saldo ?? 0)}
+                    </span>
+                  ) : (
+                    <StatusBadge ampel="gelb">Saldo fehlt</StatusBadge>
+                  )}
                 </li>
               ))}
             </ul>

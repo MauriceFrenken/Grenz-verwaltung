@@ -5,7 +5,9 @@ import { Kennzahlen, Segmente } from "@/components/board/Layout";
 import { AmpelPunkt, StatusBadge } from "@/components/board/Status";
 import { LOAN_KIND_LABEL, type BoardDaten } from "@/lib/db/typen";
 import { datum, euro, prozent } from "@/lib/format/de";
+import { boardRepository } from "@/lib/db/config";
 import { cn } from "@/lib/utils";
+import { Kontobewegungen } from "./Kontobewegungen";
 import type { AbgleichErgebnis } from "./logik/abgleich";
 import type { DarlehenStand } from "./logik/auswertung";
 
@@ -175,6 +177,12 @@ export function DarlehenDetail({
               </ul>
             )}
           </PanelAbschnitt>
+
+          {boardRepository().quelle === "live" ? (
+            <PanelAbschnitt titel="Kontobewegungen">
+              <Kontobewegungen darlehenId={l.id} />
+            </PanelAbschnitt>
+          ) : null}
 
           <PanelAbschnitt titel="Zinsplan">
             <div className="mb-2">

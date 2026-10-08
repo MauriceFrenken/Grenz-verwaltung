@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { CockpitSeite } from "@/modules/cockpit/CockpitSeite";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/** Das Cockpit ist die Startseite (`/`). */
 export const Route = createFileRoute("/board/")({
-  head: () => ({ meta: [{ title: "Cockpit — FRENKEN Management Board" }] }),
-  component: CockpitSeite,
+  beforeLoad: () => {
+    throw redirect({ to: "/", replace: true });
+  },
 });

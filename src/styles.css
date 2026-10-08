@@ -188,10 +188,8 @@ html[data-op-zensur="true"] [data-op-zensur-ausnahme] * {
 }
 
 /* ==========================================================================
- * FRENKEN Management Board (/board)
- * Gilt nur, solange das Board offen ist: BoardShell setzt `board-theme`
- * (und ggf. `dark`) an <html>. Die Verwaltung bleibt monochrom und kantig.
- * Eine Akzentfarbe (dunkles Petrol), Statusfarben nur für Bedeutung.
+ * Steuerung (Management Board): nutzt Bens Tokens. Ergänzt werden nur
+ * Statusfarben (ok / warn / bad), die überall dieselbe Bedeutung haben.
  * ========================================================================== */
 
 @theme inline {
@@ -205,111 +203,21 @@ html[data-op-zensur="true"] [data-op-zensur-ausnahme] * {
   --color-elevated: var(--elevated);
 }
 
-html.board-theme {
-  color-scheme: light;
-  --background: oklch(0.982 0.002 230);
-  --foreground: oklch(0.24 0.008 230);
-  --heading: oklch(0.18 0.01 230);
-  --text-muted: oklch(0.5 0.01 230);
-  --text-subtle: oklch(0.64 0.008 230);
-  --surface: oklch(1 0 0);
+:root {
   --elevated: oklch(1 0 0);
-  --surface-muted: oklch(0.965 0.003 230);
-  --hairline: oklch(0.92 0.004 230);
-  --card: oklch(1 0 0);
-  --card-foreground: var(--foreground);
-  --popover: oklch(1 0 0);
-  --popover-foreground: var(--foreground);
-  --primary: oklch(0.44 0.075 210);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.955 0.004 230);
-  --secondary-foreground: var(--foreground);
-  --muted: oklch(0.955 0.004 230);
-  --muted-foreground: var(--text-muted);
-  --accent: oklch(0.955 0.012 210);
-  --accent-foreground: oklch(0.36 0.07 210);
-  --accent-soft: oklch(0.955 0.02 210);
-  --border: var(--hairline);
-  --input: oklch(0.89 0.005 230);
-  --ring: oklch(0.55 0.09 210);
-  --danger: oklch(0.56 0.19 27);
-  --destructive: oklch(0.56 0.19 27);
-  --ok: oklch(0.56 0.12 155);
+  --accent-soft: oklch(0.955 0 0);
+  --ok: oklch(0.52 0.11 155);
   --ok-soft: oklch(0.96 0.035 155);
-  --warn: oklch(0.6 0.13 70);
+  --warn: oklch(0.58 0.13 70);
   --warn-soft: oklch(0.965 0.045 85);
-  --bad: oklch(0.56 0.19 27);
+  --bad: var(--danger);
   --bad-soft: oklch(0.96 0.03 27);
-  --chart-1: oklch(0.44 0.075 210);
-  --chart-2: oklch(0.72 0.06 205);
-  --chart-3: oklch(0.7 0.01 230);
-  --chart-4: oklch(0.6 0.13 70);
-  --chart-5: oklch(0.56 0.19 27);
-  --sidebar: oklch(0.975 0.003 230);
-  --sidebar-foreground: var(--foreground);
-  --sidebar-border: var(--hairline);
-}
-
-html.board-theme.dark {
-  color-scheme: dark;
-  --background: oklch(0.165 0.006 230);
-  --foreground: oklch(0.9 0.005 230);
-  --heading: oklch(0.97 0.003 230);
-  --text-muted: oklch(0.7 0.008 230);
-  --text-subtle: oklch(0.56 0.008 230);
-  --surface: oklch(0.2 0.007 230);
-  --elevated: oklch(0.235 0.008 230);
-  --surface-muted: oklch(0.235 0.008 230);
-  --hairline: oklch(0.29 0.008 230);
-  --card: oklch(0.2 0.007 230);
-  --popover: oklch(0.235 0.008 230);
-  --primary: oklch(0.72 0.085 205);
-  --primary-foreground: oklch(0.16 0.02 210);
-  --secondary: oklch(0.26 0.008 230);
-  --muted: oklch(0.26 0.008 230);
-  --accent: oklch(0.28 0.03 210);
-  --accent-foreground: oklch(0.85 0.06 205);
-  --accent-soft: oklch(0.26 0.03 210);
-  --input: oklch(0.33 0.008 230);
-  --ring: oklch(0.72 0.085 205);
-  --ok: oklch(0.72 0.13 155);
-  --ok-soft: oklch(0.27 0.045 155);
-  --warn: oklch(0.8 0.13 80);
-  --warn-soft: oklch(0.29 0.05 80);
-  --bad: oklch(0.7 0.16 27);
-  --bad-soft: oklch(0.28 0.06 27);
-  --chart-1: oklch(0.72 0.085 205);
-  --chart-2: oklch(0.5 0.06 210);
-  --chart-3: oklch(0.55 0.01 230);
-  --sidebar: oklch(0.18 0.007 230);
-}
-
-html.board-theme body {
-  background-color: var(--color-background);
-  font-feature-settings: "cv11", "ss01";
-}
-
-@layer base {
-  /* Das Board nutzt dezente Rundungen; überschreibt die kantige Grundregel nur hier. */
-  html.board-theme :where(button, input, textarea, select) {
-    border-radius: var(--board-r, 7px) !important;
-  }
-  html.board-theme :where([role="dialog"], [role="menu"]) {
-    border-radius: var(--board-r, 12px) !important;
-  }
-  html.board-theme :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-  html.board-theme ::selection {
-    background: var(--accent-soft);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html.board-theme *,
-  html.board-theme *::before,
-  html.board-theme *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }

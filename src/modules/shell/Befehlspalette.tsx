@@ -5,10 +5,7 @@ import {
   Building2,
   CornerDownLeft,
   Landmark,
-  Moon,
-  PanelLeft,
   Search,
-  Sun,
   User,
   Users,
 } from "lucide-react";
@@ -26,9 +23,6 @@ export function Befehlspalette({ daten }: { daten: BoardDaten | undefined }) {
   const offen = useBoardUi((s) => s.paletteOffen);
   const setOffen = useBoardUi((s) => s.setPaletteOffen);
   const setGesellschaft = useBoardUi((s) => s.setGesellschaft);
-  const toggleSeitenleiste = useBoardUi((s) => s.toggleSeitenleiste);
-  const thema = useBoardUi((s) => s.thema);
-  const setThema = useBoardUi((s) => s.setThema);
   const navigate = useNavigate();
 
   const geh = (fn: () => void) => {
@@ -82,25 +76,6 @@ export function Befehlspalette({ daten }: { daten: BoardDaten | undefined }) {
                     sub={n.frage}
                   />
                 ))}
-              </Gruppe>
-
-              <Gruppe titel="Aktionen">
-                <Eintrag
-                  value="Aktion Hell Dunkel Thema wechseln"
-                  icon={thema === "dunkel" ? <Sun /> : <Moon />}
-                  onSelect={() =>
-                    geh(() => setThema(thema === "dunkel" ? "hell" : "dunkel"))
-                  }
-                  titel={thema === "dunkel" ? "Hellmodus" : "Dunkelmodus"}
-                  rechts={<Taste>⌘J</Taste>}
-                />
-                <Eintrag
-                  value="Aktion Seitenleiste ein ausklappen"
-                  icon={<PanelLeft />}
-                  onSelect={() => geh(toggleSeitenleiste)}
-                  titel="Seitenleiste ein-/ausklappen"
-                  rechts={<Taste>⌘\</Taste>}
-                />
               </Gruppe>
 
               {daten ? (

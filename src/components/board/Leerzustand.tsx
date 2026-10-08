@@ -22,7 +22,7 @@ export function Leerzustand({
         kompakt ? "px-4 py-8" : "px-6 py-16",
       )}
     >
-      <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-accent-soft text-accent-foreground">
+      <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-accent-soft text-heading">
         <Icon className="size-5" strokeWidth={1.75} aria-hidden />
       </div>
       <p className="text-sm font-medium text-heading">{titel}</p>

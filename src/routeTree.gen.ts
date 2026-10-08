@@ -22,7 +22,9 @@ import { Route as TransaktionenRouteImport } from './routes/transaktionen'
 import { Route as VerwaltungRouteImport } from './routes/verwaltung'
 import { Route as BoardIndexRouteImport } from './routes/board.index'
 import { Route as BoardAblageRouteImport } from './routes/board.ablage'
+import { Route as BoardBaumaschinenRouteImport } from './routes/board.baumaschinen'
 import { Route as BoardDarlehenRouteImport } from './routes/board.darlehen'
+import { Route as BoardDatenRouteImport } from './routes/board.daten'
 import { Route as BoardDesignRouteImport } from './routes/board.design'
 import { Route as BoardImmobilienRouteImport } from './routes/board.immobilien'
 import { Route as BoardLiquiditaetRouteImport } from './routes/board.liquiditaet'
@@ -128,9 +130,19 @@ const BoardAblageRoute = BoardAblageRouteImport.update({
   path: '/ablage',
   getParentRoute: () => BoardRoute,
 } as any)
+const BoardBaumaschinenRoute = BoardBaumaschinenRouteImport.update({
+  id: '/baumaschinen',
+  path: '/baumaschinen',
+  getParentRoute: () => BoardRoute,
+} as any)
 const BoardDarlehenRoute = BoardDarlehenRouteImport.update({
   id: '/darlehen',
   path: '/darlehen',
+  getParentRoute: () => BoardRoute,
+} as any)
+const BoardDatenRoute = BoardDatenRouteImport.update({
+  id: '/daten',
+  path: '/daten',
   getParentRoute: () => BoardRoute,
 } as any)
 const BoardDesignRoute = BoardDesignRouteImport.update({
@@ -351,7 +363,9 @@ export interface FileRoutesByFullPath {
   '/transaktionen': typeof TransaktionenRouteWithChildren
   '/verwaltung': typeof VerwaltungRouteWithChildren
   '/board/ablage': typeof BoardAblageRoute
+  '/board/baumaschinen': typeof BoardBaumaschinenRoute
   '/board/darlehen': typeof BoardDarlehenRoute
+  '/board/daten': typeof BoardDatenRoute
   '/board/design': typeof BoardDesignRoute
   '/board/immobilien': typeof BoardImmobilienRoute
   '/board/liquiditaet': typeof BoardLiquiditaetRoute
@@ -401,7 +415,9 @@ export interface FileRoutesByTo {
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/board/ablage': typeof BoardAblageRoute
+  '/board/baumaschinen': typeof BoardBaumaschinenRoute
   '/board/darlehen': typeof BoardDarlehenRoute
+  '/board/daten': typeof BoardDatenRoute
   '/board/design': typeof BoardDesignRoute
   '/board/immobilien': typeof BoardImmobilienRoute
   '/board/liquiditaet': typeof BoardLiquiditaetRoute
@@ -454,7 +470,9 @@ export interface FileRoutesById {
   '/transaktionen': typeof TransaktionenRouteWithChildren
   '/verwaltung': typeof VerwaltungRouteWithChildren
   '/board/ablage': typeof BoardAblageRoute
+  '/board/baumaschinen': typeof BoardBaumaschinenRoute
   '/board/darlehen': typeof BoardDarlehenRoute
+  '/board/daten': typeof BoardDatenRoute
   '/board/design': typeof BoardDesignRoute
   '/board/immobilien': typeof BoardImmobilienRoute
   '/board/liquiditaet': typeof BoardLiquiditaetRoute
@@ -511,7 +529,9 @@ export interface FileRouteTypes {
     | '/transaktionen'
     | '/verwaltung'
     | '/board/ablage'
+    | '/board/baumaschinen'
     | '/board/darlehen'
+    | '/board/daten'
     | '/board/design'
     | '/board/immobilien'
     | '/board/liquiditaet'
@@ -561,7 +581,9 @@ export interface FileRouteTypes {
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
     | '/board/ablage'
+    | '/board/baumaschinen'
     | '/board/darlehen'
+    | '/board/daten'
     | '/board/design'
     | '/board/immobilien'
     | '/board/liquiditaet'
@@ -613,7 +635,9 @@ export interface FileRouteTypes {
     | '/transaktionen'
     | '/verwaltung'
     | '/board/ablage'
+    | '/board/baumaschinen'
     | '/board/darlehen'
+    | '/board/daten'
     | '/board/design'
     | '/board/immobilien'
     | '/board/liquiditaet'
@@ -768,11 +792,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BoardAblageRouteImport
       parentRoute: typeof BoardRoute
     }
+    '/board/baumaschinen': {
+      id: '/board/baumaschinen'
+      path: '/baumaschinen'
+      fullPath: '/board/baumaschinen'
+      preLoaderRoute: typeof BoardBaumaschinenRouteImport
+      parentRoute: typeof BoardRoute
+    }
     '/board/darlehen': {
       id: '/board/darlehen'
       path: '/darlehen'
       fullPath: '/board/darlehen'
       preLoaderRoute: typeof BoardDarlehenRouteImport
+      parentRoute: typeof BoardRoute
+    }
+    '/board/daten': {
+      id: '/board/daten'
+      path: '/daten'
+      fullPath: '/board/daten'
+      preLoaderRoute: typeof BoardDatenRouteImport
       parentRoute: typeof BoardRoute
     }
     '/board/design': {
@@ -1053,7 +1091,9 @@ declare module '@tanstack/react-router' {
 
 interface BoardRouteChildren {
   BoardAblageRoute: typeof BoardAblageRoute
+  BoardBaumaschinenRoute: typeof BoardBaumaschinenRoute
   BoardDarlehenRoute: typeof BoardDarlehenRoute
+  BoardDatenRoute: typeof BoardDatenRoute
   BoardDesignRoute: typeof BoardDesignRoute
   BoardImmobilienRoute: typeof BoardImmobilienRoute
   BoardLiquiditaetRoute: typeof BoardLiquiditaetRoute
@@ -1065,7 +1105,9 @@ interface BoardRouteChildren {
 
 const BoardRouteChildren: BoardRouteChildren = {
   BoardAblageRoute: BoardAblageRoute,
+  BoardBaumaschinenRoute: BoardBaumaschinenRoute,
   BoardDarlehenRoute: BoardDarlehenRoute,
+  BoardDatenRoute: BoardDatenRoute,
   BoardDesignRoute: BoardDesignRoute,
   BoardImmobilienRoute: BoardImmobilienRoute,
   BoardLiquiditaetRoute: BoardLiquiditaetRoute,

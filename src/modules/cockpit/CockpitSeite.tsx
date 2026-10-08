@@ -3,11 +3,12 @@ import {
   AlertTriangle,
   ArrowRight,
   CalendarClock,
+  DatabaseZap,
   ListChecks,
 } from "lucide-react";
 import { ZeitreihenDiagramm } from "@/components/board/Diagramm";
 import { KpiKarte } from "@/components/board/KpiKarte";
-import { Karte } from "@/components/board/Layout";
+import { Karte, Kennzahlen } from "@/components/board/Layout";
 import { Leerzustand } from "@/components/board/Leerzustand";
 import { SeitenSkelett } from "@/components/board/Skelett";
 import { AmpelPunkt } from "@/components/board/Status";
@@ -39,6 +40,11 @@ import {
 } from "@/modules/pruefliste/logik/pruefliste";
 import { useLage } from "@/modules/pruefliste/useLage";
 import { useGesellschaftsFilter } from "@/modules/shell/daten";
+import {
+  handelAuswerten,
+  plattformAuswerten,
+} from "@/modules/baumaschinen/logik/baumaschinen";
+import { useRechnungsfreigabeOffen } from "./useRechnungsfreigabe";
 
 function gruss(): string {
   const h = new Date().getHours();
@@ -54,6 +60,7 @@ interface Aussage {
 export function CockpitSeite() {
   const lage = useLage();
   const filter = useGesellschaftsFilter();
+  const rechnungenOffen = useRechnungsfreigabeOffen();
 
   if (lage.fehler)
     return (
@@ -80,16 +87,48 @@ export function CockpitSeite() {
 
   // Liquidität: Kreis = freie Gruppe oder gewählte Gesellschaft
   const ids = filter.alle ? l.freieIds : [filter.gesellschaft];
-  const min = daten.companies
-    .filter((c) => ids.includes(c.id))
-    .reduce((s, c) => s + c.minLiquidity, 0);
+  const kreis = daten.companies.filter((c) => ids.includes(c.id));
+  const min = kreis.reduce((s, c) => s + c.minLiquidity, 0);
+  const minFehlt = kreis.filter((c) => !c.minLiquidityGesetzt).length;
+  const ohneSaldo = daten.bankAccounts.filter(
+    (k) => ids.includes(k.companyId) && !k.saldoBekannt,
+  ).length;
   const reihe = kreisReihe(l.verlauf, ids);
   const kurz = reihe.slice(0, HORIZONT_TAGE + 1);
   const heute = kurz[0].wert;
   const in13 = kurz.at(-1)!.wert;
   const tief13 = tiefpunkt(kurz);
   const liqAmpel = (x: number): Ampel =>
-    x < min ? "rot" : x < 1.5 * min ? "gelb" : "gruen";
+    ohneSaldo || minFehlt === kreis.length
+      ? "grau"
+      : x < min
+        ? "rot"
+        : x < 1.5 * min
+          ? "gelb"
+          : "gruen";
+  const liqHinweis = ohneSaldo
+    ? `Daten fehlen: ${ohneSaldo} Konto${ohneSaldo > 1 ? "en" : ""} ohne Saldo`
+    : minFehlt
+      ? `Mindestliquidität bei ${minFehlt} Gesellschaft${minFehlt > 1 ? "en" : ""} nicht festgelegt`
+      : `Mindestens ${euroKompakt(min)}`;
+
+  // Datengrundlage
+  const lueckenRot = daten.luecken.filter((x) => x.schwere === "rot").length;
+
+  // Baumaschinen und Holding
+  const handel = handelAuswerten(daten, passt);
+  const plattform = plattformAuswerten(daten, passt);
+  const runway = plattform
+    .map((p) => p.runwayMonate)
+    .filter((x): x is number => x != null);
+  const zeigeSegment = (segmente: string[]) =>
+    daten.companies.some((c) => segmente.includes(c.segment) && passt(c.id));
+  const intern = darlehen.staende.filter(
+    (s) =>
+      s.loan.status === "aktiv" &&
+      s.loan.kind !== "bank" &&
+      (passt(s.loan.borrowerCompanyId) || passt(s.loan.lenderCompanyId)),
+  );
 
   // Prüffälle
   const offen = lage.faelle.filter(
@@ -182,11 +221,25 @@ export function CockpitSeite() {
         </p>
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
+      {daten.quelle === "live" && lueckenRot ? (
+        <Link
+          to="/board/daten"
+          className="mb-6 flex items-center gap-3 border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad"
+        >
+          <DatabaseZap className="size-4 shrink-0" aria-hidden />
+          <span className="flex-1">
+            {lueckenRot} kritische Datenlücke{lueckenRot > 1 ? "n" : ""}:
+            einzelne Zahlen sind unvollständig und entsprechend markiert.
+          </span>
+          <ArrowRight className="size-4 shrink-0" aria-hidden />
+        </Link>
+      ) : null}
+
+      <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiKarte
           label="Liquidität heute"
           wert={euroKompakt(heute)}
-          hinweis={`Mindestens ${euroKompakt(min)}`}
+          hinweis={liqHinweis}
           ampel={liqAmpel(heute)}
           href="/board/liquiditaet"
         />
@@ -204,26 +257,113 @@ export function CockpitSeite() {
           ampel={rot.length ? "rot" : offen.length > 10 ? "gelb" : "gruen"}
           href="/board/pruefliste"
         />
-        <KpiKarte
-          label="Aktive Darlehen"
-          wert={String(aktiveDarlehen.length)}
-          hinweis={`Bank ${euroKompakt(bankRest)} Restschuld`}
-          ampel={fristRot ? "rot" : fristen.length ? "gelb" : "gruen"}
-          href="/board/darlehen"
-        />
-        <KpiKarte
-          label="Soll-Miete / Monat"
-          wert={euroKompakt(sollMiete)}
-          hinweis={`${bestand.length} Bestandsobjekte`}
-          href="/board/immobilien"
-        />
-        <KpiKarte
-          label="Leerstand"
-          wert={prozent(leerQuote, 1)}
-          hinweis={`${bestand.reduce((s, o) => s + o.leer.length, 0)} Einheiten`}
-          ampel={leerstandAmpel(leerQuote)}
-          href="/board/immobilien"
-        />
+        {rechnungenOffen != null ? (
+          <KpiKarte
+            label="Rechnungen zur Freigabe"
+            wert={String(rechnungenOffen)}
+            hinweis="aus dem Postfach"
+            ampel={rechnungenOffen ? "gelb" : "gruen"}
+            href="/dokumente/rechnungsfreigabe"
+          />
+        ) : (
+          <KpiKarte
+            label="Datenlücken"
+            wert={String(daten.luecken.length)}
+            hinweis={`${lueckenRot} kritisch`}
+            ampel={lueckenRot ? "rot" : daten.luecken.length ? "gelb" : "gruen"}
+            href="/board/daten"
+          />
+        )}
+      </div>
+
+      <div className="mb-8 grid gap-3 *:min-w-0 lg:grid-cols-3">
+        <SegmentKarte titel="Immobilien" href="/board/immobilien">
+          <Kennzahlen
+            eintraege={[
+              { label: "Soll-Miete / Monat", wert: euroKompakt(sollMiete) },
+              {
+                label: "Leerstand",
+                wert: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <AmpelPunkt ampel={leerstandAmpel(leerQuote)} />
+                    {prozent(leerQuote, 1)}
+                  </span>
+                ),
+              },
+              { label: "Bestandsobjekte", wert: String(bestand.length) },
+              {
+                label: "Ankäufe in Arbeit",
+                wert: String(
+                  crm.ankaeufe.filter(
+                    (a) => a.phase !== "gekauft" && a.phase !== "abgesagt",
+                  ).length,
+                ),
+              },
+            ]}
+          />
+        </SegmentKarte>
+        <SegmentKarte titel="Baumaschinen" href="/board/baumaschinen">
+          {zeigeSegment(["baumaschinen_handel", "baumaschinen_plattform"]) ? (
+            <Kennzahlen
+              eintraege={[
+                {
+                  label: "Lagerwert Handel",
+                  wert: daten.machines.length
+                    ? euroKompakt(handel.lagerwert)
+                    : "Daten fehlen",
+                },
+                {
+                  label: "Ø Lagerdauer",
+                  wert:
+                    handel.lagerDauerSchnitt == null
+                      ? "–"
+                      : `${handel.lagerDauerSchnitt} Tage`,
+                },
+                {
+                  label: "Rohertrag 12 M",
+                  wert: daten.machines.length
+                    ? euroKompakt(handel.rohertrag12)
+                    : "–",
+                },
+                {
+                  label: "Runway Plattform",
+                  wert: runway.length
+                    ? `${Math.min(...runway).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Monate`
+                    : "Daten fehlen",
+                },
+              ]}
+            />
+          ) : (
+            <p className="text-sm text-text-muted">
+              Für den gewählten Filter keine Baumaschinen-Gesellschaft.
+            </p>
+          )}
+        </SegmentKarte>
+        <SegmentKarte titel="Holding / Finanzierung" href="/board/darlehen">
+          <Kennzahlen
+            eintraege={[
+              { label: "Bankdarlehen Restschuld", wert: euroKompakt(bankRest) },
+              {
+                label: "Fristen ≤ 12 Monate",
+                wert: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <AmpelPunkt
+                      ampel={
+                        fristRot ? "rot" : fristen.length ? "gelb" : "gruen"
+                      }
+                    />
+                    {fristen.length}
+                  </span>
+                ),
+              },
+              { label: "Interne Darlehen", wert: String(intern.length) },
+              {
+                label: "davon Volumen",
+                wert: euroKompakt(intern.reduce((s, x) => s + x.restschuld, 0)),
+              },
+            ]}
+          />
+        </SegmentKarte>
       </div>
 
       {aussagen.length ? (
@@ -381,5 +521,27 @@ export function CockpitSeite() {
         />
       </Karte>
     </>
+  );
+}
+
+function SegmentKarte({
+  titel,
+  href,
+  children,
+}: {
+  titel: string;
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Karte className="p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-[15px] font-semibold text-heading">{titel}</h2>
+        <Link to={href} className="text-xs text-primary hover:underline">
+          Öffnen
+        </Link>
+      </div>
+      {children}
+    </Karte>
   );
 }

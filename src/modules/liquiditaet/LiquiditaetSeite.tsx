@@ -107,6 +107,10 @@ export function LiquiditaetSeite() {
     return {
       ids: new Set(ids),
       min: companies.reduce((s, c) => s + c.minLiquidity, 0),
+      minFehlt: companies.filter((c) => !c.minLiquidityGesetzt).length,
+      ohneSaldo: data.bankAccounts.filter(
+        (k) => ids.includes(k.companyId) && !k.saldoBekannt,
+      ).length,
       name: filter.alle
         ? "Gruppe (frei verfügbar)"
         : (companies[0]?.name ?? ""),
@@ -269,7 +273,12 @@ export function LiquiditaetSeite() {
       id: "min",
       kopf: "Mindestliquidität",
       ausrichtung: "rechts",
-      zelle: (g) => euro(g.company.minLiquidity),
+      zelle: (g) =>
+        g.company.minLiquidityGesetzt ? (
+          euro(g.company.minLiquidity)
+        ) : (
+          <span className="text-xs text-warn">nicht festgelegt</span>
+        ),
       sortierWert: (g) => g.company.minLiquidity,
       optional: true,
     },
@@ -302,8 +311,14 @@ export function LiquiditaetSeite() {
         <KpiKarte
           label="Liquidität heute"
           wert={euroKompakt(heute)}
-          hinweis={`Mindestens ${euroKompakt(kreis.min)}`}
-          ampel={heute < kreis.min ? "rot" : "grau"}
+          hinweis={
+            kreis.ohneSaldo
+              ? `Daten fehlen: ${kreis.ohneSaldo} Konto${kreis.ohneSaldo > 1 ? "en" : ""} ohne Saldo`
+              : kreis.minFehlt
+                ? `Mindestliquidität bei ${kreis.minFehlt} nicht festgelegt`
+                : `Mindestens ${euroKompakt(kreis.min)}`
+          }
+          ampel={!kreis.ohneSaldo && heute < kreis.min ? "rot" : "grau"}
         />
         <KpiKarte
           label="In 13 Wochen"

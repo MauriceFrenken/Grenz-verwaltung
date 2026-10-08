@@ -1,4 +1,4 @@
-// Startet die App im Board-Demo-Modus: fiktive Daten, /board ohne Anmeldung,
+// Startet die App im Board-Demo-Modus: fiktive Daten, Cockpit und /board ohne Anmeldung,
 // Supabase zeigt auf eine nicht erreichbare Dummy-Adresse. Liest keine .env-Werte aus.
 import { spawn } from "node:child_process";
 
@@ -11,7 +11,7 @@ const env = {
 };
 
 console.log(
-  "\nFRENKEN Management Board (Demodaten): http://localhost:8080/board\n",
+  "\nFRENKEN Management Board (Demodaten): http://localhost:8080/\n",
 );
 const kind = spawn("npx", ["vite", "dev", ...process.argv.slice(2)], {
   stdio: "inherit",

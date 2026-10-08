@@ -1,12 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DashboardTeaser } from "@/features/teaser";
+import { CockpitSeite } from "@/modules/cockpit/CockpitSeite";
+import { BoardRahmen } from "@/modules/shell/BoardRahmen";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Übersicht — FRENKEN Verwaltung" },
-      { name: "description", content: "Kennzahlen, offene Aufgaben und Fristen aus allen Automatisierungen." },
+      { title: "Cockpit — FRENKEN" },
+      {
+        name: "description",
+        content:
+          "Liquidität, Darlehen, Immobilien, Baumaschinen und offene Prüffälle der FRENKEN Gruppe.",
+      },
     ],
   }),
-  component: DashboardTeaser,
+  component: () => (
+    <BoardRahmen>
+      <CockpitSeite />
+    </BoardRahmen>
+  ),
 });

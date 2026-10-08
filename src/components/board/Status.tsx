@@ -9,7 +9,7 @@ const TON: Record<Ampel | "akzent", string> = {
   gelb: "bg-warn-soft text-warn",
   rot: "bg-bad-soft text-bad",
   grau: "bg-surface-muted text-text-muted",
-  akzent: "bg-accent-soft text-accent-foreground",
+  akzent: "bg-accent-soft text-heading",
 };
 
 const PUNKT: Record<Ampel | "akzent", string> = {

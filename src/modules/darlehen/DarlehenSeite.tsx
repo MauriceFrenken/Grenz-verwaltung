@@ -233,7 +233,7 @@ function ArtBadge({ kind }: { kind: Loan["kind"] }) {
         "inline-flex h-5 items-center rounded-[5px] px-1.5 text-[11px] font-medium",
         kind === "bank"
           ? "bg-surface-muted text-text-muted"
-          : "bg-accent-soft text-accent-foreground",
+          : "bg-accent-soft text-heading",
       )}
     >
       {LOAN_KIND_LABEL[kind]}

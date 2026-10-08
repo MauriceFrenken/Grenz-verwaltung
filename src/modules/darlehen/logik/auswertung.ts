@@ -42,7 +42,12 @@ export function fristAmpel(datum: IsoDatum | null, stichtag: IsoDatum): Ampel {
 
 export function darlehenStand(loan: Loan, stichtag: IsoDatum): DarlehenStand {
   const plan = zinsplan(loan, { bis: planBis(stichtag) });
-  const rest = restschuld(loan, plan, stichtag);
+  // Ist-Saldo aus der Datenbank (Bank-Saldo bzw. gebuchte Bewegungen) hat Vorrang
+  // vor dem rechnerischen Zinsplan, solange er nicht in der Zukunft liegt.
+  const rest =
+    loan.istSaldo != null && (loan.istSaldoAm ?? stichtag) <= stichtag
+      ? runden(loan.istSaldo)
+      : restschuld(loan, plan, stichtag);
   const jahr = teile(stichtag).jahr;
   const kandidaten: Array<{ d: IsoDatum; e: "Ende" | "Zinsbindung" }> = [];
   if (loan.maturityDate && loan.maturityDate >= stichtag)
