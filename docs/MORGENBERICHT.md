@@ -37,6 +37,8 @@ npm run check:board      # Lint, Typprüfung, Tests und Build für das Board
 
 In einem Container ohne Browser `npm run board -- --host 127.0.0.1` verwenden. Ohne `npm run board` (also ohne `VITE_BOARD_DEMO=1`) verlangt `/board` wie die übrige App eine Anmeldung.
 
+**Vercel-Vorschau:** Jeder Push auf `nightly/management-board` baut im Vercel-Projekt `frenken-expose-ai` (Team „FRENKEN Management“) eine Vorschau. Dort ist der Demo-Modus aus: erst mit dem normalen App-Zugang anmelden, dann `/board` an die Adresse hängen. Das Board zeigt auch dort nur fiktive Demodaten, weil die Datenquelle standardmäßig `mock` ist.
+
 ## 4. Die fünf Dinge, die du dir zuerst ansehen solltest
 
 1. **Cockpit** `/board` (`src/modules/cockpit/CockpitSeite.tsx`): Lagebild und „Zu entscheiden“. Stimmt die Reihenfolge der Fragen für deinen Montag?
