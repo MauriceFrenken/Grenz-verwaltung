@@ -7,17 +7,34 @@ import { ZeitreihenDiagramm } from "@/components/board/Diagramm";
 import { Knopf, Taste } from "@/components/board/Knopf";
 import { KpiKarte } from "@/components/board/KpiKarte";
 import {
+  Countdown,
+  GrosseZahl,
+  GrosserBetrag,
+  Laufband,
+  LosKarte,
+} from "@/components/board/Auktion";
+import {
   Abschnitt,
   Karte,
   Kennzahlen,
+  BuehnenKennzahl,
   SeitenKopf,
   Segmente,
 } from "@/components/board/Layout";
 import { Leerzustand } from "@/components/board/Leerzustand";
 import { KpiSkelett, TabellenSkelett } from "@/components/board/Skelett";
 import { AmpelPunkt, StatusBadge, type Ampel } from "@/components/board/Status";
-import { datum, euro, euroKompakt, prozent, tagKurz } from "@/lib/format/de";
-import { plusTage } from "@/lib/kalender";
+import {
+  datum,
+  euro,
+  euroKompakt,
+  euroMitVorzeichen,
+  prozent,
+  tagKurz,
+} from "@/lib/format/de";
+import { heuteIso, plusTage } from "@/lib/kalender";
+
+const HEUTE = heuteIso();
 
 interface Beispiel {
   id: string;
@@ -106,7 +123,7 @@ export function DesignSeite() {
     <>
       <SeitenKopf
         titel="Designsystem"
-        unterzeile="Bausteine des Management Boards"
+        unterzeile="Auktionssaal: dunkle Bühne, Signal-Orange als einziger Akzent, große Zahlen, Countdown, Lose. Status bleibt Grün, Gelb, Rot, Grau."
         aktionen={
           <>
             <Knopf variante="sekundaer">Sekundär</Knopf>
@@ -118,15 +135,123 @@ export function DesignSeite() {
             </Knopf>
           </>
         }
+      >
+        <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+          <BuehnenKennzahl
+            label="Großer Betrag"
+            wert={<GrosserBetrag wert={4_312_000} />}
+            hinweis="zählt beim ersten Anzeigen hoch"
+          />
+          <BuehnenKennzahl
+            label="Countdown"
+            wert={
+              <Countdown
+                ziel={plusTage(HEUTE, 3)}
+                stichtag={HEUTE}
+                className="text-brand"
+              />
+            }
+            hinweis="Stunden nur in der letzten Woche"
+            ampel="gelb"
+          />
+          <BuehnenKennzahl
+            label="Anzahl"
+            wert={<GrosseZahl wert={32} />}
+            hinweis="mit Ampel-Punkt"
+            ampel="rot"
+          />
+          <BuehnenKennzahl
+            label="Daten fehlen"
+            wert="–"
+            hinweis="grau statt geschätzt"
+            ampel="grau"
+          />
+        </div>
+      </SeitenKopf>
+
+      <Laufband
+        eintraege={[
+          {
+            id: "1",
+            datum: "05.10.",
+            kuerzel: "MH",
+            text: "Muster Mieter",
+            betrag: 1_250,
+          },
+          {
+            id: "2",
+            datum: "05.10.",
+            kuerzel: "MI",
+            text: "Musterbank Rate",
+            betrag: -2_387.15,
+          },
+          {
+            id: "3",
+            datum: "04.10.",
+            kuerzel: "MB",
+            text: "Beispiel Käufer Walze",
+            betrag: 27_500,
+          },
+        ]}
+        format={euroMitVorzeichen}
       />
 
       <Abschnitt
-        titel="Farben"
-        beschreibung="Neutrale Basis, eine Akzentfarbe, Status nur für Bedeutung"
+        titel="Los-Karte"
+        beschreibung="Ein Element für Maschinen, Deals und Fristen: Losnummer, Titel, Hauptzahl, Uhr, Status, nächster Schritt"
       >
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <LosKarte
+            los="BM-2026-005"
+            titel="Beispiel Walze W 120"
+            untertitel="Walze · Bj. 2015 · 4.900 Bh"
+            wert="24 Tsd. €"
+            wertLabel="Einstand"
+            uhr="142 T"
+            uhrLabel="Standzeit"
+            ampel="gelb"
+            status="Inseriert"
+            schritt="nächste Preisstufe prüfen"
+            onClick={() => toast("Los geöffnet")}
+          />
+          <LosKarte
+            los="DL-2022-008"
+            titel="Darlehen endet"
+            untertitel="Musterbank → MB"
+            wert="60 Tsd. €"
+            wertLabel="Restschuld"
+            uhr={<Countdown ziel={plusTage(HEUTE, 12)} stichtag={HEUTE} />}
+            uhrLabel="Frist"
+            ampel="rot"
+            status="Darlehen"
+            schritt="Anschlussfinanzierung klären"
+          />
+          <LosKarte
+            los="AK-2026-001"
+            titel="MFH Musterweg"
+            untertitel="Musterstadt"
+            wert="1,6 Mio. €"
+            wertLabel="Angebotspreis"
+            uhr={<Countdown ziel={plusTage(HEUTE, 2)} stichtag={HEUTE} />}
+            uhrLabel="nächster Schritt"
+            ampel="gruen"
+            status="Notar"
+            schritt="Beurkundung vorbereiten"
+          />
+        </div>
+      </Abschnitt>
+
+      <Abschnitt
+        titel="Farben"
+        beschreibung="Graphit-Bühne und Signal-Orange (#FF6600) als Marke; Orange heißt nie Warnung. Text in Orange auf Hell nutzt die dunklere Stufe (#C2410C)."
+      >
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-9">
           {[
-            ["Akzent", "bg-primary"],
+            ["Marke", "bg-brand"],
+            ["Marke Text", "bg-brand-text"],
+            ["Bühne", "bg-stage"],
+            ["Bühne erhöht", "bg-stage-raised"],
+            ["Schwarz", "bg-primary"],
             ["Fläche", "bg-surface border border-hairline"],
             ["Grund", "bg-background border border-hairline"],
             ["OK", "bg-ok"],

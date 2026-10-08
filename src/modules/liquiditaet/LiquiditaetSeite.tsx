@@ -4,10 +4,10 @@ import { useMemo, useState } from "react";
 import { DatenTabelle, type Spalte } from "@/components/board/DatenTabelle";
 import { ZeitreihenDiagramm } from "@/components/board/Diagramm";
 import { Knopf } from "@/components/board/Knopf";
-import { KpiKarte } from "@/components/board/KpiKarte";
 import {
   Abschnitt,
   Karte,
+  BuehnenKennzahl,
   SeitenKopf,
   Segmente,
 } from "@/components/board/Layout";
@@ -305,67 +305,67 @@ export function LiquiditaetSeite() {
       <SeitenKopf
         titel="Liquidität"
         unterzeile={`${kreis.name} · Stand ${datum(stichtag)} · konsolidiert ohne interne Zahlungen${filter.alle ? ", ohne Maklerbereich" : ""}`}
-      />
-
-      <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <KpiKarte
-          label="Liquidität heute"
-          wert={euroKompakt(heute)}
-          hinweis={
-            kreis.ohneSaldo
-              ? `Daten fehlen: ${kreis.ohneSaldo} ${kreis.ohneSaldo > 1 ? "Konten" : "Konto"} ohne Saldo`
-              : kreis.minFehlt
-                ? `Mindestliquidität bei ${kreis.minFehlt} nicht festgelegt`
-                : `Mindestens ${euroKompakt(kreis.min)}`
-          }
-          ampel={!kreis.ohneSaldo && heute < kreis.min ? "rot" : "grau"}
-        />
-        <KpiKarte
-          label="In 13 Wochen"
-          wert={euroKompakt(in13)}
-          hinweis={`${in13 >= heute ? "+" : "−"}${euroKompakt(Math.abs(in13 - heute))} ggü. heute`}
-        />
-        <KpiKarte
-          label="Tiefpunkt 13 Wochen"
-          wert={euroKompakt(tief13.saldo)}
-          hinweis={`am ${datum(tief13.datum)}`}
-          ampel={
-            tief13.saldo < kreis.min
-              ? "rot"
-              : tief13.saldo < 1.5 * kreis.min
-                ? "gelb"
-                : "gruen"
-          }
-        />
-        <KpiKarte
-          label="Tiefpunkt 24 Monate"
-          wert={euroKompakt(tief24.saldo)}
-          hinweis={`am ${datum(tief24.datum)}`}
-          ampel={
-            ampel === "rot"
-              ? "rot"
-              : tief24.saldo < kreis.min
-                ? "gelb"
-                : "gruen"
-          }
-        />
-        <KpiKarte
-          label="Warnungen"
-          wert={String(warnungen.length)}
-          hinweis={
-            warnungen.length
-              ? warnungen.map((w) => w.company.shortName).join(", ")
-              : "alle Gesellschaften über Mindestliquidität"
-          }
-          ampel={
-            warnungen.some((w) => w.ampel === "rot")
-              ? "rot"
-              : warnungen.length
-                ? "gelb"
-                : "gruen"
-          }
-        />
-      </div>
+      >
+        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-3 xl:grid-cols-5">
+          <BuehnenKennzahl
+            label="Liquidität heute"
+            wert={euroKompakt(heute)}
+            hinweis={
+              kreis.ohneSaldo
+                ? `Daten fehlen: ${kreis.ohneSaldo} ${kreis.ohneSaldo > 1 ? "Konten" : "Konto"} ohne Saldo`
+                : kreis.minFehlt
+                  ? `Mindestliquidität bei ${kreis.minFehlt} nicht festgelegt`
+                  : `Mindestens ${euroKompakt(kreis.min)}`
+            }
+            ampel={!kreis.ohneSaldo && heute < kreis.min ? "rot" : "grau"}
+          />
+          <BuehnenKennzahl
+            label="In 13 Wochen"
+            wert={euroKompakt(in13)}
+            hinweis={`${in13 >= heute ? "+" : "−"}${euroKompakt(Math.abs(in13 - heute))} ggü. heute`}
+          />
+          <BuehnenKennzahl
+            label="Tiefpunkt 13 Wochen"
+            wert={euroKompakt(tief13.saldo)}
+            hinweis={`am ${datum(tief13.datum)}`}
+            ampel={
+              tief13.saldo < kreis.min
+                ? "rot"
+                : tief13.saldo < 1.5 * kreis.min
+                  ? "gelb"
+                  : "gruen"
+            }
+          />
+          <BuehnenKennzahl
+            label="Tiefpunkt 24 Monate"
+            wert={euroKompakt(tief24.saldo)}
+            hinweis={`am ${datum(tief24.datum)}`}
+            ampel={
+              ampel === "rot"
+                ? "rot"
+                : tief24.saldo < kreis.min
+                  ? "gelb"
+                  : "gruen"
+            }
+          />
+          <BuehnenKennzahl
+            label="Warnungen"
+            wert={String(warnungen.length)}
+            hinweis={
+              warnungen.length
+                ? warnungen.map((w) => w.company.shortName).join(", ")
+                : "alle Gesellschaften über Mindestliquidität"
+            }
+            ampel={
+              warnungen.some((w) => w.ampel === "rot")
+                ? "rot"
+                : warnungen.length
+                  ? "gelb"
+                  : "gruen"
+            }
+          />
+        </div>
+      </SeitenKopf>
 
       <div className="mb-10 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Karte className="p-5">

@@ -76,6 +76,8 @@ export function BuehnenKennzahl({
   ampel,
   href,
   title,
+  quelle,
+  className,
 }: {
   label: string;
   wert: ReactNode;
@@ -83,7 +85,11 @@ export function BuehnenKennzahl({
   ampel?: "gruen" | "gelb" | "rot" | "grau";
   href?: string;
   title?: string;
+  /** Herkunft der Zahl (Tooltip), wie bei KpiKarte */
+  quelle?: string;
+  className?: string;
 }) {
+  title = title ?? quelle;
   const punkt =
     ampel === "rot"
       ? "bg-bad"
@@ -108,8 +114,10 @@ export function BuehnenKennzahl({
       ) : null}
     </>
   );
-  const klassen =
-    "group block min-w-0 border-l border-stage-line pl-4 transition-colors";
+  const klassen = cn(
+    "group block min-w-0 border-l border-stage-line pl-4 transition-colors",
+    className,
+  );
   if (href)
     return (
       <Link

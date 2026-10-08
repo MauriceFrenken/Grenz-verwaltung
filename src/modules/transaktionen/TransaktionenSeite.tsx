@@ -12,10 +12,10 @@ import { toast } from "sonner";
 import { DatenTabelle, type Spalte } from "@/components/board/DatenTabelle";
 import { DetailPanel, PanelAbschnitt } from "@/components/board/DetailPanel";
 import { Knopf } from "@/components/board/Knopf";
-import { KpiKarte } from "@/components/board/KpiKarte";
 import {
   Abschnitt,
   Kennzahlen,
+  BuehnenKennzahl,
   SeitenKopf,
   Segmente,
 } from "@/components/board/Layout";
@@ -123,55 +123,55 @@ export function TransaktionenSeite() {
       <SeitenKopf
         titel="Transaktionen"
         unterzeile={`Immobilien: Ankauf vom Exposé bis zum Notar, Verkauf von Objekten und Einheiten${data.quelle === "mock" ? " · Musterdaten" : ""}`}
-      />
-
-      <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <KpiKarte
-          label="Pipeline-Volumen"
-          wert={euroKompakt(
-            aktiv.reduce((s, k) => s + k.ankauf.angebotspreis, 0),
-          )}
-          hinweis={`${aktiv.length} aktive Deals`}
-        />
-        <KpiKarte
-          label="Gewichtet"
-          wert={euroKompakt(aktiv.reduce((s, k) => s + k.gewichtet, 0))}
-          hinweis="nach Phasen-Wahrscheinlichkeit"
-        />
-        <KpiKarte
-          label="EK-Bedarf ab Angebot"
-          wert={euroKompakt(ekBedarf)}
-          hinweis={`tragbar heute ${euroKompakt(tragbarHeute)}`}
-          ampel={
-            ekBedarf > tragbarHeute
-              ? "rot"
-              : ekBedarf > 0.7 * tragbarHeute
-                ? "gelb"
-                : "gruen"
-          }
-        />
-        <KpiKarte
-          label="Ø Kaufpreisfaktor"
-          wert={
-            faktoren.length
-              ? `${dezimal(faktoren.reduce((s, f) => s + f, 0) / faktoren.length, 1)}-fach`
-              : "–"
-          }
-          hinweis="aktive Deals, Preis / Jahresnettokaltmiete"
-        />
-        <KpiKarte
-          label="Stockende Deals"
-          wert={String(stockend.length)}
-          hinweis={`länger als 30 Tage in einer Phase`}
-          ampel={
-            stockend.some((k) => k.ampel === "rot")
-              ? "rot"
-              : stockend.length
-                ? "gelb"
-                : "gruen"
-          }
-        />
-      </div>
+      >
+        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-3 xl:grid-cols-5">
+          <BuehnenKennzahl
+            label="Pipeline-Volumen"
+            wert={euroKompakt(
+              aktiv.reduce((s, k) => s + k.ankauf.angebotspreis, 0),
+            )}
+            hinweis={`${aktiv.length} aktive Deals`}
+          />
+          <BuehnenKennzahl
+            label="Gewichtet"
+            wert={euroKompakt(aktiv.reduce((s, k) => s + k.gewichtet, 0))}
+            hinweis="nach Phasen-Wahrscheinlichkeit"
+          />
+          <BuehnenKennzahl
+            label="EK-Bedarf ab Angebot"
+            wert={euroKompakt(ekBedarf)}
+            hinweis={`tragbar heute ${euroKompakt(tragbarHeute)}`}
+            ampel={
+              ekBedarf > tragbarHeute
+                ? "rot"
+                : ekBedarf > 0.7 * tragbarHeute
+                  ? "gelb"
+                  : "gruen"
+            }
+          />
+          <BuehnenKennzahl
+            label="Ø Kaufpreisfaktor"
+            wert={
+              faktoren.length
+                ? `${dezimal(faktoren.reduce((s, f) => s + f, 0) / faktoren.length, 1)}-fach`
+                : "–"
+            }
+            hinweis="aktive Deals, Preis / Jahresnettokaltmiete"
+          />
+          <BuehnenKennzahl
+            label="Stockende Deals"
+            wert={String(stockend.length)}
+            hinweis={`länger als 30 Tage in einer Phase`}
+            ampel={
+              stockend.some((k) => k.ampel === "rot")
+                ? "rot"
+                : stockend.length
+                  ? "gelb"
+                  : "gruen"
+            }
+          />
+        </div>
+      </SeitenKopf>
 
       <div className="mb-4">
         <Segmente

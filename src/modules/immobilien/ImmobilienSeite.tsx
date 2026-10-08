@@ -2,10 +2,10 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { AlertTriangle, Building2, CalendarClock } from "lucide-react";
 import { useState } from "react";
 import { DatenTabelle, type Spalte } from "@/components/board/DatenTabelle";
-import { KpiKarte } from "@/components/board/KpiKarte";
 import {
   Abschnitt,
   Karte,
+  BuehnenKennzahl,
   SeitenKopf,
   Segmente,
 } from "@/components/board/Layout";
@@ -118,50 +118,50 @@ export function ImmobilienSeite() {
       <SeitenKopf
         titel="Immobilien"
         unterzeile={`${bestand.length} Bestandsobjekte · ${projekte.length} Aufteiler-Projekte · ${objekte.reduce((s, o) => s + o.units.length, 0)} Einheiten`}
-      />
-
-      <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <KpiKarte
-          label="Soll-Miete / Monat"
-          wert={euroKompakt(sollMiete)}
-          hinweis="Bestand, warm"
-        />
-        <KpiKarte
-          label="Leerstand"
-          wert={prozent(leerQuote, 1)}
-          hinweis={`${bestand.reduce((s, o) => s + o.leer.length, 0)} Einheiten · ${flaeche(Math.round(leerFlaeche))}`}
-          ampel={leerstandAmpel(leerQuote)}
-        />
-        <KpiKarte
-          label="Mietrückstand"
-          wert={euro(rueckstand)}
-          hinweis={`${imRueckstand.length} Mieter im Rückstand`}
-          ampel={
-            imRueckstand.some((k) => k.ampel === "rot")
-              ? "rot"
-              : imRueckstand.length
-                ? "gelb"
-                : "gruen"
-          }
-        />
-        <KpiKarte
-          label="Erhöhungspotenzial"
-          wert={`${euroKompakt(potenzial * 12)} p.a.`}
-          hinweis="§ 558 BGB, Kappung 15 %"
-        />
-        <KpiKarte
-          label="Offene Fristen"
-          wert={String(fristen.length)}
-          hinweis="Mieterhöhungen und Kündigungen"
-          ampel={
-            erhoehungen.some((e) => e.ampel === "rot")
-              ? "rot"
-              : fristen.some((f) => f.ampel === "gelb")
-                ? "gelb"
-                : "grau"
-          }
-        />
-      </div>
+      >
+        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-3 xl:grid-cols-5">
+          <BuehnenKennzahl
+            label="Soll-Miete / Monat"
+            wert={euroKompakt(sollMiete)}
+            hinweis="Bestand, warm"
+          />
+          <BuehnenKennzahl
+            label="Leerstand"
+            wert={prozent(leerQuote, 1)}
+            hinweis={`${bestand.reduce((s, o) => s + o.leer.length, 0)} Einheiten · ${flaeche(Math.round(leerFlaeche))}`}
+            ampel={leerstandAmpel(leerQuote)}
+          />
+          <BuehnenKennzahl
+            label="Mietrückstand"
+            wert={euro(rueckstand)}
+            hinweis={`${imRueckstand.length} Mieter im Rückstand`}
+            ampel={
+              imRueckstand.some((k) => k.ampel === "rot")
+                ? "rot"
+                : imRueckstand.length
+                  ? "gelb"
+                  : "gruen"
+            }
+          />
+          <BuehnenKennzahl
+            label="Erhöhungspotenzial"
+            wert={`${euroKompakt(potenzial * 12)} p.a.`}
+            hinweis="§ 558 BGB, Kappung 15 %"
+          />
+          <BuehnenKennzahl
+            label="Offene Fristen"
+            wert={String(fristen.length)}
+            hinweis="Mieterhöhungen und Kündigungen"
+            ampel={
+              erhoehungen.some((e) => e.ampel === "rot")
+                ? "rot"
+                : fristen.some((f) => f.ampel === "gelb")
+                  ? "gelb"
+                  : "grau"
+            }
+          />
+        </div>
+      </SeitenKopf>
 
       <div className="mb-4">
         <Segmente

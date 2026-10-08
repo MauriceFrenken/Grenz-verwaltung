@@ -3,10 +3,10 @@ import { AlertTriangle, FileSpreadsheet, Landmark } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DatenTabelle, type Spalte } from "@/components/board/DatenTabelle";
 import { Knopf } from "@/components/board/Knopf";
-import { KpiKarte } from "@/components/board/KpiKarte";
 import {
   Abschnitt,
   Karte,
+  BuehnenKennzahl,
   SeitenKopf,
   Segmente,
 } from "@/components/board/Layout";
@@ -130,43 +130,43 @@ export function DarlehenSeite() {
             <FileSpreadsheet /> Excel importieren
           </Knopf>
         }
-      />
-
-      <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <KpiKarte
-          label="Bankverbindlichkeiten"
-          wert={euroKompakt(bankSumme)}
-          hinweis={`${bank.length} Darlehen · Ø ${prozent(zinsSchnitt)}`}
-        />
-        <KpiKarte
-          label="Interne Darlehen"
-          wert={euroKompakt(summe(intern))}
-          hinweis={`${intern.length} Verträge (IC und Gesellschafter)`}
-        />
-        <KpiKarte
-          label="Zinsen lfd. Jahr"
-          wert={euroKompakt(zinsenJahr)}
-          hinweis="laut Zinsplan, bis heute"
-        />
-        <KpiKarte
-          label="Zinsabgleich"
-          wert={quote === null ? "–" : prozent(quote, 0)}
-          hinweis={`${rot} fehlend · ${gelb} abweichend`}
-          ampel={rot > 0 ? "rot" : gelb > 0 ? "gelb" : "gruen"}
-        />
-        <KpiKarte
-          label="Fällig ≤ 12 Monate"
-          wert={euroKompakt(faellig12Summe)}
-          hinweis={`${faellig12.length} Enden/Zinsbindungen`}
-          ampel={
-            faellig12.some((f) => f.ampel === "rot")
-              ? "rot"
-              : faellig12.length
-                ? "gelb"
-                : "gruen"
-          }
-        />
-      </div>
+      >
+        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-3 xl:grid-cols-5">
+          <BuehnenKennzahl
+            label="Bankverbindlichkeiten"
+            wert={euroKompakt(bankSumme)}
+            hinweis={`${bank.length} Darlehen · Ø ${prozent(zinsSchnitt)}`}
+          />
+          <BuehnenKennzahl
+            label="Interne Darlehen"
+            wert={euroKompakt(summe(intern))}
+            hinweis={`${intern.length} Verträge (IC und Gesellschafter)`}
+          />
+          <BuehnenKennzahl
+            label="Zinsen lfd. Jahr"
+            wert={euroKompakt(zinsenJahr)}
+            hinweis="laut Zinsplan, bis heute"
+          />
+          <BuehnenKennzahl
+            label="Zinsabgleich"
+            wert={quote === null ? "–" : prozent(quote, 0)}
+            hinweis={`${rot} fehlend · ${gelb} abweichend`}
+            ampel={rot > 0 ? "rot" : gelb > 0 ? "gelb" : "gruen"}
+          />
+          <BuehnenKennzahl
+            label="Fällig ≤ 12 Monate"
+            wert={euroKompakt(faellig12Summe)}
+            hinweis={`${faellig12.length} Enden/Zinsbindungen`}
+            ampel={
+              faellig12.some((f) => f.ampel === "rot")
+                ? "rot"
+                : faellig12.length
+                  ? "gelb"
+                  : "gruen"
+            }
+          />
+        </div>
+      </SeitenKopf>
 
       <div className="mb-4">
         <Segmente

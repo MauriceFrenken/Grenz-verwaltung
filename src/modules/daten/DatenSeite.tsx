@@ -10,8 +10,12 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { DatenTabelle, type Spalte } from "@/components/board/DatenTabelle";
 import { Knopf } from "@/components/board/Knopf";
-import { KpiKarte } from "@/components/board/KpiKarte";
-import { Abschnitt, Karte, SeitenKopf } from "@/components/board/Layout";
+import {
+  Abschnitt,
+  Karte,
+  BuehnenKennzahl,
+  SeitenKopf,
+} from "@/components/board/Layout";
 import { Leerzustand } from "@/components/board/Leerzustand";
 import { SeitenSkelett } from "@/components/board/Skelett";
 import { AmpelPunkt, StatusBadge } from "@/components/board/Status";
@@ -94,44 +98,44 @@ export function DatenSeite() {
       <SeitenKopf
         titel="Datenqualität"
         unterzeile={`Woher die Zahlen kommen, was fehlt und wo es nachgetragen wird${data.quelle === "mock" ? " · Musterdaten" : ""}`}
-      />
-
-      <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <KpiKarte
-          label="Quellen aktuell"
-          wert={
-            data.datenstand.length
-              ? `${quellenOk} / ${data.datenstand.length}`
-              : "–"
-          }
-          hinweis="führende Systeme mit frischen Daten"
-          ampel={
-            !data.datenstand.length
-              ? "grau"
-              : quellenOk === data.datenstand.length
-                ? "gruen"
-                : "gelb"
-          }
-        />
-        <KpiKarte
-          label="Kritische Lücken"
-          wert={ganzzahl(rot)}
-          hinweis="verfälschen Kennzahlen"
-          ampel={rot ? "rot" : "gruen"}
-        />
-        <KpiKarte
-          label="Weitere Lücken"
-          wert={ganzzahl(gelb)}
-          hinweis="Kennzahl mit Annahme gerechnet"
-          ampel={gelb ? "gelb" : "gruen"}
-        />
-        <KpiKarte
-          label="Konten ohne Saldo"
-          wert={`${ohneSaldo} / ${data.bankAccounts.length}`}
-          hinweis="Bestand nur aus Umsätzen"
-          ampel={ohneSaldo ? "gelb" : "gruen"}
-        />
-      </div>
+      >
+        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-4">
+          <BuehnenKennzahl
+            label="Quellen aktuell"
+            wert={
+              data.datenstand.length
+                ? `${quellenOk} / ${data.datenstand.length}`
+                : "–"
+            }
+            hinweis="führende Systeme mit frischen Daten"
+            ampel={
+              !data.datenstand.length
+                ? "grau"
+                : quellenOk === data.datenstand.length
+                  ? "gruen"
+                  : "gelb"
+            }
+          />
+          <BuehnenKennzahl
+            label="Kritische Lücken"
+            wert={ganzzahl(rot)}
+            hinweis="verfälschen Kennzahlen"
+            ampel={rot ? "rot" : "gruen"}
+          />
+          <BuehnenKennzahl
+            label="Weitere Lücken"
+            wert={ganzzahl(gelb)}
+            hinweis="Kennzahl mit Annahme gerechnet"
+            ampel={gelb ? "gelb" : "gruen"}
+          />
+          <BuehnenKennzahl
+            label="Konten ohne Saldo"
+            wert={`${ohneSaldo} / ${data.bankAccounts.length}`}
+            hinweis="Bestand nur aus Umsätzen"
+            ampel={ohneSaldo ? "gelb" : "gruen"}
+          />
+        </div>
+      </SeitenKopf>
 
       <Abschnitt
         titel="Quellen"
