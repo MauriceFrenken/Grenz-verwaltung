@@ -352,3 +352,41 @@ export function erledigtQuote(beschluesse: Beschluss[]): string {
     0,
   );
 }
+
+/** Prüffall-ID eines Beschlusses (Prüfliste). */
+export function beschlussPruefId(id: string): string {
+  return `beschluss:${id}`;
+}
+
+/**
+ * Offene Beschlüsse mit Termin in den nächsten 3 Tagen oder darüber als
+ * Prüffälle; über dem Termin rot.
+ */
+export function beschlussPruefFaelle(
+  beschluesse: Beschluss[],
+  stichtag: IsoDatum,
+): ReviewItem[] {
+  const bald = plusTage(stichtag, 3);
+  return beschluesse
+    .filter((b) => b.status === "offen" && b.faelligAm && b.faelligAm <= bald)
+    .map((b) => ({
+      id: beschlussPruefId(b.id),
+      source: "runde" as const,
+      severity: b.faelligAm! < stichtag ? ("rot" as const) : ("gelb" as const),
+      title: `Beschluss ${b.faelligAm! < stichtag ? "über dem Termin" : "fällig"}: ${b.text}`,
+      detail: [
+        b.verantwortlich,
+        `Termin ${datum(b.faelligAm)}`,
+        `Runde ${datum(b.rundeAm)}`,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      companyId: b.companyId,
+      refType: "beschluss",
+      refId: b.id,
+      dueDate: b.faelligAm,
+      createdAt: b.rundeAm,
+      status: "offen" as const,
+      confidence: null,
+    }));
+}

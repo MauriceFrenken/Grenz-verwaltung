@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Beschluss } from "@/lib/db/typen";
 import {
   beschlussLage,
+  beschlussPruefFaelle,
   erledigtQuote,
   rundenDatum,
   tagesordnung,
@@ -200,5 +201,29 @@ describe("erledigtQuote", () => {
         beschluss({ status: "offen" }),
       ]),
     ).toMatch(/^50\s?%$/);
+  });
+});
+
+describe("beschlussPruefFaelle", () => {
+  it("meldet nur offene Beschlüsse mit nahem oder überschrittenem Termin", () => {
+    const f = beschlussPruefFaelle(
+      [
+        beschluss({ id: "BE-2026-001", faelligAm: "2026-10-01" }),
+        beschluss({ id: "BE-2026-002", faelligAm: "2026-10-10" }),
+        beschluss({ id: "BE-2026-003", faelligAm: "2026-11-30" }),
+        beschluss({ id: "BE-2026-004", faelligAm: null }),
+        beschluss({
+          id: "BE-2026-005",
+          faelligAm: "2026-10-01",
+          status: "erledigt",
+        }),
+      ],
+      T,
+    );
+    expect(f.map((x) => [x.id, x.severity])).toEqual([
+      ["beschluss:BE-2026-001", "rot"],
+      ["beschluss:BE-2026-002", "gelb"],
+    ]);
+    expect(f[0].source).toBe("runde");
   });
 });

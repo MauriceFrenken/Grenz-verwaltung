@@ -358,6 +358,7 @@ export const REVIEW_QUELLEN = [
   "transaktionen",
   "baumaschinen",
   "daten",
+  "runde",
 ] as const;
 export type ReviewQuelle = (typeof REVIEW_QUELLEN)[number];
 

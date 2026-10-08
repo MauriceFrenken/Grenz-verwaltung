@@ -15,6 +15,14 @@ import {
 import { useCrmDaten } from "@/modules/transaktionen/useCrm";
 import { useBoardDaten } from "@/modules/shell/daten";
 import {
+  beschlussPruefFaelle,
+  beschlussPruefId,
+} from "@/modules/runde/logik/runde";
+import {
+  useBeschluesse,
+  BESCHLUESSE_KEY,
+} from "@/modules/runde/useBeschluesse";
+import {
   ablagePruefFaelle,
   darlehenAbstimmung,
   datenPruefFaelle,
@@ -46,6 +54,8 @@ export function useLage() {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
+  const beschluesse = useBeschluesse();
+
   const faelle = useMemo<ReviewItem[] | null>(() => {
     if (
       !data ||
@@ -54,7 +64,8 @@ export function useLage() {
       !liquiditaet ||
       !crm.data ||
       (data.quelle === "mock" && !ablage.data) ||
-      !erledigt.data
+      !erledigt.data ||
+      !beschluesse.data
     )
       return null;
     const k = crm.data.ankaeufe.map((a) => ankaufKennzahlen(a, data.stichtag));
@@ -73,6 +84,7 @@ export function useLage() {
         ),
         baumaschinenPruefFaelle(data),
         datenPruefFaelle(data.luecken, data.stichtag),
+        beschlussPruefFaelle(beschluesse.data.eintraege, data.stichtag),
         // Ablage v2 ist ein Labor mit Musterpost: nur im Demo-Modus in der Prüfliste
         data.quelle === "mock" && ablage.data
           ? ablagePruefFaelle(ablage.data, data.stichtag)
@@ -88,6 +100,7 @@ export function useLage() {
     crm.data,
     ablage.data,
     erledigt.data,
+    beschluesse.data,
   ]);
 
   return {
@@ -97,7 +110,7 @@ export function useLage() {
     liquiditaet,
     crm: crm.data,
     faelle,
-    fehler: daten.error ?? erledigt.error,
+    fehler: daten.error ?? erledigt.error ?? beschluesse.error,
     laedt: !faelle,
   };
 }
@@ -106,6 +119,16 @@ export function useLage() {
 export function usePruefStatus() {
   const qc = useQueryClient();
   return async (id: string, status: ReviewItem["status"]) => {
+    // Beschlüsse der Wochenrunde haben ihren eigenen Status
+    if (id.startsWith(beschlussPruefId(""))) {
+      await boardRepository().beschlussStatusSetzen(
+        id.slice(beschlussPruefId("").length),
+        status,
+        new Date().toISOString().slice(0, 10),
+      );
+      await qc.invalidateQueries({ queryKey: BESCHLUESSE_KEY });
+      return;
+    }
     await boardRepository().pruefStatusSetzen(id, status);
     await qc.invalidateQueries({ queryKey: ERLEDIGT_KEY });
   };

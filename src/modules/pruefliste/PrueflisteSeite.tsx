@@ -9,8 +9,11 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { Knopf } from "@/components/board/Knopf";
-import { KpiKarte } from "@/components/board/KpiKarte";
-import { SeitenKopf, Segmente } from "@/components/board/Layout";
+import {
+  BuehnenKennzahl,
+  SeitenKopf,
+  Segmente,
+} from "@/components/board/Layout";
 import { Leerzustand } from "@/components/board/Leerzustand";
 import { SeitenSkelett } from "@/components/board/Skelett";
 import { AmpelPunkt } from "@/components/board/Status";
@@ -80,36 +83,36 @@ export function PrueflisteSeite() {
       <SeitenKopf
         titel="Prüfliste"
         unterzeile="Alles, was eine Entscheidung braucht, aus allen Modulen · rot zuerst, dann nach Fälligkeit"
-      />
-
-      <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <KpiKarte
-          label="Offen"
-          wert={String(offen.length)}
-          hinweis={`${imFilter.length - offen.length} erledigt`}
-          ampel={offen.length > 10 ? "gelb" : "grau"}
-        />
-        <KpiKarte
-          label="Rot"
-          wert={String(rot.length)}
-          hinweis="sofort handeln"
-          ampel={rot.length ? "rot" : "gruen"}
-        />
-        <KpiKarte
-          label="Überfällig"
-          wert={String(ueberfaellig.length)}
-          hinweis="Fälligkeit vor heute"
-          ampel={ueberfaellig.length ? "gelb" : "gruen"}
-        />
-        {(["darlehen", "immobilien"] as const).map((q) => (
-          <KpiKarte
-            key={q}
-            label={QUELLE_LABEL[q]}
-            wert={String(offen.filter((f) => f.source === q).length)}
-            hinweis="offene Fälle"
+      >
+        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-3 xl:grid-cols-5">
+          <BuehnenKennzahl
+            label="Offen"
+            wert={String(offen.length)}
+            hinweis={`${imFilter.length - offen.length} erledigt`}
+            ampel={offen.length > 10 ? "gelb" : "grau"}
           />
-        ))}
-      </div>
+          <BuehnenKennzahl
+            label="Rot"
+            wert={String(rot.length)}
+            hinweis="sofort handeln"
+            ampel={rot.length ? "rot" : "gruen"}
+          />
+          <BuehnenKennzahl
+            label="Überfällig"
+            wert={String(ueberfaellig.length)}
+            hinweis="Fälligkeit vor heute"
+            ampel={ueberfaellig.length ? "gelb" : "gruen"}
+          />
+          {(["darlehen", "immobilien"] as const).map((q) => (
+            <BuehnenKennzahl
+              key={q}
+              label={QUELLE_LABEL[q]}
+              wert={String(offen.filter((f) => f.source === q).length)}
+              hinweis="offene Fälle"
+            />
+          ))}
+        </div>
+      </SeitenKopf>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Segmente

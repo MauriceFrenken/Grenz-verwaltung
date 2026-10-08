@@ -81,7 +81,7 @@ export function RundeSeite() {
           </>
         }
       >
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-6 xl:grid-cols-4">
           <BuehnenKennzahl
             label="Nächste Runde"
             wert={
@@ -191,7 +191,7 @@ function TopKarte({
   const extern = p.href.startsWith("/");
   return (
     <li className="break-inside-avoid">
-      <Karte className="relative grid gap-4 p-5 md:grid-cols-[72px_minmax(0,1fr)_160px]">
+      <Karte className="relative grid gap-x-4 gap-y-3 p-5 sm:grid-cols-[56px_minmax(0,1fr)] xl:grid-cols-[72px_minmax(0,1fr)_160px]">
         <span
           className={cn(
             "absolute inset-y-0 left-0 w-[3px]",
@@ -205,7 +205,7 @@ function TopKarte({
           )}
           aria-hidden
         />
-        <div className="ziffern text-[40px] font-semibold leading-none tracking-[-0.04em] text-brand-text">
+        <div className="ziffern text-[32px] font-semibold leading-none tracking-[-0.04em] text-brand-text xl:text-[40px]">
           {String(p.nr).padStart(2, "0")}
         </div>
         <div className="min-w-0">
@@ -275,7 +275,7 @@ function TopKarte({
             </div>
           ) : null}
         </div>
-        <div className="text-left md:text-right">
+        <div className="sm:col-start-2 xl:col-start-auto xl:text-right">
           <div className="ziffern text-[30px] font-semibold leading-none tracking-[-0.03em] text-heading">
             {p.zahl}
           </div>

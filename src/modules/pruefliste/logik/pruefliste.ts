@@ -24,6 +24,7 @@ export const QUELLE_LABEL: Record<ReviewQuelle, string> = {
   transaktionen: "Transaktionen",
   baumaschinen: "Baumaschinen",
   daten: "Datenqualität",
+  runde: "Wochenrunde",
 };
 
 /**
@@ -207,6 +208,8 @@ export function pruefFallZiel(
         : { to: "/board/baumaschinen" };
     case "daten":
       return { to: "/board/daten" };
+    case "runde":
+      return { to: "/board/runde" };
     case "ablage":
       return { to: "/board/ablage" };
   }
