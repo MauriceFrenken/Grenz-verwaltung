@@ -135,6 +135,48 @@ async function importiereBuchungen(
   return rows.length;
 }
 
+/**
+ * Management Board: Tagesendsalden (CLBD) aus dem camt.053 sichern, damit die
+ * Liquidität mit echten Kontoständen rechnet. Darf den Abruf nie stören:
+ * Fehler (z. B. Tabelle noch nicht angelegt) werden nur protokolliert.
+ */
+async function kontosaldenSpeichern(
+  admin: SupabaseClient,
+  parsed: ReturnType<typeof parseCamt053Xml>,
+  fallbackGesellschaftId: string,
+): Promise<void> {
+  if (!parsed.kontoIban || parsed.salden.length === 0) return;
+  try {
+    const gesellschaftId = await gesellschaftIdFuerKontoIban(
+      admin,
+      parsed.kontoIban,
+      fallbackGesellschaftId,
+    );
+    const konto = await admin
+      .from("bankkonten")
+      .upsert(
+        { iban: parsed.kontoIban, gesellschaft_id: gesellschaftId, zugang: "ebics" },
+        { onConflict: "iban", ignoreDuplicates: true },
+      );
+    if (konto.error) throw new Error(konto.error.message);
+    const salden = await admin.from("kontosalden").upsert(
+      parsed.salden.map((s) => ({
+        iban: s.iban,
+        stichtag: s.stichtag,
+        saldo: s.saldo,
+        quelle: "camt053",
+      })),
+      { onConflict: "iban,stichtag,quelle" },
+    );
+    if (salden.error) throw new Error(salden.error.message);
+  } catch (err) {
+    console.warn(
+      "[ebics] Kontosalden nicht gespeichert:",
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
+
 async function syncEinKunde(
   admin: SupabaseClient,
   kunde: EbicsKundeRow,
@@ -163,6 +205,7 @@ async function syncEinKunde(
 
       for (const xml of xmls) {
         const parsed = parseCamt053Xml(xml);
+        await kontosaldenSpeichern(admin, parsed, kunde.gesellschaft_id);
         const neu = parsed.buchungen.filter((b) => !known.has(b.fingerprint));
         if (neu.length === 0) continue;
 

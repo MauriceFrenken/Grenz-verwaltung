@@ -13,7 +13,15 @@ export interface Camt053ParseErgebnis {
   zeitraumVon: string | null;
   zeitraumBis: string | null;
   kontoIban: string | null;
+  /** Gebuchte Tagesendsalden (CLBD) je Konto, für die Liquidität im Management Board. */
+  salden: Camt053Saldo[];
   warnungen: string[];
+}
+
+export interface Camt053Saldo {
+  iban: string;
+  stichtag: string;
+  saldo: number;
 }
 
 function asArray<T>(value: T | T[] | null | undefined): T[] {
@@ -86,6 +94,25 @@ function extractAmt(ntry: Record<string, unknown>): number | null {
   const ind = textOf(ntry.CdtDbtInd ?? ntry.cdtDbtInd)?.toUpperCase();
   if (ind === "DBIT") return -Math.abs(n);
   return Math.abs(n);
+}
+
+function extractSalden(
+  stmt: Record<string, unknown>,
+  kontoIban: string | null,
+): Camt053Saldo[] {
+  if (!kontoIban) return [];
+  const salden: Camt053Saldo[] = [];
+  for (const balRaw of asArray(stmt.Bal ?? stmt.bal)) {
+    const bal = balRaw as Record<string, unknown>;
+    const code = textOf(findDeep(bal.Tp ?? bal.tp, ["Cd", "cd"]))?.toUpperCase();
+    if (code !== "CLBD") continue;
+    const betrag = extractAmt(bal);
+    const datum = textOf(findDeep(bal.Dt ?? bal.dt, ["Dt", "dt", "DtTm", "dtTm"]));
+    const stichtag = datum?.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+    if (betrag == null || !stichtag) continue;
+    salden.push({ iban: kontoIban, stichtag, saldo: betrag });
+  }
+  return salden;
 }
 
 function extractDatum(ntry: Record<string, unknown>): string | null {
@@ -209,6 +236,7 @@ function parseStmt(stmt: Record<string, unknown>): Camt053ParseErgebnis {
     zeitraumVon: zeitraumVon ?? daten[0] ?? null,
     zeitraumBis: zeitraumBis ?? daten[daten.length - 1] ?? null,
     kontoIban,
+    salden: extractSalden(stmt, kontoIban),
     warnungen,
   };
 }
@@ -246,6 +274,7 @@ export function parseCamt053Xml(xml: string): Camt053ParseErgebnis {
     zeitraumVon: null,
     zeitraumBis: null,
     kontoIban: null,
+    salden: [],
     warnungen: [],
   };
   const gesehen = new Set<string>();
@@ -254,6 +283,7 @@ export function parseCamt053Xml(xml: string): Camt053ParseErgebnis {
     const part = parseStmt(stmt as Record<string, unknown>);
     if (!merged.kontoIban) merged.kontoIban = part.kontoIban;
     merged.warnungen.push(...part.warnungen);
+    merged.salden.push(...part.salden);
     for (const b of part.buchungen) {
       if (gesehen.has(b.fingerprint)) continue;
       gesehen.add(b.fingerprint);
