@@ -10,9 +10,7 @@ const env = {
   VITE_SUPABASE_ANON_KEY: "board-demo",
 };
 
-console.log(
-  "\nFRENKEN Management Board (Demodaten): http://localhost:8080/\n",
-);
+console.log("\nFRENKEN Management Board (Demodaten): http://localhost:8080/\n");
 const kind = spawn("npx", ["vite", "dev", ...process.argv.slice(2)], {
   stdio: "inherit",
   env,

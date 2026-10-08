@@ -20,6 +20,8 @@ export interface KpiKarteProps {
   /** Ziel beim Klick (Seite im Board) */
   href?: string;
   className?: string;
+  /** Herkunft der Zahl, z. B. „EBICS camt.053 · Stand 08.10.2026“ (Tooltip) */
+  quelle?: string;
 }
 
 export function KpiKarte({
@@ -29,6 +31,7 @@ export function KpiKarte({
   ampel = "grau",
   href,
   className,
+  quelle,
 }: KpiKarteProps) {
   const inhalt = (
     <>
@@ -63,10 +66,14 @@ export function KpiKarte({
   );
   if (href) {
     return (
-      <Link to={href} className={klassen}>
+      <Link to={href} className={klassen} title={quelle}>
         {inhalt}
       </Link>
     );
   }
-  return <div className={klassen}>{inhalt}</div>;
+  return (
+    <div className={klassen} title={quelle}>
+      {inhalt}
+    </div>
+  );
 }

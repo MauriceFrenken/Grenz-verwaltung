@@ -112,3 +112,21 @@ describe("Cockpit: Fällig diese Woche", () => {
     expect(f.some((p) => /Umlage/.test(p.label))).toBe(false);
   });
 });
+
+describe("Abstimmung Darlehensstand", () => {
+  it("meldet Ist-Saldo, der deutlich vom Zinsplan abweicht", async () => {
+    const { erzeugeSeed } = await import("@/lib/db/mock/seed");
+    const { darlehenAbstimmung } = await import("./pruefliste");
+    const d = erzeugeSeed("2026-10-08");
+    const l = d.loans.find((x) => x.status === "aktiv")!;
+    expect(
+      darlehenAbstimmung({ ...d, loans: [{ ...l, istSaldo: null }] }),
+    ).toEqual([]);
+    const f = darlehenAbstimmung({
+      ...d,
+      loans: [{ ...l, istSaldo: l.principal + 50_000 }],
+    });
+    expect(f).toHaveLength(1);
+    expect(f[0].id).toBe(`darlehen:abstimmung:${l.id}`);
+  });
+});

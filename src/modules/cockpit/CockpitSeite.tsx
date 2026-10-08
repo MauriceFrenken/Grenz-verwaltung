@@ -112,7 +112,12 @@ export function CockpitSeite() {
       ? `Mindestliquidität bei ${minFehlt} Gesellschaft${minFehlt > 1 ? "en" : ""} nicht festgelegt`
       : `Mindestens ${euroKompakt(min)}`;
 
-  // Datengrundlage
+  // Datengrundlage: Herkunft je Kachel (Tooltip)
+  const quelle = (id: string) => {
+    const q = daten.datenstand.find((x) => x.id === id);
+    if (!q) return daten.quelle === "mock" ? "Musterdaten" : undefined;
+    return `${q.system} · Stand ${q.stand ? datum(q.stand.slice(0, 10)) : "unbekannt"}`;
+  };
   const lueckenRot = daten.luecken.filter((x) => x.schwere === "rot").length;
 
   // Baumaschinen und Holding
@@ -241,6 +246,7 @@ export function CockpitSeite() {
           wert={euroKompakt(heute)}
           hinweis={liqHinweis}
           ampel={liqAmpel(heute)}
+          quelle={quelle("kontosalden")}
           href="/board/liquiditaet"
         />
         <KpiKarte
@@ -249,6 +255,7 @@ export function CockpitSeite() {
           hinweis={`Tiefpunkt ${euroKompakt(tief13.saldo)} am ${datum(tief13.datum)}`}
           ampel={liqAmpel(tief13.saldo)}
           href="/board/liquiditaet"
+          quelle={quelle("planposten")}
         />
         <KpiKarte
           label="Offene Prüffälle"

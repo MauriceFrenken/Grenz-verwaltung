@@ -7,6 +7,7 @@ import type {
 import { plusTage, type IsoDatum } from "@/lib/kalender";
 import { euro } from "@/lib/format/de";
 import type { AblageVorschlag } from "@/modules/ablage-v2/logik/ablage";
+import { restschuld, zinsplan } from "@/modules/darlehen/logik/zinsplan";
 import {
   haupttreiber,
   HORIZONT_TAGE,
@@ -24,6 +25,40 @@ export const QUELLE_LABEL: Record<ReviewQuelle, string> = {
   baumaschinen: "Baumaschinen",
   daten: "Datenqualität",
 };
+
+/**
+ * Abstimmung Darlehensstand: Ist-Saldo aus der Datenbank (Banksaldo bzw.
+ * gebuchte Bewegungen) gegen die rechnerische Restschuld laut Zinsplan.
+ * Abweichung über 2 % und mindestens 1.000 € wird ein Prüffall.
+ */
+export function darlehenAbstimmung(
+  daten: Pick<BoardDaten, "loans" | "stichtag">,
+): ReviewItem[] {
+  const stichtag = daten.stichtag;
+  const faelle: ReviewItem[] = [];
+  for (const l of daten.loans) {
+    if (l.status !== "aktiv" || l.istSaldo == null) continue;
+    const plan = zinsplan(l, { bis: stichtag });
+    const soll = restschuld(l, plan, stichtag);
+    const diff = l.istSaldo - soll;
+    if (Math.abs(diff) < Math.max(1000, 0.02 * Math.abs(soll))) continue;
+    faelle.push({
+      id: `darlehen:abstimmung:${l.id}`,
+      source: "darlehen",
+      severity: "gelb",
+      title: `Darlehensstand ${l.id} weicht vom Zinsplan ab`,
+      detail: `Ist-Saldo ${euro(l.istSaldo)}${l.istSaldoAm ? ` (Stand ${l.istSaldoAm.split("-").reverse().join(".")})` : ""}, rechnerisch ${euro(soll)}: Differenz ${euro(diff)}. Sondertilgung, fehlende Buchung oder falsche Konditionen?`,
+      companyId: l.borrowerCompanyId ?? l.lenderCompanyId,
+      refType: "loan",
+      refId: l.id,
+      dueDate: null,
+      createdAt: stichtag,
+      status: "offen",
+      confidence: null,
+    });
+  }
+  return faelle;
+}
 
 /** Datenlücken als Prüffälle: Was fehlt, damit die Zahlen stimmen. */
 export function datenPruefFaelle(

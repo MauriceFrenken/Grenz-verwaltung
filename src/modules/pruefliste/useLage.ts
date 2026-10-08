@@ -16,6 +16,7 @@ import { useCrmDaten } from "@/modules/transaktionen/useCrm";
 import { useBoardDaten } from "@/modules/shell/daten";
 import {
   ablagePruefFaelle,
+  darlehenAbstimmung,
   datenPruefFaelle,
   liquiditaetPruefFaelle,
   prueflisteZusammenfuehren,
@@ -62,6 +63,7 @@ export function useLage() {
         data.reviewItems,
         liquiditaetPruefFaelle(liquiditaet),
         darlehen.pruefFaelle,
+        darlehenAbstimmung(data),
         immobilien.pruefFaelle,
         pipelinePruefFaelle(
           einheitenVertrieb(data, crm.data),
