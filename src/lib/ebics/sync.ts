@@ -281,16 +281,11 @@ export async function syncEbicsOffeneLaeufe(
 ): Promise<{
   laeufe: Array<{ laufId: string; anzahlNeu: number; fehler?: string }>;
 }> {
-  const now = new Date();
-  const aktueller = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-  const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
-  const vormonat = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
-
   const { data: laeufe, error } = await admin
     .from("sollstellung_laeufe")
     .select("id, zeitraum")
     .eq("status", "offen")
-    .in("zeitraum", [aktueller, vormonat]);
+    .order("zeitraum", { ascending: true });
   if (error) throw new Error(error.message);
 
   const result: Array<{ laufId: string; anzahlNeu: number; fehler?: string }> =

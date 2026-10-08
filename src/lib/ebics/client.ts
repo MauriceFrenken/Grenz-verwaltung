@@ -97,7 +97,7 @@ function menschenlesbarerFehler(err: unknown): string {
   if (/timed out|timeout|ETIMEDOUT|AbortError/i.test(msg)) {
     return "Zeitüberschreitung bei der Bankverbindung. Bitte erneut versuchen.";
   }
-  if (/ENOTFOUND|ECONNREFUSED|fetch failed|network/i.test(msg)) {
+  if (/ENOTFOUND|ECONNREFUSED|fetch failed|network|Empty EBICS/i.test(msg)) {
     return "Keine Verbindung zur EBICS-Bank. Bitte später erneut versuchen.";
   }
   return msg;
