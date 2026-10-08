@@ -1,6 +1,7 @@
 # Morgenbericht Phase 3: Auktionssaal und Wochenrunde
 
 Stand 09.10.2026, 9:00 Uhr · Branch `claude/project-thread-kbwybt` · baut auf PR #3 auf
+Vorschau (Vercel-Login nötig): https://frenken-expose-ai-git-claude-project-bd97d6-frenken-management.vercel.app · Draft-PR: https://github.com/BitBenByte/frenken-expose-ai/pull/4
 Hintergrund: `/mnt/project-files/management-board/DISKUSSION-RICHTIGES-BOARD.md` und `PROMPT-PHASE-3-NACHTLAUF.md`
 
 ## 1. Drei Erkenntnisse
