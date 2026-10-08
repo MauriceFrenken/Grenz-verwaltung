@@ -230,7 +230,7 @@ function ArtBadge({ kind }: { kind: Loan["kind"] }) {
   return (
     <span
       className={cn(
-        "inline-flex h-5 items-center rounded-[5px] px-1.5 text-[11px] font-medium",
+        "inline-flex h-5 items-center px-1.5 text-[11px] font-medium",
         kind === "bank"
           ? "bg-surface-muted text-text-muted"
           : "bg-accent-soft text-heading",
@@ -606,7 +606,7 @@ function Matrix({
                     <td key={x} className="px-3 text-right">
                       {z ? (
                         <span
-                          className="inline-block rounded-[5px] px-1.5 py-0.5"
+                          className="inline-block px-1.5 py-0.5"
                           style={{
                             background: `color-mix(in oklch, var(--primary) ${Math.round(6 + (z.summe / max) * 30)}%, transparent)`,
                           }}

@@ -139,7 +139,7 @@ export function GesellschaftDetail({
                 {
                   schluessel: "plan",
                   label: "Plan",
-                  farbe: "var(--primary)",
+                  farbe: "var(--brand)",
                   flaeche: true,
                 },
               ]}
@@ -153,7 +153,7 @@ export function GesellschaftDetail({
                 erfassen.
               </p>
             ) : null}
-            <ul className="divide-y divide-hairline rounded-[8px] border border-hairline">
+            <ul className="divide-y divide-hairline border border-hairline">
               {konten.map((k) => (
                 <li
                   key={k.id}
@@ -186,7 +186,7 @@ export function GesellschaftDetail({
                 Keine geplanten Zahlungen.
               </p>
             ) : (
-              <ul className="divide-y divide-hairline rounded-[8px] border border-hairline">
+              <ul className="divide-y divide-hairline border border-hairline">
                 {groesste.map((b, i) => (
                   <li
                     key={`${b.quelle}-${b.datum}-${i}`}

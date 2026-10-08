@@ -43,22 +43,24 @@ export function BoardRahmen({ children }: { children: ReactNode }) {
     <>
       <div
         className={cn(
-          "sticky z-30 flex h-12 items-center gap-3 border-b border-hairline bg-background/90 px-4 backdrop-blur-md md:px-8",
+          "nicht-drucken sticky z-30 flex h-12 items-center gap-3 border-b border-stage-line bg-stage/95 px-4 text-stage-foreground backdrop-blur-md md:px-8",
           benutzer ? "top-16" : "top-0",
         )}
       >
         <GesellschaftsAuswahl companies={data?.companies ?? []} />
         <button
           onClick={() => setPaletteOffen(true)}
-          className="ml-auto flex h-8 w-full min-w-0 max-w-[320px] cursor-pointer items-center gap-2 border border-hairline bg-surface px-2.5 text-sm text-text-subtle transition-colors hover:bg-surface-muted md:ml-4 md:mr-auto"
+          className="ml-auto flex h-8 w-full min-w-0 max-w-[320px] cursor-pointer items-center gap-2 border border-stage-line bg-stage-raised px-2.5 text-sm text-stage-muted transition-colors hover:border-stage-muted focus-visible:outline-2 focus-visible:outline-brand md:ml-4 md:mr-auto"
         >
           <Search className="size-3.5" />
           <span className="truncate">Suchen oder springen…</span>
-          <Taste className="ml-auto">⌘K</Taste>
+          <Taste className="ml-auto border-stage-line bg-stage text-stage-muted">
+            ⌘K
+          </Taste>
         </button>
         {boardRepository().quelle === "mock" ? (
           <span
-            className="hidden h-6 items-center border border-warn/30 bg-warn-soft px-2.5 text-xs font-medium text-warn lg:inline-flex"
+            className="hidden h-6 items-center border border-brand/40 px-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-brand lg:inline-flex"
             title="Alle Zahlen sind fiktiv"
           >
             Demodaten

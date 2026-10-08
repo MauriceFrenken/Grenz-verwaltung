@@ -17,10 +17,10 @@ export function OpAdminEinstellungen() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-10 w-10 items-center justify-center hover:bg-surface-muted"
+          className="flex h-10 w-10 items-center justify-center hover:bg-stage-raised"
           aria-label="OP Admin"
         >
-          <Settings className="h-4 w-4 text-text-muted" strokeWidth={1.5} />
+          <Settings className="h-4 w-4 text-stage-muted" strokeWidth={1.5} />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -31,7 +31,10 @@ export function OpAdminEinstellungen() {
       >
         <p className="label-caps text-text-subtle">OP Admin</p>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <Label htmlFor="op-admin-zensur" className="text-sm font-medium text-heading">
+          <Label
+            htmlFor="op-admin-zensur"
+            className="text-sm font-medium text-heading"
+          >
             Zensur
           </Label>
           <Switch

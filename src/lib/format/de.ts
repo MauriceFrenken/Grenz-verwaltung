@@ -190,3 +190,14 @@ export function parseDeutschesDatum(
     return null;
   return d.toISOString().slice(0, 10);
 }
+
+/** Kompaktbetrag in Zahl und Einheit getrennt, für große Anzeigen: { zahl: "4,3", einheit: "Mio. €" } */
+export function euroKompaktTeile(v: number | null | undefined): {
+  zahl: string;
+  einheit: string;
+} {
+  if (!istZahl(v)) return { zahl: LEER, einheit: "" };
+  const text = euroKompakt(v);
+  const m = /^(.*?)\s((?:Mio\.|Tsd\.)\s€|€)$/.exec(text);
+  return m ? { zahl: m[1], einheit: m[2] } : { zahl: text, einheit: "" };
+}

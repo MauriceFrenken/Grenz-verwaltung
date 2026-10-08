@@ -85,7 +85,7 @@ export function ZeitreihenDiagramm<T extends Record<string, unknown>>({
             cursor={{ stroke: "var(--input)" }}
             content={({ active, payload, label: x }) =>
               active && payload?.length ? (
-                <div className="rounded-[8px] border border-hairline bg-elevated px-3 py-2 text-xs shadow-[0_8px_24px_-8px_rgb(0_0_0/0.2)]">
+                <div className=" border border-hairline bg-elevated px-3 py-2 text-xs shadow-[0_8px_24px_-8px_rgb(0_0_0/0.2)]">
                   <div className="mb-1 font-medium text-heading">
                     {xFormat(String(x))}
                   </div>

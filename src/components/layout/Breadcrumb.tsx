@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 const LABELS: Record<string, string> = {
   "/": "Cockpit",
   "/board": "Steuerung",
+  "/board/runde": "Wochenrunde",
   "/board/liquiditaet": "Liquidität",
   "/board/darlehen": "Darlehen",
   "/board/pruefliste": "Prüfliste",
@@ -65,7 +66,7 @@ export function Breadcrumb() {
   return (
     <nav
       aria-label="Brotkrumen"
-      className="flex items-center gap-1 text-xs text-text-muted"
+      className="flex items-center gap-1 text-xs text-stage-muted"
     >
       {segmente.map((path, idx) => {
         const label = LABELS[path] ?? "…";
@@ -73,12 +74,12 @@ export function Breadcrumb() {
         return (
           <span key={path} className="flex items-center gap-1">
             {idx > 0 ? (
-              <ChevronRight className="h-3 w-3 text-text-subtle" />
+              <ChevronRight className="h-3 w-3 text-stage-line" />
             ) : null}
             {istLetztes ? (
-              <span className="text-heading">{label}</span>
+              <span className="text-stage-foreground">{label}</span>
             ) : (
-              <Link to={path} className="hover:text-heading">
+              <Link to={path} className="hover:text-stage-foreground">
                 {label}
               </Link>
             )}

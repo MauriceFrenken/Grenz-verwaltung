@@ -215,7 +215,7 @@ function Eintrag({
     <Command.Item
       value={value}
       onSelect={onSelect}
-      className="flex cursor-pointer items-center gap-3 rounded-[7px] px-2.5 py-2 text-sm text-foreground data-[selected=true]:bg-surface-muted [&_svg]:size-4 [&_svg]:text-text-muted"
+      className="flex cursor-pointer items-center gap-3 px-2.5 py-2 text-sm text-foreground data-[selected=true]:bg-surface-muted [&_svg]:size-4 [&_svg]:text-text-muted"
     >
       {icon}
       <span className="min-w-0 flex-1">

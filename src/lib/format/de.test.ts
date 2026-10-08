@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  euroKompaktTeile,
   datum,
   datumLang,
   euro,
@@ -48,5 +49,23 @@ describe("Format de-DE", () => {
     expect(relativTage(0)).toBe("heute");
     expect(relativTage(5)).toBe("in 5 Tagen");
     expect(relativTage(-3)).toBe("seit 3 Tagen");
+  });
+});
+
+describe("euroKompaktTeile", () => {
+  it("trennt Zahl und Einheit", () => {
+    expect(euroKompaktTeile(4_312_000)).toEqual({
+      zahl: "4,3",
+      einheit: "Mio. €",
+    });
+    expect(euroKompaktTeile(283_400)).toEqual({
+      zahl: "283",
+      einheit: "Tsd. €",
+    });
+    expect(euroKompaktTeile(-1_250_000)).toEqual({
+      zahl: "−1,3",
+      einheit: "Mio. €",
+    });
+    expect(euroKompaktTeile(null).einheit).toBe("");
   });
 });

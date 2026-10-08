@@ -1,30 +1,129 @@
 import type { ReactNode } from "react";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import { STEUERUNG } from "@/modules/shell/navigation";
+import { Buehne, Etikett, LivePunkt } from "./Auktion";
 
-/** Seitentitel mit optionaler Unterzeile und Aktionen rechts. */
+/**
+ * Seitenkopf als dunkle Bühne („Auktionssaal“): Bereich und Managementfrage
+ * der Seite als Etikett, Titel, Unterzeile, Aktionen rechts und optional
+ * große Kennzahlen darunter.
+ */
 export function SeitenKopf({
   titel,
   unterzeile,
   aktionen,
+  etikett,
+  children,
 }: {
   titel: string;
   unterzeile?: ReactNode;
   aktionen?: ReactNode;
+  /** Standard: Bereich und Frage aus der Navigation */
+  etikett?: ReactNode;
+  /** große Kennzahlen auf der Bühne */
+  children?: ReactNode;
 }) {
+  const pfad = useRouterState({ select: (s) => s.location.pathname });
+  const bereich = STEUERUNG.find((b) => b.eintraege.some((e) => e.to === pfad));
+  const eintrag = bereich?.eintraege.find((e) => e.to === pfad);
+  const marke =
+    etikett ??
+    (bereich && eintrag ? (
+      <>
+        {bereich.label}
+        <span className="mx-2 text-stage-line">/</span>
+        <span className="normal-case tracking-normal text-stage-muted">
+          {eintrag.frage}
+        </span>
+      </>
+    ) : null);
   return (
-    <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-      <div className="min-w-0">
-        <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.015em] text-heading">
-          {titel}
-        </h1>
-        {unterzeile ? (
-          <p className="mt-1 text-sm text-text-muted">{unterzeile}</p>
+    <Buehne>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          {marke ? (
+            <div className="mb-2 flex items-center gap-2 text-brand">
+              <LivePunkt />
+              <Etikett>{marke}</Etikett>
+            </div>
+          ) : null}
+          <h1 className="text-[30px] font-semibold leading-tight tracking-[-0.025em] text-stage-foreground">
+            {titel}
+          </h1>
+          {unterzeile ? (
+            <p className="mt-1.5 max-w-3xl text-sm text-stage-muted">
+              {unterzeile}
+            </p>
+          ) : null}
+        </div>
+        {aktionen ? (
+          <div className="nicht-drucken flex flex-wrap items-center gap-2">
+            {aktionen}
+          </div>
         ) : null}
       </div>
-      {aktionen ? (
-        <div className="flex flex-wrap items-center gap-2">{aktionen}</div>
+      {children ? <div className="mt-7">{children}</div> : null}
+    </Buehne>
+  );
+}
+
+/** Kennzahl auf der Bühne: Etikett, große Zahl, Zusatz. */
+export function BuehnenKennzahl({
+  label,
+  wert,
+  hinweis,
+  ampel,
+  href,
+  title,
+}: {
+  label: string;
+  wert: ReactNode;
+  hinweis?: ReactNode;
+  ampel?: "gruen" | "gelb" | "rot" | "grau";
+  href?: string;
+  title?: string;
+}) {
+  const punkt =
+    ampel === "rot"
+      ? "bg-bad"
+      : ampel === "gelb"
+        ? "bg-warn"
+        : ampel === "gruen"
+          ? "bg-ok"
+          : "bg-stage-line";
+  const inhalt = (
+    <>
+      <div className="flex items-center gap-2 text-stage-muted">
+        {ampel ? (
+          <span className={cn("size-1.5 shrink-0", punkt)} aria-hidden />
+        ) : null}
+        <Etikett className="tracking-[0.1em]">{label}</Etikett>
+      </div>
+      <div className="mt-2 text-[34px] font-semibold leading-none tracking-[-0.03em] text-stage-foreground">
+        {wert}
+      </div>
+      {hinweis ? (
+        <div className="ziffern mt-2 text-xs text-stage-muted">{hinweis}</div>
       ) : null}
-    </header>
+    </>
+  );
+  const klassen =
+    "group block min-w-0 border-l border-stage-line pl-4 transition-colors";
+  if (href)
+    return (
+      <Link
+        to={href}
+        title={title}
+        className={cn(klassen, "hover:border-brand")}
+      >
+        {inhalt}
+      </Link>
+    );
+  return (
+    <div className={klassen} title={title}>
+      {inhalt}
+    </div>
   );
 }
 
@@ -73,10 +172,7 @@ export function Karte({
 } & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn(
-        "rounded-[10px] border border-hairline bg-surface shadow-[0_1px_2px_0_rgb(0_0_0/0.03)]",
-        className,
-      )}
+      className={cn(" border border-hairline bg-surface", className)}
       {...rest}
     >
       {children}
@@ -134,7 +230,7 @@ export function Segmente<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className="inline-flex h-8 items-center gap-0.5 rounded-[8px] border border-hairline bg-surface-muted p-0.5"
+      className="inline-flex h-8 items-center gap-0.5 border border-hairline bg-surface-muted p-0.5"
     >
       {optionen.map((o) => (
         <button

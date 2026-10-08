@@ -1,5 +1,6 @@
 import {
   Building2,
+  CalendarCheck,
   DatabaseZap,
   FileText,
   Inbox,
@@ -38,6 +39,12 @@ export const STEUERUNG: NavBereich[] = [
         label: "Cockpit",
         icon: LayoutDashboard,
         frage: "Was ist heute wichtig?",
+      },
+      {
+        to: "/board/runde",
+        label: "Wochenrunde",
+        icon: CalendarCheck,
+        frage: "Was entscheiden wir am Montag?",
       },
       {
         to: "/board/liquiditaet",

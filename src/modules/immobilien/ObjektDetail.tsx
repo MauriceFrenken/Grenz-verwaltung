@@ -55,7 +55,7 @@ function DokumentListe({
       <p className="text-sm text-text-muted">Keine Dokumente verknüpft.</p>
     );
   return (
-    <ul className="divide-y divide-hairline rounded-[8px] border border-hairline">
+    <ul className="divide-y divide-hairline border border-hairline">
       {docs.map((d) => (
         <li key={d.id} className="flex items-center gap-3 px-3 py-2 text-sm">
           <span className="w-24 shrink-0 tabular-nums text-text-muted">
@@ -253,7 +253,7 @@ export function ObjektDetail({
                 },
               ]}
             />
-            <div className="mt-3 overflow-auto rounded-[8px] border border-hairline">
+            <div className="mt-3 overflow-auto border border-hairline">
               <table className="w-full text-sm tabular-nums">
                 <thead>
                   <tr className="text-xs text-text-muted shadow-[inset_0_-1px_0_var(--hairline)]">
@@ -298,7 +298,7 @@ export function ObjektDetail({
           </PanelAbschnitt>
 
           <PanelAbschnitt titel={`Einheiten (${o.units.length})`}>
-            <ul className="divide-y divide-hairline rounded-[8px] border border-hairline">
+            <ul className="divide-y divide-hairline border border-hairline">
               {o.units.map((u) => {
                 const k = kontoJeEinheit.get(u.id);
                 const klickbar = Boolean(k);
@@ -353,7 +353,7 @@ export function ObjektDetail({
                 Keine Darlehen zugeordnet.
               </p>
             ) : (
-              <ul className="divide-y divide-hairline rounded-[8px] border border-hairline">
+              <ul className="divide-y divide-hairline border border-hairline">
                 {darlehen.map((s) => (
                   <li
                     key={s.loan.id}
@@ -466,7 +466,7 @@ export function MietvertragDetail({
                 {erh.map((e) => (
                   <li
                     key={e.event.id}
-                    className="rounded-[8px] border border-hairline px-3 py-2 text-sm"
+                    className=" border border-hairline px-3 py-2 text-sm"
                   >
                     <div className="flex items-center gap-2">
                       <AmpelPunkt ampel={e.ampel} />
@@ -490,7 +490,7 @@ export function MietvertragDetail({
                 {kue.map((k) => (
                   <li
                     key={k.event.id}
-                    className="rounded-[8px] border border-hairline px-3 py-2 text-sm"
+                    className=" border border-hairline px-3 py-2 text-sm"
                   >
                     <div className="flex items-center gap-2">
                       <AmpelPunkt ampel={k.ampel} />
@@ -517,7 +517,7 @@ export function MietvertragDetail({
           ) : null}
 
           <PanelAbschnitt titel="Mietkonto (12 Monate)">
-            <div className="overflow-auto rounded-[8px] border border-hairline">
+            <div className="overflow-auto border border-hairline">
               <table className="w-full text-sm tabular-nums">
                 <thead>
                   <tr className="text-xs text-text-muted shadow-[inset_0_-1px_0_var(--hairline)]">

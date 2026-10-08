@@ -313,7 +313,7 @@ export function LiquiditaetSeite() {
           wert={euroKompakt(heute)}
           hinweis={
             kreis.ohneSaldo
-              ? `Daten fehlen: ${kreis.ohneSaldo} Konto${kreis.ohneSaldo > 1 ? "en" : ""} ohne Saldo`
+              ? `Daten fehlen: ${kreis.ohneSaldo} ${kreis.ohneSaldo > 1 ? "Konten" : "Konto"} ohne Saldo`
               : kreis.minFehlt
                 ? `Mindestliquidität bei ${kreis.minFehlt} nicht festgelegt`
                 : `Mindestens ${euroKompakt(kreis.min)}`
@@ -402,7 +402,7 @@ export function LiquiditaetSeite() {
               {
                 schluessel: "basis",
                 label: "Plan",
-                farbe: "var(--primary)",
+                farbe: "var(--brand)",
                 flaeche: true,
               },
               ...(mitSzenario
@@ -476,7 +476,7 @@ export function LiquiditaetSeite() {
               {szAktiv ? "Szenario ausblenden" : "Szenario berechnen"}
             </Knopf>
           </div>
-          <div className="mt-4 rounded-[8px] bg-surface-muted p-3 text-sm">
+          <div className="mt-4 bg-surface-muted p-3 text-sm">
             <div className="text-xs text-text-muted">
               Tragbares Eigenkapital am {datum(szDatumWert)}
             </div>
@@ -509,7 +509,7 @@ export function LiquiditaetSeite() {
           titel="Warnungen"
           beschreibung="Unterschreitungen der Mindestliquidität mit Haupttreiber (größter Abfluss in den 30 Tagen davor)"
         >
-          <ul className="divide-y divide-hairline rounded-[10px] border border-hairline bg-surface">
+          <ul className="divide-y divide-hairline border border-hairline bg-surface">
             {warnungen.map((w) => {
               const t = w.ersteUnterschreitung
                 ? haupttreiber(
@@ -616,7 +616,7 @@ function MonatsTabelle({ monate }: { monate: MonatsZeile[] }) {
   const wert = (m: MonatsZeile, kategorien: LiqKategorie[]) =>
     kategorien.reduce((s, k) => s + (m.jeKategorie[k] ?? 0), 0);
   return (
-    <div className="max-h-[520px] overflow-auto rounded-[10px] border border-hairline bg-surface">
+    <div className="max-h-[520px] overflow-auto border border-hairline bg-surface">
       <table className="w-full text-sm tabular-nums">
         <thead className="sticky top-0 z-10 bg-surface">
           <tr className="text-xs text-text-muted shadow-[inset_0_-1px_0_var(--hairline)]">

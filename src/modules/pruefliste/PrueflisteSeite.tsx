@@ -142,7 +142,7 @@ export function PrueflisteSeite() {
           text="Für diese Auswahl gibt es keine offenen Prüffälle."
         />
       ) : (
-        <ul className="divide-y divide-hairline rounded-[10px] border border-hairline bg-surface">
+        <ul className="divide-y divide-hairline border border-hairline bg-surface">
           {sichtbar.map((f) => {
             const ziel = pruefFallZiel(f, daten);
             const tage = f.dueDate

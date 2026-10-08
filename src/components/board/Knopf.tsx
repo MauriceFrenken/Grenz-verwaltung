@@ -9,7 +9,7 @@ const knopfVarianten = cva(
     variants: {
       variante: {
         primaer:
-          "bg-primary text-primary-foreground shadow-[0_1px_0_0_rgb(0_0_0/0.08)] hover:bg-primary/90",
+          "bg-brand font-semibold text-black hover:bg-[#ff7a1f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-heading",
         sekundaer:
           "border border-input bg-surface text-foreground shadow-[0_1px_0_0_rgb(0_0_0/0.03)] hover:bg-surface-muted",
         geist: "text-text-muted hover:bg-surface-muted hover:text-foreground",
@@ -59,7 +59,7 @@ export function Taste({
   return (
     <kbd
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border border-hairline bg-surface-muted px-1 font-sans text-[11px] font-medium text-text-muted",
+        "inline-flex h-5 min-w-5 items-center justify-center border border-hairline bg-surface-muted px-1 font-sans text-[11px] font-medium text-text-muted",
         className,
       )}
     >

@@ -1,16 +1,12 @@
 import { cn } from "@/lib/utils";
 
 export function Skelett({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn("animate-pulse rounded-[6px] bg-surface-muted", className)}
-    />
-  );
+  return <div className={cn("animate-pulse bg-surface-muted", className)} />;
 }
 
 export function KpiSkelett() {
   return (
-    <div className="rounded-[10px] border border-hairline bg-surface p-4 pl-5">
+    <div className=" border border-hairline bg-surface p-4 pl-5">
       <Skelett className="h-3.5 w-24" />
       <Skelett className="mt-3 h-7 w-32" />
       <Skelett className="mt-3 h-3 w-20" />
@@ -20,7 +16,7 @@ export function KpiSkelett() {
 
 export function TabellenSkelett({ zeilen = 6 }: { zeilen?: number }) {
   return (
-    <div className="rounded-[10px] border border-hairline bg-surface">
+    <div className=" border border-hairline bg-surface">
       <div className="border-b border-hairline px-4 py-3">
         <Skelett className="h-3 w-1/3" />
       </div>

@@ -134,7 +134,7 @@ export function DesignSeite() {
             ["Überfällig", "bg-bad"],
           ].map(([n, k]) => (
             <div key={n}>
-              <div className={`h-12 rounded-[8px] ${k}`} />
+              <div className={`h-12 ${k}`} />
               <div className="mt-1.5 text-xs text-text-muted">{n}</div>
             </div>
           ))}

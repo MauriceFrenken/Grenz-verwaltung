@@ -138,10 +138,22 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "hairline-r sticky top-16 flex h-[calc(100vh-4rem)] shrink-0 flex-col border-r border-hairline bg-sidebar transition-[width]",
+        "hairline-r sticky flex shrink-0 flex-col border-r border-hairline bg-sidebar transition-[width]",
+        // ohne Anmeldung (Demo-Modus) fehlt die Kopfzeile: Marke in der Seitenleiste
+        benutzer ? "top-16 h-[calc(100vh-4rem)]" : "top-0 h-screen",
         collapsed ? "w-16" : "w-60",
       )}
     >
+      {!benutzer ? (
+        <div className="flex h-12 shrink-0 items-center gap-2.5 bg-stage px-4 text-stage-foreground">
+          <span className="size-2.5 shrink-0 bg-brand" aria-hidden />
+          {!collapsed ? (
+            <span className="text-sm font-bold uppercase tracking-[0.14em]">
+              FRENKEN
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       <nav className="flex-1 overflow-y-auto">
         {sections.map((section) => (
           <div key={section.label} className="py-3">
@@ -173,7 +185,7 @@ export function Sidebar() {
                     >
                       {aktiv ? (
                         <span
-                          className="absolute inset-y-0 left-0 w-[3px] bg-primary"
+                          className="absolute inset-y-0 left-0 w-[3px] bg-brand"
                           aria-hidden
                         />
                       ) : null}

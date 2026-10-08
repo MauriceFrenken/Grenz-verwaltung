@@ -122,7 +122,7 @@ export function MaschinenImportDialog({
             Excel- oder CSV-Datei mit einer Zeile je Maschine hochladen
           </Dialog.Description>
           <div className="flex-1 overflow-y-auto px-5 py-4">
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[10px] border border-dashed border-input bg-surface-muted/50 px-4 py-8 text-center transition-colors hover:bg-surface-muted">
+            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 border border-dashed border-input bg-surface-muted/50 px-4 py-8 text-center transition-colors hover:bg-surface-muted">
               <FileSpreadsheet
                 className="size-6 text-primary"
                 strokeWidth={1.75}
@@ -156,24 +156,24 @@ export function MaschinenImportDialog({
             {ergebnis ? (
               <div className="mt-4 space-y-3">
                 <div className="flex flex-wrap gap-2 text-sm">
-                  <span className="inline-flex items-center gap-1.5 rounded-[6px] bg-ok-soft px-2 py-1 text-ok">
+                  <span className="inline-flex items-center gap-1.5 bg-ok-soft px-2 py-1 text-ok">
                     <CheckCircle2 className="size-3.5" />{" "}
                     {ergebnis.gueltig.length} gültig
                   </span>
-                  <span className="rounded-[6px] bg-surface-muted px-2 py-1 text-text-muted">
+                  <span className=" bg-surface-muted px-2 py-1 text-text-muted">
                     {ergebnis.neu.length} neu
                   </span>
-                  <span className="rounded-[6px] bg-surface-muted px-2 py-1 text-text-muted">
+                  <span className=" bg-surface-muted px-2 py-1 text-text-muted">
                     {ergebnis.aktualisiert.length} aktualisiert
                   </span>
                   {ergebnis.fehler.length ? (
-                    <span className="rounded-[6px] bg-bad-soft px-2 py-1 text-bad">
+                    <span className=" bg-bad-soft px-2 py-1 text-bad">
                       {ergebnis.fehler.length} Fehler
                     </span>
                   ) : null}
                 </div>
                 {ergebnis.fehler.length ? (
-                  <ul className="max-h-[220px] divide-y divide-hairline overflow-y-auto rounded-[8px] border border-hairline text-sm">
+                  <ul className="max-h-[220px] divide-y divide-hairline overflow-y-auto border border-hairline text-sm">
                     {ergebnis.fehler.map((f, i) => (
                       <li key={i} className="flex gap-3 px-3 py-2">
                         <span className="w-16 shrink-0 tabular-nums text-text-muted">

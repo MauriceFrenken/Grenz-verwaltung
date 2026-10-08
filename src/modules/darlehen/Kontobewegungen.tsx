@@ -59,7 +59,7 @@ export function Kontobewegungen({ darlehenId }: { darlehenId: string }) {
     );
 
   return (
-    <ul className="divide-y divide-hairline rounded-[8px] border border-hairline">
+    <ul className="divide-y divide-hairline border border-hairline">
       {data.map((b) => (
         <li
           key={b.id}

@@ -12,15 +12,13 @@ export function GesellschaftsAuswahl({ companies }: { companies: Company[] }) {
   return (
     <Menu.Root>
       <Menu.Trigger
-        className="flex h-8 min-w-0 max-w-[260px] cursor-pointer items-center gap-2 border border-hairline bg-surface pl-2.5 pr-2 text-sm text-foreground transition-colors hover:bg-surface-muted"
+        className="flex h-8 min-w-0 max-w-[260px] cursor-pointer items-center gap-2 border border-stage-line bg-stage-raised pl-2.5 pr-2 text-sm text-stage-foreground transition-colors hover:border-stage-muted focus-visible:outline-2 focus-visible:outline-brand"
         aria-label="Gesellschaft auswählen"
       >
         <span
           className={cn(
-            "flex size-5 shrink-0 items-center justify-center rounded-[5px] text-[10px] font-semibold",
-            aktiv
-              ? "bg-primary text-primary-foreground"
-              : "bg-surface-muted text-text-muted",
+            "flex size-5 shrink-0 items-center justify-center text-[10px] font-semibold",
+            aktiv ? "bg-brand text-black" : "bg-stage-line text-stage-muted",
           )}
           aria-hidden
         >
@@ -29,7 +27,7 @@ export function GesellschaftsAuswahl({ companies }: { companies: Company[] }) {
         <span className="truncate">
           {aktiv ? aktiv.name : "Alle Gesellschaften"}
         </span>
-        <ChevronsUpDown className="size-3.5 shrink-0 text-text-subtle" />
+        <ChevronsUpDown className="size-3.5 shrink-0 text-stage-muted" />
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Content
@@ -77,9 +75,9 @@ function Eintrag({
   return (
     <Menu.Item
       onSelect={onSelect}
-      className="flex cursor-pointer items-center gap-2.5 rounded-[6px] px-2 py-1.5 outline-none data-[highlighted]:bg-surface-muted"
+      className="flex cursor-pointer items-center gap-2.5 px-2 py-1.5 outline-none data-[highlighted]:bg-surface-muted"
     >
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-[5px] bg-surface-muted text-[10px] font-semibold text-text-muted">
+      <span className="flex size-6 shrink-0 items-center justify-center bg-surface-muted text-[10px] font-semibold text-text-muted">
         {kurz}
       </span>
       <span className="min-w-0 flex-1">
