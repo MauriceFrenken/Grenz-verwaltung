@@ -25,13 +25,13 @@ export function TopBar() {
 
   return (
     <header className="hairline-b sticky top-0 z-40 flex h-16 items-stretch border-b border-sidebar-border bg-sidebar">
-      <div className="hairline-r flex w-60 items-center gap-2 border-r border-sidebar-border px-5">
+      <div className="hairline-r flex w-60 items-center justify-center gap-2 border-r border-sidebar-border px-5">
         <span
           data-op-zensur-ziel=""
           className="flex items-center gap-2.5 text-heading"
           aria-label={APP_NAME}
         >
-          <FrenkenLogo className="h-[15px]" />
+          <FrenkenLogo className="h-[22px]" />
         </span>
       </div>
       <div className="hidden flex-1 items-center px-6 md:flex">
