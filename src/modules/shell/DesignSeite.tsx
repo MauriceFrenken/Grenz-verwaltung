@@ -208,7 +208,7 @@ export function DesignSeite() {
 
       <Abschnitt
         titel="Farben"
-        beschreibung="Monochrom mit Indigo (#4F5BD5) für Auswahl, Links und Diagrammlinien; Indigo heißt nie Warnung. Text in Indigo nutzt die dunklere Stufe (#3B46B5)."
+        beschreibung="Monochrom mit FRENKEN-Blau (#273FDD) für Auswahl, Links und Diagrammlinien; Blau heißt nie Warnung. Text in Blau nutzt die hellere Stufe (#9DA8F0)."
       >
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-9">
           {[
