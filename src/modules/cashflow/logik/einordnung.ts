@@ -143,13 +143,13 @@ const REGELN: Array<{ k: CfKategorie; re: RegExp; nur?: "ein" | "aus" }> = [
   {
     k: "personal",
     re: R(
-      "gehalt|lohn|aushilf|krankenkasse|knappschaft|\\baok\\b|barmer|\\bdak\\b|\\bikk\\b|sozialversicherung|berufsgenossenschaft|minijob",
+      "gehalt|lohn|aushilf|krankenkasse|knappschaft|\\baok\\b|barmer|\\bdak\\b|\\bikk\\b|sozialversicherung|berufsgenossenschaft|minijob|\\bvbg\\b|bonus|sonderzahlung",
     ),
   },
   {
     k: "versorger",
     re: R(
-      "stadtwerke|energie|wasser|\\bstrom|\\bgas\\b|waerme|techem|\\bista\\b|minol|brunata|heizoel|fernwaerme|abfall|awista|entsorgung|schornstein",
+      "stadtwerke|energie|wasser|\\bstrom|\\bgas\\b|waerme|techem|\\bista\\b|minol|brunata|heizoel|fernwaerme|abfall|awista|entsorgung|schornstein|sonnen herzog|rundfunk",
     ),
   },
   {
@@ -167,26 +167,26 @@ const REGELN: Array<{ k: CfKategorie; re: RegExp; nur?: "ein" | "aus" }> = [
   {
     k: "instandhaltung",
     re: R(
-      "haustechnik|sanitaer|heizung|elektro|dachdeck|maler|baumarkt|reparatur|wartung|schaedling|hausmeister|garten|reinigung|aufzug|rohr|schluessel|glaser|handwerk|fliesen|tischler|schreiner|rauchmelder|kleintransport",
+      "haustechnik|sanitaer|heizung|elektro|dachdeck|maler|baumarkt|reparatur|wartung|schaedling|hausmeister|garten|reinigung|aufzug|rohr|schluessel|glaser|handwerk|fliesen|tischler|schreiner|rauchmelder|kleintransport|entruempelung|shk|gebaeudetechnik|geruest|brandschutz|bauhaus|mobau|raiffeisen waren|eisenjansen|baustoff|hornbach|obi\\b",
     ),
     nur: "aus",
   },
   {
     k: "verwaltung",
     re: R(
-      "hausverwaltung|immobilienverwaltung|raumgut|immoscout|immobilien ?scout|immowelt|rechtsanw|anwalt|inkasso|mieterverein",
+      "hausverwaltung|immobilienverwaltung|raumgut|immoscout|immobilien ?scout|immowelt|rechtsanw|anwalt|inkasso|mieterverein|hausgeld|\\bweg\\b",
     ),
   },
   {
     k: "bank",
     re: R(
-      "^abschluss|abschluss per|rechnungsabschluss|kontofuehrung|einrichtung ebics|umsatzsteuer auf|ust-umbuchung|^entgelt",
+      "^abschluss|abschluss per|jahrespreis girocard|rechnungsabschluss|kontofuehrung|einrichtung ebics|umsatzsteuer auf|ust-umbuchung|^entgelt",
     ),
   },
   {
     k: "gemeinkosten",
     re: R(
-      "steuerberat|stbg|telekom|vodafone|microsoft|devbox|paypal|amazon|audible|shell|esso|aral|tankstelle|crefo|ihk|software|envato|apple",
+      "steuerberat|stbg|telekom|vodafone|microsoft|devbox|paypal|amazon|audible|shell|esso|aral|tankstelle|crefo|ihk|software|envato|apple|google|deutsche post|\\bdhl\\b|postfiliale|altstadtpost|francotyp|cartridge|office discount|boettcher|meta platforms|bundesanzeiger|handelskammer|salesforce|\\btank|\\bjet\\b|couche-tard|mr\\.? wash|trattoria|ristorante|restaurant|adyen|sg-vr payment|bussgeld|hotel|rotonda|immodeal|immomates|visa abrechnung|dz bank|coffee|bundeskasse|comfort m\\.?b\\.?c",
     ),
     nur: "aus",
   },
@@ -249,7 +249,7 @@ export function kategorisieren(
     if (/gehalt/.test(text)) return [{ k: "personal", betrag: tx.amount }];
     return [{ k: "intercompany", betrag: tx.amount }];
   }
-  if (/valutierung|darlehensauszahlung/.test(text))
+  if (/valutierung|darlehensauszahlung|\bdarle?hn\b/.test(text))
     return [{ k: "finanzierung", betrag: tx.amount }];
 
   const richtung = tx.amount >= 0 ? "ein" : "aus";
@@ -261,6 +261,9 @@ export function kategorisieren(
     return [{ k: "sonstige_einnahmen", betrag: tx.amount }];
   return [{ k: "sonstiges", betrag: tx.amount }];
 }
+
+/** Obergrenze für Eingänge ohne Stichwort, die auf einem Mietkonto als Miete zählen */
+const MIETE_OHNE_STICHWORT_BIS = 3_000;
 
 /** Alle Buchungen eingeordnet; Umbuchungen innerhalb der Gruppe bleiben drin (Gruppe „gesellschaft“). */
 export function einordnen(
@@ -282,6 +285,13 @@ export function einordnen(
         break;
       }
     for (const teil of kategorisieren(tx, eigeneIbans)) {
+      // kleiner Eingang ohne Stichwort auf dem Mietkonto eines Objekts: Miete
+      if (
+        teil.k === "sonstige_einnahmen" &&
+        k?.propertyId &&
+        teil.betrag <= MIETE_OHNE_STICHWORT_BIS
+      )
+        teil.k = "miete";
       const g = gruppeVon(teil.k);
       let objektId: string | null = null;
       let zuordnung: Zuordnung = "keine";
