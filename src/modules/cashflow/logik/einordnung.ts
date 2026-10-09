@@ -106,6 +106,8 @@ const OBJEKT_STICHWORTE: Record<string, string[]> = {
     "equestrian",
     "ordenat",
     "raumgut",
+    // Projektfinanzierung: Darlehen 1,6 Mio. € auf Konto …793238 (bestätigt)
+    "47793238",
   ],
 };
 

@@ -78,8 +78,13 @@ export function AufteilerSeite() {
     );
   if (isLoading || !data || !projekte) return <SeitenSkelett />;
 
-  const aktiv =
-    projekte.find((p) => p.plan.objektId === search.projekt) ?? projekte[0];
+  const aktiv = projekte.find((p) => p.plan.objektId === search.projekt);
+  const waehle = (id: string | undefined) =>
+    navigate({
+      search: { projekt: id },
+      replace: true,
+      resetScroll: false,
+    });
   const summe = (f: (p: AufteilerStand) => number) =>
     projekte.reduce((s, p) => s + f(p), 0);
 
@@ -117,23 +122,135 @@ export function AufteilerSeite() {
       <div className="nicht-drucken mb-6">
         <Segmente
           label="Projekt"
-          wert={aktiv.plan.objektId}
-          onChange={(id) =>
-            navigate({
-              search: { projekt: id },
-              replace: true,
-              resetScroll: false,
-            })
-          }
-          optionen={projekte.map((p) => ({
-            wert: p.plan.objektId,
-            label: p.plan.name,
-          }))}
+          wert={aktiv?.plan.objektId ?? "uebersicht"}
+          onChange={(id) => waehle(id === "uebersicht" ? undefined : id)}
+          optionen={[
+            { wert: "uebersicht", label: "Übersicht" },
+            ...projekte.map((p) => ({
+              wert: p.plan.objektId,
+              label: p.plan.name,
+            })),
+          ]}
         />
       </div>
 
-      <Projekt p={aktiv} />
+      {aktiv ? (
+        <Projekt p={aktiv} />
+      ) : (
+        <Uebersicht projekte={projekte} onWaehle={waehle} />
+      )}
     </>
+  );
+}
+
+function Uebersicht({
+  projekte,
+  onWaehle,
+}: {
+  projekte: AufteilerStand[];
+  onWaehle: (id: string) => void;
+}) {
+  const summe = (f: (p: AufteilerStand) => number) =>
+    projekte.reduce((s, p) => s + f(p), 0);
+  const investPlan = summe((p) => p.investitionPlan);
+  const investIst = summe((p) => p.ist.investition);
+  return (
+    <Abschnitt
+      titel="Alle Projekte"
+      beschreibung="Ein Projekt je Zeile. Zeile anklicken für Kosten, Wohnungen und Buchungen des Projekts."
+    >
+      <Karte className="overflow-x-auto">
+        <table className="w-full text-sm tabular-nums">
+          <thead>
+            <tr className="text-xs text-text-muted shadow-[inset_0_-1px_0_var(--hairline)]">
+              <th className="h-9 px-3 text-left font-medium">Projekt</th>
+              <th className={TH}>Gesamtinvestition</th>
+              <th className="w-36 px-3 text-left font-medium">
+                Investiert bisher
+              </th>
+              <th className={TH}>Erlös Base</th>
+              <th className={TH}>Gewinn Worst</th>
+              <th className={TH}>Gewinn Base</th>
+              <th className={TH}>Gewinn Best</th>
+              <th className={TH}>Marge Base</th>
+              <th className={TH}>Verkauft bisher</th>
+            </tr>
+          </thead>
+          <tbody>
+            {projekte.map((p) => (
+              <tr
+                key={p.plan.objektId}
+                onClick={() => onWaehle(p.plan.objektId)}
+                className="cursor-pointer shadow-[inset_0_-1px_0_var(--hairline)] hover:bg-surface-muted/60"
+              >
+                <td className="h-12 px-3">
+                  <div className="font-medium text-heading">{p.plan.name}</div>
+                  <div className="text-xs text-text-muted">
+                    {p.plan.einheiten.length} Wohnungen ·{" "}
+                    {flaeche(Math.round(p.flaeche))}
+                    {p.plan.kosten.finanzierung == null
+                      ? " · ohne Finanzierungskosten"
+                      : ""}
+                  </div>
+                </td>
+                <td className="px-3 text-right">
+                  {euroGanz(p.investitionPlan)}
+                </td>
+                <td className="px-3">
+                  <div className="mb-1 text-right text-xs">
+                    {euroGanz(p.ist.investition)}{" "}
+                    <span className="text-text-muted">
+                      ({prozent(p.ist.investition / p.investitionPlan, 0)})
+                    </span>
+                  </div>
+                  <Balken anteil={p.ist.investition / p.investitionPlan} />
+                </td>
+                <td className="px-3 text-right">{euroGanz(p.erloes.base)}</td>
+                <td
+                  className={cn(
+                    "px-3 text-right",
+                    p.gewinn.worst < 0 && "text-bad",
+                  )}
+                >
+                  {euroGanz(p.gewinn.worst)}
+                </td>
+                <td className="px-3 text-right font-semibold text-heading">
+                  {euroGanz(p.gewinn.base)}
+                </td>
+                <td className="px-3 text-right">{euroGanz(p.gewinn.best)}</td>
+                <td className="px-3 text-right">{prozent(p.marge.base, 1)}</td>
+                <td className="px-3 text-right">{euroGanz(p.ist.verkauf)}</td>
+              </tr>
+            ))}
+            <tr className="bg-surface-muted/40 font-semibold text-heading">
+              <td className="h-10 px-3">Summe</td>
+              <td className="px-3 text-right">{euroGanz(investPlan)}</td>
+              <td className="px-3 text-right text-xs">
+                {euroGanz(investIst)} ({prozent(investIst / investPlan, 0)})
+              </td>
+              <td className="px-3 text-right">
+                {euroGanz(summe((p) => p.erloes.base))}
+              </td>
+              <td className="px-3 text-right">
+                {euroGanz(summe((p) => p.gewinn.worst))}
+              </td>
+              <td className="px-3 text-right">
+                {euroGanz(summe((p) => p.gewinn.base))}
+              </td>
+              <td className="px-3 text-right">
+                {euroGanz(summe((p) => p.gewinn.best))}
+              </td>
+              <td className="px-3 text-right">
+                {prozent(summe((p) => p.gewinn.base) / investPlan, 1)}
+              </td>
+              <td className="px-3 text-right">
+                {euroGanz(summe((p) => p.ist.verkauf))}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </Karte>
+    </Abschnitt>
   );
 }
 

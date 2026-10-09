@@ -95,7 +95,7 @@ export const AUFTEILER_PLAENE: AufteilerPlan[] = [
     kosten: {
       // 1.200.000 € Kaufpreis + 6,5 % GrESt + 1,5 % Notar/Grundbuch
       grundstueck: 1_296_000,
-      // 100 €/m² auf 634 m²; das Blatt Modernisierungskosten nennt 318.000 €
+      // 100 €/m² auf 634 m² (bestätigt; nicht die 318.000 € aus dem Blatt Modernisierung)
       bau: 63_417.4,
       finanzierung: null,
       // 3 % Projektentwicklung
@@ -116,7 +116,7 @@ export const AUFTEILER_PLAENE: AufteilerPlan[] = [
     ],
     hinweise: [
       "Die Finanzierungskosten und damit Gewinn und ROE zeigen in der Excel #NAME? (Formel aus einem Add-in). Gewinn hier vor Finanzierung.",
-      "Baukosten: Das Budget rechnet mit 100 €/m² (63.417 €), das Blatt Modernisierungskosten nennt 318.000 €. Welcher Wert gilt?",
+      "Baukosten: Es gilt das Budget mit 100 €/m² (63.417 €), nicht das Blatt Modernisierungskosten (318.000 €). Von Maurice bestätigt am 09.10.2026.",
       "Der DCF nennt als Nutzen-Lasten-Übergang den 01.01.2024; bezahlt wurde der Kaufpreis am 01.09.2026.",
     ],
   },
