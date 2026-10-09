@@ -85,6 +85,40 @@ async function alleSeiten(
 }
 
 /**
+ * Exposés liegen in `postfach_exposes`, die RLS für Clients bewusst sperrt
+ * (nur Service Role). Deshalb über Bens Server-Funktion laden; scheitert das
+ * (z. B. Microsoft nicht verbunden), bleibt die Liste leer und das Board lädt
+ * trotzdem.
+ */
+async function exposesLaden(): Promise<{ rows: Row[]; fehler: string | null }> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return { rows: [], fehler: "Nicht angemeldet." };
+    const { postfachLadenFn } = await import("@/lib/postfach/server-fn");
+    const erg = await postfachLadenFn({ data: { supabaseAccessToken: token } });
+    return {
+      rows: erg.eintraege.map((e) => ({
+        id: e.id,
+        betreff: e.betreff,
+        absender_name: e.absenderName,
+        status: e.status,
+        eingegangen_am: e.eingegangenAm,
+        felder: e.felder,
+        salesforce_transaktion_id: null,
+        updated_at: e.analysiertAm ?? e.eingegangenAm,
+      })),
+      fehler: null,
+    };
+  } catch (e) {
+    return {
+      rows: [],
+      fehler: e instanceof Error ? e.message : "Unbekannter Fehler",
+    };
+  }
+}
+
+/**
  * Echte Datenquelle: Bens Tabellen im Schema `public` mit dem Benutzer-JWT.
  * RLS gilt wie in der übrigen App (Lesen für alle Angemeldeten, Schreiben
  * nach `jwt_darf_schreiben()`).
@@ -182,15 +216,7 @@ export class LiveRepository implements BoardRepository {
         fehlend,
       ),
       pflicht(db.from("einheiten_verkauf").select("*"), "einheiten_verkauf"),
-      pflicht(
-        db
-          .from("postfach_exposes")
-          .select(
-            "id, betreff, absender_name, status, eingegangen_am, felder, salesforce_transaktion_id, updated_at",
-          )
-          .order("eingegangen_am", { ascending: false }),
-        "postfach_exposes",
-      ),
+      exposesLaden(),
       pflicht(db.from("profiles").select("id, name"), "profiles"),
       optional(db.from("maschinen").select("*"), "maschinen", fehlend),
       optional(
@@ -270,7 +296,8 @@ export class LiveRepository implements BoardRepository {
       ankaufPipeline,
       objektVerkauf,
       einheitenVerkauf,
-      exposes,
+      exposes: exposes.rows,
+      exposesFehler: exposes.fehler,
       profiles,
       maschinen,
       maschinenKosten,

@@ -137,6 +137,12 @@ describe("Abbildung von Bens Tabellen", () => {
     expect(o.strategyGesetzt).toBe(false);
   });
 
+  it("lädt weiter, wenn das Exposé-Postfach nicht lesbar ist", () => {
+    const d = abbilden(roh({ exposesFehler: "Postfach nicht verbunden" }));
+    expect(d.crm.exposes).toEqual([]);
+    expect(d.luecken.map((l) => l.id)).toContain("system:exposes");
+  });
+
   it("liefert je Quelle einen Datenstand", () => {
     const d = abbilden(roh());
     expect(d.datenstand.map((q) => q.id)).toEqual(
