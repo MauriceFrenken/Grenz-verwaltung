@@ -66,7 +66,7 @@ export function Breadcrumb() {
   return (
     <nav
       aria-label="Brotkrumen"
-      className="flex items-center gap-1 text-xs text-stage-muted"
+      className="flex items-center gap-1 text-xs text-text-muted"
     >
       {segmente.map((path, idx) => {
         const label = LABELS[path] ?? "…";
@@ -74,12 +74,12 @@ export function Breadcrumb() {
         return (
           <span key={path} className="flex items-center gap-1">
             {idx > 0 ? (
-              <ChevronRight className="h-3 w-3 text-stage-line" />
+              <ChevronRight className="h-3 w-3 text-text-subtle" />
             ) : null}
             {istLetztes ? (
-              <span className="text-stage-foreground">{label}</span>
+              <span className="text-heading">{label}</span>
             ) : (
-              <Link to={path} className="hover:text-stage-foreground">
+              <Link to={path} className="hover:text-heading">
                 {label}
               </Link>
             )}

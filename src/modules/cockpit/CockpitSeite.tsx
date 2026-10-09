@@ -4,19 +4,16 @@ import {
   ArrowRight,
   CalendarClock,
   DatabaseZap,
-  Gavel,
   ListChecks,
 } from "lucide-react";
 import {
   Buehne,
   Countdown,
-  Etikett,
   GrosseZahl,
   GrosserBetrag,
-  Laufband,
   LivePunkt,
   LosKarte,
-} from "@/components/board/Auktion";
+} from "@/components/board/Bausteine";
 import { ZeitreihenDiagramm } from "@/components/board/Diagramm";
 import { Karte, Kennzahlen } from "@/components/board/Layout";
 import { Leerzustand } from "@/components/board/Leerzustand";
@@ -59,29 +56,47 @@ import { fristenBis, kapitalbindung, letzteBuchungen } from "./logik/antworten";
 import { saalLose } from "./SaalLose";
 import { useRechnungsfreigabeOffen } from "./useRechnungsfreigabe";
 
-/** Orange-Abstufungen für die Kapitalbindung (größter Posten in Signal-Orange). */
-const BINDUNG_FARBEN = ["#ff6600", "#ff9a52", "#ffc699", "#a3a3ad", "#6b6b75"];
+/** Indigo-Abstufungen für die Kapitalbindung (größter Posten im Akzent). */
+const BINDUNG_FARBEN = ["#4f5bd5", "#8790e3", "#b9bff0", "#a3a3a3", "#d4d4d4"];
 
 function AntwortKopf({
-  nr,
   titel,
+  frage,
   href,
 }: {
-  nr: string;
   titel: string;
+  frage: string;
   href: string;
 }) {
   return (
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <h2 className="text-sm font-semibold text-heading">{titel}</h2>
+        <p className="text-xs text-text-muted">{frage}</p>
+      </div>
+      <Link
+        to={href}
+        className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-text-muted transition-colors hover:bg-surface-muted hover:text-heading"
+      >
+        Öffnen <ArrowRight className="size-3.5" aria-hidden />
+      </Link>
+    </div>
+  );
+}
+
+function HinweisLink({
+  to,
+  children,
+}: {
+  to: string;
+  children: React.ReactNode;
+}) {
+  return (
     <Link
-      to={href}
-      className="group flex items-center gap-2 text-stage-muted hover:text-stage-foreground"
+      to={to}
+      className="inline-flex h-6 items-center rounded-full border border-hairline px-2.5 text-[11px] text-text-muted transition-colors hover:border-input hover:text-heading"
     >
-      <span className="ziffern text-[11px] font-semibold text-brand">{nr}</span>
-      <Etikett>{titel}</Etikett>
-      <ArrowRight
-        className="size-3.5 opacity-0 transition-opacity group-hover:opacity-100"
-        aria-hidden
-      />
+      {children}
     </Link>
   );
 }
@@ -285,27 +300,21 @@ export function CockpitSeite() {
 
   return (
     <>
-      <Buehne className="mb-0 pb-8">
-        <div className="flex flex-wrap items-start justify-between gap-6">
+      <Buehne>
+        <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="min-w-0">
-            <div className="mb-2 flex items-center gap-2 text-brand">
+            <div className="mb-2 flex items-center gap-2 text-xs text-text-muted">
               <LivePunkt />
-              <Etikett>
-                Live
-                <span className="mx-2 text-stage-line">/</span>
-                <span className="text-stage-muted">
-                  {bankStand
-                    ? `Bankstand ${datum(bankStand.slice(0, 10))}`
-                    : daten.quelle === "mock"
-                      ? "Demodaten"
-                      : "Bankstand unbekannt"}
-                </span>
-              </Etikett>
+              {bankStand
+                ? `Bankstand ${datum(bankStand.slice(0, 10))}`
+                : daten.quelle === "mock"
+                  ? "Demodaten"
+                  : "Bankstand unbekannt"}
             </div>
-            <h1 className="text-[34px] font-semibold leading-tight tracking-[-0.03em] text-stage-foreground">
+            <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.025em] text-heading">
               {gruss()}
             </h1>
-            <p className="mt-1 text-sm text-stage-muted">
+            <p className="mt-1 text-sm text-text-muted">
               {datumLang(stichtag)} ·{" "}
               {filter.alle
                 ? "Gruppe (frei verfügbar, ohne Maklerbereich)"
@@ -314,295 +323,285 @@ export function CockpitSeite() {
             </p>
           </div>
           {naechste ? (
-            <div className="min-w-[240px] border border-stage-line bg-stage-raised px-4 py-3">
-              <Etikett className="text-stage-muted">Nächste Zahlung</Etikett>
-              <div className="mt-1.5 text-[26px] font-semibold leading-none tracking-[-0.02em]">
+            <div className="min-w-[260px] rounded-lg border border-hairline bg-surface px-4 py-3 schatten-karte">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-xs text-text-muted">Nächste Zahlung</span>
                 <Countdown
                   ziel={naechste.datum}
                   stichtag={stichtag}
-                  className="text-brand"
+                  className="text-xs font-medium"
                 />
               </div>
-              <div className="mt-2 flex items-baseline justify-between gap-3 text-xs text-stage-muted">
-                <span className="max-w-[200px] truncate">{naechste.label}</span>
-                <span className="ziffern shrink-0 font-semibold text-stage-foreground">
-                  {euro(naechste.betrag)}
-                </span>
+              <div className="ziffern mt-1 text-xl font-semibold tracking-[-0.02em] text-heading">
+                {euro(naechste.betrag)}
+              </div>
+              <div className="mt-0.5 max-w-[260px] truncate text-xs text-text-muted">
+                {naechste.label}
               </div>
             </div>
           ) : null}
         </div>
-
-        {top ? (
-          <Link
-            to={top.href}
-            className="group mt-6 flex max-w-4xl items-start gap-3 text-[17px] leading-snug text-stage-foreground"
-          >
-            <AmpelPunkt ampel={top.ampel} className="mt-2" />
-            <span className="flex-1 group-hover:underline group-hover:decoration-brand group-hover:underline-offset-4">
-              {top.text}
-            </span>
-          </Link>
-        ) : null}
-
-        {daten.quelle === "live" && lueckenRot ? (
-          <Link
-            to="/board/daten"
-            className="mt-4 inline-flex items-center gap-2 border border-bad/50 px-3 py-1.5 text-xs text-[#ff8a80] hover:border-bad"
-          >
-            <DatabaseZap className="size-3.5 shrink-0" aria-hidden />
-            {lueckenRot} kritische Datenlücke{lueckenRot > 1 ? "n" : ""}:
-            betroffene Zahlen sind markiert
-            <ArrowRight className="size-3.5 shrink-0" aria-hidden />
-          </Link>
-        ) : null}
-
-        <div className="mt-8 grid gap-8 border-t border-stage-line pt-6 *:min-w-0 lg:grid-cols-3 lg:gap-0 lg:*:px-6 lg:*:first:pl-0 lg:*:last:pr-0 lg:[&>*+*]:border-l lg:[&>*+*]:border-stage-line">
-          {/* 01 Geld */}
-          <div>
-            <AntwortKopf nr="01" titel="Geld" href="/board/liquiditaet" />
-            <div
-              className="mt-3 text-[46px] font-semibold leading-none tracking-[-0.035em]"
-              title={quelle("kontosalden")}
-            >
-              <GrosserBetrag wert={heute} />
-            </div>
-            <p className="ziffern mt-2 text-xs text-stage-muted">
-              frei heute · Tiefpunkt 13 Wochen{" "}
-              <span
-                className={cn(
-                  "font-semibold",
-                  liqAmpel(tief13.saldo) === "rot"
-                    ? "text-[#ff8a80]"
-                    : "text-stage-foreground",
-                )}
-              >
-                {euroKompakt(tief13.saldo)}
-              </span>{" "}
-              am {datum(tief13.datum)}
-            </p>
-            <p className="mt-0.5 text-xs text-stage-muted">{liqHinweis}</p>
-            <ul className="mt-4 space-y-2">
-              {geldKreis.map((g) => (
-                <li key={g.company.id} className="text-xs">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-stage-muted">
-                      <span className="mr-1.5 font-semibold text-stage-foreground">
-                        {g.company.shortName}
-                      </span>
-                      {g.company.name}
-                    </span>
-                    <span className="ziffern shrink-0 text-stage-foreground">
-                      {euroKompakt(g.heute)}
-                    </span>
-                  </div>
-                  <div className="relative mt-1 h-1 bg-stage-line">
-                    <div
-                      className={cn(
-                        "absolute inset-y-0 left-0",
-                        g.ampel === "rot"
-                          ? "bg-bad"
-                          : g.ampel === "gelb"
-                            ? "bg-warn"
-                            : "bg-stage-foreground/80",
-                      )}
-                      style={{
-                        width: `${Math.max(0, Math.min(100, (g.heute / geldMax) * 100))}%`,
-                      }}
-                    />
-                    {g.company.minLiquidityGesetzt ? (
-                      <div
-                        className="absolute -inset-y-1 w-px bg-brand"
-                        style={{
-                          left: `${Math.min(100, (g.company.minLiquidity / geldMax) * 100)}%`,
-                        }}
-                        title={`Mindestliquidität ${euroKompakt(g.company.minLiquidity)}`}
-                      />
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-            {geldKreis.some((g) => g.company.minLiquidityGesetzt) ? (
-              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-stage-muted">
-                <span
-                  className="inline-block h-2.5 w-px bg-brand"
-                  aria-hidden
-                />
-                Mindestliquidität
-              </p>
-            ) : null}
-          </div>
-
-          {/* 02 Risiko */}
-          <div>
-            <AntwortKopf nr="02" titel="Risiko" href="/board/darlehen" />
-            <div className="mt-3 flex items-baseline gap-5">
-              <div>
-                <div className="text-[46px] font-semibold leading-none tracking-[-0.035em]">
-                  <GrosseZahl wert={fristen90.length} />
-                </div>
-                <div className="mt-1 text-xs text-stage-muted">
-                  Fristen ≤ 90 Tage
-                </div>
-              </div>
-              <div>
-                <div
-                  className={cn(
-                    "text-[46px] font-semibold leading-none tracking-[-0.035em]",
-                    rot.length ? "text-[#ff8a80]" : "",
-                  )}
-                >
-                  <GrosseZahl wert={rot.length} />
-                </div>
-                <div className="mt-1 text-xs text-stage-muted">
-                  rote Prüffälle
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 mb-1 text-[11px] text-stage-muted">
-              Nächste Fristen (12 Monate)
-            </div>
-            <ul className="divide-y divide-stage-line border-y border-stage-line">
-              {fristenJahr.slice(0, 4).map((f) => (
-                <li key={f.stand.loan.id}>
-                  <Link
-                    to="/board/darlehen"
-                    search={{ darlehen: f.stand.loan.id } as never}
-                    className="flex items-center gap-3 py-2 text-xs hover:bg-stage-raised"
-                  >
-                    <span className="ziffern w-[86px] shrink-0 font-semibold text-stage-foreground">
-                      {f.stand.loan.id}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-stage-muted">
-                      {f.ereignis} · {kurzName(f.stand.loan.borrowerCompanyId)}{" "}
-                      · {euroKompakt(f.stand.restschuld)}
-                    </span>
-                    <Countdown
-                      ziel={f.datum}
-                      stichtag={stichtag}
-                      className="text-stage-foreground"
-                    />
-                  </Link>
-                </li>
-              ))}
-              {fristenJahr.length === 0 ? (
-                <li className="py-2 text-xs text-stage-muted">
-                  Keine Fristen in den nächsten 12 Monaten.
-                </li>
-              ) : null}
-            </ul>
-            <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-stage-muted">
-              <Link
-                to="/board/pruefliste"
-                className="hover:text-stage-foreground"
-              >
-                {offen.length} offene Prüffälle
-              </Link>
-              <Link to="/board/daten" className="hover:text-stage-foreground">
-                {daten.luecken.length} Datenlücken ({lueckenRot} kritisch)
-              </Link>
-              {rechnungenOffen != null ? (
-                <Link
-                  to="/dokumente/rechnungsfreigabe"
-                  className="hover:text-stage-foreground"
-                >
-                  {rechnungenOffen} Rechnungen zur Freigabe
-                </Link>
-              ) : null}
-            </p>
-          </div>
-
-          {/* 03 Kapitalbindung */}
-          <div>
-            <AntwortKopf
-              nr="03"
-              titel="Kapitalbindung"
-              href="/board/darlehen"
-            />
-            <div className="mt-3 text-[46px] font-semibold leading-none tracking-[-0.035em]">
-              <GrosserBetrag wert={bindung.summe} />
-            </div>
-            <p className="mt-2 text-xs text-stage-muted">
-              interne Darlehen der Holding an die Segmente
-            </p>
-            {bindung.posten.length ? (
-              <>
-                <div
-                  className="mt-4 flex h-2.5 w-full gap-px"
-                  role="img"
-                  aria-label={bindung.posten
-                    .map((p) => `${p.label} ${prozent(p.anteil, 0)}`)
-                    .join(", ")}
-                >
-                  {bindung.posten.map((p, i) => (
-                    <div
-                      key={p.segment}
-                      className="h-full"
-                      style={{
-                        width: `${p.anteil * 100}%`,
-                        background: BINDUNG_FARBEN[i % BINDUNG_FARBEN.length],
-                      }}
-                    />
-                  ))}
-                </div>
-                <ul className="mt-3 space-y-1.5">
-                  {bindung.posten.map((p, i) => (
-                    <li
-                      key={p.segment}
-                      className="flex items-center gap-2 text-xs"
-                    >
-                      <span
-                        className="size-2 shrink-0"
-                        style={{
-                          background: BINDUNG_FARBEN[i % BINDUNG_FARBEN.length],
-                        }}
-                        aria-hidden
-                      />
-                      <span className="min-w-0 flex-1 truncate text-stage-muted">
-                        {p.label}
-                      </span>
-                      <span className="ziffern text-stage-foreground">
-                        {euroKompakt(p.betrag)}
-                      </span>
-                      <span className="ziffern w-10 text-right font-semibold text-stage-foreground">
-                        {prozent(p.anteil, 0)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {bindung.posten[0].anteil >= 0.5 ? (
-                  <p className="mt-3 border-l-2 border-brand pl-2.5 text-xs text-stage-foreground">
-                    {prozent(bindung.posten[0].anteil, 0)} stecken in{" "}
-                    {bindung.posten[0].label}.
-                    {bindung.posten[0].segment.startsWith("baumaschinen") &&
-                    daten.machines.length === 0
-                      ? " Zu Bestand und Standzeit gibt es noch keine Zahl."
-                      : ""}
-                  </p>
-                ) : null}
-              </>
-            ) : (
-              <p className="mt-4 text-xs text-stage-muted">
-                Keine internen Darlehen der Holding.
-              </p>
-            )}
-          </div>
-        </div>
       </Buehne>
 
-      <Laufband
-        eintraege={ticker.map((t) => ({
-          id: t.id,
-          datum: tagKurz(t.datum),
-          kuerzel: t.kuerzel,
-          text: t.text,
-          betrag: t.betrag,
-        }))}
-        format={euroMitVorzeichen}
-      />
+      {top || (daten.quelle === "live" && lueckenRot) ? (
+        <div className="mb-6 space-y-2">
+          {top ? (
+            <Link
+              to={top.href}
+              className="group flex items-start gap-3 rounded-lg border border-hairline bg-surface px-4 py-3 text-sm text-heading schatten-karte transition-colors hover:border-input"
+            >
+              <AmpelPunkt ampel={top.ampel} className="mt-1.5" />
+              <span className="flex-1">{top.text}</span>
+              <ArrowRight
+                className="mt-0.5 size-4 shrink-0 text-text-subtle transition-colors group-hover:text-heading"
+                aria-hidden
+              />
+            </Link>
+          ) : null}
+          {daten.quelle === "live" && lueckenRot ? (
+            <Link
+              to="/board/daten"
+              className="flex items-center gap-3 rounded-lg border border-bad/20 bg-bad-soft px-4 py-2.5 text-sm text-bad hover:border-bad/40"
+            >
+              <DatabaseZap className="size-4 shrink-0" aria-hidden />
+              <span className="flex-1">
+                {lueckenRot} kritische Datenlücke{lueckenRot > 1 ? "n" : ""}:
+                betroffene Zahlen sind markiert
+              </span>
+              <ArrowRight className="size-4 shrink-0" aria-hidden />
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
 
-      <div className="mb-8 grid gap-3 *:min-w-0 lg:grid-cols-3">
+      <div className="mb-6 grid gap-4 *:min-w-0 lg:grid-cols-3">
+        {/* Geld */}
+        <Karte className="flex flex-col p-5">
+          <AntwortKopf
+            titel="Geld"
+            frage="Wie viel ist frei?"
+            href="/board/liquiditaet"
+          />
+          <div
+            className="mt-4 text-[32px] font-semibold leading-none tracking-[-0.03em] text-heading"
+            title={quelle("kontosalden")}
+          >
+            <GrosserBetrag wert={heute} />
+          </div>
+          <p className="ziffern mt-2 text-xs text-text-muted">
+            frei heute · Tiefpunkt 13 Wochen{" "}
+            <span
+              className={cn(
+                "font-medium",
+                liqAmpel(tief13.saldo) === "rot" ? "text-bad" : "text-heading",
+              )}
+            >
+              {euroKompakt(tief13.saldo)}
+            </span>{" "}
+            am {datum(tief13.datum)}
+          </p>
+          <p className="mt-0.5 text-xs text-text-muted">{liqHinweis}</p>
+          <ul className="mt-5 space-y-3 border-t border-hairline pt-4">
+            {geldKreis.map((g) => (
+              <li key={g.company.id} className="text-xs">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="truncate text-text-muted">
+                    <span className="mr-1.5 font-medium text-heading">
+                      {g.company.shortName}
+                    </span>
+                    {g.company.name}
+                  </span>
+                  <span className="ziffern shrink-0 text-heading">
+                    {euroKompakt(g.heute)}
+                  </span>
+                </div>
+                <div className="relative mt-1.5 h-1.5 rounded-full bg-surface-muted">
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 rounded-full",
+                      g.ampel === "rot"
+                        ? "bg-bad"
+                        : g.ampel === "gelb"
+                          ? "bg-warn"
+                          : "bg-brand",
+                    )}
+                    style={{
+                      width: `${Math.max(0, Math.min(100, (g.heute / geldMax) * 100))}%`,
+                    }}
+                  />
+                  {g.company.minLiquidityGesetzt ? (
+                    <div
+                      className="absolute -inset-y-0.5 w-0.5 rounded-full bg-heading"
+                      style={{
+                        left: `${Math.min(100, (g.company.minLiquidity / geldMax) * 100)}%`,
+                      }}
+                      title={`Mindestliquidität ${euroKompakt(g.company.minLiquidity)}`}
+                    />
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {geldKreis.some((g) => g.company.minLiquidityGesetzt) ? (
+            <p className="mt-3 flex items-center gap-1.5 text-[11px] text-text-muted">
+              <span
+                className="inline-block h-2.5 w-0.5 rounded-full bg-heading"
+                aria-hidden
+              />
+              Mindestliquidität
+            </p>
+          ) : null}
+        </Karte>
+
+        {/* Risiko */}
+        <Karte className="flex flex-col p-5">
+          <AntwortKopf
+            titel="Risiko"
+            frage="Was läuft ab?"
+            href="/board/darlehen"
+          />
+          <div className="mt-4 flex items-baseline gap-8">
+            <div>
+              <div className="text-[32px] font-semibold leading-none tracking-[-0.03em] text-heading">
+                <GrosseZahl wert={fristen90.length} />
+              </div>
+              <div className="mt-2 text-xs text-text-muted">
+                Fristen ≤ 90 Tage
+              </div>
+            </div>
+            <div>
+              <div
+                className={cn(
+                  "text-[32px] font-semibold leading-none tracking-[-0.03em]",
+                  rot.length ? "text-bad" : "text-heading",
+                )}
+              >
+                <GrosseZahl wert={rot.length} />
+              </div>
+              <div className="mt-2 text-xs text-text-muted">rote Prüffälle</div>
+            </div>
+          </div>
+          <div className="mt-5 border-t border-hairline pt-4 text-xs font-medium text-text-muted">
+            Nächste Fristen (12 Monate)
+          </div>
+          <ul className="-mx-2 mt-1.5">
+            {fristenJahr.slice(0, 4).map((f) => (
+              <li key={f.stand.loan.id}>
+                <Link
+                  to="/board/darlehen"
+                  search={{ darlehen: f.stand.loan.id } as never}
+                  className="flex items-center gap-3 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-surface-muted"
+                >
+                  <span className="ziffern w-[86px] shrink-0 font-medium text-heading">
+                    {f.stand.loan.id}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-text-muted">
+                    {f.ereignis} · {kurzName(f.stand.loan.borrowerCompanyId)} ·{" "}
+                    {euroKompakt(f.stand.restschuld)}
+                  </span>
+                  <Countdown ziel={f.datum} stichtag={stichtag} />
+                </Link>
+              </li>
+            ))}
+            {fristenJahr.length === 0 ? (
+              <li className="px-2 py-1.5 text-xs text-text-muted">
+                Keine Fristen in den nächsten 12 Monaten.
+              </li>
+            ) : null}
+          </ul>
+          <div className="mt-auto flex flex-wrap gap-1.5 pt-4">
+            <HinweisLink to="/board/pruefliste">
+              {offen.length} offene Prüffälle
+            </HinweisLink>
+            <HinweisLink to="/board/daten">
+              {daten.luecken.length} Datenlücken ({lueckenRot} kritisch)
+            </HinweisLink>
+            {rechnungenOffen != null ? (
+              <HinweisLink to="/dokumente/rechnungsfreigabe">
+                {rechnungenOffen} Rechnungen zur Freigabe
+              </HinweisLink>
+            ) : null}
+          </div>
+        </Karte>
+
+        {/* Kapitalbindung */}
+        <Karte className="flex flex-col p-5">
+          <AntwortKopf
+            titel="Kapitalbindung"
+            frage="Wo steckt das Geld?"
+            href="/board/darlehen"
+          />
+          <div className="mt-4 text-[32px] font-semibold leading-none tracking-[-0.03em] text-heading">
+            <GrosserBetrag wert={bindung.summe} />
+          </div>
+          <p className="mt-2 text-xs text-text-muted">
+            interne Darlehen der Holding an die Segmente
+          </p>
+          {bindung.posten.length ? (
+            <div className="mt-5 border-t border-hairline pt-4">
+              <div
+                className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full"
+                role="img"
+                aria-label={bindung.posten
+                  .map((p) => `${p.label} ${prozent(p.anteil, 0)}`)
+                  .join(", ")}
+              >
+                {bindung.posten.map((p, i) => (
+                  <div
+                    key={p.segment}
+                    className="h-full"
+                    style={{
+                      width: `${p.anteil * 100}%`,
+                      background: BINDUNG_FARBEN[i % BINDUNG_FARBEN.length],
+                    }}
+                  />
+                ))}
+              </div>
+              <ul className="mt-4 space-y-2">
+                {bindung.posten.map((p, i) => (
+                  <li
+                    key={p.segment}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{
+                        background: BINDUNG_FARBEN[i % BINDUNG_FARBEN.length],
+                      }}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1 truncate text-text-muted">
+                      {p.label}
+                    </span>
+                    <span className="ziffern text-heading">
+                      {euroKompakt(p.betrag)}
+                    </span>
+                    <span className="ziffern w-10 text-right text-text-muted">
+                      {prozent(p.anteil, 0)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {bindung.posten[0].anteil >= 0.5 ? (
+                <p className="mt-4 rounded-md bg-surface-muted px-3 py-2 text-xs text-heading">
+                  {prozent(bindung.posten[0].anteil, 0)} stecken in{" "}
+                  {bindung.posten[0].label}.
+                  {bindung.posten[0].segment.startsWith("baumaschinen") &&
+                  daten.machines.length === 0
+                    ? " Zu Bestand und Standzeit gibt es noch keine Zahl."
+                    : ""}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-4 text-xs text-text-muted">
+              Keine internen Darlehen der Holding.
+            </p>
+          )}
+        </Karte>
+      </div>
+
+      <div className="mb-6 grid gap-4 *:min-w-0 lg:grid-cols-3">
         <SegmentKarte titel="Immobilien" href="/board/immobilien">
           <Kennzahlen
             eintraege={[
@@ -693,23 +692,21 @@ export function CockpitSeite() {
       </div>
 
       {lose.length ? (
-        <section className="mb-8">
+        <section className="mb-6">
           <div className="mb-3 flex items-end justify-between gap-3">
             <div>
-              <h2 className="flex items-center gap-2 text-[15px] font-semibold text-heading">
-                <Gavel className="size-4 text-brand-text" aria-hidden />
-                Im Saal
+              <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-heading">
+                Anstehend
               </h2>
               <p className="mt-0.5 text-xs text-text-muted">
-                Die nächsten Lose: Fristen, Deals und Maschinen, nach
-                Dringlichkeit
+                Fristen, Deals und Maschinen, nach Dringlichkeit
               </p>
             </div>
             <Link
               to="/board/runde"
-              className="text-xs text-brand-text hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-medium text-brand-text hover:underline"
             >
-              Zur Wochenrunde
+              Zur Wochenrunde <ArrowRight className="size-3.5" aria-hidden />
             </Link>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -721,7 +718,7 @@ export function CockpitSeite() {
       ) : null}
 
       {aussagen.length > 1 ? (
-        <Karte className="mb-8 p-5">
+        <Karte className="mb-6 p-5">
           <h2 className="mb-3 text-[15px] font-semibold text-heading">
             Lagebild
           </h2>
@@ -747,7 +744,7 @@ export function CockpitSeite() {
         </Karte>
       ) : null}
 
-      <div className="mb-8 grid gap-4 *:min-w-0 xl:grid-cols-2">
+      <div className="mb-6 grid gap-4 *:min-w-0 xl:grid-cols-2">
         <Karte className="p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-[15px] font-semibold text-heading">
@@ -805,7 +802,7 @@ export function CockpitSeite() {
             </h2>
             <Link
               to="/board/pruefliste"
-              className="text-xs text-primary hover:underline"
+              className="text-xs font-medium text-brand-text hover:underline"
             >
               Alle {offen.length} ansehen
             </Link>
@@ -844,36 +841,75 @@ export function CockpitSeite() {
         </Karte>
       </div>
 
-      <Karte className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-heading">
-            Liquidität nächste 13 Wochen
-          </h2>
-          <Link
-            to="/board/liquiditaet"
-            className="text-xs text-primary hover:underline"
-          >
-            Planung öffnen
-          </Link>
-        </div>
-        <ZeitreihenDiagramm
-          label="Liquidität 13 Wochen"
-          daten={kurz.map((p) => ({ x: p.datum, saldo: p.wert }))}
-          xSchluessel="x"
-          xFormat={tagKurz}
-          hoehe={220}
-          kompakt
-          referenz={{ wert: min, label: "Mindestliquidität" }}
-          reihen={[
-            {
-              schluessel: "saldo",
-              label: "Saldo",
-              farbe: "var(--brand)",
-              flaeche: true,
-            },
-          ]}
-        />
-      </Karte>
+      <div className="grid gap-4 *:min-w-0 xl:grid-cols-[1.4fr_1fr]">
+        <Karte className="p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-[15px] font-semibold text-heading">
+              Liquidität nächste 13 Wochen
+            </h2>
+            <Link
+              to="/board/liquiditaet"
+              className="text-xs font-medium text-brand-text hover:underline"
+            >
+              Planung öffnen
+            </Link>
+          </div>
+          <ZeitreihenDiagramm
+            label="Liquidität 13 Wochen"
+            daten={kurz.map((p) => ({ x: p.datum, saldo: p.wert }))}
+            xSchluessel="x"
+            xFormat={tagKurz}
+            hoehe={220}
+            kompakt
+            referenz={{ wert: min, label: "Mindestliquidität" }}
+            reihen={[
+              {
+                schluessel: "saldo",
+                label: "Saldo",
+                farbe: "var(--brand)",
+                flaeche: true,
+              },
+            ]}
+          />
+        </Karte>
+        <Karte className="p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-[15px] font-semibold text-heading">
+              Letzte Buchungen
+            </h2>
+            <span className="text-xs text-text-muted">Bankumsätze</span>
+          </div>
+          {ticker.length === 0 ? (
+            <p className="py-6 text-center text-sm text-text-muted">
+              Noch keine Bankumsätze.
+            </p>
+          ) : (
+            <ul className="divide-y divide-hairline">
+              {ticker.slice(0, 7).map((t) => (
+                <li key={t.id} className="flex items-center gap-3 py-2 text-xs">
+                  <span className="ziffern w-12 shrink-0 text-text-muted">
+                    {tagKurz(t.datum)}
+                  </span>
+                  <span className="w-9 shrink-0 font-medium text-heading">
+                    {t.kuerzel}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-text-muted">
+                    {t.text}
+                  </span>
+                  <span
+                    className={cn(
+                      "ziffern shrink-0 font-medium",
+                      t.betrag >= 0 ? "text-ok" : "text-heading",
+                    )}
+                  >
+                    {euroMitVorzeichen(t.betrag)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Karte>
+      </div>
     </>
   );
 }
@@ -891,7 +927,10 @@ function SegmentKarte({
     <Karte className="p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-[15px] font-semibold text-heading">{titel}</h2>
-        <Link to={href} className="text-xs text-primary hover:underline">
+        <Link
+          to={href}
+          className="text-xs font-medium text-brand-text hover:underline"
+        >
           Öffnen
         </Link>
       </div>

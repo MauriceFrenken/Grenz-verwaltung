@@ -477,7 +477,7 @@ function VorschlagDetail({
       }
     >
       <PanelAbschnitt titel="Mail">
-        <div className=" border border-hairline bg-surface-muted/50 p-3 text-sm leading-relaxed">
+        <div className="rounded-lg border border-hairline bg-surface-muted/50 p-3 text-sm leading-relaxed">
           {v.mail.text}
         </div>
         {v.mail.anhang ? (

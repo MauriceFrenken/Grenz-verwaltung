@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import { DatenTabelle, type Spalte } from "@/components/board/DatenTabelle";
 import { DetailPanel, PanelAbschnitt } from "@/components/board/DetailPanel";
 import { Knopf } from "@/components/board/Knopf";
-import { GrosserBetrag, LosKarte } from "@/components/board/Auktion";
+import { GrosserBetrag, LosKarte } from "@/components/board/Bausteine";
 import {
   Abschnitt,
   BuehnenKennzahl,
@@ -234,10 +234,10 @@ export function BaumaschinenSeite() {
             </div>
             {handel.icFinanzierung > 0 ? (
               <div className="mt-6">
-                <div className="mb-1.5 flex justify-between text-[11px] text-stage-muted">
+                <div className="mb-1.5 flex justify-between text-[11px] text-text-muted">
                   <span>
                     Lagerwert deckt{" "}
-                    <span className="font-semibold text-stage-foreground">
+                    <span className="font-semibold text-heading">
                       {prozent(handel.lagerwert / handel.icFinanzierung, 0)}
                     </span>{" "}
                     der Finanzierung durch die Gruppe
@@ -247,7 +247,7 @@ export function BaumaschinenSeite() {
                     {euroKompakt(handel.icFinanzierung)}
                   </span>
                 </div>
-                <div className="relative h-1.5 bg-stage-line">
+                <div className="relative h-1.5 bg-hairline">
                   <div
                     className="absolute inset-y-0 left-0 bg-brand"
                     style={{
@@ -299,7 +299,7 @@ export function BaumaschinenSeite() {
                   wert={ansicht}
                   onChange={setAnsicht}
                   optionen={[
-                    { wert: "saal", label: "Saal" },
+                    { wert: "saal", label: "Karten" },
                     { wert: "tabelle", label: "Tabelle" },
                   ]}
                 />

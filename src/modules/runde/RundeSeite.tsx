@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { Countdown } from "@/components/board/Auktion";
+import { Countdown } from "@/components/board/Bausteine";
 import { Knopf } from "@/components/board/Knopf";
 import { BuehnenKennzahl, Karte, SeitenKopf } from "@/components/board/Layout";
 import { Leerzustand } from "@/components/board/Leerzustand";
@@ -28,7 +28,7 @@ import {
 import { useBeschlussAktionen, useRunde } from "./useRunde";
 
 const FELD =
-  "mt-1 h-9 w-full border border-hairline bg-surface px-2.5 text-sm text-foreground outline-none focus:border-heading";
+  "mt-1 h-9 w-full rounded-md border border-input bg-surface px-2.5 text-sm text-foreground shadow-[0_1px_2px_0_rgb(0_0_0/0.03)] outline-none transition-[border-color,box-shadow] focus:border-brand focus:ring-3 focus:ring-brand/15";
 
 export function RundeSeite() {
   const { lage, eingabe, punkte, beschluesse, fehler, laedt } = useRunde();
@@ -88,7 +88,7 @@ export function RundeSeite() {
               <Countdown
                 ziel={am}
                 stichtag={stichtag}
-                className="text-stage-foreground"
+                className="text-heading"
               />
             }
             hinweis={datum(am)}
@@ -191,33 +191,20 @@ function TopKarte({
   const extern = p.href.startsWith("/");
   return (
     <li className="break-inside-avoid">
-      <Karte className="relative grid gap-x-4 gap-y-3 p-5 sm:grid-cols-[56px_minmax(0,1fr)] xl:grid-cols-[72px_minmax(0,1fr)_160px]">
-        <span
-          className={cn(
-            "absolute inset-y-0 left-0 w-[3px]",
-            p.ampel === "rot"
-              ? "bg-bad"
-              : p.ampel === "gelb"
-                ? "bg-warn"
-                : p.ampel === "gruen"
-                  ? "bg-ok"
-                  : "bg-hairline",
-          )}
-          aria-hidden
-        />
-        <div className="ziffern text-[32px] font-semibold leading-none tracking-[-0.04em] text-brand-text xl:text-[40px]">
+      <Karte className="relative grid gap-x-4 gap-y-3 p-5 sm:grid-cols-[36px_minmax(0,1fr)] xl:grid-cols-[40px_minmax(0,1fr)_160px]">
+        <div className="ziffern flex size-7 items-center justify-center rounded-md bg-surface-muted text-xs font-semibold text-text-muted">
           {String(p.nr).padStart(2, "0")}
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <AmpelPunkt ampel={p.ampel} />
-            <h3 className="text-[16px] font-semibold text-heading">
+            <h3 className="text-[15px] font-semibold text-heading">
               {p.titel}
             </h3>
             {extern ? (
               <Link
                 to={p.href}
-                className="nicht-drucken ml-1 text-text-subtle hover:text-brand-text"
+                className="nicht-drucken ml-1 text-text-subtle hover:text-heading"
                 aria-label={`${p.titel} öffnen`}
               >
                 <ArrowUpRight className="size-4" />
@@ -226,7 +213,7 @@ function TopKarte({
           </div>
           <p className="mt-1.5 text-sm text-foreground">{p.aussage}</p>
           {p.zeilen.length ? (
-            <ul className="mt-3 divide-y divide-hairline border-y border-hairline">
+            <ul className="mt-3 divide-y divide-hairline border-t border-hairline">
               {p.zeilen.map((z, i) => (
                 <li
                   key={`${p.id}-${i}`}
@@ -252,7 +239,7 @@ function TopKarte({
                     <Countdown
                       ziel={z.datum}
                       stichtag={stichtag}
-                      className="w-[92px] shrink-0 text-right text-xs font-semibold"
+                      className="w-[92px] shrink-0 text-right text-xs font-medium"
                     />
                   ) : null}
                 </li>
@@ -260,15 +247,13 @@ function TopKarte({
             </ul>
           ) : null}
           {p.vorschlag ? (
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              <span className="font-semibold uppercase tracking-[0.08em] text-brand-text">
-                Vorschlag
-              </span>
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md bg-brand-soft px-3 py-2 text-xs">
+              <span className="font-medium text-brand-text">Vorschlag</span>
               <span className="text-foreground">{p.vorschlag}</span>
               <button
                 type="button"
                 onClick={() => onVorschlag(p.vorschlag!)}
-                className="nicht-drucken ml-auto inline-flex items-center gap-1 border border-hairline px-2 py-1 text-xs hover:border-heading"
+                className="nicht-drucken ml-auto inline-flex items-center gap-1 rounded-md border border-hairline bg-surface px-2 py-1 text-xs font-medium text-heading shadow-[0_1px_2px_0_rgb(0_0_0/0.04)] hover:bg-surface-muted"
               >
                 <Plus className="size-3.5" /> als Beschluss
               </button>
@@ -276,7 +261,7 @@ function TopKarte({
           ) : null}
         </div>
         <div className="sm:col-start-2 xl:col-start-auto xl:text-right">
-          <div className="ziffern text-[30px] font-semibold leading-none tracking-[-0.03em] text-heading">
+          <div className="ziffern text-2xl font-semibold leading-none tracking-[-0.025em] text-heading">
             {p.zahl}
           </div>
           <div className="mt-1 text-xs text-text-muted">{p.zahlLabel}</div>
@@ -328,7 +313,7 @@ function BeschlussListe({
                 type="button"
                 onClick={() => umschalten(b)}
                 className={cn(
-                  "mt-0.5 flex size-5 shrink-0 items-center justify-center border transition-colors",
+                  "mt-0.5 flex size-[18px] shrink-0 items-center justify-center rounded-[5px] border transition-colors",
                   erledigt
                     ? "border-ok bg-ok text-white"
                     : "border-input hover:border-heading",

@@ -35,12 +35,16 @@ export function KpiKarte({
 }: KpiKarteProps) {
   const inhalt = (
     <>
-      <span
-        className={cn("absolute inset-y-3 left-0 w-[3px]", RAND[ampel])}
-        aria-hidden
-      />
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[13px] text-text-muted">{label}</span>
+        <span className="flex items-center gap-1.5 text-[13px] text-text-muted">
+          {ampel !== "grau" ? (
+            <span
+              className={cn("size-1.5 shrink-0 rounded-full", RAND[ampel])}
+              aria-hidden
+            />
+          ) : null}
+          {label}
+        </span>
         {href ? (
           <ArrowUpRight
             className="size-3.5 text-text-subtle opacity-0 transition-opacity duration-150 group-hover:opacity-100"
@@ -57,8 +61,8 @@ export function KpiKarte({
     </>
   );
   const klassen = cn(
-    "group relative block border border-hairline bg-surface p-4 pl-5 transition-[border-color] duration-150",
-    href && "hover:border-input hover:border-heading",
+    "group relative block rounded-lg border border-hairline bg-surface p-4 schatten-karte transition-[border-color] duration-150",
+    href && "hover:border-input",
     className,
   );
   if (href) {

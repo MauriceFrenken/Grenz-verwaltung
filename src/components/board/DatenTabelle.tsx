@@ -104,7 +104,7 @@ export function DatenTabelle<T>({
   const hatWerkzeuge = Boolean(suchText) || filter.length > 0;
 
   return (
-    <div className="overflow-hidden border border-hairline bg-surface shadow-[0_1px_2px_0_rgb(0_0_0/0.03)]">
+    <div className="overflow-hidden rounded-lg border border-hairline bg-surface schatten-karte">
       {hatWerkzeuge ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-hairline px-3 py-2.5">
           {suchText ? (
@@ -115,7 +115,7 @@ export function DatenTabelle<T>({
                 value={suche}
                 onChange={(e) => setSuche(e.target.value)}
                 placeholder={suchPlatzhalter}
-                className="h-8 w-full border border-transparent bg-surface-muted pl-8 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-text-subtle focus:border-input focus:bg-surface"
+                className="h-8 w-full rounded-md border border-transparent bg-surface-muted pl-8 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-text-subtle focus:border-input focus:bg-surface"
               />
             </label>
           ) : null}
@@ -127,7 +127,7 @@ export function DatenTabelle<T>({
                 onChange={(e) =>
                   setFilterWerte((w) => ({ ...w, [f.id]: e.target.value }))
                 }
-                className="h-8 cursor-pointer border border-hairline bg-surface pl-2.5 pr-7 text-sm text-foreground outline-none hover:bg-surface-muted"
+                className="h-8 cursor-pointer rounded-md border border-hairline bg-surface pl-2.5 pr-7 text-sm text-foreground outline-none hover:bg-surface-muted"
               >
                 <option value="*">{f.label}: alle</option>
                 {f.optionen.map((o) => (

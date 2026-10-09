@@ -14,20 +14,19 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * FRENKEN Verwaltung — monochromes, kantiges Design-System.
- * Nur Light-Mode. Radius = 0. Struktur durch 1px-Hairlines, keine Shadows.
- * --accent ist gezielt monochrom (#0A0A0A) und kann später auf einen
- * FRENKEN-Brand-Akzent umgestellt werden, ohne Komponenten anzufassen.
+ * FRENKEN Verwaltung — ruhiges, präzises Design-System.
+ * Nur Light-Mode. Monochrom mit einem gedämpften Indigo als Akzent (--brand).
+ * Kleine Radien (4–8px), 1px-Hairlines, sehr leichte Schatten nur auf Karten.
  */
 
 @theme inline {
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-  --radius-2xl: 0px;
-  --radius-3xl: 0px;
-  --radius-4xl: 0px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
+  --radius-4xl: 24px;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -72,7 +71,7 @@
 }
 
 :root {
-  --radius: 0px;
+  --radius: 8px;
   /* Monochrom FRENKEN */
   --background: oklch(0.985 0 0);           /* #FAFAFA */
   --foreground: oklch(0.145 0 0);           /* #0A0A0A */
@@ -81,7 +80,7 @@
   --text-subtle: oklch(0.63 0 0);           /* #A3A3A3 */
   --surface: oklch(1 0 0);                  /* #FFFFFF */
   --surface-muted: oklch(0.955 0 0);        /* #F4F4F4 */
-  --hairline: oklch(0.9 0 0);               /* #E5E5E5 */
+  --hairline: oklch(0.925 0 0);             /* #EBEBEB */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -97,8 +96,8 @@
   --danger: oklch(0.55 0.18 27);            /* Gedämpftes Rot, nur für Rückstand/Fehler */
   --destructive: oklch(0.55 0.18 27);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
+  --border: oklch(0.925 0 0);
+  --input: oklch(0.89 0 0);
   --ring: oklch(0.145 0 0);
   --chart-1: oklch(0.145 0 0);
   --chart-2: oklch(0.42 0 0);
@@ -130,19 +129,16 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-feature-settings: "cv11" 1, "ss01" 1;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
   h1, h2, h3, h4, h5, h6 {
     color: var(--color-heading);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
   }
 
-  /* Kantig: keine abgerundeten Ecken auf shadcn-Primitiven */
-  button, input, textarea, select, [role="dialog"], [role="menu"] {
-    border-radius: 0 !important;
-  }
 }
 
 @utility label-caps {
@@ -204,11 +200,6 @@ html[data-op-zensur="true"] [data-op-zensur-ausnahme] * {
   --color-brand: var(--brand);
   --color-brand-text: var(--brand-text);
   --color-brand-soft: var(--brand-soft);
-  --color-stage: var(--stage);
-  --color-stage-raised: var(--stage-raised);
-  --color-stage-line: var(--stage-line);
-  --color-stage-foreground: var(--stage-foreground);
-  --color-stage-muted: var(--stage-muted);
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -223,65 +214,25 @@ html[data-op-zensur="true"] [data-op-zensur-ausnahme] * {
   --bad-soft: oklch(0.96 0.03 27);
 
   /*
-   * „Auktionssaal“ (Phase 3): ein Markenakzent und eine dunkle Bühne.
-   * Signal-Orange ist nur Marke und Fokus, nie Status. Status bleibt ok/warn/bad.
+   * Ein gedämpfter Akzent für Auswahl, Links, Fokus und Diagrammlinien.
+   * Status bleibt ok/warn/bad, der Akzent bedeutet nie „Warnung“.
    */
-  --brand: #ff6600;               /* Signal-Orange, Flächen und Linien */
-  --brand-text: #c2410c;          /* Orange für Text auf Hell, Kontrast 5,2:1 */
-  --brand-soft: #fff1e6;
-  --stage: #141518;               /* Graphit: Live-Band, Kopfzeile */
-  --stage-raised: #1d1f23;
-  --stage-line: #2c2f35;
-  --stage-foreground: #f5f5f4;
-  --stage-muted: #a3a3ad;         /* Kontrast 7,4:1 auf --stage */
+  --brand: #4f5bd5;               /* Indigo, Flächen und Linien */
+  --brand-text: #3b46b5;          /* für Text auf Weiß, Kontrast 7,1:1 */
+  --brand-soft: #eef0fc;
 }
 
-/* Kantige Board-Flächen bleiben kantig, Ziffern immer tabellarisch. */
+/* Ziffern in Zahlen immer tabellarisch. */
 .ziffern {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1, "cv11" 1, "ss01" 1;
 }
 
-/* Laufband der Bankbuchungen: läuft endlos, pausiert bei Hover/Fokus. */
-@keyframes laufband {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-.laufband-spur {
-  animation: laufband var(--laufband-dauer, 60s) linear infinite;
-}
-.laufband:hover .laufband-spur,
-.laufband:focus-within .laufband-spur {
-  animation-play-state: paused;
-}
-
-/* Live-Punkt: pulsiert, solange Daten frisch sind. */
-@keyframes live-puls {
-  0% {
-    box-shadow: 0 0 0 0 rgb(255 102 0 / 0.55);
-  }
-  70% {
-    box-shadow: 0 0 0 6px rgb(255 102 0 / 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgb(255 102 0 / 0);
-  }
-}
-.live-punkt {
-  animation: live-puls 2s ease-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .laufband-spur {
-    animation: none;
-  }
-  .live-punkt {
-    animation: none;
-  }
+/* Sehr leichter Schatten für Karten (Kante plus Tiefe von 1px). */
+@utility schatten-karte {
+  box-shadow:
+    0 1px 2px 0 rgb(15 23 42 / 0.04),
+    0 1px 1px 0 rgb(15 23 42 / 0.02);
 }
 
 @media print {

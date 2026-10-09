@@ -466,7 +466,7 @@ export function MietvertragDetail({
                 {erh.map((e) => (
                   <li
                     key={e.event.id}
-                    className=" border border-hairline px-3 py-2 text-sm"
+                    className="rounded-lg border border-hairline px-3 py-2 text-sm"
                   >
                     <div className="flex items-center gap-2">
                       <AmpelPunkt ampel={e.ampel} />
@@ -490,7 +490,7 @@ export function MietvertragDetail({
                 {kue.map((k) => (
                   <li
                     key={k.event.id}
-                    className=" border border-hairline px-3 py-2 text-sm"
+                    className="rounded-lg border border-hairline px-3 py-2 text-sm"
                   >
                     <div className="flex items-center gap-2">
                       <AmpelPunkt ampel={k.ampel} />

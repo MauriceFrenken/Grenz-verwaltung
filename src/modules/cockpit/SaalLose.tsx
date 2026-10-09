@@ -1,4 +1,4 @@
-import { Countdown, type LosKarteProps } from "@/components/board/Auktion";
+import { Countdown, type LosKarteProps } from "@/components/board/Bausteine";
 import type { Ampel } from "@/components/board/ampel";
 import { plusTage, type IsoDatum } from "@/lib/kalender";
 import { PHASE_LABEL, type Ankauf } from "@/lib/db/transaktionen";

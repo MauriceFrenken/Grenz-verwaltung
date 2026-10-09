@@ -12,13 +12,13 @@ export function GesellschaftsAuswahl({ companies }: { companies: Company[] }) {
   return (
     <Menu.Root>
       <Menu.Trigger
-        className="flex h-8 min-w-0 max-w-[260px] cursor-pointer items-center gap-2 border border-stage-line bg-stage-raised pl-2.5 pr-2 text-sm text-stage-foreground transition-colors hover:border-stage-muted focus-visible:outline-2 focus-visible:outline-brand"
+        className="flex h-8 min-w-0 max-w-[260px] cursor-pointer items-center gap-2 rounded-md border border-hairline bg-surface-muted pl-2.5 pr-2 text-sm text-heading transition-colors hover:border-text-subtle focus-visible:outline-2 focus-visible:outline-brand"
         aria-label="Gesellschaft auswählen"
       >
         <span
           className={cn(
             "flex size-5 shrink-0 items-center justify-center text-[10px] font-semibold",
-            aktiv ? "bg-brand text-black" : "bg-stage-line text-stage-muted",
+            aktiv ? "bg-brand text-black" : "bg-hairline text-text-muted",
           )}
           aria-hidden
         >
@@ -27,13 +27,13 @@ export function GesellschaftsAuswahl({ companies }: { companies: Company[] }) {
         <span className="truncate">
           {aktiv ? aktiv.name : "Alle Gesellschaften"}
         </span>
-        <ChevronsUpDown className="size-3.5 shrink-0 text-stage-muted" />
+        <ChevronsUpDown className="size-3.5 shrink-0 text-text-muted" />
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Content
           align="start"
           sideOffset={6}
-          className="z-50 max-h-[70vh] w-[300px] overflow-y-auto border border-hairline bg-elevated p-1 text-sm shadow-[0_12px_32px_-8px_rgb(0_0_0/0.2)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+          className="z-50 max-h-[70vh] w-[300px] overflow-y-auto rounded-lg border border-hairline bg-elevated p-1 text-sm shadow-[0_12px_32px_-8px_rgb(0_0_0/0.2)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
         >
           <Eintrag
             aktiv={gesellschaft === "alle"}
@@ -75,9 +75,9 @@ function Eintrag({
   return (
     <Menu.Item
       onSelect={onSelect}
-      className="flex cursor-pointer items-center gap-2.5 px-2 py-1.5 outline-none data-[highlighted]:bg-surface-muted"
+      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none data-[highlighted]:bg-surface-muted"
     >
-      <span className="flex size-6 shrink-0 items-center justify-center bg-surface-muted text-[10px] font-semibold text-text-muted">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-surface-muted text-[10px] font-semibold text-text-muted">
         {kurz}
       </span>
       <span className="min-w-0 flex-1">

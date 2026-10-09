@@ -145,26 +145,31 @@ export function Sidebar() {
       )}
     >
       {!benutzer ? (
-        <div className="flex h-12 shrink-0 items-center gap-2.5 bg-stage px-4 text-stage-foreground">
-          <span className="size-2.5 shrink-0 bg-brand" aria-hidden />
+        <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-hairline px-4">
+          <span
+            className="flex size-6 shrink-0 items-center justify-center rounded-md bg-heading text-[11px] font-bold text-white"
+            aria-hidden
+          >
+            F
+          </span>
           {!collapsed ? (
-            <span className="text-sm font-bold uppercase tracking-[0.14em]">
+            <span className="text-sm font-semibold tracking-[-0.01em] text-heading">
               FRENKEN
             </span>
           ) : null}
         </div>
       ) : null}
-      <nav className="flex-1 overflow-y-auto">
+      <nav className="flex-1 overflow-y-auto px-2">
         {sections.map((section) => (
-          <div key={section.label} className="py-3">
+          <div key={section.label} className="py-2.5">
             {!collapsed ? (
-              <div className="label-caps px-4 pb-2 text-text-subtle">
+              <div className="px-2.5 pb-1.5 text-xs font-medium text-text-subtle">
                 {section.label}
               </div>
             ) : (
               <div className="mx-3 my-2 h-px bg-hairline" />
             )}
-            <ul>
+            <ul className="space-y-px">
               {section.items.map((item) => {
                 const aktiv =
                   item.to === "/"
@@ -178,17 +183,11 @@ export function Sidebar() {
                       onMouseEnter={() => prefetchWennGraph(item.to)}
                       onFocus={() => prefetchWennGraph(item.to)}
                       className={cn(
-                        "relative flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-surface-muted",
-                        aktiv && "bg-surface-muted font-semibold text-heading",
+                        "relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] text-text-muted transition-colors hover:bg-surface-muted hover:text-heading",
+                        aktiv && "bg-surface-muted font-medium text-heading",
                       )}
                       title={collapsed ? item.label : undefined}
                     >
-                      {aktiv ? (
-                        <span
-                          className="absolute inset-y-0 left-0 w-[3px] bg-brand"
-                          aria-hidden
-                        />
-                      ) : null}
                       <item.icon
                         className="h-4 w-4 shrink-0"
                         strokeWidth={1.5}

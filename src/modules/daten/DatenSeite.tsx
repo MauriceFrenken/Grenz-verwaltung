@@ -57,7 +57,7 @@ const BEREICH_LABEL: Record<DatenLuecke["bereich"], string> = {
 const AMPEL_QUELLE = { ok: "gruen", warn: "gelb", fehlt: "rot" } as const;
 
 const FELD =
-  "mt-1 h-8 w-full border border-hairline bg-surface px-2.5 text-sm text-foreground outline-none focus:border-input";
+  "mt-1 h-8 w-full rounded-md border border-input bg-surface px-2.5 text-sm text-foreground outline-none focus:border-brand";
 
 /** Nach einer Änderung neu laden und Ergebnis melden. */
 function useSpeichern() {
@@ -614,7 +614,7 @@ function GesellschaftenFormular({ daten }: { daten: BoardDaten }) {
                         `Segment für ${c.shortName} gespeichert`,
                       )
                     }
-                    className="h-8 cursor-pointer border border-hairline bg-surface px-2 text-sm text-foreground outline-none"
+                    className="h-8 cursor-pointer rounded-md border border-input bg-surface px-2 text-sm text-foreground outline-none"
                   >
                     {SEGMENTE.map((s) => (
                       <option key={s} value={s}>
@@ -643,7 +643,7 @@ function GesellschaftenFormular({ daten }: { daten: BoardDaten }) {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") void mindestSpeichern(c.id);
                       }}
-                      className="h-8 w-32 border border-hairline bg-surface px-2.5 text-right text-sm tabular-nums text-foreground outline-none focus:border-input"
+                      className="h-8 w-32 rounded-md border border-input bg-surface px-2.5 text-right text-sm tabular-nums text-foreground outline-none focus:border-brand"
                     />
                     <Knopf
                       groesse="sm"

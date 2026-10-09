@@ -10,9 +10,8 @@ import {
   Countdown,
   GrosseZahl,
   GrosserBetrag,
-  Laufband,
   LosKarte,
-} from "@/components/board/Auktion";
+} from "@/components/board/Bausteine";
 import {
   Abschnitt,
   Karte,
@@ -24,14 +23,7 @@ import {
 import { Leerzustand } from "@/components/board/Leerzustand";
 import { KpiSkelett, TabellenSkelett } from "@/components/board/Skelett";
 import { AmpelPunkt, StatusBadge, type Ampel } from "@/components/board/Status";
-import {
-  datum,
-  euro,
-  euroKompakt,
-  euroMitVorzeichen,
-  prozent,
-  tagKurz,
-} from "@/lib/format/de";
+import { datum, euro, euroKompakt, prozent, tagKurz } from "@/lib/format/de";
 import { heuteIso, plusTage } from "@/lib/kalender";
 
 const HEUTE = heuteIso();
@@ -123,7 +115,7 @@ export function DesignSeite() {
     <>
       <SeitenKopf
         titel="Designsystem"
-        unterzeile="Auktionssaal: dunkle Bühne, Signal-Orange als einziger Akzent, große Zahlen, Countdown, Lose. Status bleibt Grün, Gelb, Rot, Grau."
+        unterzeile="Ruhig und präzise: helle Flächen, Haarlinien, kleine Radien, ein gedämpftes Indigo als Akzent. Status bleibt Grün, Gelb, Rot, Grau."
         aktionen={
           <>
             <Knopf variante="sekundaer">Sekundär</Knopf>
@@ -140,7 +132,7 @@ export function DesignSeite() {
           <BuehnenKennzahl
             label="Großer Betrag"
             wert={<GrosserBetrag wert={4_312_000} />}
-            hinweis="zählt beim ersten Anzeigen hoch"
+            hinweis="Einheit klein daneben"
           />
           <BuehnenKennzahl
             label="Countdown"
@@ -148,7 +140,7 @@ export function DesignSeite() {
               <Countdown
                 ziel={plusTage(HEUTE, 3)}
                 stichtag={HEUTE}
-                className="text-brand"
+                className="text-heading"
               />
             }
             hinweis="Stunden nur in der letzten Woche"
@@ -169,36 +161,9 @@ export function DesignSeite() {
         </div>
       </SeitenKopf>
 
-      <Laufband
-        eintraege={[
-          {
-            id: "1",
-            datum: "05.10.",
-            kuerzel: "MH",
-            text: "Muster Mieter",
-            betrag: 1_250,
-          },
-          {
-            id: "2",
-            datum: "05.10.",
-            kuerzel: "MI",
-            text: "Musterbank Rate",
-            betrag: -2_387.15,
-          },
-          {
-            id: "3",
-            datum: "04.10.",
-            kuerzel: "MB",
-            text: "Beispiel Käufer Walze",
-            betrag: 27_500,
-          },
-        ]}
-        format={euroMitVorzeichen}
-      />
-
       <Abschnitt
-        titel="Los-Karte"
-        beschreibung="Ein Element für Maschinen, Deals und Fristen: Losnummer, Titel, Hauptzahl, Uhr, Status, nächster Schritt"
+        titel="Vorgangskarte"
+        beschreibung="Ein Element für Maschinen, Deals und Fristen: Kennung, Titel, Hauptzahl, Termin, Status, nächster Schritt"
       >
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <LosKarte
@@ -212,7 +177,7 @@ export function DesignSeite() {
             ampel="gelb"
             status="Inseriert"
             schritt="nächste Preisstufe prüfen"
-            onClick={() => toast("Los geöffnet")}
+            onClick={() => toast("Vorgang geöffnet")}
           />
           <LosKarte
             los="DL-2022-008"
@@ -243,14 +208,14 @@ export function DesignSeite() {
 
       <Abschnitt
         titel="Farben"
-        beschreibung="Graphit-Bühne und Signal-Orange (#FF6600) als Marke; Orange heißt nie Warnung. Text in Orange auf Hell nutzt die dunklere Stufe (#C2410C)."
+        beschreibung="Monochrom mit Indigo (#4F5BD5) für Auswahl, Links und Diagrammlinien; Indigo heißt nie Warnung. Text in Indigo nutzt die dunklere Stufe (#3B46B5)."
       >
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-9">
           {[
-            ["Marke", "bg-brand"],
-            ["Marke Text", "bg-brand-text"],
-            ["Bühne", "bg-stage"],
-            ["Bühne erhöht", "bg-stage-raised"],
+            ["Akzent", "bg-brand"],
+            ["Akzent Text", "bg-brand-text"],
+            ["Akzent hell", "bg-brand-soft"],
+            ["Fläche gedämpft", "bg-surface-muted"],
             ["Schwarz", "bg-primary"],
             ["Fläche", "bg-surface border border-hairline"],
             ["Grund", "bg-background border border-hairline"],

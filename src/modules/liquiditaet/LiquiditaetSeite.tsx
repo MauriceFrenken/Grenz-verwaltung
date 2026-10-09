@@ -437,7 +437,7 @@ export function LiquiditaetSeite() {
                 inputMode="decimal"
                 value={szEk}
                 onChange={(e) => setSzEk(e.target.value)}
-                className="mt-1 h-8 w-full border border-hairline bg-surface px-2.5 text-sm text-foreground tabular-nums outline-none focus:border-input"
+                className="mt-1 h-8 w-full rounded-md border border-input bg-surface px-2.5 text-sm text-foreground tabular-nums outline-none focus:border-brand"
               />
             </label>
             <label className="block text-xs text-text-muted">
@@ -449,7 +449,7 @@ export function LiquiditaetSeite() {
                 min={plusTage(stichtag, 1)}
                 max={basis.bis}
                 onChange={(e) => setSzDatum(e.target.value)}
-                className="mt-1 h-8 w-full border border-hairline bg-surface px-2.5 text-sm text-foreground outline-none focus:border-input"
+                className="mt-1 h-8 w-full rounded-md border border-input bg-surface px-2.5 text-sm text-foreground outline-none focus:border-brand"
               />
             </label>
             <label className="block text-xs text-text-muted">
@@ -457,7 +457,7 @@ export function LiquiditaetSeite() {
               <select
                 value={szFirma}
                 onChange={(e) => setSzFirma(e.target.value)}
-                className="mt-1 h-8 w-full cursor-pointer border border-hairline bg-surface px-2 text-sm text-foreground outline-none"
+                className="mt-1 h-8 w-full cursor-pointer rounded-md border border-input bg-surface px-2 text-sm text-foreground outline-none"
               >
                 {data.companies
                   .filter((c) => !c.separateArea)

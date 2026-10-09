@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { STEUERUNG } from "@/modules/shell/navigation";
-import { Buehne, Etikett, LivePunkt } from "./Auktion";
+import { ArrowUpRight } from "lucide-react";
+import { Buehne } from "./Bausteine";
 
 /**
- * Seitenkopf als dunkle Bühne („Auktionssaal“): Bereich und Managementfrage
- * der Seite als Etikett, Titel, Unterzeile, Aktionen rechts und optional
- * große Kennzahlen darunter.
+ * Seitenkopf: Bereich und Managementfrage der Seite, Titel, Unterzeile,
+ * Aktionen rechts und optional Kennzahlen darunter.
  */
 export function SeitenKopf({
   titel,
@@ -21,7 +21,7 @@ export function SeitenKopf({
   aktionen?: ReactNode;
   /** Standard: Bereich und Frage aus der Navigation */
   etikett?: ReactNode;
-  /** große Kennzahlen auf der Bühne */
+  /** Kennzahlen im Kopf */
   children?: ReactNode;
 }) {
   const pfad = useRouterState({ select: (s) => s.location.pathname });
@@ -31,11 +31,9 @@ export function SeitenKopf({
     etikett ??
     (bereich && eintrag ? (
       <>
-        {bereich.label}
-        <span className="mx-2 text-stage-line">/</span>
-        <span className="normal-case tracking-normal text-stage-muted">
-          {eintrag.frage}
-        </span>
+        <span className="font-medium text-heading">{bereich.label}</span>
+        <span className="mx-1.5 text-text-subtle">/</span>
+        {eintrag.frage}
       </>
     ) : null);
   return (
@@ -43,16 +41,13 @@ export function SeitenKopf({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           {marke ? (
-            <div className="mb-2 flex items-center gap-2 text-brand">
-              <LivePunkt />
-              <Etikett>{marke}</Etikett>
-            </div>
+            <div className="mb-1.5 text-xs text-text-muted">{marke}</div>
           ) : null}
-          <h1 className="text-[30px] font-semibold leading-tight tracking-[-0.025em] text-stage-foreground">
+          <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.025em] text-heading">
             {titel}
           </h1>
           {unterzeile ? (
-            <p className="mt-1.5 max-w-3xl text-sm text-stage-muted">
+            <p className="mt-1 max-w-3xl text-sm text-text-muted">
               {unterzeile}
             </p>
           ) : null}
@@ -63,12 +58,12 @@ export function SeitenKopf({
           </div>
         ) : null}
       </div>
-      {children ? <div className="mt-7">{children}</div> : null}
+      {children ? <div className="mt-6">{children}</div> : null}
     </Buehne>
   );
 }
 
-/** Kennzahl auf der Bühne: Etikett, große Zahl, Zusatz. */
+/** Kennzahl im Seitenkopf: Bezeichnung, große Zahl, Zusatz. */
 export function BuehnenKennzahl({
   label,
   wert,
@@ -97,34 +92,39 @@ export function BuehnenKennzahl({
         ? "bg-warn"
         : ampel === "gruen"
           ? "bg-ok"
-          : "bg-stage-line";
+          : "bg-text-subtle";
   const inhalt = (
     <>
-      <div className="flex items-center gap-2 text-stage-muted">
+      <div className="flex items-center gap-1.5 text-[13px] text-text-muted">
         {ampel ? (
-          <span className={cn("size-1.5 shrink-0", punkt)} aria-hidden />
+          <span
+            className={cn("size-1.5 shrink-0 rounded-full", punkt)}
+            aria-hidden
+          />
         ) : null}
-        <Etikett className="tracking-[0.1em]">{label}</Etikett>
+        <span className="truncate">{label}</span>
+        {href ? (
+          <ArrowUpRight
+            className="size-3.5 shrink-0 text-text-subtle opacity-0 transition-opacity group-hover:opacity-100"
+            aria-hidden
+          />
+        ) : null}
       </div>
-      <div className="mt-2 text-[34px] font-semibold leading-none tracking-[-0.03em] text-stage-foreground">
+      <div className="mt-1.5 text-[26px] font-semibold leading-none tracking-[-0.025em] text-heading">
         {wert}
       </div>
       {hinweis ? (
-        <div className="ziffern mt-2 text-xs text-stage-muted">{hinweis}</div>
+        <div className="ziffern mt-1.5 text-xs text-text-muted">{hinweis}</div>
       ) : null}
     </>
   );
   const klassen = cn(
-    "group block min-w-0 border-l border-stage-line pl-4 transition-colors",
+    "group block min-w-0 border-l border-hairline pl-4",
     className,
   );
   if (href)
     return (
-      <Link
-        to={href}
-        title={title}
-        className={cn(klassen, "hover:border-brand")}
-      >
+      <Link to={href} title={title} className={klassen}>
         {inhalt}
       </Link>
     );
@@ -180,7 +180,10 @@ export function Karte({
 } & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn(" border border-hairline bg-surface", className)}
+      className={cn(
+        "rounded-lg border border-hairline bg-surface schatten-karte",
+        className,
+      )}
       {...rest}
     >
       {children}
@@ -238,7 +241,7 @@ export function Segmente<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className="inline-flex h-8 items-center gap-0.5 border border-hairline bg-surface-muted p-0.5"
+      className="inline-flex h-8 items-center gap-0.5 rounded-md border border-hairline bg-surface-muted p-0.5"
     >
       {optionen.map((o) => (
         <button
@@ -247,7 +250,7 @@ export function Segmente<T extends string>({
           aria-checked={o.wert === wert}
           onClick={() => onChange(o.wert)}
           className={cn(
-            "h-full cursor-pointer px-2.5 text-xs font-medium text-text-muted transition-colors duration-150 [--board-r:6px] hover:text-foreground",
+            "h-full cursor-pointer rounded-[5px] px-2.5 text-xs font-medium text-text-muted transition-colors duration-150 hover:text-foreground",
             o.wert === wert &&
               "bg-surface text-heading shadow-[0_1px_2px_0_rgb(0_0_0/0.06)]",
           )}
