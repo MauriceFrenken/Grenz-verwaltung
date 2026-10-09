@@ -1,35 +1,26 @@
-import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Buehne, LivePunkt } from "@/components/board/Bausteine";
 import { ZeitreihenDiagramm } from "@/components/board/Diagramm";
-import { Karte } from "@/components/board/Layout";
 import { Leerzustand } from "@/components/board/Leerzustand";
 import { SeitenSkelett } from "@/components/board/Skelett";
-import { AmpelPunkt } from "@/components/board/Status";
 import { datum, datumLang, tagKurz } from "@/lib/format/de";
-import { cn } from "@/lib/utils";
 import {
   HORIZONT_TAGE,
   kreisReihe,
 } from "@/modules/liquiditaet/logik/liquiditaet";
 import { useLage } from "@/modules/pruefliste/useLage";
 import { useGesellschaftsFilter } from "@/modules/shell/daten";
+import { standZaehlen, zehnFragen } from "./logik/zehnFragen";
 import {
-  standZaehlen,
-  zehnFragen,
-  type FrageAntwort,
-  type FrageStand,
-} from "./logik/zehnFragen";
-
-const STAND_PILLE: Record<FrageStand, { label: string; klasse: string }> = {
-  echt: { label: "Echte Daten", klasse: "bg-ok-soft text-ok" },
-  teilweise: { label: "Teilweise", klasse: "bg-warn-soft text-warn" },
-  fehlt: {
-    label: "Daten fehlen",
-    klasse: "bg-surface-muted text-text-muted",
-  },
-  muster: { label: "Musterdaten", klasse: "bg-brand-soft text-brand-text" },
-};
+  BalkenListe,
+  BedarfBalken,
+  Kachel,
+  MonatsSaeulen,
+  Ring,
+  SegmentBalken,
+  StandPille,
+  Verlaufslinie,
+} from "./Kacheln";
 
 function gruss(): string {
   const h = new Date().getHours();
@@ -54,7 +45,7 @@ export function CockpitSeite() {
   const { data: daten, liquiditaet: l } = lage;
   const stichtag = daten.stichtag;
   const ids = filter.alle ? l.freieIds : [filter.gesellschaft];
-  const antworten = zehnFragen({
+  const f = zehnFragen({
     daten,
     darlehen: lage.darlehen,
     immobilien: lage.immobilien,
@@ -62,7 +53,7 @@ export function CockpitSeite() {
     ids,
     alle: filter.alle,
   });
-  const zahl = standZaehlen(antworten);
+  const zahl = standZaehlen(f);
 
   const kreis = daten.companies.filter((c) => ids.includes(c.id));
   const min = kreis.reduce((s, c) => s + c.minLiquidity, 0);
@@ -97,146 +88,124 @@ export function CockpitSeite() {
           </div>
           {daten.quelle === "live" ? (
             <div className="flex flex-wrap gap-2 text-xs">
-              <StandZahl stand="echt" anzahl={zahl.echt} />
-              <StandZahl stand="teilweise" anzahl={zahl.teilweise} />
-              <StandZahl stand="fehlt" anzahl={zahl.fehlt} />
+              <StandPille gross stand="echt" anzahl={zahl.echt} />
+              <StandPille gross stand="teilweise" anzahl={zahl.teilweise} />
+              <StandPille gross stand="fehlt" anzahl={zahl.fehlt} />
             </div>
           ) : null}
         </div>
       </Buehne>
 
-      <div className="mb-6 grid gap-4 *:min-w-0 lg:grid-cols-2">
-        {antworten.map((a) => (
-          <FrageKarte key={a.id} a={a} />
-        ))}
-      </div>
-
-      {kurz.length > 1 ? (
-        <Karte className="p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[15px] font-semibold text-heading">
-              Liquidität nächste 13 Wochen
-            </h2>
-            <Link
-              to="/board/liquiditaet"
-              className="text-xs font-medium text-brand-text hover:underline"
-            >
-              Planung öffnen
-            </Link>
-          </div>
-          <ZeitreihenDiagramm
-            label="Liquidität 13 Wochen"
-            daten={kurz.map((p) => ({ x: p.datum, saldo: p.wert }))}
-            xSchluessel="x"
-            xFormat={tagKurz}
-            hoehe={220}
-            kompakt
-            referenz={{ wert: min, label: "Mindestliquidität" }}
-            reihen={[
-              {
-                schluessel: "saldo",
-                label: "Saldo",
-                farbe: "var(--brand)",
-                flaeche: true,
-              },
-            ]}
+      <div className="grid grid-cols-1 gap-4 *:min-w-0 md:grid-cols-2 xl:grid-cols-12">
+        {/* Kopfzeile: vier große Zahlen */}
+        <Kachel a={f[0]} titel="Liquidität heute" className="xl:col-span-3">
+          {kurz.length > 1 ? <Verlaufslinie werte={kurz} /> : null}
+        </Kachel>
+        <Kachel a={f[5]} titel="Restschuld" className="xl:col-span-3">
+          <SegmentBalken balken={f[5].balken} />
+        </Kachel>
+        <Kachel a={f[6]} titel="Mietrückstand" className="xl:col-span-3">
+          <BalkenListe
+            balken={f[6].balken}
+            zeilen={3}
+            leer="Alle Mieten bezahlt"
           />
-        </Karte>
-      ) : null}
+        </Kachel>
+        <Kachel a={f[9]} titel="Maschinenlager" className="xl:col-span-3" />
+
+        {/* Liquidität */}
+        <Kachel
+          a={f[1]}
+          titel="Reicht das Geld 13 Wochen?"
+          className="md:col-span-2 xl:col-span-8"
+        >
+          {kurz.length > 1 ? (
+            <ZeitreihenDiagramm
+              label="Liquidität 13 Wochen"
+              daten={kurz.map((p) => ({ x: p.datum, saldo: p.wert }))}
+              xSchluessel="x"
+              xFormat={tagKurz}
+              hoehe={240}
+              kompakt
+              referenz={
+                min > 0 ? { wert: min, label: "Mindestliquidität" } : undefined
+              }
+              reihen={[
+                {
+                  schluessel: "saldo",
+                  label: "Saldo",
+                  farbe: "var(--brand)",
+                  flaeche: true,
+                },
+              ]}
+            />
+          ) : null}
+        </Kachel>
+        <Kachel
+          a={f[2]}
+          titel="Große Zahlungen 30 Tage"
+          className="md:col-span-2 xl:col-span-4"
+        >
+          <BalkenListe
+            balken={f[2].balken}
+            zeilen={7}
+            leer="Keine großen Zahlungen"
+          />
+        </Kachel>
+
+        {/* Finanzierung */}
+        <Kachel
+          a={f[3]}
+          titel="Darlehen enden in 12 Monaten"
+          className="md:col-span-2 xl:col-span-8"
+        >
+          <MonatsSaeulen balken={f[3].balken} label="Fälligkeiten je Monat" />
+        </Kachel>
+        <Kachel
+          a={f[4]}
+          titel="Zinsen und Raten bezahlt"
+          className="md:col-span-2 xl:col-span-4"
+          kopfzahl={f[4].antwort}
+        >
+          <Ring
+            balken={f[4].balken}
+            mitte={f[4].antwort ?? "–"}
+            unter="Fällige Zahlungen der letzten 12 Monate"
+          />
+        </Kachel>
+
+        {/* Immobilien */}
+        <Kachel
+          a={f[7]}
+          titel="Mietausfall durch Leerstand"
+          className="xl:col-span-6"
+        >
+          <BalkenListe balken={f[7].balken} leer="Kein Leerstand" />
+        </Kachel>
+        <Kachel a={f[8]} titel="Ankaufspipeline" className="xl:col-span-6">
+          {f[8].vergleich ? (
+            <div className="mb-5">
+              <BedarfBalken {...f[8].vergleich} />
+            </div>
+          ) : null}
+          <BalkenListe balken={f[8].balken} leer="Keine aktiven Deals" />
+        </Kachel>
+
+        <Kachel
+          a={f[9]}
+          titel="Standzeit Maschinen"
+          className="md:col-span-2 xl:col-span-12"
+          kopfzahl={`${f[9].balken.filter((b) => b.wert > (f[9].schwelle ?? 0)).length} über ${f[9].schwelle} Tage`}
+        >
+          <BalkenListe
+            balken={f[9].balken}
+            zeilen={8}
+            schwelle={f[9].schwelle}
+            schwelleLabel={`${f[9].schwelle} Tage`}
+            leer="Keine Maschinen im Lager"
+          />
+        </Kachel>
+      </div>
     </>
-  );
-}
-
-function StandZahl({ stand, anzahl }: { stand: FrageStand; anzahl: number }) {
-  const p = STAND_PILLE[stand];
-  return (
-    <span
-      className={cn(
-        "inline-flex h-7 items-center gap-1.5 rounded-full px-3 font-medium",
-        p.klasse,
-      )}
-    >
-      <span className="ziffern">{anzahl}</span> {p.label}
-    </span>
-  );
-}
-
-function FrageKarte({ a }: { a: FrageAntwort }) {
-  const pille = STAND_PILLE[a.stand];
-  return (
-    <Karte className="flex flex-col p-5">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-text-muted">
-          <span className="ziffern text-text-subtle">
-            {String(a.nr).padStart(2, "0")}
-          </span>
-          {a.bereich}
-        </div>
-        <span
-          className={cn(
-            "inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[11px] font-medium",
-            pille.klasse,
-          )}
-        >
-          {pille.label}
-        </span>
-      </div>
-      <h2 className="mt-2 text-[15px] font-semibold leading-snug text-heading">
-        {a.frage}
-      </h2>
-
-      {a.antwort !== null ? (
-        <>
-          <div className="mt-4 flex items-center gap-2.5">
-            {a.ampel !== "grau" ? <AmpelPunkt ampel={a.ampel} /> : null}
-            <span className="ziffern text-[28px] font-semibold leading-none tracking-[-0.03em] text-heading">
-              {a.antwort}
-            </span>
-          </div>
-          <p className="mt-2 text-xs text-text-muted">{a.zusatz}</p>
-          {a.zeilen.length ? (
-            <ul className="mt-4 divide-y divide-hairline border-t border-hairline">
-              {a.zeilen.map((z, i) => (
-                <li key={i} className="flex items-center gap-2 py-2 text-xs">
-                  {z.ampel ? (
-                    <AmpelPunkt ampel={z.ampel} />
-                  ) : (
-                    <span className="size-1.5 shrink-0" aria-hidden />
-                  )}
-                  <span className="min-w-0 flex-1 truncate text-text-muted">
-                    {z.text}
-                  </span>
-                  <span className="ziffern shrink-0 font-medium text-heading">
-                    {z.wert}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </>
-      ) : (
-        <div className="mt-4 rounded-lg border border-dashed border-input px-4 py-3">
-          <div className="text-sm font-medium text-heading">
-            Noch keine verlässliche Zahl
-          </div>
-          <p className="mt-1 text-xs text-text-muted">{a.hinweis}</p>
-        </div>
-      )}
-
-      <div className="mt-auto flex items-end justify-between gap-3 pt-4">
-        <div className="min-w-0 text-[11px] text-text-subtle">
-          <div className="truncate">Quelle: {a.quelle}</div>
-          {a.stand === "teilweise" && a.hinweis ? (
-            <div className="mt-0.5 line-clamp-2 text-warn">{a.hinweis}</div>
-          ) : null}
-        </div>
-        <Link
-          to={a.href}
-          className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-brand-text transition-colors hover:bg-surface-muted"
-        >
-          Öffnen <ArrowRight className="size-3.5" aria-hidden />
-        </Link>
-      </div>
-    </Karte>
   );
 }

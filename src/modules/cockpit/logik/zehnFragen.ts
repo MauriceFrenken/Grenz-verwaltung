@@ -3,7 +3,12 @@
  * die Zahl kommt und ob die Quelle schon echt ist; fehlt eine Pflichtquelle,
  * gibt es keine Zahl, sondern den nächsten Schritt.
  */
-import { plusTage, tageZwischen, type IsoDatum } from "@/lib/kalender";
+import {
+  plusMonate,
+  plusTage,
+  tageZwischen,
+  type IsoDatum,
+} from "@/lib/kalender";
 import { PHASE_LABEL } from "@/lib/db/transaktionen";
 import {
   LOAN_KIND_LABEL,
@@ -17,6 +22,7 @@ import {
   euro,
   euroKompakt,
   flaeche,
+  monatKurz,
   prozent,
   tagKurz,
 } from "@/lib/format/de";
@@ -53,6 +59,14 @@ export interface FrageZeile {
   ampel?: Ampel;
 }
 
+export interface Balken {
+  label: string;
+  wert: number;
+  /** formatierter Wert für die Beschriftung */
+  text: string;
+  ampel?: Ampel;
+}
+
 export interface FrageAntwort {
   nr: number;
   id: string;
@@ -65,6 +79,12 @@ export interface FrageAntwort {
   ampel: Ampel;
   /** höchstens drei Einzelposten */
   zeilen: FrageZeile[];
+  /** vollständige Reihe für das Diagramm der Kachel */
+  balken: Balken[];
+  /** Grenzwert im Diagramm, z. B. 90 Tage Standzeit */
+  schwelle?: number;
+  /** Bedarf gegen Verfügbarkeit (Frage 9) */
+  vergleich?: { bedarf: number; verfuegbar: number | null };
   stand: FrageStand;
   /** Quellen in Worten, z. B. „EBICS, Darlehensregister“ */
   quelle: string;
@@ -191,6 +211,15 @@ export function zehnFragen(e: FragenEingabe): FrageAntwort[] {
         : heute < 1.5 * min
           ? "gelb"
           : "gruen",
+    balken: geld.map((g) => ({
+      label: g.company.shortName,
+      wert: g.heute,
+      text: euroKompakt(g.heute),
+      ampel:
+        g.company.minLiquidityGesetzt && g.heute < g.company.minLiquidity
+          ? ("rot" as const)
+          : undefined,
+    })),
     zeilen: geld.slice(0, 3).map((g) => ({
       text: g.company.shortName,
       wert: euroKompakt(g.heute),
@@ -241,6 +270,12 @@ export function zehnFragen(e: FragenEingabe): FrageAntwort[] {
         }`
       : "Kein Verlauf berechenbar",
     ampel: ampel2,
+    balken: eng.map((g) => ({
+      label: g.company.shortName,
+      wert: g.tief13.saldo,
+      text: euroKompakt(g.tief13.saldo),
+      ampel: "rot" as const,
+    })),
     zeilen: eng.slice(0, 3).map((g) => ({
       text: `${g.company.shortName} unter Minimum, Tiefpunkt ${datum(g.tief13.datum)}`,
       wert: euroKompakt(g.tief13.saldo),
@@ -277,6 +312,11 @@ export function zehnFragen(e: FragenEingabe): FrageAntwort[] {
       q1.stand !== "fehlt" && grossSumme > Math.max(0, heute - min)
         ? "gelb"
         : "grau",
+    balken: gross.map((b) => ({
+      label: `${tagKurz(b.datum)} ${b.label}`,
+      wert: -b.betrag,
+      text: euroKompakt(-b.betrag),
+    })),
     zeilen: gross.slice(0, 3).map((b) => ({
       text: `${tagKurz(b.datum)} · ${b.label}`,
       wert: euroKompakt(-b.betrag),
@@ -309,6 +349,21 @@ export function zehnFragen(e: FragenEingabe): FrageAntwort[] {
     ampel: enden.length
       ? schlechtesteAmpel(enden.map((f) => f.ampel))
       : "gruen",
+    balken: Array.from({ length: 12 }, (_, i) => {
+      const monat = plusMonate(stichtag, i).slice(0, 7);
+      const im = enden.filter((f) => f.datum.startsWith(monat));
+      const wert = im.reduce((s, f) => s + f.restschuld, 0);
+      return {
+        label: monatKurz(monat),
+        wert,
+        text: im.length
+          ? `${euroKompakt(wert)} · ${im.map((f) => f.loan.id).join(", ")}`
+          : "–",
+        ampel: im.length
+          ? schlechtesteAmpel(im.map((f) => f.ampel))
+          : undefined,
+      };
+    }),
     zeilen: enden.slice(0, 3).map((f) => ({
       text: `${f.loan.id} · ${f.ereignis} ${datum(f.datum)}`,
       wert: euroKompakt(f.restschuld),
@@ -339,6 +394,26 @@ export function zehnFragen(e: FragenEingabe): FrageAntwort[] {
       ? `${fehlend.length} fehlen, ${abweichend.length} weichen ab, von ${faellig.length} fälligen Zahlungen (12 Monate)`
       : "Keine fälligen Zahlungen in den letzten 12 Monaten",
     ampel: fehlend.length ? "rot" : abweichend.length ? "gelb" : "gruen",
+    balken: [
+      {
+        label: "Pünktlich",
+        wert: faellig.length - fehlend.length - abweichend.length,
+        text: String(faellig.length - fehlend.length - abweichend.length),
+        ampel: "gruen" as const,
+      },
+      {
+        label: "Abweichend",
+        wert: abweichend.length,
+        text: String(abweichend.length),
+        ampel: "gelb" as const,
+      },
+      {
+        label: "Fehlt",
+        wert: fehlend.length,
+        text: String(fehlend.length),
+        ampel: "rot" as const,
+      },
+    ],
     zeilen: [...fehlend, ...abweichend].slice(0, 3).map((a) => ({
       text: `${a.soll.loanId} · fällig ${datum(a.soll.dueDate)}`,
       wert: euro(a.soll.amount),
@@ -369,6 +444,11 @@ export function zehnFragen(e: FragenEingabe): FrageAntwort[] {
       gesamt > 0 ? ` (${prozent(intern / gesamt, 0)})` : ""
     }, ${aktiv.length} aktive Darlehen`,
     ampel: "grau",
+    balken: LOAN_KINDS.filter((k) => (jeArt.get(k) ?? 0) > 0).map((k) => ({
+      label: LOAN_KIND_LABEL[k],
+      wert: jeArt.get(k) ?? 0,
+      text: euroKompakt(jeArt.get(k)),
+    })),
     zeilen: LOAN_KINDS.filter((k) => (jeArt.get(k) ?? 0) !== 0).map((k) => ({
       text: LOAN_KIND_LABEL[k],
       wert: euroKompakt(jeArt.get(k)),
@@ -404,6 +484,12 @@ export function zehnFragen(e: FragenEingabe): FrageAntwort[] {
     ampel: rueck.length
       ? schlechtesteAmpel(rueck.map((k) => k.ampel))
       : "gruen",
+    balken: rueck.map((k) => ({
+      label: mieter.get(k.lease.tenantId) ?? "Mieter",
+      wert: k.rueckstand,
+      text: euro(k.rueckstand),
+      ampel: k.ampel,
+    })),
     zeilen: rueck.slice(0, 3).map((k) => ({
       text: `${mieter.get(k.lease.tenantId) ?? "Mieter"} · ${
         propName.get(unitProp.get(k.lease.unitId) ?? "") ?? ""
@@ -443,6 +529,12 @@ export function zehnFragen(e: FragenEingabe): FrageAntwort[] {
       ? `${leerEinheiten} Einheit${leerEinheiten > 1 ? "en" : ""}, ${flaeche(leerGesamt)} leer, Quote ${prozent(leerQuote, 1)}`
       : "Kein Leerstand im Bestand",
     ampel: leerstandAmpel(leerQuote),
+    balken: ausfallJe.map((x) => ({
+      label: x.o.property.name,
+      wert: x.ausfall,
+      text: `${euroKompakt(x.ausfall)} · ${x.o.leer.length} WE`,
+      ampel: leerstandAmpel(x.o.leerstandsquote),
+    })),
     zeilen: ausfallJe.slice(0, 3).map((x) => ({
       text: `${x.o.property.name} · ${x.o.leer.length} WE`,
       wert: `${euroKompakt(x.ausfall)} / M`,
@@ -483,6 +575,16 @@ export function zehnFragen(e: FragenEingabe): FrageAntwort[] {
             (tragbarBekannt && ek > 0.7 * tragbar)
           ? "gelb"
           : "gruen",
+    balken: AKTIVE_PHASEN.map((ph) => {
+      const im = offen.filter((k) => k.ankauf.phase === ph);
+      const wert = im.reduce((s, k) => s + k.ankauf.angebotspreis, 0);
+      return {
+        label: PHASE_LABEL[ph],
+        wert,
+        text: `${euroKompakt(wert)} · ${im.length}`,
+      };
+    }),
+    vergleich: { bedarf: ek, verfuegbar: tragbarBekannt ? tragbar : null },
     zeilen: stockend.slice(0, 3).map((k) => ({
       text: `${k.ankauf.name} · ${PHASE_LABEL[k.ankauf.phase]}`,
       wert: `${k.tageInPhase} Tage`,
@@ -508,6 +610,15 @@ export function zehnFragen(e: FragenEingabe): FrageAntwort[] {
     ampel: lange.length
       ? schlechtesteAmpel(lange.map((m) => m.ampel))
       : "gruen",
+    balken: [...handel.bestand]
+      .sort((a, b) => (b.lagerTage ?? 0) - (a.lagerTage ?? 0))
+      .map((m) => ({
+        label: `${m.machine.hersteller} ${m.machine.modell}`,
+        wert: m.lagerTage ?? 0,
+        text: `${m.lagerTage ?? 0} T · ${euroKompakt(m.einstand)}`,
+        ampel: m.ampel,
+      })),
+    schwelle: STANDZEIT_TAGE,
     zeilen: lange.slice(0, 3).map((m) => ({
       text: `${m.machine.hersteller} ${m.machine.modell}`,
       wert: `${m.lagerTage} Tage`,
