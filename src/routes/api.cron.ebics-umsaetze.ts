@@ -12,11 +12,16 @@ export const Route = createFileRoute("/api/cron/ebics-umsaetze")({
         }
 
         try {
-          const { syncEbicsOffeneLaeufe } = await import("@/lib/ebics/sync");
+          const { syncEbicsAlleKonten, syncEbicsOffeneLaeufe } =
+            await import("@/lib/ebics/sync");
           const admin = createServiceRoleClient();
+          // 1. Alle Konten täglich, unabhängig von Sollstellungs-Läufen
+          const konten = await syncEbicsAlleKonten(admin);
+          // 2. Offene Läufe wie bisher: Abruf in den Lauf und Mietabgleich
           const ergebnis = await syncEbicsOffeneLaeufe(admin);
           return Response.json({
             ok: true,
+            konten,
             ...ergebnis,
           });
         } catch (err) {

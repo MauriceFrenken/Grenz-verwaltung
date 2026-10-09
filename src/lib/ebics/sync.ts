@@ -5,14 +5,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { BankBuchungEingabe } from "@/lib/bankAuszugParse";
-import {
-  extractCamt053Xmls,
-  parseCamt053Xml,
-} from "@/lib/camt053Parse";
-import {
-  loadEbicsKunden,
-  type EbicsKundeRow,
-} from "@/lib/ebics/kunden";
+import { extractCamt053Xmls, parseCamt053Xml } from "@/lib/camt053Parse";
+import { loadEbicsKunden, type EbicsKundeRow } from "@/lib/ebics/kunden";
 
 export type EbicsSyncKundeErgebnis = {
   gesellschaftId: string;
@@ -90,7 +84,8 @@ async function gesellschaftIdFuerKontoIban(
 async function importiereBuchungen(
   admin: SupabaseClient,
   input: {
-    laufId: string;
+    /** null = täglicher Kontoabruf ohne Sollstellungs-Lauf. */
+    laufId: string | null;
     gesellschaftId: string;
     dateiname: string;
     zeitraumVon: string | null;
@@ -152,12 +147,14 @@ async function kontosaldenSpeichern(
       parsed.kontoIban,
       fallbackGesellschaftId,
     );
-    const konto = await admin
-      .from("bankkonten")
-      .upsert(
-        { iban: parsed.kontoIban, gesellschaft_id: gesellschaftId, zugang: "ebics" },
-        { onConflict: "iban", ignoreDuplicates: true },
-      );
+    const konto = await admin.from("bankkonten").upsert(
+      {
+        iban: parsed.kontoIban,
+        gesellschaft_id: gesellschaftId,
+        zugang: "ebics",
+      },
+      { onConflict: "iban", ignoreDuplicates: true },
+    );
     if (konto.error) throw new Error(konto.error.message);
     const salden = await admin.from("kontosalden").upsert(
       parsed.salden.map((s) => ({
@@ -319,14 +316,14 @@ export async function syncEbicsFuerLauf(
   };
 }
 
-export async function syncEbicsOffeneLaeufe(
-  admin: SupabaseClient,
-): Promise<{
+export async function syncEbicsOffeneLaeufe(admin: SupabaseClient): Promise<{
   laeufe: Array<{ laufId: string; anzahlNeu: number; fehler?: string }>;
 }> {
   const now = new Date();
   const aktueller = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-  const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  const prev = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
+  );
   const vormonat = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
 
   const { data: laeufe, error } = await admin
@@ -351,4 +348,132 @@ export async function syncEbicsOffeneLaeufe(
     }
   }
   return { laeufe: result };
+}
+
+/**
+ * Zeitraum des täglichen Kontoabrufs: vom 1. des Vormonats bis heute, damit
+ * späte Buchungen des Vormonats und der laufende Monat immer drin sind.
+ */
+export function abrufZeitraum(heute: Date): { von: string; bis: string } {
+  const von = new Date(
+    Date.UTC(heute.getUTCFullYear(), heute.getUTCMonth() - 1, 1),
+  );
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  return { von: fmt(von), bis: fmt(heute) };
+}
+
+/** Fingerprints, die für dieses Konto schon gespeichert sind (lauf-übergreifend). */
+async function bekannteFingerprintsKonto(
+  admin: SupabaseClient,
+  kontoIban: string,
+  fingerprints: string[],
+): Promise<Set<string>> {
+  const bekannt = new Set<string>();
+  const CHUNK = 200;
+  for (let i = 0; i < fingerprints.length; i += CHUNK) {
+    const { data, error } = await admin
+      .from("bankbuchungen_eindeutig")
+      .select("fingerprint")
+      .eq("konto_iban", kontoIban)
+      .in("fingerprint", fingerprints.slice(i, i + CHUNK));
+    if (error) throw new Error(error.message);
+    for (const r of data ?? []) bekannt.add(r.fingerprint as string);
+  }
+  return bekannt;
+}
+
+/**
+ * Täglicher Abruf aller Konten: jeder bereite EBICS-Kunde, unabhängig davon,
+ * ob es für den Monat einen Sollstellungs-Lauf gibt. Neue Buchungen landen
+ * ohne Lauf in bankauszuege; der Mietabgleich läuft weiter über die Läufe.
+ */
+export async function syncEbicsAlleKonten(
+  admin: SupabaseClient,
+  heute: Date = new Date(),
+): Promise<{ ergebnisse: EbicsSyncKundeErgebnis[]; anzahlNeuGesamt: number }> {
+  const { von, bis } = abrufZeitraum(heute);
+  const kunden = await loadEbicsKunden(admin, null);
+  const ergebnisse: EbicsSyncKundeErgebnis[] = [];
+
+  for (const kunde of kunden) {
+    if (kunde.status !== "bereit") {
+      ergebnisse.push({
+        gesellschaftId: kunde.gesellschaft_id,
+        status: "skip",
+        anzahlNeu: 0,
+        meldung: `Status: ${kunde.status}`,
+      });
+      continue;
+    }
+    try {
+      const { ebicsC53Abrufen } = await import("@/lib/ebics/client");
+      const orderData = await ebicsC53Abrufen(admin, kunde, von, bis);
+      let anzahlNeu = 0;
+      const xmls =
+        orderData.length === 0 ? [] : await extractCamt053Xmls(orderData);
+      for (const xml of xmls) {
+        const parsed = parseCamt053Xml(xml);
+        await kontosaldenSpeichern(admin, parsed, kunde.gesellschaft_id);
+        if (!parsed.kontoIban || parsed.buchungen.length === 0) continue;
+        const bekannt = await bekannteFingerprintsKonto(
+          admin,
+          parsed.kontoIban,
+          parsed.buchungen.map((b) => b.fingerprint),
+        );
+        const neu = parsed.buchungen.filter((b) => !bekannt.has(b.fingerprint));
+        if (neu.length === 0) continue;
+        anzahlNeu += await importiereBuchungen(admin, {
+          laufId: null,
+          gesellschaftId: await gesellschaftIdFuerKontoIban(
+            admin,
+            parsed.kontoIban,
+            kunde.gesellschaft_id,
+          ),
+          dateiname: `EBICS C53 ${parsed.kontoIban} ${von}`,
+          zeitraumVon: parsed.zeitraumVon ?? von,
+          zeitraumBis: parsed.zeitraumBis ?? bis,
+          buchungen: neu,
+        });
+      }
+      await admin.from("ebics_abrufe").insert({
+        ebics_kunde_id: kunde.id,
+        lauf_id: null,
+        auftragsart: "C53",
+        zeitraum_von: von,
+        zeitraum_bis: bis,
+        anzahl_buchungen: anzahlNeu,
+        erfolgreich: true,
+        fehler: null,
+      });
+      ergebnisse.push({
+        gesellschaftId: kunde.gesellschaft_id,
+        status: "ok",
+        anzahlNeu,
+        leer: orderData.length === 0,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await admin.from("ebics_abrufe").insert({
+        ebics_kunde_id: kunde.id,
+        lauf_id: null,
+        auftragsart: "C53",
+        zeitraum_von: von,
+        zeitraum_bis: bis,
+        anzahl_buchungen: 0,
+        erfolgreich: false,
+        fehler: msg,
+      });
+      ergebnisse.push({
+        gesellschaftId: kunde.gesellschaft_id,
+        status: "fehler",
+        anzahlNeu: 0,
+        meldung: msg,
+      });
+    }
+  }
+
+  return {
+    ergebnisse,
+    anzahlNeuGesamt: ergebnisse.reduce((s, e) => s + e.anzahlNeu, 0),
+  };
 }
