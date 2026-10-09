@@ -1,0 +1,20 @@
+diff --git a/node_modules/ebics-client/lib/Client.js b/node_modules/ebics-client/lib/Client.js
+index f345e38..3d6b156 100644
+--- a/node_modules/ebics-client/lib/Client.js
++++ b/node_modules/ebics-client/lib/Client.js
+@@ -223,7 +223,14 @@ module.exports = class Client {
+ 				headers: { 'content-type': 'text/xml;charset=UTF-8' },
+ 			},
+ 			(err, res, data) => {
+-				if (err) reject(err);
++				if (err) {
++					reject(err);
++					return;
++				}
++				if (!data) {
++					reject(new Error('Empty EBICS response'));
++					return;
++				}
+ 
+ 				const ebicsResponse = response.version(version)(data.toString('utf-8'), keys);
+ 
