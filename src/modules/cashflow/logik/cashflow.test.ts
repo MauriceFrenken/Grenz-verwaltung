@@ -146,3 +146,57 @@ describe("Cashflow je Objekt", () => {
     expect(a.portfolio.summe.summen.netto).toBeCloseTo(summeObjekte, 0);
   });
 });
+
+describe("Einordnung: Fälle aus den echten Buchungen", () => {
+  it("Rückzahlung eines Gruppendarlehens inkl. Zinsen ist Finanzierung, nicht Zins", () => {
+    expect(
+      kat(
+        tx(
+          498263.56,
+          "Frenken Holding GmbH",
+          "Rückzahlung Darlehn vom 06.08.2024 inkl. Zinsen",
+        ),
+      ),
+    ).toEqual(["finanzierung"]);
+    expect(
+      kat(tx(-4500, "Frenken Immobilien GmbH", "Zinszahlungen Darlehn 150k")),
+    ).toEqual(["zinsen"]);
+    expect(
+      kat(tx(4500, "Frenken Capital Management", "Zinszahlungen Darlehn 150k")),
+    ).toEqual(["intercompany"]);
+  });
+
+  it("Grunderwerbsteuer gehört zum Ankauf, eingehender Kaufpreis ist Verkauf", () => {
+    expect(
+      kat(
+        tx(
+          -45175,
+          "Finanzverwaltung NRW",
+          "Grunderwerbsteuer Bendemannstraße 19A",
+        ),
+      ),
+    ).toEqual(["ankauf"]);
+    expect(
+      kat(tx(69000, "Rosa Frey", "Teilkaufpreis Kaufvertrag UVZ 2649/2025")),
+    ).toEqual(["verkauf"]);
+  });
+
+  it("Adresse einer fremden Gesellschaft ordnet kein Objekt zu", () => {
+    const holding: BankAccount = {
+      ...konto,
+      id: "DE05",
+      iban: "DE05",
+      companyId: "G-05",
+      propertyId: null,
+    };
+    const [p] = einordnen(
+      [
+        tx(-100000, "MTF Capital GmbH", "Darlehn Ankauf Apollinarisstraße 18", {
+          accountId: "DE05",
+        }),
+      ],
+      { accounts: [konto, holding], properties: objekte },
+    );
+    expect(p).toMatchObject({ kategorie: "finanzierung", objektId: null });
+  });
+});

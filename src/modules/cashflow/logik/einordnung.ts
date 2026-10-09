@@ -31,6 +31,7 @@ export const CF_KATEGORIEN = {
   zinsen: { label: "Zinsen", gruppe: "kapitaldienst" },
   tilgung: { label: "Tilgung", gruppe: "kapitaldienst" },
   ankauf: { label: "Ankauf & Nebenkosten", gruppe: "investition" },
+  verkauf: { label: "Verkaufserlöse", gruppe: "investition" },
   sanierung: { label: "Sanierung & Ausbau", gruppe: "investition" },
   finanzierung: {
     label: "Darlehen & Eigenkapital",
@@ -123,17 +124,17 @@ const REGELN: Array<{ k: CfKategorie; re: RegExp; nur?: "ein" | "aus" }> = [
     k: "nk_abrechnung",
     re: R("nebenkosten|betriebskosten|nk-?abrechnung|bk-?abrechnung"),
   },
-  { k: "grundbesitz", re: R("grundsteuer|grundbesitz") },
-  {
-    k: "steuern",
-    re: R(
-      "finanzamt|steuerverwaltung|finanzverwaltung|gewerbesteuer|koerperschaft|lohnsteuer|kapitalertrag|umsatzsteuer \\d{4}|ust-?voranmeldung",
-    ),
-  },
+  { k: "grundbesitz", re: R("grundsteuer|grundbesitzabgab") },
   {
     k: "ankauf",
     re: R(
       "kaufpreis|grunderwerb|notar|makler|gutachter|grundbuch|zahlstelle justiz|amtsgericht",
+    ),
+  },
+  {
+    k: "steuern",
+    re: R(
+      "finanzamt|steuerverwaltung|finanzverwaltung|gewerbesteuer|koerperschaft|lohnsteuer|kapitalertrag|umsatzsteuer \\d{4}|ust-?voranmeldung",
     ),
   },
   {
@@ -230,6 +231,26 @@ export function kategorisieren(
   eigeneIbans: Set<string>,
 ): Array<{ k: CfKategorie; betrag: number }> {
   const text = normal(`${tx.counterpartyName} ${tx.purpose}`);
+  const gruppe =
+    (tx.counterpartyIban && eigeneIbans.has(tx.counterpartyIban)) ||
+    /frenken|mtf capital|hbf gmbh|grenz & co|tradeanymachine/.test(
+      normal(tx.counterpartyName),
+    );
+  if (gruppe) {
+    // reine Zinszahlung auf ein Gruppendarlehen: beim Zahler Kapitaldienst
+    const tilgt = /rueckfuehrung|rueckzahlung|auszahlung|tilgung/.test(text);
+    if (/zins/.test(text) && !tilgt)
+      return [
+        { k: tx.amount < 0 ? "zinsen" : "intercompany", betrag: tx.amount },
+      ];
+    if (
+      tilgt ||
+      /darle?hn|darlehen|valutierung|ankauf|einlage|stammkapital/.test(text)
+    )
+      return [{ k: "finanzierung", betrag: tx.amount }];
+    if (/gehalt/.test(text)) return [{ k: "personal", betrag: tx.amount }];
+    return [{ k: "intercompany", betrag: tx.amount }];
+  }
   const kd = kapitaldienstTeile(tx.amount, text);
   if (kd) return kd;
   if (tx.category === "darlehen")
@@ -238,17 +259,8 @@ export function kategorisieren(
     ];
   if (tx.category === "miete") return [{ k: "miete", betrag: tx.amount }];
 
-  const gruppe =
-    (tx.counterpartyIban && eigeneIbans.has(tx.counterpartyIban)) ||
-    /frenken|mtf capital|hbf gmbh|grenz & co|tradeanymachine/.test(
-      normal(tx.counterpartyName),
-    );
-  if (gruppe) {
-    if (/darle?hn|darlehen|valutierung|ankauf|einlage|stammkapital/.test(text))
-      return [{ k: "finanzierung", betrag: tx.amount }];
-    if (/gehalt/.test(text)) return [{ k: "personal", betrag: tx.amount }];
-    return [{ k: "intercompany", betrag: tx.amount }];
-  }
+  if (/kaufpreis/.test(text) && tx.amount > 0)
+    return [{ k: "verkauf", betrag: tx.amount }];
   if (/valutierung|darlehensauszahlung|\bdarle?hn\b/.test(text))
     return [{ k: "finanzierung", betrag: tx.amount }];
 
@@ -273,18 +285,42 @@ export function einordnen(
   const konto = new Map(ctx.accounts.map((a) => [a.iban, a]));
   const eigeneIbans = new Set(ctx.accounts.map((a) => a.iban));
   const muster = objektMuster(ctx.properties);
+  const objektFirma = new Map(ctx.properties.map((p) => [p.id, p.companyId]));
+  // Gegenbuchung am selben Tag auf einem anderen Konto derselben Gesellschaft
+  // (Kontoauszüge aus PDFs haben oft keine Gegen-IBAN)
+  const buchungsSchluessel = (firma: string, t: Transaction, betrag: number) =>
+    `${firma}|${t.bookingDate}|${betrag.toFixed(2)}`;
+  const schluessel = new Map<string, Set<string>>();
+  for (const t of transactions) {
+    const firma = konto.get(t.accountId)?.companyId ?? "";
+    const key = buchungsSchluessel(firma, t, t.amount);
+    if (!schluessel.has(key)) schluessel.set(key, new Set());
+    schluessel.get(key)!.add(t.accountId);
+  }
   const posten: CfPosten[] = [];
   for (const tx of transactions) {
     const k = konto.get(tx.accountId);
     const companyId = k?.companyId ?? "";
     const text = normal(`${tx.counterpartyName} ${tx.purpose}`);
+    // Adresse zählt nur für Objekte der eigenen Gesellschaft
     let adresse: string | null = null;
     for (const [id, re] of muster)
-      if (re.test(text)) {
+      if (objektFirma.get(id) === companyId && re.test(text)) {
         adresse = id;
         break;
       }
-    for (const teil of kategorisieren(tx, eigeneIbans)) {
+    // Umbuchung zwischen zwei Konten derselben Gesellschaft
+    const gegen = schluessel.get(buchungsSchluessel(companyId, tx, -tx.amount));
+    const eigenUmbuchung =
+      (tx.counterpartyIban != null &&
+        konto.get(tx.counterpartyIban)?.companyId === companyId) ||
+      (gegen != null &&
+        [...gegen].some((iban) => iban !== tx.accountId) &&
+        /frenken|umbuchung/i.test(`${tx.counterpartyName} ${tx.purpose}`));
+    const teile: Array<{ k: CfKategorie; betrag: number }> = eigenUmbuchung
+      ? [{ k: "intercompany", betrag: tx.amount }]
+      : kategorisieren(tx, eigeneIbans);
+    for (const teil of teile) {
       // kleiner Eingang ohne Stichwort auf dem Mietkonto eines Objekts: Miete
       if (
         teil.k === "sonstige_einnahmen" &&

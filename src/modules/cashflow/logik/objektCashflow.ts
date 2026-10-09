@@ -421,11 +421,14 @@ export function cashflowAuswerten(
     })
     .filter((g) => g.posten.length > 0);
 
+  // Gesellschaften ohne Objekt (Holding): Finanzierung und Zinsen dort sind kein Prüffall
+  const mitObjekt = new Set(daten.properties.map((p) => p.companyId));
   const pruefliste = posten
     .filter(
       (x) =>
         x.kategorie === "sonstiges" ||
         (x.objektId == null &&
+          mitObjekt.has(x.companyId) &&
           gruppeVon(x.kategorie) !== "gesellschaft" &&
           gruppeVon(x.kategorie) !== "finanzierung"),
     )
