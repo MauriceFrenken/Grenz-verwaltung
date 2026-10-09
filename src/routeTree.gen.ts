@@ -22,6 +22,7 @@ import { Route as TransaktionenRouteImport } from './routes/transaktionen'
 import { Route as VerwaltungRouteImport } from './routes/verwaltung'
 import { Route as BoardIndexRouteImport } from './routes/board.index'
 import { Route as BoardAblageRouteImport } from './routes/board.ablage'
+import { Route as BoardAufteilerRouteImport } from './routes/board.aufteiler'
 import { Route as BoardBaumaschinenRouteImport } from './routes/board.baumaschinen'
 import { Route as BoardCashflowRouteImport } from './routes/board.cashflow'
 import { Route as BoardDarlehenRouteImport } from './routes/board.darlehen'
@@ -130,6 +131,11 @@ const BoardIndexRoute = BoardIndexRouteImport.update({
 const BoardAblageRoute = BoardAblageRouteImport.update({
   id: '/ablage',
   path: '/ablage',
+  getParentRoute: () => BoardRoute,
+} as any)
+const BoardAufteilerRoute = BoardAufteilerRouteImport.update({
+  id: '/aufteiler',
+  path: '/aufteiler',
   getParentRoute: () => BoardRoute,
 } as any)
 const BoardBaumaschinenRoute = BoardBaumaschinenRouteImport.update({
@@ -375,6 +381,7 @@ export interface FileRoutesByFullPath {
   '/transaktionen': typeof TransaktionenRouteWithChildren
   '/verwaltung': typeof VerwaltungRouteWithChildren
   '/board/ablage': typeof BoardAblageRoute
+  '/board/aufteiler': typeof BoardAufteilerRoute
   '/board/baumaschinen': typeof BoardBaumaschinenRoute
   '/board/cashflow': typeof BoardCashflowRoute
   '/board/darlehen': typeof BoardDarlehenRoute
@@ -429,6 +436,7 @@ export interface FileRoutesByTo {
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/board/ablage': typeof BoardAblageRoute
+  '/board/aufteiler': typeof BoardAufteilerRoute
   '/board/baumaschinen': typeof BoardBaumaschinenRoute
   '/board/cashflow': typeof BoardCashflowRoute
   '/board/darlehen': typeof BoardDarlehenRoute
@@ -486,6 +494,7 @@ export interface FileRoutesById {
   '/transaktionen': typeof TransaktionenRouteWithChildren
   '/verwaltung': typeof VerwaltungRouteWithChildren
   '/board/ablage': typeof BoardAblageRoute
+  '/board/aufteiler': typeof BoardAufteilerRoute
   '/board/baumaschinen': typeof BoardBaumaschinenRoute
   '/board/cashflow': typeof BoardCashflowRoute
   '/board/darlehen': typeof BoardDarlehenRoute
@@ -547,6 +556,7 @@ export interface FileRouteTypes {
     | '/transaktionen'
     | '/verwaltung'
     | '/board/ablage'
+    | '/board/aufteiler'
     | '/board/baumaschinen'
     | '/board/cashflow'
     | '/board/darlehen'
@@ -601,6 +611,7 @@ export interface FileRouteTypes {
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
     | '/board/ablage'
+    | '/board/aufteiler'
     | '/board/baumaschinen'
     | '/board/cashflow'
     | '/board/darlehen'
@@ -657,6 +668,7 @@ export interface FileRouteTypes {
     | '/transaktionen'
     | '/verwaltung'
     | '/board/ablage'
+    | '/board/aufteiler'
     | '/board/baumaschinen'
     | '/board/cashflow'
     | '/board/darlehen'
@@ -814,6 +826,13 @@ declare module '@tanstack/react-router' {
       path: '/ablage'
       fullPath: '/board/ablage'
       preLoaderRoute: typeof BoardAblageRouteImport
+      parentRoute: typeof BoardRoute
+    }
+    '/board/aufteiler': {
+      id: '/board/aufteiler'
+      path: '/aufteiler'
+      fullPath: '/board/aufteiler'
+      preLoaderRoute: typeof BoardAufteilerRouteImport
       parentRoute: typeof BoardRoute
     }
     '/board/baumaschinen': {
@@ -1129,6 +1148,7 @@ declare module '@tanstack/react-router' {
 
 interface BoardRouteChildren {
   BoardAblageRoute: typeof BoardAblageRoute
+  BoardAufteilerRoute: typeof BoardAufteilerRoute
   BoardBaumaschinenRoute: typeof BoardBaumaschinenRoute
   BoardCashflowRoute: typeof BoardCashflowRoute
   BoardDarlehenRoute: typeof BoardDarlehenRoute
@@ -1145,6 +1165,7 @@ interface BoardRouteChildren {
 
 const BoardRouteChildren: BoardRouteChildren = {
   BoardAblageRoute: BoardAblageRoute,
+  BoardAufteilerRoute: BoardAufteilerRoute,
   BoardBaumaschinenRoute: BoardBaumaschinenRoute,
   BoardCashflowRoute: BoardCashflowRoute,
   BoardDarlehenRoute: BoardDarlehenRoute,

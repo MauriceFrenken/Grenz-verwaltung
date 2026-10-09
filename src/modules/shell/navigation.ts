@@ -77,10 +77,10 @@ export const STEUERUNG: NavBereich[] = [
     label: "Immobilien",
     eintraege: [
       {
-        to: "/board/immobilien",
-        label: "Portfolio",
+        to: "/board/aufteiler",
+        label: "Aufteilerprojekte",
         icon: Building2,
-        frage: "Welches Objekt bleibt hinter Plan?",
+        frage: "Was bleibt bei den Aufteilern übrig?",
       },
       {
         to: "/board/cashflow",

@@ -11,6 +11,7 @@ const LABELS: Record<string, string> = {
   "/board/daten": "Datenqualität",
   "/board/immobilien": "Immobilien",
   "/board/cashflow": "Cashflow",
+  "/board/aufteiler": "Aufteilerprojekte",
   "/board/transaktionen": "Transaktionen",
   "/board/baumaschinen": "Baumaschinen",
   "/board/ablage": "Ablage v2 (Labor)",

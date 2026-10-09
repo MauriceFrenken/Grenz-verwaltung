@@ -92,8 +92,21 @@ export function normal(s: string): string {
  * je Objekt-ID. Von Maurice bestätigt am 09.10.2026.
  */
 const OBJEKT_STICHWORTE: Record<string, string[]> = {
-  // Kauf Alt-Pempelfort 7: UVZ 1286/2025 Notar Ulbrich, Verkäufer Klees/Scholz
-  "O-02": ["1286/2025", "ulrich klees", "michael klees", "gisela gerda scholz"],
+  "O-02": [
+    // Kauf Alt-Pempelfort 7: UVZ 1286/2025 Notar Ulbrich, Verkäufer Klees/Scholz
+    "1286/2025",
+    "ulrich klees",
+    "michael klees",
+    "gisela gerda scholz",
+    // Annahmen 09.10.2026, Summe passt zu den Grundstückskosten der Kalkulation:
+    // Makler-Rechnung McMakler, Grundbuch Nov. 2025
+    "mmr202506273",
+    "x721054012127x",
+    // Annahme: Sanierung (Ordenat/Equestrian) und Hausverwaltung (raumgut)
+    "equestrian",
+    "ordenat",
+    "raumgut",
+  ],
 };
 
 export function objektMuster(properties: Property[]): Map<string, RegExp> {
