@@ -32,9 +32,6 @@ export function TopBar() {
           aria-label={APP_NAME}
         >
           <FrenkenLogo className="h-[15px]" />
-          <span className="rounded-md border border-hairline px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-text-muted">
-            Verwaltung
-          </span>
         </span>
       </div>
       <div className="hidden flex-1 items-center px-6 md:flex">
