@@ -67,6 +67,8 @@ export interface LiveRohdaten {
   objektVerkauf: Row[] | null;
   einheitenVerkauf: Row[];
   exposes: Row[];
+  /** Exposé-Postfach nicht lesbar (Grund), sonst null */
+  exposesFehler?: string | null;
   profiles: Row[];
   maschinen: Row[] | null;
   maschinenKosten: Row[] | null;
@@ -153,6 +155,17 @@ export function abbilden(r: LiveRohdaten): BoardDaten {
         "Die Migration 20261008120000_board_steuerung ist auf der Datenbank noch nicht angewendet.",
       naechsterSchritt:
         "Ben wendet die Migration an (siehe docs/UEBERGABE-PHASE-2.md).",
+    });
+
+  if (r.exposesFehler)
+    luecke({
+      id: "system:exposes",
+      bereich: "system",
+      schwere: "gelb",
+      titel: "Exposé-Postfach nicht geladen",
+      detail: `Die eingegangenen Exposés fehlen in der Pipeline (${r.exposesFehler}).`,
+      naechsterSchritt:
+        "In Bens Transaktionsliste prüfen, ob das Exposé-Postfach (Microsoft) verbunden ist.",
     });
 
   // --- Gesellschaften -------------------------------------------------------
