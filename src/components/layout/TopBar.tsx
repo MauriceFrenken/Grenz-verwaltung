@@ -1,6 +1,7 @@
 import { Bell, LogOut, Search } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Breadcrumb } from "./Breadcrumb";
+import { FrenkenLogo } from "@/components/marke/FrenkenLogo";
 import { OpAdminEinstellungen } from "@/components/op-admin/OpAdminEinstellungen";
 import { useAuth } from "@/hooks/useAuth";
 import { APP_NAME, ROLLEN } from "@/lib/constants";
@@ -23,13 +24,17 @@ export function TopBar() {
   }
 
   return (
-    <header className="hairline-b sticky top-0 z-40 flex h-16 items-stretch border-b border-hairline bg-surface">
-      <div className="hairline-r flex w-60 items-center gap-2 border-r border-hairline px-6">
+    <header className="hairline-b sticky top-0 z-40 flex h-16 items-stretch border-b border-sidebar-border bg-sidebar">
+      <div className="hairline-r flex w-60 items-center gap-2 border-r border-sidebar-border px-5">
         <span
           data-op-zensur-ziel=""
-          className="text-sm font-bold uppercase tracking-[0.14em] text-heading"
+          className="flex items-center gap-2.5 text-heading"
+          aria-label={APP_NAME}
         >
-          {APP_NAME}
+          <FrenkenLogo className="h-[15px]" />
+          <span className="rounded-md border border-hairline px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-text-muted">
+            Verwaltung
+          </span>
         </span>
       </div>
       <div className="hidden flex-1 items-center px-6 md:flex">
@@ -54,7 +59,7 @@ export function TopBar() {
         <div className="ml-2 flex items-center gap-3 border-l border-hairline pl-4">
           <div
             data-op-zensur-ziel=""
-            className="flex h-9 w-9 items-center justify-center bg-primary text-xs font-semibold uppercase text-primary-foreground"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-semibold uppercase text-primary-foreground"
           >
             {initialen}
           </div>

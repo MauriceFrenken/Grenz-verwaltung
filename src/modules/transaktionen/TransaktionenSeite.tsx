@@ -124,7 +124,7 @@ export function TransaktionenSeite() {
         titel="Transaktionen"
         unterzeile={`Immobilien: Ankauf vom Exposé bis zum Notar, Verkauf von Objekten und Einheiten${data.quelle === "mock" ? " · Musterdaten" : ""}`}
       >
-        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
           <BuehnenKennzahl
             label="Pipeline-Volumen"
             wert={euroKompakt(
@@ -448,7 +448,7 @@ function AnkaufDetail({
           <PanelAbschnitt titel="Passt das Eigenkapital?">
             <div
               className={cn(
-                " border p-3 text-sm",
+                "rounded-lg border p-3 text-sm",
                 k.ekBedarf <= tragbar
                   ? "border-ok/40 bg-ok-soft"
                   : "border-bad/40 bg-bad-soft",

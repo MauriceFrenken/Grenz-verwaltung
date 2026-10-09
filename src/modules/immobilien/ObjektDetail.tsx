@@ -253,7 +253,7 @@ export function ObjektDetail({
                 },
               ]}
             />
-            <div className="mt-3 overflow-auto border border-hairline">
+            <div className="mt-3 overflow-auto rounded-lg border border-hairline">
               <table className="w-full text-sm tabular-nums">
                 <thead>
                   <tr className="text-xs text-text-muted shadow-[inset_0_-1px_0_var(--hairline)]">
@@ -517,7 +517,7 @@ export function MietvertragDetail({
           ) : null}
 
           <PanelAbschnitt titel="Mietkonto (12 Monate)">
-            <div className="overflow-auto border border-hairline">
+            <div className="overflow-auto rounded-lg border border-hairline">
               <table className="w-full text-sm tabular-nums">
                 <thead>
                   <tr className="text-xs text-text-muted shadow-[inset_0_-1px_0_var(--hairline)]">

@@ -22,6 +22,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { prefetchGraphRoute } from "@/lib/graph-cache";
+import { FrenkenLogo, FrenkenZeichen } from "@/components/marke/FrenkenLogo";
 import { cn } from "@/lib/utils";
 import { laborAktiv, STEUERUNG } from "@/modules/shell/navigation";
 import { useUiStore } from "@/store/ui";
@@ -138,32 +139,31 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "hairline-r sticky flex shrink-0 flex-col border-r border-hairline bg-sidebar transition-[width]",
+        "hairline-r sticky flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width]",
         // ohne Anmeldung (Demo-Modus) fehlt die Kopfzeile: Marke in der Seitenleiste
         benutzer ? "top-16 h-[calc(100vh-4rem)]" : "top-0 h-screen",
         collapsed ? "w-16" : "w-60",
       )}
     >
       {!benutzer ? (
-        <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-hairline px-4">
-          <span
-            className="flex size-6 shrink-0 items-center justify-center rounded-md bg-heading text-[11px] font-bold text-white"
-            aria-hidden
-          >
-            F
-          </span>
-          {!collapsed ? (
-            <span className="text-sm font-semibold tracking-[-0.01em] text-heading">
-              FRENKEN
-            </span>
-          ) : null}
+        <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-5 text-heading">
+          {collapsed ? (
+            <FrenkenZeichen className="h-[15px]" />
+          ) : (
+            <>
+              <FrenkenLogo className="h-[15px]" />
+              <span className="rounded-md border border-hairline px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-text-muted">
+                Board
+              </span>
+            </>
+          )}
         </div>
       ) : null}
       <nav className="flex-1 overflow-y-auto px-2">
         {sections.map((section) => (
           <div key={section.label} className="py-2.5">
             {!collapsed ? (
-              <div className="px-2.5 pb-1.5 text-xs font-medium text-text-subtle">
+              <div className="px-2.5 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-subtle">
                 {section.label}
               </div>
             ) : (
@@ -183,11 +183,18 @@ export function Sidebar() {
                       onMouseEnter={() => prefetchWennGraph(item.to)}
                       onFocus={() => prefetchWennGraph(item.to)}
                       className={cn(
-                        "relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] text-text-muted transition-colors hover:bg-surface-muted hover:text-heading",
-                        aktiv && "bg-surface-muted font-medium text-heading",
+                        "relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-[13.5px] text-text-muted transition-colors hover:bg-sidebar-accent hover:text-heading",
+                        aktiv &&
+                          "bg-brand-soft font-medium text-heading [&>svg]:text-brand-text",
                       )}
                       title={collapsed ? item.label : undefined}
                     >
+                      {aktiv ? (
+                        <span
+                          className="absolute -left-2 inset-y-1.5 w-[3px] rounded-r-full bg-brand"
+                          aria-hidden
+                        />
+                      ) : null}
                       <item.icon
                         className="h-4 w-4 shrink-0"
                         strokeWidth={1.5}
@@ -206,7 +213,7 @@ export function Sidebar() {
       <button
         type="button"
         onClick={toggle}
-        className="hairline-t flex h-10 items-center justify-center border-t border-hairline text-text-muted hover:bg-surface-muted"
+        className="hairline-t flex h-10 items-center justify-center border-t border-sidebar-border text-text-muted hover:bg-sidebar-accent"
         aria-label={collapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
       >
         {collapsed ? (

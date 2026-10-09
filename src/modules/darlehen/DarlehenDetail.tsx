@@ -196,7 +196,7 @@ export function DarlehenDetail({
                 ]}
               />
             </div>
-            <div className="max-h-[360px] overflow-auto border border-hairline">
+            <div className="max-h-[360px] overflow-auto rounded-lg border border-hairline">
               <table className="w-full text-sm tabular-nums">
                 <thead className="sticky top-0 bg-elevated">
                   <tr className="text-xs text-text-muted shadow-[inset_0_-1px_0_var(--hairline)]">

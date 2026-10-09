@@ -1,5 +1,5 @@
 /**
- * Gemeinsame Bausteine der Steuerung: heller Seitenkopf, große Zahlen,
+ * Gemeinsame Bausteine der Steuerung: Seitenkopf, große Zahlen,
  * Countdown und Vorgangskarten. Farben nur über Tokens (styles.css).
  */
 import { Link } from "@tanstack/react-router";
@@ -15,7 +15,7 @@ import { useJetzt } from "./useJetzt";
 // Seitenkopf-Fläche
 // ---------------------------------------------------------------------------
 
-/** Weiße Kopffläche über die volle Inhaltsbreite, unten eine Haarlinie. */
+/** Kopfbereich einer Seite: Titel, Aktionen und Kennzahlen über dem Inhalt. */
 export function Buehne({
   children,
   className,
@@ -24,14 +24,7 @@ export function Buehne({
   className?: string;
 }) {
   return (
-    <section
-      className={cn(
-        "drucken-hell -mx-4 -mt-8 mb-6 border-b border-hairline bg-surface px-4 pb-6 pt-7 md:-mx-8 md:px-8",
-        className,
-      )}
-    >
-      {children}
-    </section>
+    <section className={cn("drucken-hell mb-8", className)}>{children}</section>
   );
 }
 

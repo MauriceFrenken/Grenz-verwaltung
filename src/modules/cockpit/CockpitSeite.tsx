@@ -5,6 +5,10 @@ import {
   CalendarClock,
   DatabaseZap,
   ListChecks,
+  PieChart,
+  ShieldAlert,
+  Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Buehne,
@@ -56,30 +60,38 @@ import { fristenBis, kapitalbindung, letzteBuchungen } from "./logik/antworten";
 import { saalLose } from "./SaalLose";
 import { useRechnungsfreigabeOffen } from "./useRechnungsfreigabe";
 
-/** Indigo-Abstufungen für die Kapitalbindung (größter Posten im Akzent). */
-const BINDUNG_FARBEN = ["#4f5bd5", "#8790e3", "#b9bff0", "#a3a3a3", "#d4d4d4"];
+/** Blau-Abstufungen für die Kapitalbindung (größter Posten im FRENKEN-Blau). */
+const BINDUNG_FARBEN = ["#4a5fe0", "#7b8cf0", "#aab5f7", "#71717a", "#3f3f46"];
 
 function AntwortKopf({
   titel,
   frage,
   href,
+  icon: Icon,
 }: {
   titel: string;
   frage: string;
   href: string;
+  icon: LucideIcon;
 }) {
   return (
     <div className="flex items-start justify-between gap-3">
-      <div>
-        <h2 className="text-sm font-semibold text-heading">{titel}</h2>
-        <p className="text-xs text-text-muted">{frage}</p>
-      </div>
-      <Link
-        to={href}
-        className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-text-muted transition-colors hover:bg-surface-muted hover:text-heading"
-      >
-        Öffnen <ArrowRight className="size-3.5" aria-hidden />
+      <Link to={href} className="group min-w-0">
+        <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-muted group-hover:text-heading">
+          {titel}
+          <ArrowRight
+            className="size-3 opacity-0 transition-opacity group-hover:opacity-100"
+            aria-hidden
+          />
+        </h2>
+        <p className="mt-0.5 text-xs text-text-subtle">{frage}</p>
       </Link>
+      <span
+        className="-mr-1 -mt-1 flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand-text"
+        aria-hidden
+      >
+        <Icon className="size-4" />
+      </span>
     </div>
   );
 }
@@ -311,7 +323,7 @@ export function CockpitSeite() {
                   ? "Demodaten"
                   : "Bankstand unbekannt"}
             </div>
-            <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.025em] text-heading">
+            <h1 className="text-[30px] font-semibold leading-tight tracking-[-0.025em] text-heading">
               {gruss()}
             </h1>
             <p className="mt-1 text-sm text-text-muted">
@@ -376,11 +388,12 @@ export function CockpitSeite() {
 
       <div className="mb-6 grid gap-4 *:min-w-0 lg:grid-cols-3">
         {/* Geld */}
-        <Karte className="flex flex-col p-5">
+        <Karte className="flex flex-col p-6">
           <AntwortKopf
             titel="Geld"
             frage="Wie viel ist frei?"
             href="/board/liquiditaet"
+            icon={Wallet}
           />
           <div
             className="mt-4 text-[32px] font-semibold leading-none tracking-[-0.03em] text-heading"
@@ -454,11 +467,12 @@ export function CockpitSeite() {
         </Karte>
 
         {/* Risiko */}
-        <Karte className="flex flex-col p-5">
+        <Karte className="flex flex-col p-6">
           <AntwortKopf
             titel="Risiko"
             frage="Was läuft ab?"
             href="/board/darlehen"
+            icon={ShieldAlert}
           />
           <div className="mt-4 flex items-baseline gap-8">
             <div>
@@ -525,11 +539,12 @@ export function CockpitSeite() {
         </Karte>
 
         {/* Kapitalbindung */}
-        <Karte className="flex flex-col p-5">
+        <Karte className="flex flex-col p-6">
           <AntwortKopf
             titel="Kapitalbindung"
             frage="Wo steckt das Geld?"
             href="/board/darlehen"
+            icon={PieChart}
           />
           <div className="mt-4 text-[32px] font-semibold leading-none tracking-[-0.03em] text-heading">
             <GrosserBetrag wert={bindung.summe} />

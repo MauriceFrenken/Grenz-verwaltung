@@ -119,7 +119,7 @@ export function ImmobilienSeite() {
         titel="Immobilien"
         unterzeile={`${bestand.length} Bestandsobjekte · ${projekte.length} Aufteiler-Projekte · ${objekte.reduce((s, o) => s + o.units.length, 0)} Einheiten`}
       >
-        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
           <BuehnenKennzahl
             label="Soll-Miete / Monat"
             wert={euroKompakt(sollMiete)}
@@ -524,7 +524,7 @@ function ObjektKarte({
   return (
     <button
       onClick={onClick}
-      className="group flex cursor-pointer flex-col border border-hairline bg-surface p-5 text-left shadow-[0_1px_2px_0_rgb(0_0_0/0.03)] transition-[border-color,box-shadow] duration-150 [--board-r:10px] hover:border-input hover:shadow-[0_2px_8px_-2px_rgb(0_0_0/0.08)]"
+      className="group flex cursor-pointer flex-col rounded-xl border border-hairline bg-surface p-5 text-left schatten-karte transition-[border-color,box-shadow] duration-150 [--board-r:10px] hover:border-input hover:shadow-[0_2px_8px_-2px_rgb(0_0_0/0.08)]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -568,7 +568,7 @@ function ObjektKarte({
         <Zahl label="LTV" wert={o.ltv === null ? "–" : prozent(o.ltv, 0)} />
       </div>
       {o.rueckstand > 0 ? (
-        <div className="mt-4 bg-bad-soft px-3 py-1.5 text-xs text-bad">
+        <div className="mt-4 rounded-md bg-bad-soft px-3 py-1.5 text-xs text-bad">
           Mietrückstand {euro(o.rueckstand)}
         </div>
       ) : null}
@@ -594,7 +594,7 @@ function ProjektKarte({
   return (
     <button
       onClick={onClick}
-      className="flex cursor-pointer flex-col border border-hairline bg-surface p-5 text-left shadow-[0_1px_2px_0_rgb(0_0_0/0.03)] transition-[border-color,box-shadow] duration-150 [--board-r:10px] hover:border-input hover:shadow-[0_2px_8px_-2px_rgb(0_0_0/0.08)]"
+      className="flex cursor-pointer flex-col rounded-xl border border-hairline bg-surface p-5 text-left schatten-karte transition-[border-color,box-shadow] duration-150 [--board-r:10px] hover:border-input hover:shadow-[0_2px_8px_-2px_rgb(0_0_0/0.08)]"
     >
       <div className="flex items-start justify-between gap-3">
         <div>

@@ -99,7 +99,7 @@ export function DatenSeite() {
         titel="Datenqualität"
         unterzeile={`Woher die Zahlen kommen, was fehlt und wo es nachgetragen wird${data.quelle === "mock" ? " · Musterdaten" : ""}`}
       >
-        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <BuehnenKennzahl
             label="Quellen aktuell"
             wert={

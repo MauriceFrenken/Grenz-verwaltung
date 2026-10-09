@@ -40,7 +40,7 @@ export function Befehlspalette({ daten }: { daten: BoardDaten | undefined }) {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/25 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
         <Dialog.Content
-          className="fixed left-1/2 top-[14vh] z-50 w-[calc(100%-2rem)] max-w-[620px] -translate-x-1/2 overflow-hidden border border-hairline bg-elevated shadow-[0_24px_64px_-16px_rgb(0_0_0/0.35)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98] data-[state=open]:duration-150"
+          className="fixed left-1/2 top-[14vh] z-50 w-[calc(100%-2rem)] max-w-[620px] -translate-x-1/2 overflow-hidden rounded-xl border border-hairline bg-elevated shadow-[0_24px_64px_-16px_rgb(0_0_0/0.35)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98] data-[state=open]:duration-150"
           aria-describedby={undefined}
         >
           <Dialog.Title className="sr-only">Befehlspalette</Dialog.Title>

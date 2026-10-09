@@ -81,7 +81,7 @@ export function RundeSeite() {
           </>
         }
       >
-        <div className="grid grid-cols-2 gap-6 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           <BuehnenKennzahl
             label="Nächste Runde"
             wert={
@@ -120,7 +120,7 @@ export function RundeSeite() {
       </SeitenKopf>
 
       {beschluesse.tabelleFehlt ? (
-        <p className="mb-6 border border-warn/40 bg-warn-soft px-4 py-3 text-sm text-warn">
+        <p className="mb-6 rounded-lg border border-warn/40 bg-warn-soft px-4 py-3 text-sm text-warn">
           Beschlüsse können noch nicht gespeichert werden: Die
           Datenbank-Erweiterung <code>20261009070000_board_wochenrunde</code>{" "}
           fehlt. Die Tagesordnung funktioniert trotzdem.

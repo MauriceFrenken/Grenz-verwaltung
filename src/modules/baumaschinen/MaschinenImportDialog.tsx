@@ -106,7 +106,7 @@ export function MaschinenImportDialog({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/25 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-[10vh] z-50 flex max-h-[80vh] w-[calc(100%-2rem)] max-w-[600px] -translate-x-1/2 flex-col border border-hairline bg-elevated shadow-[0_24px_64px_-16px_rgb(0_0_0/0.35)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98]">
+        <Dialog.Content className="fixed left-1/2 top-[10vh] z-50 flex max-h-[80vh] w-[calc(100%-2rem)] max-w-[600px] -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-hairline bg-elevated shadow-[0_24px_64px_-16px_rgb(0_0_0/0.35)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98]">
           <div className="flex items-center justify-between border-b border-hairline px-5 py-4">
             <Dialog.Title className="text-[15px] font-semibold text-heading">
               Maschinenbestand importieren
@@ -122,7 +122,7 @@ export function MaschinenImportDialog({
             Excel- oder CSV-Datei mit einer Zeile je Maschine hochladen
           </Dialog.Description>
           <div className="flex-1 overflow-y-auto px-5 py-4">
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 border border-dashed border-input bg-surface-muted/50 px-4 py-8 text-center transition-colors hover:bg-surface-muted">
+            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-input bg-surface-muted/50 px-4 py-8 text-center transition-colors hover:bg-surface-muted">
               <FileSpreadsheet
                 className="size-6 text-primary"
                 strokeWidth={1.75}
@@ -156,7 +156,7 @@ export function MaschinenImportDialog({
             {ergebnis ? (
               <div className="mt-4 space-y-3">
                 <div className="flex flex-wrap gap-2 text-sm">
-                  <span className="inline-flex items-center gap-1.5 bg-ok-soft px-2 py-1 text-ok">
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-ok-soft px-2 py-1 text-ok">
                     <CheckCircle2 className="size-3.5" />{" "}
                     {ergebnis.gueltig.length} gültig
                   </span>

@@ -104,7 +104,7 @@ export function DatenTabelle<T>({
   const hatWerkzeuge = Boolean(suchText) || filter.length > 0;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-hairline bg-surface schatten-karte">
+    <div className="overflow-hidden rounded-xl border border-hairline bg-surface schatten-karte">
       {hatWerkzeuge ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-hairline px-3 py-2.5">
           {suchText ? (

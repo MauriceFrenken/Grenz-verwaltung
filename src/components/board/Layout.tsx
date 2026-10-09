@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { STEUERUNG } from "@/modules/shell/navigation";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, type LucideIcon } from "lucide-react";
 import { Buehne } from "./Bausteine";
 
 /**
@@ -41,13 +41,13 @@ export function SeitenKopf({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           {marke ? (
-            <div className="mb-1.5 text-xs text-text-muted">{marke}</div>
+            <div className="mb-2 text-xs text-text-muted">{marke}</div>
           ) : null}
-          <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.025em] text-heading">
+          <h1 className="text-[30px] font-semibold leading-tight tracking-[-0.025em] text-heading">
             {titel}
           </h1>
           {unterzeile ? (
-            <p className="mt-1 max-w-3xl text-sm text-text-muted">
+            <p className="mt-1.5 max-w-3xl text-sm text-text-muted">
               {unterzeile}
             </p>
           ) : null}
@@ -63,7 +63,7 @@ export function SeitenKopf({
   );
 }
 
-/** Kennzahl im Seitenkopf: Bezeichnung, große Zahl, Zusatz. */
+/** Kennzahl im Seitenkopf als Karte: Bezeichnung, große Zahl, Zusatz, optional Symbol. */
 export function BuehnenKennzahl({
   label,
   wert,
@@ -72,6 +72,7 @@ export function BuehnenKennzahl({
   href,
   title,
   quelle,
+  icon: Icon,
   className,
 }: {
   label: string;
@@ -82,9 +83,18 @@ export function BuehnenKennzahl({
   title?: string;
   /** Herkunft der Zahl (Tooltip), wie bei KpiKarte */
   quelle?: string;
+  icon?: LucideIcon;
   className?: string;
 }) {
   title = title ?? quelle;
+  const ton =
+    ampel === "rot"
+      ? "bg-bad-soft text-bad"
+      : ampel === "gelb"
+        ? "bg-warn-soft text-warn"
+        : ampel === "gruen"
+          ? "bg-ok-soft text-ok"
+          : "bg-brand-soft text-brand-text";
   const punkt =
     ampel === "rot"
       ? "bg-bad"
@@ -95,31 +105,44 @@ export function BuehnenKennzahl({
           : "bg-text-subtle";
   const inhalt = (
     <>
-      <div className="flex items-center gap-1.5 text-[13px] text-text-muted">
-        {ampel ? (
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+          {ampel && !Icon ? (
+            <span
+              className={cn("size-1.5 shrink-0 rounded-full", punkt)}
+              aria-hidden
+            />
+          ) : null}
+          <span className="truncate">{label}</span>
+        </div>
+        {Icon ? (
           <span
-            className={cn("size-1.5 shrink-0 rounded-full", punkt)}
+            className={cn(
+              "-mr-1 -mt-1 flex size-8 shrink-0 items-center justify-center rounded-lg",
+              ton,
+            )}
             aria-hidden
-          />
-        ) : null}
-        <span className="truncate">{label}</span>
-        {href ? (
+          >
+            <Icon className="size-4" />
+          </span>
+        ) : href ? (
           <ArrowUpRight
-            className="size-3.5 shrink-0 text-text-subtle opacity-0 transition-opacity group-hover:opacity-100"
+            className="size-3.5 shrink-0 text-text-subtle transition-colors group-hover:text-heading"
             aria-hidden
           />
         ) : null}
       </div>
-      <div className="mt-1.5 text-[26px] font-semibold leading-none tracking-[-0.025em] text-heading">
+      <div className="mt-2.5 text-[28px] font-semibold leading-none tracking-[-0.025em] text-heading">
         {wert}
       </div>
       {hinweis ? (
-        <div className="ziffern mt-1.5 text-xs text-text-muted">{hinweis}</div>
+        <div className="ziffern mt-2.5 text-xs text-text-muted">{hinweis}</div>
       ) : null}
     </>
   );
   const klassen = cn(
-    "group block min-w-0 border-l border-hairline pl-4",
+    "group block min-w-0 rounded-xl border border-hairline bg-surface p-5 schatten-karte transition-colors",
+    href && "hover:border-input hover:bg-surface-muted/60",
     className,
   );
   if (href)
@@ -181,7 +204,7 @@ export function Karte({
   return (
     <div
       className={cn(
-        "rounded-lg border border-hairline bg-surface schatten-karte",
+        "rounded-xl border border-hairline bg-surface schatten-karte",
         className,
       )}
       {...rest}

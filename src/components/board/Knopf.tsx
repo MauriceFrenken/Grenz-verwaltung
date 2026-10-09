@@ -4,14 +4,14 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const knopfVarianten = cva(
-  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand transition-[background-color,color,box-shadow] duration-150 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand transition-[background-color,color,box-shadow] duration-150 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variante: {
         primaer:
-          "bg-heading text-white shadow-[0_1px_2px_0_rgb(0_0_0/0.12)] hover:bg-heading/90",
+          "bg-brand text-white shadow-[0_1px_2px_0_rgb(0_0_0/0.3)] hover:bg-brand/90",
         sekundaer:
-          "border border-input bg-surface text-heading shadow-[0_1px_2px_0_rgb(0_0_0/0.04)] hover:bg-surface-muted",
+          "border border-input bg-surface text-heading hover:bg-surface-muted",
         geist: "text-text-muted hover:bg-surface-muted hover:text-foreground",
         gefahr: "bg-bad text-white hover:bg-bad/90",
       },

@@ -306,7 +306,7 @@ export function LiquiditaetSeite() {
         titel="Liquidität"
         unterzeile={`${kreis.name} · Stand ${datum(stichtag)} · konsolidiert ohne interne Zahlungen${filter.alle ? ", ohne Maklerbereich" : ""}`}
       >
-        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
           <BuehnenKennzahl
             label="Liquidität heute"
             wert={euroKompakt(heute)}
@@ -509,7 +509,7 @@ export function LiquiditaetSeite() {
           titel="Warnungen"
           beschreibung="Unterschreitungen der Mindestliquidität mit Haupttreiber (größter Abfluss in den 30 Tagen davor)"
         >
-          <ul className="divide-y divide-hairline border border-hairline bg-surface">
+          <ul className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-surface">
             {warnungen.map((w) => {
               const t = w.ersteUnterschreitung
                 ? haupttreiber(
@@ -616,7 +616,7 @@ function MonatsTabelle({ monate }: { monate: MonatsZeile[] }) {
   const wert = (m: MonatsZeile, kategorien: LiqKategorie[]) =>
     kategorien.reduce((s, k) => s + (m.jeKategorie[k] ?? 0), 0);
   return (
-    <div className="max-h-[520px] overflow-auto border border-hairline bg-surface">
+    <div className="max-h-[520px] overflow-auto rounded-xl border border-hairline bg-surface">
       <table className="w-full text-sm tabular-nums">
         <thead className="sticky top-0 z-10 bg-surface">
           <tr className="text-xs text-text-muted shadow-[inset_0_-1px_0_var(--hairline)]">

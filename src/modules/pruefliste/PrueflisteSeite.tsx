@@ -84,7 +84,7 @@ export function PrueflisteSeite() {
         titel="Prüfliste"
         unterzeile="Alles, was eine Entscheidung braucht, aus allen Modulen · rot zuerst, dann nach Fälligkeit"
       >
-        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
           <BuehnenKennzahl
             label="Offen"
             wert={String(offen.length)}
@@ -145,7 +145,7 @@ export function PrueflisteSeite() {
           text="Für diese Auswahl gibt es keine offenen Prüffälle."
         />
       ) : (
-        <ul className="divide-y divide-hairline overflow-hidden rounded-lg border border-hairline bg-surface schatten-karte">
+        <ul className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-surface schatten-karte">
           {sichtbar.map((f) => {
             const ziel = pruefFallZiel(f, daten);
             const tage = f.dueDate

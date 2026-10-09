@@ -207,7 +207,7 @@ export function AblageSeite() {
         unterzeile="Regeln, dann KI mit Konfidenz je Feld · unter 90 % entscheidet ein Mensch · läuft parallel zur bestehenden Gelb-Ablage"
       />
 
-      <div className="mb-6 flex items-start gap-2 border border-hairline bg-accent-soft px-4 py-3 text-sm">
+      <div className="mb-6 flex items-start gap-2 rounded-lg border border-hairline bg-accent-soft px-4 py-3 text-sm">
         <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
         <p>
           Testbetrieb mit {ABLAGE_MAILS.length} fiktiven Mails und simulierter
@@ -567,7 +567,7 @@ function VorschlagDetail({
             </select>
           </label>
         </div>
-        <div className="mt-4 space-y-1 border border-hairline p-3 text-sm">
+        <div className="mt-4 space-y-1 rounded-lg border border-hairline p-3 text-sm">
           <div className="text-xs text-text-muted">Zielordner</div>
           <div className="break-all">
             {firmaObj ? (

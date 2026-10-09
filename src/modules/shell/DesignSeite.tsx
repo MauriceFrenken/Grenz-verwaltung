@@ -128,7 +128,7 @@ export function DesignSeite() {
           </>
         }
       >
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <BuehnenKennzahl
             label="Großer Betrag"
             wert={<GrosserBetrag wert={4_312_000} />}

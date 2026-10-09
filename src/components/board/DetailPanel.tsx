@@ -31,7 +31,7 @@ export function DetailPanel({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/25 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-200" />
         <Dialog.Content
           className={cn(
-            "fixed inset-y-2 right-2 z-50 flex w-[calc(100%-1rem)] flex-col overflow-hidden border border-hairline bg-elevated text-foreground shadow-[0_16px_48px_-12px_rgb(0_0_0/0.25)] outline-none [--board-r:12px]",
+            "fixed inset-y-2 right-2 z-50 flex w-[calc(100%-1rem)] flex-col overflow-hidden rounded-xl border border-hairline bg-elevated text-foreground shadow-[0_16px_48px_-12px_rgb(0_0_0/0.25)] outline-none [--board-r:12px]",
             "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-right-8 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-right-8 data-[state=closed]:duration-150 data-[state=open]:duration-200",
             breite === "md" ? "sm:max-w-[520px]" : "sm:max-w-[720px]",
           )}

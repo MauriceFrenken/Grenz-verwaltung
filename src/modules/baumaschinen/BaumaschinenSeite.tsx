@@ -183,7 +183,7 @@ export function BaumaschinenSeite() {
       >
         {reiter === "handel" && !keinBestand ? (
           <>
-            <div className="grid grid-cols-2 gap-6 md:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
               <BuehnenKennzahl
                 label="Lagerwert"
                 wert={<GrosserBetrag wert={handel.lagerwert} />}
