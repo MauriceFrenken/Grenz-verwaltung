@@ -87,6 +87,15 @@ export function normal(s: string): string {
  * und ohne „str“, dazu der Ort, wenn ihn kein anderes Objekt hat.
  * Varianten ohne Umlaut („Konigsberger“, „Huckelhoven“) werden mit erkannt.
  */
+/**
+ * Bestätigte Merkmale ohne Adresse im Text (Urkundennummer, Verkäufer),
+ * je Objekt-ID. Von Maurice bestätigt am 09.10.2026.
+ */
+const OBJEKT_STICHWORTE: Record<string, string[]> = {
+  // Kauf Alt-Pempelfort 7: UVZ 1286/2025 Notar Ulbrich, Verkäufer Klees/Scholz
+  "O-02": ["1286/2025", "ulrich klees", "michael klees", "gisela gerda scholz"],
+};
+
 export function objektMuster(properties: Property[]): Map<string, RegExp> {
   const orte = new Map<string, number>();
   for (const p of properties)
@@ -110,6 +119,8 @@ export function objektMuster(properties: Property[]): Map<string, RegExp> {
     const alternativen = [...woerter].map((w) =>
       w.replace(/ae|oe|ue/g, (u) => `(?:${u}|${u[0]})`),
     );
+    for (const w of OBJEKT_STICHWORTE[p.id] ?? [])
+      alternativen.push(w.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&"));
     muster.set(p.id, new RegExp(`(${alternativen.join("|")})`, "i"));
   }
   return muster;
