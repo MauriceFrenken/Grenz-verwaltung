@@ -186,6 +186,7 @@ describe("Abgleich Soll-Zinsen gegen Kontoumsätze", () => {
       saldoBekannt: true,
       saldoStichtag: null,
       zugang: "muster" as const,
+      propertyId: null,
       openingDate: "2026-01-01",
     },
   ];

@@ -497,16 +497,23 @@ export function abbilden(r: LiveRohdaten): BoardDaten {
       bank: string;
       zugang: BankAccount["zugang"];
       label: string;
+      propertyId: string | null;
     }
   >();
+  // deaktivierte Konten (z. B. Mietkautionskonten) bleiben auch aus EBICS heraus
+  const inaktiv = new Set<string>();
   if (r.bankkonten) {
     for (const k of r.bankkonten) {
-      if (k.aktiv === false) continue;
+      if (k.aktiv === false) {
+        inaktiv.add(String(k.iban));
+        continue;
+      }
       konten.set(String(k.iban), {
         companyId: String(k.gesellschaft_id),
         bank: text(k.bank) ?? "",
         zugang: (text(k.zugang) as BankAccount["zugang"]) ?? "manuell",
         label: text(k.bezeichnung) ?? "Konto",
+        propertyId: text(k.objekt_id),
       });
     }
   }
@@ -514,12 +521,13 @@ export function abbilden(r: LiveRohdaten): BoardDaten {
   for (const c of r.ebicsKonten) {
     const iban = text(c.iban)?.replace(/\s+/g, "").toUpperCase();
     const kunde = kundeById.get(String(c.ebics_kunde_id));
-    if (!iban || !kunde || konten.has(iban)) continue;
+    if (!iban || !kunde || konten.has(iban) || inaktiv.has(iban)) continue;
     konten.set(iban, {
       companyId: String(kunde.gesellschaft_id),
       bank: text(kunde.bank_name) ?? "",
       zugang: "ebics",
       label: "Konto",
+      propertyId: null,
     });
   }
 
@@ -548,6 +556,7 @@ export function abbilden(r: LiveRohdaten): BoardDaten {
         bank: "",
         zugang: "ebics",
         label: "Konto",
+        propertyId: null,
       });
     transaktionsKonten.add(iban);
     const betrag = zahl(b.betrag) ?? 0;
@@ -614,6 +623,7 @@ export function abbilden(r: LiveRohdaten): BoardDaten {
       saldoBekannt: Boolean(saldo),
       saldoStichtag: saldo?.stichtag ?? null,
       zugang: k.zugang,
+      propertyId: k.propertyId,
     };
   });
   for (const k of bankAccounts)

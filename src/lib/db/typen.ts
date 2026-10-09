@@ -289,6 +289,8 @@ export const bankAccountSchema = z.object({
   zugang: z
     .enum(["ebics", "qonto", "csv", "manuell", "muster"])
     .default("muster"),
+  /** Objekt, zu dem das Konto gehört (Mietkonto); null = Gesellschaft allgemein */
+  propertyId: z.string().nullable().default(null),
 });
 export type BankAccount = z.infer<typeof bankAccountSchema>;
 

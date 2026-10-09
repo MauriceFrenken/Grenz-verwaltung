@@ -23,6 +23,7 @@ import { Route as VerwaltungRouteImport } from './routes/verwaltung'
 import { Route as BoardIndexRouteImport } from './routes/board.index'
 import { Route as BoardAblageRouteImport } from './routes/board.ablage'
 import { Route as BoardBaumaschinenRouteImport } from './routes/board.baumaschinen'
+import { Route as BoardCashflowRouteImport } from './routes/board.cashflow'
 import { Route as BoardDarlehenRouteImport } from './routes/board.darlehen'
 import { Route as BoardDatenRouteImport } from './routes/board.daten'
 import { Route as BoardDesignRouteImport } from './routes/board.design'
@@ -134,6 +135,11 @@ const BoardAblageRoute = BoardAblageRouteImport.update({
 const BoardBaumaschinenRoute = BoardBaumaschinenRouteImport.update({
   id: '/baumaschinen',
   path: '/baumaschinen',
+  getParentRoute: () => BoardRoute,
+} as any)
+const BoardCashflowRoute = BoardCashflowRouteImport.update({
+  id: '/cashflow',
+  path: '/cashflow',
   getParentRoute: () => BoardRoute,
 } as any)
 const BoardDarlehenRoute = BoardDarlehenRouteImport.update({
@@ -370,6 +376,7 @@ export interface FileRoutesByFullPath {
   '/verwaltung': typeof VerwaltungRouteWithChildren
   '/board/ablage': typeof BoardAblageRoute
   '/board/baumaschinen': typeof BoardBaumaschinenRoute
+  '/board/cashflow': typeof BoardCashflowRoute
   '/board/darlehen': typeof BoardDarlehenRoute
   '/board/daten': typeof BoardDatenRoute
   '/board/design': typeof BoardDesignRoute
@@ -423,6 +430,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/board/ablage': typeof BoardAblageRoute
   '/board/baumaschinen': typeof BoardBaumaschinenRoute
+  '/board/cashflow': typeof BoardCashflowRoute
   '/board/darlehen': typeof BoardDarlehenRoute
   '/board/daten': typeof BoardDatenRoute
   '/board/design': typeof BoardDesignRoute
@@ -479,6 +487,7 @@ export interface FileRoutesById {
   '/verwaltung': typeof VerwaltungRouteWithChildren
   '/board/ablage': typeof BoardAblageRoute
   '/board/baumaschinen': typeof BoardBaumaschinenRoute
+  '/board/cashflow': typeof BoardCashflowRoute
   '/board/darlehen': typeof BoardDarlehenRoute
   '/board/daten': typeof BoardDatenRoute
   '/board/design': typeof BoardDesignRoute
@@ -539,6 +548,7 @@ export interface FileRouteTypes {
     | '/verwaltung'
     | '/board/ablage'
     | '/board/baumaschinen'
+    | '/board/cashflow'
     | '/board/darlehen'
     | '/board/daten'
     | '/board/design'
@@ -592,6 +602,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/board/ablage'
     | '/board/baumaschinen'
+    | '/board/cashflow'
     | '/board/darlehen'
     | '/board/daten'
     | '/board/design'
@@ -647,6 +658,7 @@ export interface FileRouteTypes {
     | '/verwaltung'
     | '/board/ablage'
     | '/board/baumaschinen'
+    | '/board/cashflow'
     | '/board/darlehen'
     | '/board/daten'
     | '/board/design'
@@ -809,6 +821,13 @@ declare module '@tanstack/react-router' {
       path: '/baumaschinen'
       fullPath: '/board/baumaschinen'
       preLoaderRoute: typeof BoardBaumaschinenRouteImport
+      parentRoute: typeof BoardRoute
+    }
+    '/board/cashflow': {
+      id: '/board/cashflow'
+      path: '/cashflow'
+      fullPath: '/board/cashflow'
+      preLoaderRoute: typeof BoardCashflowRouteImport
       parentRoute: typeof BoardRoute
     }
     '/board/darlehen': {
@@ -1111,6 +1130,7 @@ declare module '@tanstack/react-router' {
 interface BoardRouteChildren {
   BoardAblageRoute: typeof BoardAblageRoute
   BoardBaumaschinenRoute: typeof BoardBaumaschinenRoute
+  BoardCashflowRoute: typeof BoardCashflowRoute
   BoardDarlehenRoute: typeof BoardDarlehenRoute
   BoardDatenRoute: typeof BoardDatenRoute
   BoardDesignRoute: typeof BoardDesignRoute
@@ -1126,6 +1146,7 @@ interface BoardRouteChildren {
 const BoardRouteChildren: BoardRouteChildren = {
   BoardAblageRoute: BoardAblageRoute,
   BoardBaumaschinenRoute: BoardBaumaschinenRoute,
+  BoardCashflowRoute: BoardCashflowRoute,
   BoardDarlehenRoute: BoardDarlehenRoute,
   BoardDatenRoute: BoardDatenRoute,
   BoardDesignRoute: BoardDesignRoute,

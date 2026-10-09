@@ -771,6 +771,7 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
     saldoBekannt: true,
     saldoStichtag: stichtag,
     zugang: "muster" as const,
+    propertyId: null,
   }));
   bankAccounts.push({
     id: "k-mh-2",
@@ -783,6 +784,7 @@ export function erzeugeSeed(stichtag: IsoDatum, seed = 1992): BoardDaten {
     saldoBekannt: true,
     saldoStichtag: stichtag,
     zugang: "muster",
+    propertyId: null,
   });
   const konto = (companyId: string) =>
     bankAccounts.find((k) => k.companyId === companyId)!;

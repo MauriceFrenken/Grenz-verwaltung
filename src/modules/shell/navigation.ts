@@ -1,5 +1,6 @@
 import {
   Building2,
+  ChartColumn,
   CalendarCheck,
   DatabaseZap,
   FileText,
@@ -80,6 +81,12 @@ export const STEUERUNG: NavBereich[] = [
         label: "Portfolio",
         icon: Building2,
         frage: "Welches Objekt bleibt hinter Plan?",
+      },
+      {
+        to: "/board/cashflow",
+        label: "Cashflow",
+        icon: ChartColumn,
+        frage: "Was bleibt je Liegenschaft übrig?",
       },
       {
         to: "/board/transaktionen",

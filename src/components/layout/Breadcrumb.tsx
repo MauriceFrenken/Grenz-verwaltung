@@ -10,6 +10,7 @@ const LABELS: Record<string, string> = {
   "/board/pruefliste": "Prüfliste",
   "/board/daten": "Datenqualität",
   "/board/immobilien": "Immobilien",
+  "/board/cashflow": "Cashflow",
   "/board/transaktionen": "Transaktionen",
   "/board/baumaschinen": "Baumaschinen",
   "/board/ablage": "Ablage v2 (Labor)",
