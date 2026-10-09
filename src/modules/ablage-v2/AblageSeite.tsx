@@ -457,7 +457,7 @@ function VorschlagDetail({
       .map((l) => ({ id: l.id, label: `${l.id} ${l.purpose}` })),
   ];
   const auswahl =
-    "mt-1 h-8 w-full cursor-pointer border border-hairline bg-surface px-2 text-sm text-foreground outline-none";
+    "mt-1 h-8 w-full cursor-pointer rounded-md border border-input bg-surface px-2 text-sm text-foreground outline-none";
 
   return (
     <DetailPanel

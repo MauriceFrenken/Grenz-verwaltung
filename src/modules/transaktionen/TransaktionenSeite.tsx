@@ -215,7 +215,7 @@ export function TransaktionenSeite() {
                         {s.volumen ? euroKompakt(s.volumen) : ""}
                       </span>
                     </header>
-                    <div className="min-h-[120px] space-y-2 bg-surface-muted/60 p-2">
+                    <div className="min-h-[120px] space-y-2 rounded-lg bg-surface-muted/60 p-2">
                       {karten.length === 0 ? (
                         <p className="px-2 py-6 text-center text-xs text-text-subtle">
                           keine Deals
@@ -284,7 +284,7 @@ function DealKarte({
       type="button"
       onClick={onClick}
       className={cn(
-        "block w-full cursor-pointer border border-hairline bg-surface p-3 text-left shadow-[0_1px_2px_0_rgb(0_0_0/0.04)] transition-[border-color,box-shadow] duration-150 hover:border-input hover:shadow-[0_2px_8px_-2px_rgb(0_0_0/0.08)]",
+        "block w-full cursor-pointer rounded-md border border-hairline bg-surface p-3 text-left shadow-[0_1px_2px_0_rgb(0_0_0/0.04)] transition-[border-color,box-shadow] duration-150 hover:border-input hover:shadow-[0_2px_8px_-2px_rgb(0_0_0/0.08)]",
         aktiv && "border-primary",
       )}
     >

@@ -91,7 +91,7 @@ export function Kontobewegungen({ darlehenId }: { darlehenId: string }) {
                 onChange={(e) =>
                   void typAendern(b, e.target.value as DarlehenBuchungTyp)
                 }
-                className="h-7 cursor-pointer border border-hairline bg-surface px-2 text-xs text-foreground outline-none"
+                className="h-7 cursor-pointer rounded-md border border-input bg-surface px-2 text-xs text-foreground outline-none"
               >
                 {TYPEN.map((t) => (
                   <option key={t} value={t}>
