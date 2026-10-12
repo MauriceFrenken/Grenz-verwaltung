@@ -31,7 +31,7 @@ export const PLAN_ANNAHMEN = {
   instandhaltungJeQmJahr: 10,
   /** Verwaltung und Vermietung in % der Kaltmiete */
   verwaltungQuote: 0.04,
-  /** Mietausfall in % der Soll-Miete */
+  /** Mietausfall in % der Netto-Kaltmiete */
   mietausfallQuote: 0.02,
 } as const;
 
@@ -86,15 +86,17 @@ export interface CfMonat {
   abgeschlossen: boolean;
   /** true = für diesen Monat liegen Bankdaten des Objekts vor */
   mitDaten: boolean;
+  /** Netto-Kaltmiete laut Verträgen */
   sollMiete: number;
   werte: Werte;
   summen: Record<Summenzeile, number>;
 }
 
 export interface CfPlan {
+  /** Netto-Kaltmiete laut Verträgen */
   sollMiete: number;
   mietausfall: number;
-  /** umlagefähige Kosten ≈ Nebenkostenvorauszahlungen */
+  /** Nebenkostenvorauszahlungen laut Verträgen (decken die umlagefähigen Kosten) */
   umlagefaehig: number;
   instandhaltung: number;
   verwaltung: number;
@@ -123,7 +125,7 @@ export interface ObjektCf {
   vergleichsMonate: number;
   /** erster Monat mit Bankdaten, null = keine */
   datenAb: string | null;
-  /** Ist-Miete / Soll-Miete im Vergleichszeitraum */
+  /** Ist-Netto-Kaltmiete / Soll-Netto-Kaltmiete im Vergleichszeitraum */
   mieteQuote: number | null;
   /** NOI / Kapitaldienst im Vergleichszeitraum */
   dscr: number | null;
@@ -179,6 +181,35 @@ function kapitaldienstPlan(
     );
 }
 
+/**
+ * Mieteingänge auf der Bank sind Warmmiete. Je Monat wird der Anteil der
+ * Nebenkostenvorauszahlungen laut Verträgen als „Umlagen“ abgespalten, so
+ * dass Mieteinnahmen die Netto-Kaltmiete zeigen. Die Umlagen stehen in der
+ * Bewirtschaftung gegen die umlagefähigen Kosten.
+ */
+export function mieteTeilen(
+  posten: CfPosten[],
+  soll: (monat: string) => { warm: number; kalt: number },
+): CfPosten[] {
+  const ergebnis: CfPosten[] = [];
+  for (const p of posten) {
+    if (p.kategorie !== "miete") {
+      ergebnis.push(p);
+      continue;
+    }
+    const { warm, kalt } = soll(p.monat);
+    const anteil = warm > 0 ? (warm - kalt) / warm : 0;
+    const umlage = runden(p.betrag * anteil);
+    if (!umlage) {
+      ergebnis.push(p);
+      continue;
+    }
+    ergebnis.push({ ...p, betrag: runden(p.betrag - umlage) });
+    ergebnis.push({ ...p, kategorie: "umlagen", betrag: umlage });
+  }
+  return ergebnis;
+}
+
 function aufbauen(
   kopf: Pick<
     ObjektCf,
@@ -201,7 +232,7 @@ function aufbauen(
       monat,
       abgeschlossen: monat < laufend,
       mitDaten: datenAb != null && monat >= datenAb,
-      sollMiete: runden(soll(monat).warm),
+      sollMiete: runden(soll(monat).kalt),
       werte,
       summen: summen(werte),
     };
@@ -213,19 +244,19 @@ function aufbauen(
   for (const k of Object.keys(werte) as CfKategorie[])
     werte[k] = runden(werte[k]);
   const s = summen(werte);
-  const sollWarm = vergleich.reduce((a, m) => a + m.sollMiete, 0);
-  const sollKalt = vergleich.reduce((a, m) => a + soll(m.monat).kalt, 0);
+  const sollWarm = vergleich.reduce((a, m) => a + soll(m.monat).warm, 0);
+  const sollKalt = vergleich.reduce((a, m) => a + m.sollMiete, 0);
   const kd = vergleich.reduce((a, m) => a + kdPlan(m.monat), 0);
-  const mietausfall = sollWarm * PLAN_ANNAHMEN.mietausfallQuote;
+  // Plan auf Basis Netto-Kaltmiete; umlagefähige Kosten und Umlagen heben sich auf
+  const mietausfall = sollKalt * PLAN_ANNAHMEN.mietausfallQuote;
   const umlagefaehig = sollWarm - sollKalt;
   const instandhaltung =
     (kopf.flaeche * PLAN_ANNAHMEN.instandhaltungJeQmJahr * vergleich.length) /
     12;
   const verwaltung = sollKalt * PLAN_ANNAHMEN.verwaltungQuote;
-  const noiPlan =
-    sollWarm - mietausfall - umlagefaehig - instandhaltung - verwaltung;
+  const noiPlan = sollKalt - mietausfall - instandhaltung - verwaltung;
   const plan: CfPlan = {
-    sollMiete: runden(sollWarm),
+    sollMiete: runden(sollKalt),
     mietausfall: runden(mietausfall),
     umlagefaehig: runden(umlagefaehig),
     instandhaltung: runden(instandhaltung),
@@ -237,11 +268,11 @@ function aufbauen(
   return {
     ...kopf,
     monate: cfMonate,
-    summe: { werte, summen: s, sollMiete: runden(sollWarm) },
+    summe: { werte, summen: s, sollMiete: runden(sollKalt) },
     plan,
     vergleichsMonate: vergleich.length,
     datenAb,
-    mieteQuote: sollWarm > 0 ? werte.miete / sollWarm : null,
+    mieteQuote: sollKalt > 0 ? werte.miete / sollKalt : null,
     dscr: s.kapitaldienst < 0 ? s.noi / -s.kapitaldienst : null,
     posten: posten.slice().sort((a, b) => b.datum.localeCompare(a.datum)),
   };
@@ -349,7 +380,7 @@ export function cashflowAuswerten(
       const units = daten.units.filter((u) => u.propertyId === p.id);
       const unitIds = new Set(units.map((u) => u.id));
       const leases = daten.leases.filter((l) => unitIds.has(l.unitId));
-      const eigene = posten.filter((x) => x.objektId === p.id);
+      const roh = posten.filter((x) => x.objektId === p.id);
       // Datenbasis: Konten der Gesellschaft (Mietkonto oder Hauptkonto)
       const konten = accounts.filter(
         (a) =>
@@ -359,7 +390,7 @@ export function cashflowAuswerten(
       const kaufMonat = p.purchaseDate?.slice(0, 7) ?? null;
       let datenAb = fruehester([
         ...konten.map((a) => kontoAb.get(a.iban)),
-        ...eigene.map((x) => x.monat),
+        ...roh.map((x) => x.monat),
       ]);
       if (datenAb && kaufMonat && kaufMonat > datenAb) datenAb = kaufMonat;
       const soll = (monat: string) => {
@@ -375,6 +406,7 @@ export function cashflowAuswerten(
         }
         return { warm, kalt };
       };
+      const eigene = mieteTeilen(roh, soll);
       return aufbauen(
         {
           objektId: p.id,

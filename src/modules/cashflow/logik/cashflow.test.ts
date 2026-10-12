@@ -3,7 +3,7 @@ import { erzeugeSeed } from "@/lib/db/mock/seed";
 import type { BankAccount, Property, Transaction } from "@/lib/db/typen";
 import { darlehenStand } from "@/modules/darlehen/logik/auswertung";
 import { einordnen, kategorisieren, objektMuster } from "./einordnung";
-import { cashflowAuswerten, cfMonate } from "./objektCashflow";
+import { cashflowAuswerten, cfMonate, mieteTeilen } from "./objektCashflow";
 
 const objekt = (id: string, street: string, city: string): Property => ({
   id,
@@ -198,5 +198,81 @@ describe("Einordnung: Fälle aus den echten Buchungen", () => {
       { accounts: [konto, holding], properties: objekte },
     );
     expect(p).toMatchObject({ kategorie: "finanzierung", objektId: null });
+  });
+});
+
+describe("Zinsen und Nettomieten (Korrektur 12.10.2026)", () => {
+  it("teilt eine Darlehensbuchung nach den Anteilen aus dem Register", () => {
+    expect(
+      kategorisieren(
+        tx(
+          -72616.63,
+          "Frenken Immobilien GmbH",
+          "Rückführung Darlehn inkl. Zinsen",
+          {
+            category: "darlehen",
+            interestPart: 5950.63,
+            principalPart: 66666,
+          },
+        ),
+        new Set(),
+      ),
+    ).toEqual([
+      { k: "zinsen", betrag: -5950.63 },
+      { k: "finanzierung", betrag: -66666 },
+    ]);
+    // Quartalszins an die Schwestergesellschaft, Text ohne „Zins“
+    expect(
+      kat(
+        tx(-2625, "Frenken Immobilien GmbH", "Darlehn Kalkumer Straße 78", {
+          category: "darlehen",
+          interestPart: 2625,
+        }),
+      ),
+    ).toEqual(["zinsen"]);
+  });
+
+  it("Umsatzsteuer der Bank auf Darlehenszinsen zählt zu den Zinsen", () => {
+    expect(
+      kat(
+        tx(-874.29, "19,0% UST-UMBUCHUNG", "IBAN DE95 aus netto 4.601,50", {
+          category: "darlehen",
+          propertyId: "O-01",
+        }),
+      ),
+    ).toEqual(["zinsen"]);
+  });
+
+  it("der Darlehensgeber bucht nicht aufs Objekt des Nehmers", () => {
+    const holding: BankAccount = {
+      ...konto,
+      id: "DE05",
+      iban: "DE05",
+      companyId: "G-05",
+      propertyId: null,
+    };
+    const [p] = einordnen(
+      [
+        tx(2625, "Frenken Immobilien GmbH", "Darlehn 18.12.2024", {
+          accountId: "DE05",
+          category: "darlehen",
+          propertyId: "O-01",
+        }),
+      ],
+      { accounts: [konto, holding], properties: objekte },
+    );
+    expect(p.objektId).toBeNull();
+  });
+
+  it("Mieteingang wird in Netto-Kaltmiete und Umlagen geteilt", () => {
+    const [p] = einordnen([tx(1000, "Max Mieter", "Miete Oktober")], {
+      accounts: [konto],
+      properties: objekte,
+    });
+    const teile = mieteTeilen([p], () => ({ warm: 1000, kalt: 800 }));
+    expect(teile.map((x) => [x.kategorie, x.betrag])).toEqual([
+      ["miete", 800],
+      ["umlagen", 200],
+    ]);
   });
 });

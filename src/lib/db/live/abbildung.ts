@@ -566,9 +566,27 @@ export function abbilden(r: LiveRohdaten): BoardDaten {
     const gegen = text(b.gegenkonto_iban);
     let category: TxKategorie = "sonstiges";
     let propertyId: string | null = null;
+    let interestPart: number | null = null;
+    let principalPart: number | null = null;
     if (dl) {
       category = "darlehen";
-      propertyId = loanById.get(String(dl.darlehen_id))?.propertyId ?? null;
+      const loan = loanById.get(String(dl.darlehen_id));
+      propertyId = loan?.propertyId ?? null;
+      interestPart = zahl(dl.zins_anteil);
+      principalPart = zahl(dl.tilgung_anteil);
+      // Regelmäßige kleine Zahlung auf ein endfälliges Darlehen ohne
+      // Rückführungs-Stichwort ist Zins, auch wenn die Auto-Zuordnung
+      // „Rückzahlung“ geschrieben hat (z. B. 2.625 € je Quartal auf 350k).
+      const text = `${b.auftraggeber_name ?? ""} ${b.verwendungszweck ?? ""}`;
+      if (
+        loan?.repayment.kind === "endfaellig" &&
+        interestPart == null &&
+        Math.abs(betrag) < loan.principal * 0.1 &&
+        !/r(ü|ue)ckf(ü|ue)hr|r(ü|ue)ckzahl|tilg|auszahl/i.test(text)
+      ) {
+        interestPart = Math.abs(betrag);
+        principalPart = null;
+      }
     } else if (miete) {
       category = "miete";
       propertyId = text(miete.objekt_id);
@@ -583,6 +601,8 @@ export function abbilden(r: LiveRohdaten): BoardDaten {
       purpose: text(b.verwendungszweck) ?? "",
       category,
       propertyId,
+      interestPart,
+      principalPart,
     });
   }
   transactions.sort(

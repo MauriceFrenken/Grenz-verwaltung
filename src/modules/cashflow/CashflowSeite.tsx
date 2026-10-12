@@ -396,7 +396,7 @@ function PortfolioTabelle({
         <tr className="text-xs text-text-muted shadow-[inset_0_-1px_0_var(--hairline)]">
           <th className="h-9 px-3 text-left font-medium">Liegenschaft</th>
           <th className="px-3 text-left font-medium">Daten ab</th>
-          <th className={TH}>Soll-Miete</th>
+          <th className={TH}>Soll-Kaltmiete</th>
           <th className={TH}>Ist-Miete</th>
           <th className={TH}>Bewirtschaftung</th>
           <th className={TH}>NOI</th>
@@ -582,11 +582,12 @@ function zeilen(o: ObjektCf): Zeile[] {
     kat("instandhaltung", -p.instandhaltung),
     kat("verwaltung", -p.verwaltung),
     kat("bank"),
+    kat("umlagen"),
     {
       art: "summe",
       z: "bewirtschaftung",
       label: "Bewirtschaftung",
-      plan: -(p.umlagefaehig + p.instandhaltung + p.verwaltung),
+      plan: -(p.instandhaltung + p.verwaltung),
     },
     {
       art: "summe",
@@ -707,7 +708,7 @@ function ObjektAnsicht({
                 const stark = z.art === "summe" && z.stark;
                 const label =
                   z.art === "soll"
-                    ? "Soll-Miete (Verträge, warm)"
+                    ? "Soll-Miete (Verträge, netto kalt)"
                     : z.art === "kategorie"
                       ? CF_KATEGORIEN[z.k].label
                       : z.label;
@@ -866,26 +867,29 @@ function Annahmen() {
           <p className="text-text-muted">
             Jede Bankbuchung bekommt eine Kategorie und ein Objekt: über das
             Darlehen, den Mietvertrag, die Adresse im Verwendungszweck oder das
-            Mietkonto des Objekts. Darlehensraten werden in Zins und Tilgung
-            geteilt. Was nichts davon trifft, steht unter „Zu prüfen“.
+            Mietkonto des Objekts. Darlehensraten werden nach dem
+            Darlehensregister in Zins und Tilgung geteilt; Zahlungen an einen
+            Darlehensgeber der Gruppe zählen beim Objekt, nicht beim Geber. Was
+            nichts davon trifft, steht unter „Zu prüfen“.
           </p>
         </div>
         <div>
           <div className="mb-1 font-medium text-heading">Soll</div>
           <p className="text-text-muted">
-            Warmmiete aller laufenden Mietverträge je Monat, inklusive
-            zugestimmter Mieterhöhungen. Monate vor dem Kauf zählen nicht.
+            Netto-Kaltmiete aller laufenden Mietverträge je Monat, inklusive
+            zugestimmter Mieterhöhungen. Monate vor dem Kauf zählen nicht. Von
+            den Mieteingängen auf der Bank wird der Anteil der
+            Nebenkostenvorauszahlungen laut Vertrag als „Umlagen“ abgezogen.
           </p>
         </div>
         <div>
           <div className="mb-1 font-medium text-heading">Plan</div>
           <p className="text-text-muted">
-            Soll-Miete minus {prozent(PLAN_ANNAHMEN.mietausfallQuote, 0)}{" "}
-            Mietausfall; umlagefähige Kosten in Höhe der
-            Nebenkostenvorauszahlungen; Instandhaltung{" "}
-            {PLAN_ANNAHMEN.instandhaltungJeQmJahr} € je m² und Jahr; Verwaltung{" "}
-            {prozent(PLAN_ANNAHMEN.verwaltungQuote, 0)} der Kaltmiete;
-            Kapitaldienst aus den Tilgungsplänen der Darlehen.
+            Netto-Kaltmiete minus {prozent(PLAN_ANNAHMEN.mietausfallQuote, 0)}{" "}
+            Mietausfall; umlagefähige Kosten und Umlagen heben sich auf;
+            Instandhaltung {PLAN_ANNAHMEN.instandhaltungJeQmJahr} € je m² und
+            Jahr; Verwaltung {prozent(PLAN_ANNAHMEN.verwaltungQuote, 0)} der
+            Kaltmiete; Kapitaldienst aus den Tilgungsplänen der Darlehen.
           </p>
         </div>
       </Karte>

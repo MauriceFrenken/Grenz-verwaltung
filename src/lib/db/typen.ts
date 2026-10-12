@@ -318,6 +318,10 @@ export const transactionSchema = z.object({
   purpose: z.string(),
   category: z.enum(TX_KATEGORIEN),
   propertyId: z.string().nullable(),
+  /** Zinsanteil einer Darlehensbuchung (Betrag ohne Vorzeichen), falls bekannt */
+  interestPart: z.number().nonnegative().nullable().optional(),
+  /** Tilgungsanteil einer Darlehensbuchung (Betrag ohne Vorzeichen), falls bekannt */
+  principalPart: z.number().nonnegative().nullable().optional(),
 });
 export type Transaction = z.infer<typeof transactionSchema>;
 

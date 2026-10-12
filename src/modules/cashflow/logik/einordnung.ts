@@ -4,7 +4,8 @@
  * Jede Buchung bekommt eine Cashflow-Kategorie und, wo möglich, ein Objekt.
  * Reihenfolge der Objekt-Zuordnung: Darlehen/Mietvertrag → Adresse im
  * Verwendungszweck → Konto des Objekts → „Gesellschaft allgemein“.
- * Eine Darlehensrate mit „RECHN.ZINS … TILG. …“ wird in Zins und Tilgung geteilt.
+ * Eine Darlehensrate wird in Zins und Tilgung geteilt: nach den Anteilen aus
+ * dem Darlehensregister, sonst nach „RECHN.ZINS … TILG. …“ im Text.
  */
 import type { BankAccount, Property, Transaction } from "@/lib/db/typen";
 
@@ -28,6 +29,10 @@ export const CF_KATEGORIEN = {
   instandhaltung: { label: "Instandhaltung", gruppe: "bewirtschaftung" },
   verwaltung: { label: "Verwaltung & Vermietung", gruppe: "bewirtschaftung" },
   bank: { label: "Bankgebühren", gruppe: "bewirtschaftung" },
+  umlagen: {
+    label: "Umlagen (NK-Vorauszahlungen)",
+    gruppe: "bewirtschaftung",
+  },
   zinsen: { label: "Zinsen", gruppe: "kapitaldienst" },
   tilgung: { label: "Tilgung", gruppe: "kapitaldienst" },
   ankauf: { label: "Ankauf & Nebenkosten", gruppe: "investition" },
@@ -262,6 +267,21 @@ export function kategorisieren(
     /frenken|mtf capital|hbf gmbh|grenz & co|tradeanymachine/.test(
       normal(tx.counterpartyName),
     );
+  // Zahlung als Darlehensnehmer mit bekannten Anteilen aus dem Register
+  if (tx.category === "darlehen" && tx.amount < 0) {
+    const zins = tx.interestPart ?? 0;
+    const tilg = tx.principalPart ?? 0;
+    if (zins + tilg > 0 && Math.abs(zins + tilg + tx.amount) < 0.05) {
+      const teile: Array<{ k: CfKategorie; betrag: number }> = [];
+      if (zins > 0) teile.push({ k: "zinsen", betrag: -zins });
+      // Rückführung eines Gruppendarlehens ist Umfinanzierung, kein laufender Kapitaldienst
+      if (tilg > 0)
+        teile.push({ k: gruppe ? "finanzierung" : "tilgung", betrag: -tilg });
+      return teile;
+    }
+    // Umsatzsteuer, die die Bank auf die Darlehenszinsen bucht
+    if (/ust-umbuchung/.test(text)) return [{ k: "zinsen", betrag: tx.amount }];
+  }
   if (gruppe) {
     // reine Zinszahlung auf ein Gruppendarlehen: beim Zahler Kapitaldienst
     const tilgt = /rueckfuehrung|rueckzahlung|auszahlung|tilgung/.test(text);
@@ -358,9 +378,12 @@ export function einordnen(
       let objektId: string | null = null;
       let zuordnung: Zuordnung = "keine";
       if (g !== "gesellschaft") {
+        // Darlehen/Mietvertrag nur auf Konten der Gesellschaft, der das Objekt
+        // gehört; der Darlehensgeber (z. B. Holding) bucht nicht aufs Objekt
         if (
           tx.propertyId &&
-          (tx.category === "darlehen" || tx.category === "miete")
+          (tx.category === "darlehen" || tx.category === "miete") &&
+          objektFirma.get(tx.propertyId) === companyId
         ) {
           objektId = tx.propertyId;
           zuordnung = tx.category === "darlehen" ? "darlehen" : "mietvertrag";
