@@ -26,6 +26,7 @@ import {
   kuendigungInfo,
   mieterhoehungInfo,
   mietKonto,
+  mietKontoAusDb,
   sollMiete,
   type KuendigungInfo,
   type MieterhoehungInfo,
@@ -355,15 +356,19 @@ export function immobilienAuswerten(
 ): ImmobilienAuswertung {
   const stichtag = daten.stichtag;
   const tenants = new Map(daten.tenants.map((t) => [t.id, t]));
-  const mietKonten = daten.leases.map((l) =>
-    mietKonto(
+  // Mietkonten aus der Datenbank haben Vorrang (automatische Sollstellung und Zuordnung)
+  const dbKonten = new Map(daten.mietkonten?.map((k) => [k.leaseId, k]));
+  const mietKonten = daten.leases.map((l) => {
+    const db = dbKonten.get(l.id);
+    if (db) return mietKontoAusDb(l, db);
+    return mietKonto(
       l,
       daten.leaseEvents,
       tenants.get(l.tenantId)!,
       daten.transactions,
       stichtag,
-    ),
-  );
+    );
+  });
   const objekte = daten.properties.map((p) =>
     objektKennzahlen(p, daten, staende, mietKonten),
   );

@@ -497,7 +497,7 @@ export function zehnFragen(e: FragenEingabe): FrageAntwort[] {
       wert: euro(k.rueckstand),
       ampel: k.ampel,
     })),
-    href: "/board/immobilien",
+    href: "/board/mieten",
     ...q7,
   };
 

@@ -19,9 +19,20 @@ export const Route = createFileRoute("/api/cron/ebics-umsaetze")({
           const konten = await syncEbicsAlleKonten(admin);
           // 2. Offene Läufe wie bisher: Abruf in den Lauf und Mietabgleich
           const ergebnis = await syncEbicsOffeneLaeufe(admin);
+          // 3. Mietkonten fortschreiben (Soll des Monats, neue Zahlungen zuordnen)
+          let mieten: unknown = null;
+          try {
+            const { data, error } = await admin.rpc("mieten_aktualisieren");
+            mieten = error ? { fehler: error.message } : data;
+          } catch (err) {
+            mieten = {
+              fehler: err instanceof Error ? err.message : String(err),
+            };
+          }
           return Response.json({
             ok: true,
             konten,
+            mieten,
             ...ergebnis,
           });
         } catch (err) {
