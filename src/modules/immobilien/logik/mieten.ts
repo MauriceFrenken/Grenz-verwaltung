@@ -14,6 +14,7 @@ import {
   teile,
   type IsoDatum,
 } from "@/lib/kalender";
+import type { Mietkonto as DbMietkonto } from "@/lib/db/mieten";
 import type { Lease, LeaseEvent, Tenant, Transaction } from "@/lib/db/typen";
 import { runden } from "@/modules/darlehen/logik/zinsplan";
 import { kuendigungFristende, mieterhoehungFristen } from "./fristen";
@@ -154,6 +155,36 @@ export function mietKonto(
     rueckstand,
     rueckstandMonate,
     ampel,
+  };
+}
+
+/**
+ * Mietkonto aus der Datenbank (Mieten-Tracking) übernehmen: Soll aus dem Vertrag,
+ * Zahlungen automatisch zugeordnet, älteste Miete zuerst getilgt.
+ */
+export function mietKontoAusDb(lease: Lease, db: DbMietkonto): MietKonto {
+  const liste: MietMonat[] = db.monate
+    .filter((m) => m.status !== "noch_nicht_faellig")
+    .map((m) => ({
+      monat: m.monat.slice(0, 7),
+      faellig: m.faellig,
+      soll: m.soll,
+      ist: m.bezahlt,
+    }));
+  const monatsMiete = db.monatssoll || lease.baseRent + lease.serviceCharge;
+  return {
+    lease,
+    monate: liste,
+    sollSumme: runden(liste.reduce((s, m) => s + m.soll, 0)),
+    istSumme: runden(liste.reduce((s, m) => s + m.ist, 0)),
+    rueckstand: db.rueckstand,
+    rueckstandMonate: monatsMiete > 0 ? db.rueckstand / monatsMiete : 0,
+    ampel:
+      db.stufe === "ok"
+        ? "gruen"
+        : db.stufe === "kuendigung_pruefen"
+          ? "rot"
+          : "gelb",
   };
 }
 

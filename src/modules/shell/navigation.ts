@@ -9,6 +9,7 @@ import {
   Landmark,
   LayoutDashboard,
   ListChecks,
+  Receipt,
   Truck,
   Wallet,
   type LucideIcon,
@@ -81,6 +82,12 @@ export const STEUERUNG: NavBereich[] = [
         label: "Aufteilerprojekte",
         icon: Building2,
         frage: "Was bleibt bei den Aufteilern übrig?",
+      },
+      {
+        to: "/board/mieten",
+        label: "Mieten",
+        icon: Receipt,
+        frage: "Sind alle Mieten da?",
       },
       {
         to: "/board/cashflow",

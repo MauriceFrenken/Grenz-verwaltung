@@ -9,6 +9,7 @@ import {
   type KontosaldoEingabe,
   type PlanpostenEingabe,
 } from "../repository";
+import { mietenLaden, mietZuordnungenLaden } from "../mieten";
 import type { AnkaufPhase } from "../transaktionen";
 import type {
   Beschluss,
@@ -267,6 +268,13 @@ export class LiveRepository implements BoardRepository {
       }
     }
 
+    // Mietkonten (Migration mieten_tracking): Zuordnung der Mieteingänge und
+    // Rückstände kommen aus der Datenbank; ohne Migration wie bisher die Läufe.
+    const [mietZuordnungen, mieten] = await Promise.all([
+      mietZuordnungenLaden(db),
+      mietenLaden(db, heuteIso()),
+    ]);
+
     // Spalten der Board-Migration an bestehenden Tabellen
     if (gesellschaften.length > 0 && !("segment" in gesellschaften[0]))
       fehlend.push("gesellschaften.segment");
@@ -290,8 +298,8 @@ export class LiveRepository implements BoardRepository {
       ebicsKunden,
       bankkonten,
       kontosalden,
-      sollZuordnungen: sollZuordnungen ?? [],
-      sollPositionen: sollPositionen ?? [],
+      sollZuordnungen: mietZuordnungen?.zuordnungen ?? sollZuordnungen ?? [],
+      sollPositionen: mietZuordnungen?.positionen ?? sollPositionen ?? [],
       planposten,
       ankaufPipeline,
       objektVerkauf,
@@ -303,7 +311,9 @@ export class LiveRepository implements BoardRepository {
       maschinenKosten,
       fehlendeMigration: [...new Set(fehlend)],
     };
-    return abbilden(roh_);
+    const daten = abbilden(roh_);
+    if (mieten) daten.mietkonten = mieten.konten;
+    return daten;
   }
 
   async darlehenSpeichern(loans: Loan[]) {

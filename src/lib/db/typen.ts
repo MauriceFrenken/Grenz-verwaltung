@@ -5,6 +5,7 @@
  * Beträge in EUR als Zahl, Zinssätze als Anteil (0,03 = 3 % p.a.), Daten als ISO-String.
  */
 import { z } from "zod";
+import type { Mietkonto } from "./mieten";
 import type { CrmDaten } from "./transaktionen";
 
 const isoDatum = z
@@ -542,6 +543,8 @@ export interface BoardDaten {
   crm: CrmDaten;
   datenstand: QuellenStand[];
   luecken: DatenLuecke[];
+  /** Mietkonten aus der Datenbank (Mieten-Tracking); fehlt ohne Migration und im Demo */
+  mietkonten?: Mietkonto[];
 }
 
 // ---------------------------------------------------------------------------

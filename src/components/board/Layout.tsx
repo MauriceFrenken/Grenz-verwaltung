@@ -174,7 +174,7 @@ export function Abschnitt({
 }) {
   return (
     <section className={cn("mb-10", className)}>
-      <div className="mb-3 flex items-end justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-heading">
             {titel}
