@@ -51,6 +51,7 @@ import { Route as TransaktionenExposeImportRouteImport } from './routes/transakt
 import { Route as TransaktionenListeRouteImport } from './routes/transaktionen.liste'
 import { Route as VerwaltungIndexRouteImport } from './routes/verwaltung.index'
 import { Route as VerwaltungDarlehenRouteImport } from './routes/verwaltung.darlehen'
+import { Route as VerwaltungEbicsRouteImport } from './routes/verwaltung.ebics'
 import { Route as VerwaltungEinheitenRouteImport } from './routes/verwaltung.einheiten'
 import { Route as VerwaltungGesellschaftenRouteImport } from './routes/verwaltung.gesellschaften'
 import { Route as VerwaltungMieterRouteImport } from './routes/verwaltung.mieter'
@@ -282,6 +283,11 @@ const VerwaltungDarlehenRoute = VerwaltungDarlehenRouteImport.update({
   path: '/darlehen',
   getParentRoute: () => VerwaltungRoute,
 } as any)
+const VerwaltungEbicsRoute = VerwaltungEbicsRouteImport.update({
+  id: '/ebics',
+  path: '/ebics',
+  getParentRoute: () => VerwaltungRoute,
+} as any)
 const VerwaltungEinheitenRoute = VerwaltungEinheitenRouteImport.update({
   id: '/einheiten',
   path: '/einheiten',
@@ -412,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/darlehen': typeof VerwaltungDarlehenRoute
+  '/verwaltung/ebics': typeof VerwaltungEbicsRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
   '/verwaltung/mieter': typeof VerwaltungMieterRoute
@@ -467,6 +474,7 @@ export interface FileRoutesByTo {
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/darlehen': typeof VerwaltungDarlehenRoute
+  '/verwaltung/ebics': typeof VerwaltungEbicsRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
   '/verwaltung/mieter': typeof VerwaltungMieterRoute
@@ -527,6 +535,7 @@ export interface FileRoutesById {
   '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
   '/transaktionen/liste': typeof TransaktionenListeRoute
   '/verwaltung/darlehen': typeof VerwaltungDarlehenRoute
+  '/verwaltung/ebics': typeof VerwaltungEbicsRoute
   '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
   '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
   '/verwaltung/mieter': typeof VerwaltungMieterRoute
@@ -590,6 +599,7 @@ export interface FileRouteTypes {
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/darlehen'
+    | '/verwaltung/ebics'
     | '/verwaltung/einheiten'
     | '/verwaltung/gesellschaften'
     | '/verwaltung/mieter'
@@ -645,6 +655,7 @@ export interface FileRouteTypes {
     | '/salesforce/callback'
     | '/transaktionen/liste'
     | '/verwaltung/darlehen'
+    | '/verwaltung/ebics'
     | '/verwaltung/einheiten'
     | '/verwaltung/gesellschaften'
     | '/verwaltung/mieter'
@@ -704,6 +715,7 @@ export interface FileRouteTypes {
     | '/transaktionen/expose-import'
     | '/transaktionen/liste'
     | '/verwaltung/darlehen'
+    | '/verwaltung/ebics'
     | '/verwaltung/einheiten'
     | '/verwaltung/gesellschaften'
     | '/verwaltung/mieter'
@@ -1043,6 +1055,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerwaltungDarlehenRouteImport
       parentRoute: typeof VerwaltungRoute
     }
+    '/verwaltung/ebics': {
+      id: '/verwaltung/ebics'
+      path: '/ebics'
+      fullPath: '/verwaltung/ebics'
+      preLoaderRoute: typeof VerwaltungEbicsRouteImport
+      parentRoute: typeof VerwaltungRoute
+    }
     '/verwaltung/einheiten': {
       id: '/verwaltung/einheiten'
       path: '/einheiten'
@@ -1305,6 +1324,7 @@ const VerwaltungSollstellungRouteWithChildren =
 
 interface VerwaltungRouteChildren {
   VerwaltungDarlehenRoute: typeof VerwaltungDarlehenRoute
+  VerwaltungEbicsRoute: typeof VerwaltungEbicsRoute
   VerwaltungEinheitenRoute: typeof VerwaltungEinheitenRoute
   VerwaltungGesellschaftenRoute: typeof VerwaltungGesellschaftenRoute
   VerwaltungMieterRoute: typeof VerwaltungMieterRoute
@@ -1318,6 +1338,7 @@ interface VerwaltungRouteChildren {
 
 const VerwaltungRouteChildren: VerwaltungRouteChildren = {
   VerwaltungDarlehenRoute: VerwaltungDarlehenRoute,
+  VerwaltungEbicsRoute: VerwaltungEbicsRoute,
   VerwaltungEinheitenRoute: VerwaltungEinheitenRoute,
   VerwaltungGesellschaftenRoute: VerwaltungGesellschaftenRoute,
   VerwaltungMieterRoute: VerwaltungMieterRoute,
@@ -1354,13 +1375,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

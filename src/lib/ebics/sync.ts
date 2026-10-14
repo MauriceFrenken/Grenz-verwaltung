@@ -62,6 +62,15 @@ async function gesellschaftIdFuerKontoIban(
   fallbackGesellschaftId: string,
 ): Promise<string> {
   if (!kontoIban) return fallbackGesellschaftId;
+  // bankkonten: ein EBICS-Kunde kann Konten mehrerer Gesellschaften abdecken
+  const { data: bankkonto } = await admin
+    .from("bankkonten")
+    .select("gesellschaft_id")
+    .eq("iban", kontoIban)
+    .maybeSingle();
+  if (bankkonto?.gesellschaft_id) {
+    return String(bankkonto.gesellschaft_id);
+  }
   const { data } = await admin
     .from("ebics_konten")
     .select("ebics_kunde_id, ebics_kunden!inner(gesellschaft_id)")
@@ -202,15 +211,15 @@ async function syncEinKunde(
 
       for (const xml of xmls) {
         const parsed = parseCamt053Xml(xml);
-        await kontosaldenSpeichern(admin, parsed, kunde.gesellschaft_id);
-        const neu = parsed.buchungen.filter((b) => !known.has(b.fingerprint));
-        if (neu.length === 0) continue;
-
         const gesellschaftId = await gesellschaftIdFuerKontoIban(
           admin,
           parsed.kontoIban,
           kunde.gesellschaft_id,
         );
+        await kontosaldenSpeichern(admin, parsed, gesellschaftId);
+        const neu = parsed.buchungen.filter((b) => !known.has(b.fingerprint));
+        if (neu.length === 0) continue;
+
         const dateiname = `EBICS C53 ${parsed.kontoIban ?? kunde.partner_id} ${von}`;
         const n = await importiereBuchungen(admin, {
           laufId,
@@ -406,7 +415,12 @@ export async function syncEbicsAlleKonten(
         orderData.length === 0 ? [] : await extractCamt053Xmls(orderData);
       for (const xml of xmls) {
         const parsed = parseCamt053Xml(xml);
-        await kontosaldenSpeichern(admin, parsed, kunde.gesellschaft_id);
+        const gesellschaftId = await gesellschaftIdFuerKontoIban(
+          admin,
+          parsed.kontoIban,
+          kunde.gesellschaft_id,
+        );
+        await kontosaldenSpeichern(admin, parsed, gesellschaftId);
         if (!parsed.kontoIban || parsed.buchungen.length === 0) continue;
         const bekannt = await bekannteFingerprintsKonto(
           admin,
@@ -417,11 +431,7 @@ export async function syncEbicsAlleKonten(
         if (neu.length === 0) continue;
         anzahlNeu += await importiereBuchungen(admin, {
           laufId: null,
-          gesellschaftId: await gesellschaftIdFuerKontoIban(
-            admin,
-            parsed.kontoIban,
-            kunde.gesellschaft_id,
-          ),
+          gesellschaftId,
           dateiname: `EBICS C53 ${parsed.kontoIban} ${von}`,
           zeitraumVon: parsed.zeitraumVon ?? von,
           zeitraumBis: parsed.zeitraumBis ?? bis,

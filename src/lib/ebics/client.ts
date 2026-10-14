@@ -103,16 +103,24 @@ function menschenlesbarerFehler(err: unknown): string {
   return msg;
 }
 
+/** Bank-Kundenname aus BPD, wenn ein Zugang mehrere Gesellschaften abdeckt. */
+const EBICS_SAMMEL_FIRMA: Record<string, string> = {
+  MV135500: "Maurice Frenken",
+};
+
 async function firmaNameFuerKunde(
   admin: SupabaseClient,
-  gesellschaftId: string,
+  kunde: EbicsKundeRow,
 ): Promise<string> {
+  const sammelfirma = EBICS_SAMMEL_FIRMA[kunde.partner_id];
+  if (sammelfirma) return sammelfirma;
+
   const { data } = await admin
     .from("gesellschaften")
     .select("name")
-    .eq("id", gesellschaftId)
+    .eq("id", kunde.gesellschaft_id)
     .maybeSingle();
-  return (data?.name as string | undefined)?.trim() || gesellschaftId;
+  return (data?.name as string | undefined)?.trim() || kunde.gesellschaft_id;
 }
 
 /** INI-Brief aus bestehenden Schlüsseln (ohne erneutes INI/HIA an die Bank). */
@@ -127,7 +135,7 @@ export async function ebicsIniBriefErzeugen(
       "Keine lokalen EBICS-Schlüssel — bitte erneut Initialisieren.",
     );
   }
-  const firmaName = await firmaNameFuerKunde(admin, kunde.gesellschaft_id);
+  const firmaName = await firmaNameFuerKunde(admin, kunde);
   const iniLetterHtml = renderEbicsIniBrief({
     bankName: kunde.bank_name,
     hostId: kunde.host_id,

@@ -74,6 +74,7 @@ const sections: NavSection[] = [
     label: "Buchhaltung",
     items: [
       { to: "/verwaltung/sollstellung", label: "Sollstellung", icon: Receipt },
+      { to: "/verwaltung/ebics", label: "EBICS", icon: Landmark },
       {
         to: "/verwaltung/zahlungen",
         label: "Zahlungen & Rückstände",
