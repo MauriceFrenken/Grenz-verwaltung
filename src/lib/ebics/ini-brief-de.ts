@@ -111,7 +111,7 @@ function metaTabelle(p: {
     ["Host-ID", p.hostId],
     ["User-ID", p.userId],
     ["Kunden-ID", p.partnerId],
-    ["Firma", p.firmaName],
+    ["Kunde", p.firmaName],
     ["Teilnehmer", p.teilnehmerName],
   ];
   return `<table class="meta">
@@ -148,7 +148,7 @@ function unterschrift(firmaName: string, teilnehmerName: string): string {
   </tr>
   <tr>
     <td>Ort/Datum</td>
-    <td>Name/Firma</td>
+    <td>Name</td>
     <td>Unterschrift</td>
   </tr>
 </table>`;
