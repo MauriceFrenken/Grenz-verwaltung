@@ -20,6 +20,11 @@ function asToken(data: unknown): string {
   return typeof token === "string" ? token : "";
 }
 
+function ibanFormatiert(iban: string): string {
+  const clean = iban.replace(/\s+/g, "").toUpperCase();
+  return clean.replace(/(.{4})/g, "$1 ").trim();
+}
+
 export const ebicsStatusFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { supabaseAccessToken: string })
   .handler(async ({ data }) => {
@@ -30,18 +35,99 @@ export const ebicsStatusFn = createServerFn({ method: "POST" })
       .select("*")
       .order("gesellschaft_id");
     if (error) throw new Error(error.message);
-    const items: EbicsKundeStatusDto[] = (rows ?? []).map((r) => ({
-      id: String(r.id),
-      gesellschaftId: String(r.gesellschaft_id),
-      gesellschaftName: String(r.gesellschaft_name),
-      gesellschaftKuerzel: String(r.gesellschaft_kuerzel),
-      status: String(r.status),
-      anzahlKonten: Number(r.anzahl_konten) || 0,
-      hatSchluessel: Boolean(r.hat_schluessel),
-      letzterFehler: (r.letzter_fehler as string | null) ?? null,
-      initialisiertAm: (r.initialisiert_am as string | null) ?? null,
-      bereitAm: (r.bereit_am as string | null) ?? null,
-    }));
+
+    const kundeIds = (rows ?? []).map((r) => String(r.id));
+    const { data: kundenMeta } = kundeIds.length
+      ? await admin
+          .from("ebics_kunden")
+          .select("id, partner_id")
+          .in("id", kundeIds)
+      : { data: [] as Array<{ id: string; partner_id: string }> };
+    const partnerById = new Map(
+      (kundenMeta ?? []).map((k) => [String(k.id), String(k.partner_id)]),
+    );
+
+    const { data: kontenRows } = kundeIds.length
+      ? await admin
+          .from("ebics_konten")
+          .select("ebics_kunde_id, iban, aktiv")
+          .in("ebics_kunde_id", kundeIds)
+          .eq("aktiv", true)
+      : { data: [] as Array<{ ebics_kunde_id: string; iban: string }> };
+    const ibans = (kontenRows ?? []).map((k) => String(k.iban));
+    const { data: bankRows } = ibans.length
+      ? await admin
+          .from("bankkonten")
+          .select("iban, bezeichnung, gesellschaft_id")
+          .in("iban", ibans)
+      : {
+          data: [] as Array<{
+            iban: string;
+            bezeichnung: string | null;
+            gesellschaft_id: string;
+          }>,
+        };
+    const bankByIban = new Map(
+      (bankRows ?? []).map((b) => [String(b.iban), b]),
+    );
+    const gesIds = [
+      ...new Set(
+        (bankRows ?? [])
+          .map((b) => String(b.gesellschaft_id))
+          .filter(Boolean),
+      ),
+    ];
+    const { data: gesRows } = gesIds.length
+      ? await admin
+          .from("gesellschaften")
+          .select("id, name, kuerzel")
+          .in("id", gesIds)
+      : { data: [] as Array<{ id: string; name: string; kuerzel: string }> };
+    const gesById = new Map(
+      (gesRows ?? []).map((g) => [String(g.id), g]),
+    );
+
+    const kontenByKunde = new Map<string, EbicsKundeStatusDto["konten"]>();
+    for (const k of kontenRows ?? []) {
+      const iban = String(k.iban);
+      const bank = bankByIban.get(iban);
+      const gesId = bank ? String(bank.gesellschaft_id) : "";
+      const ges = gesId ? gesById.get(gesId) : undefined;
+      const kundeId = String(k.ebics_kunde_id);
+      const liste = kontenByKunde.get(kundeId) ?? [];
+      liste.push({
+        iban: ibanFormatiert(iban),
+        bezeichnung: (bank?.bezeichnung as string | null) ?? null,
+        gesellschaftId: gesId,
+        gesellschaftKuerzel: ges ? String(ges.kuerzel) : "—",
+        gesellschaftName: ges ? String(ges.name) : "—",
+      });
+      kontenByKunde.set(kundeId, liste);
+    }
+    for (const [, liste] of kontenByKunde) {
+      liste.sort((a, b) =>
+        a.gesellschaftKuerzel.localeCompare(b.gesellschaftKuerzel, "de"),
+      );
+    }
+
+    const items: EbicsKundeStatusDto[] = (rows ?? []).map((r) => {
+      const id = String(r.id);
+      const konten = kontenByKunde.get(id) ?? [];
+      return {
+        id,
+        partnerId: partnerById.get(id) ?? "",
+        gesellschaftId: String(r.gesellschaft_id),
+        gesellschaftName: String(r.gesellschaft_name),
+        gesellschaftKuerzel: String(r.gesellschaft_kuerzel),
+        status: String(r.status),
+        anzahlKonten: konten.length || Number(r.anzahl_konten) || 0,
+        hatSchluessel: Boolean(r.hat_schluessel),
+        letzterFehler: (r.letzter_fehler as string | null) ?? null,
+        initialisiertAm: (r.initialisiert_am as string | null) ?? null,
+        bereitAm: (r.bereit_am as string | null) ?? null,
+        konten,
+      };
+    });
     return { items };
   });
 

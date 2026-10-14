@@ -247,32 +247,47 @@ export function EbicsAktionenPanel({
         {items.length === 0 && !busy ? (
           <li className="px-4 py-3 text-sm text-text-muted">Keine Kunden</li>
         ) : null}
-        {items.map((i) => (
-          <li
-            key={i.id}
-            className="flex items-start justify-between gap-4 px-4 py-3 text-sm"
-          >
-            <div>
-              <div className="font-medium text-heading">
-                {i.gesellschaftKuerzel}
-                <span className="ml-2 font-normal text-text-muted">
-                  {i.gesellschaftName}
-                </span>
+        {items.map((i) => {
+          const kuerzel = [
+            ...new Set(i.konten.map((k) => k.gesellschaftKuerzel)),
+          ].filter((k) => k && k !== "—");
+          const titelKuerzel =
+            kuerzel.length > 0 ? kuerzel.join(" · ") : i.gesellschaftKuerzel;
+          return (
+            <li
+              key={i.id}
+              className="flex items-start justify-between gap-4 px-4 py-3 text-sm"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-heading">{titelKuerzel}</div>
+                {i.partnerId ? (
+                  <div className="mt-0.5 text-xs text-text-muted">
+                    {i.partnerId}
+                  </div>
+                ) : null}
+                <ul className="mt-2 space-y-1 text-xs text-text-muted">
+                  {i.konten.map((k) => (
+                    <li key={k.iban} className="flex flex-wrap gap-x-2">
+                      <span className="font-medium text-heading">
+                        {k.gesellschaftKuerzel}
+                      </span>
+                      <span className="font-mono">{k.iban}</span>
+                      {k.bezeichnung ? <span>{k.bezeichnung}</span> : null}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="mt-0.5 text-xs text-text-muted">
-                {i.anzahlKonten} Konto{i.anzahlKonten === 1 ? "" : "en"}
+              <div className="shrink-0 text-right text-text-muted">
+                {statusLabel(i.status)}
+                {i.letzterFehler ? (
+                  <span className="mt-0.5 block text-xs text-danger">
+                    {i.letzterFehler}
+                  </span>
+                ) : null}
               </div>
-            </div>
-            <div className="text-right text-text-muted">
-              {statusLabel(i.status)}
-              {i.letzterFehler ? (
-                <span className="mt-0.5 block text-xs text-danger">
-                  {i.letzterFehler}
-                </span>
-              ) : null}
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
