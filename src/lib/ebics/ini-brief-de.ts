@@ -12,6 +12,9 @@ export type EbicsIniBriefKey = {
   size: () => number;
 };
 
+/** Partner-IDs mit natürlicher Person als Bankkunde (BPD: Kundenname). */
+const PARTNER_KUNDENNAME_LABEL = new Set(["MV135500"]);
+
 export type EbicsIniBriefEingabe = {
   bankName: string;
   hostId: string;
@@ -24,6 +27,10 @@ export type EbicsIniBriefEingabe = {
   E002: EbicsIniBriefKey;
   jetzt?: Date;
 };
+
+function kundenLabel(partnerId: string): string {
+  return PARTNER_KUNDENNAME_LABEL.has(partnerId) ? "Kundenname" : "Firma";
+}
 
 function asHex(value: string | Buffer): string {
   if (typeof value === "string") return value;
@@ -111,7 +118,7 @@ function metaTabelle(p: {
     ["Host-ID", p.hostId],
     ["User-ID", p.userId],
     ["Kunden-ID", p.partnerId],
-    ["Kundenname", p.firmaName],
+    [kundenLabel(p.partnerId), p.firmaName],
     ["Teilnehmer", p.teilnehmerName],
   ];
   return `<table class="meta">
@@ -139,7 +146,14 @@ function schluesselBlock(
 </section>`;
 }
 
-function unterschrift(firmaName: string, teilnehmerName: string): string {
+function unterschrift(
+  firmaName: string,
+  teilnehmerName: string,
+  partnerId: string,
+): string {
+  const nameSpalte = PARTNER_KUNDENNAME_LABEL.has(partnerId)
+    ? "Name"
+    : "Name/Firma";
   return `<table class="sign">
   <tr>
     <td class="line">&nbsp;</td>
@@ -148,7 +162,7 @@ function unterschrift(firmaName: string, teilnehmerName: string): string {
   </tr>
   <tr>
     <td>Ort/Datum</td>
-    <td>Name</td>
+    <td>${nameSpalte}</td>
     <td>Unterschrift</td>
   </tr>
 </table>`;
@@ -303,7 +317,7 @@ export function renderEbicsIniBrief(eingabe: EbicsIniBriefEingabe): string {
     ${metaTabelle(meta)}
     ${schluesselBlock("Öffentlicher Schlüssel für die Unterschrift", "A006", eingabe.A006)}
     <p class="confirm">Ich bestätige hiermit den obigen öffentlichen Schlüssel für meine Unterschrift.</p>
-    ${unterschrift(eingabe.firmaName, teilnehmerName)}
+    ${unterschrift(eingabe.firmaName, teilnehmerName, eingabe.partnerId)}
   </div>
 
   <div class="sheet">
@@ -318,7 +332,7 @@ export function renderEbicsIniBrief(eingabe: EbicsIniBriefEingabe): string {
     ${metaTabelle(meta)}
     ${schluesselBlock("Öffentlicher Verschlüsselungsschlüssel", "E002", eingabe.E002)}
     <p class="confirm">Ich bestätige hiermit die obigen öffentlichen Schlüssel für meinen EBICS-Zugang.</p>
-    ${unterschrift(eingabe.firmaName, teilnehmerName)}
+    ${unterschrift(eingabe.firmaName, teilnehmerName, eingabe.partnerId)}
   </div>
 </body>
 </html>
