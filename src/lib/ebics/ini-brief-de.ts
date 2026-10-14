@@ -111,7 +111,7 @@ function metaTabelle(p: {
     ["Host-ID", p.hostId],
     ["User-ID", p.userId],
     ["Kunden-ID", p.partnerId],
-    ["Kunde", p.firmaName],
+    ["Kundenname", p.firmaName],
     ["Teilnehmer", p.teilnehmerName],
   ];
   return `<table class="meta">
