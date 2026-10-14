@@ -217,7 +217,18 @@ async function syncEinKunde(
           kunde.gesellschaft_id,
         );
         await kontosaldenSpeichern(admin, parsed, gesellschaftId);
-        const neu = parsed.buchungen.filter((b) => !known.has(b.fingerprint));
+        // Auch Buchungen überspringen, die der tägliche Kontoabruf (ohne Lauf)
+        // für dieses Konto schon gespeichert hat, sonst entstehen Dubletten.
+        const bekanntKonto = parsed.kontoIban
+          ? await bekannteFingerprintsKonto(
+              admin,
+              parsed.kontoIban,
+              parsed.buchungen.map((b) => b.fingerprint),
+            )
+          : new Set<string>();
+        const neu = parsed.buchungen.filter(
+          (b) => !known.has(b.fingerprint) && !bekanntKonto.has(b.fingerprint),
+        );
         if (neu.length === 0) continue;
 
         const dateiname = `EBICS C53 ${parsed.kontoIban ?? kunde.partner_id} ${von}`;
