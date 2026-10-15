@@ -3,7 +3,13 @@ import { erzeugeSeed } from "@/lib/db/mock/seed";
 import type { BankAccount, Property, Transaction } from "@/lib/db/typen";
 import { darlehenStand } from "@/modules/darlehen/logik/auswertung";
 import { einordnen, kategorisieren, objektMuster } from "./einordnung";
-import { cashflowAuswerten, cfMonate, mieteTeilen } from "./objektCashflow";
+import {
+  abdeckung,
+  cashflowAuswerten,
+  cfMonate,
+  mieteTeilen,
+  periodisieren,
+} from "./objektCashflow";
 
 const objekt = (id: string, street: string, city: string): Property => ({
   id,
@@ -273,6 +279,109 @@ describe("Zinsen und Nettomieten (Korrektur 12.10.2026)", () => {
     expect(teile.map((x) => [x.kategorie, x.betrag])).toEqual([
       ["miete", 800],
       ["umlagen", 200],
+    ]);
+  });
+});
+
+describe("Periodisierung von Jahres- und Quartalskosten", () => {
+  const posten = (
+    t: Transaction,
+    ctx = { accounts: [konto], properties: objekte },
+  ) => einordnen([t], ctx)[0];
+
+  it("verteilt eine Versicherung nach dem Zeitraum im Verwendungszweck", () => {
+    const p = posten(
+      tx(
+        -1200,
+        "LVM Versicherung",
+        "Sachversicherung Zeitraum 12.05.2026-12.05.2027",
+        {
+          bookingDate: "2026-07-01",
+        },
+      ),
+    );
+    expect(p.kategorie).toBe("versicherung");
+    const m = abdeckung(p)!;
+    expect(m).toHaveLength(12);
+    expect(m[0]).toBe("2026-05");
+    expect(m[11]).toBe("2027-04");
+  });
+
+  it("Grundsteuer gilt für das Kalenderquartal, Versicherung ohne Zeitraum 12 Monate", () => {
+    const g = posten(
+      tx(-300, "Landeshauptstadt Düsseldorf", "Grundsteuer B 2026", {
+        bookingDate: "2026-08-17",
+      }),
+    );
+    expect(abdeckung(g)).toEqual(["2026-07", "2026-08", "2026-09"]);
+    const v = posten(
+      tx(-600, "Provinzial Versicherung", "Wohngebäude", {
+        bookingDate: "2026-02-01",
+      }),
+    );
+    expect(abdeckung(v)).toHaveLength(12);
+    // kleine Gebühr der Stadt außerhalb der Fälligkeiten bleibt im Monat
+    const k = posten(
+      tx(-55, "Landeshauptstadt Düsseldorf", "Kassenzeichen 5328", {
+        bookingDate: "2026-03-03",
+      }),
+    );
+    expect(abdeckung(k)).toBeNull();
+  });
+
+  it("feste Kosten des Objekts bestimmen den Rhythmus", () => {
+    const w = posten(
+      tx(-679.5, "Norbert Brandschutztechnik", "Wartung Rauchmelder", {
+        bookingDate: "2026-01-10",
+      }),
+    );
+    expect(abdeckung(w)).toBeNull();
+    expect(
+      abdeckung(w, [
+        {
+          objektId: "O-01",
+          kostenart: "Wartung",
+          betrag: 679.5,
+          rhythmus: "jaehrlich",
+          faelligAb: null,
+          umlagefaehig: true,
+        },
+      ]),
+    ).toHaveLength(12);
+  });
+
+  it("Monatskosten sind gleichmäßig, die Bank stimmt über die Abgrenzung", () => {
+    const p = posten(
+      tx(-1200, "LVM Versicherung", "Wohngebäude", {
+        bookingDate: "2026-01-05",
+      }),
+    );
+    const teile = periodisieren([p]);
+    const kosten = teile.filter((x) => x.kategorie === "versicherung");
+    expect(kosten).toHaveLength(12);
+    expect(kosten.every((x) => x.betrag === -100)).toBe(true);
+    const summe = teile.reduce((a, x) => a + x.betrag, 0);
+    expect(summe).toBeCloseTo(-1200, 2);
+    // im Zahlungsmonat: 100 Kosten, 1.100 Abgrenzung
+    const jan = teile.filter((x) => x.monat === "2026-01");
+    expect(
+      jan
+        .filter((x) => x.kategorie === "abgrenzung")
+        .reduce((a, x) => a + x.betrag, 0),
+    ).toBeCloseTo(-1100, 2);
+  });
+
+  it("Zahlungen vor dem Zeitraum wirken nur mit ihren Monatsanteilen", () => {
+    const p = posten(
+      tx(-1200, "LVM Versicherung", "Wohngebäude", {
+        bookingDate: "2025-07-01",
+      }),
+    );
+    const teile = periodisieren([], [], [p]);
+    const okt = teile.filter((x) => x.monat === "2025-10");
+    expect(okt.map((x) => [x.kategorie, x.betrag])).toEqual([
+      ["versicherung", -100],
+      ["abgrenzung", 100],
     ]);
   });
 });

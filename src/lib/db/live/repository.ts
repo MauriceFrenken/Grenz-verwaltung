@@ -21,6 +21,7 @@ import type {
 } from "../typen";
 import {
   abbilden,
+  fixkostenAbbilden,
   ibanAusDateiname,
   type LiveRohdaten,
   type Row,
@@ -270,9 +271,14 @@ export class LiveRepository implements BoardRepository {
 
     // Mietkonten (Migration mieten_tracking): Zuordnung der Mieteingänge und
     // Rückstände kommen aus der Datenbank; ohne Migration wie bisher die Läufe.
-    const [mietZuordnungen, mieten] = await Promise.all([
+    const [mietZuordnungen, mieten, fixkosten] = await Promise.all([
       mietZuordnungenLaden(db),
       mietenLaden(db, heuteIso()),
+      optional(
+        db.from("objekt_fixkosten").select("*"),
+        "objekt_fixkosten",
+        fehlend,
+      ),
     ]);
 
     // Spalten der Board-Migration an bestehenden Tabellen
@@ -313,6 +319,7 @@ export class LiveRepository implements BoardRepository {
     };
     const daten = abbilden(roh_);
     if (mieten) daten.mietkonten = mieten.konten;
+    if (fixkosten) daten.fixkosten = fixkostenAbbilden(fixkosten);
     return daten;
   }
 

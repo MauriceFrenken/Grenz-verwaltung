@@ -27,6 +27,7 @@ import {
   type Loan,
   type Machine,
   type MachineCost,
+  type ObjektFixkosten,
   type Party,
   type PlannedPayment,
   type Property,
@@ -321,6 +322,8 @@ export function abbilden(r: LiveRohdaten): BoardDaten {
       yearBuilt: null,
       purchaseDate: isoTag(o.kaufdatum),
       purchasePrice: zahl(o.kaufpreis),
+      purchaseCosts: zahl(o.kaufnebenkosten),
+      equity: zahl(o.eigenkapital),
       marketValue: null,
       targetRentPerSqm: null,
       costPerSqmMonth: null,
@@ -1064,4 +1067,19 @@ function transaktionenAbbilden(
     exposes,
     instanzUrl: null,
   };
+}
+
+/** objekt_fixkosten → wiederkehrende Kosten je Objekt */
+export function fixkostenAbbilden(rows: Row[]): ObjektFixkosten[] {
+  const rhythmen = ["monatlich", "quartalsweise", "halbjaehrlich", "jaehrlich"];
+  return rows
+    .filter((r) => rhythmen.includes(String(r.rhythmus)))
+    .map((r) => ({
+      objektId: String(r.objekt_id),
+      kostenart: text(r.kostenart) ?? "",
+      betrag: zahl(r.betrag) ?? 0,
+      rhythmus: String(r.rhythmus) as ObjektFixkosten["rhythmus"],
+      faelligAb: isoTag(r.faellig_ab),
+      umlagefaehig: typeof r.umlagefaehig === "boolean" ? r.umlagefaehig : null,
+    }));
 }

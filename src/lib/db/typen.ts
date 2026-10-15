@@ -87,6 +87,10 @@ export const propertySchema = z.object({
   yearBuilt: z.number().int().nullable(),
   purchaseDate: isoDatum.nullable(),
   purchasePrice: z.number().nullable(),
+  /** Kaufnebenkosten (Grunderwerbsteuer, Notar, Makler …) */
+  purchaseCosts: z.number().nullable().optional(),
+  /** eingesetztes Eigenkapital */
+  equity: z.number().nullable().optional(),
   marketValue: z.number().nullable(),
   /** Ziel-/Potenzialmiete je m² (Mietspiegel-Oberwert) */
   targetRentPerSqm: z.number().nullable(),
@@ -545,6 +549,18 @@ export interface BoardDaten {
   luecken: DatenLuecke[];
   /** Mietkonten aus der Datenbank (Mieten-Tracking); fehlt ohne Migration und im Demo */
   mietkonten?: Mietkonto[];
+  /** wiederkehrende Kosten je Objekt (Tabelle objekt_fixkosten); fehlt ohne Migration und im Demo */
+  fixkosten?: ObjektFixkosten[];
+}
+
+export interface ObjektFixkosten {
+  objektId: string;
+  kostenart: string;
+  /** Betrag je Fälligkeit */
+  betrag: number;
+  rhythmus: "monatlich" | "quartalsweise" | "halbjaehrlich" | "jaehrlich";
+  faelligAb: string | null;
+  umlagefaehig: boolean | null;
 }
 
 // ---------------------------------------------------------------------------

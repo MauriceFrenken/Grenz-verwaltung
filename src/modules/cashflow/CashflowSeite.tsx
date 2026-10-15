@@ -100,6 +100,7 @@ export function CashflowSeite() {
   const planCf = objekte.reduce((s, o) => s + o.plan.cfNachKd, 0);
   const kd = summe("kapitaldienst");
   const dscr = kd < 0 ? summe("noi") / -kd : null;
+  const k = portfolioKennzahlen(objekte);
   const datenAb = objekte
     .map((o) => o.datenAb)
     .filter((x): x is string => Boolean(x))
@@ -111,9 +112,10 @@ export function CashflowSeite() {
         titel="Cashflow je Liegenschaft"
         unterzeile={
           <>
-            Ist aus den Bankumsätzen (EBICS, täglich), Soll aus den
-            Mietverträgen, Plan nach den Annahmen der DCF-Kalkulation. Letzte 12
-            abgeschlossene Monate
+            Ist aus den Bankumsätzen (EBICS, täglich), Jahres- und
+            Quartalskosten auf ihre Monate verteilt. Soll aus den Mietverträgen,
+            Plan nach den Annahmen der DCF-Kalkulation. Letzte 12 abgeschlossene
+            Monate
             {datenAb ? `, Bankdaten ab ${monatLang(datenAb)}` : ""}.
           </>
         }
@@ -136,7 +138,7 @@ export function CashflowSeite() {
           <BuehnenKennzahl
             label="NOI 12 M"
             wert={euroKompakt(summe("noi"))}
-            hinweis="Einnahmen minus Bewirtschaftung"
+            hinweis={`NOI-Rendite ${k.noiRendite == null ? "–" : prozent(k.noiRendite, 1)} auf Kaufpreis + NK`}
           />
           <BuehnenKennzahl
             label="Kapitaldienst 12 M"
@@ -155,7 +157,7 @@ export function CashflowSeite() {
           <BuehnenKennzahl
             label="Cashflow nach KD"
             wert={euroKompakt(summe("cfNachKd"))}
-            hinweis={`Plan ${euroKompakt(planCf)}`}
+            hinweis={`Cash-on-Cash ${k.cashOnCash == null ? "–" : prozent(k.cashOnCash, 1)} · Plan ${euroKompakt(planCf)}`}
             ampel={summe("cfNachKd") >= planCf ? "gruen" : "gelb"}
           />
           <BuehnenKennzahl
@@ -249,6 +251,24 @@ export function CashflowSeite() {
       )}
     </>
   );
+}
+
+/** Rendite-Kennzahlen über die gefilterten Objekte (hochgerechnet auf 12 Monate) */
+function portfolioKennzahlen(objekte: ObjektCf[]) {
+  const mitEk = objekte.filter((o) => o.eigenkapital && o.kennzahlen.monate);
+  const ek = mitEk.reduce((a, o) => a + (o.eigenkapital ?? 0), 0);
+  const mitInvest = objekte.filter(
+    (o) => o.gesamtinvest && o.kennzahlen.monate,
+  );
+  const invest = mitInvest.reduce((a, o) => a + (o.gesamtinvest ?? 0), 0);
+  return {
+    cashOnCash: ek
+      ? mitEk.reduce((a, o) => a + o.kennzahlen.cfJahr, 0) / ek
+      : null,
+    noiRendite: invest
+      ? mitInvest.reduce((a, o) => a + o.kennzahlen.noiJahr, 0) / invest
+      : null,
+  };
 }
 
 function Reiter({
@@ -398,13 +418,15 @@ function PortfolioTabelle({
           <th className="px-3 text-left font-medium">Daten ab</th>
           <th className={TH}>Soll-Kaltmiete</th>
           <th className={TH}>Ist-Miete</th>
-          <th className={TH}>Bewirtschaftung</th>
+          <th className={TH}>NK-Saldo</th>
+          <th className={TH}>Nicht uml. Kosten</th>
           <th className={TH}>NOI</th>
           <th className={TH}>Kapitaldienst</th>
           <th className={TH}>CF nach KD</th>
           <th className={TH}>Plan</th>
           <th className={TH}>Abweichung</th>
           <th className={TH}>DSCR</th>
+          <th className={TH}>Cash-on-Cash</th>
         </tr>
       </thead>
       <tbody>
@@ -457,7 +479,10 @@ function PortfolioTabelle({
                 ) : null}
               </td>
               <td className="px-3 text-right">
-                <Zahl v={s.bewirtschaftung} />
+                <Zahl v={s.betriebskosten} />
+              </td>
+              <td className="px-3 text-right">
+                <Zahl v={s.nichtUmlagefaehig} />
               </td>
               <td className="px-3 text-right">
                 <Zahl v={s.noi} />
@@ -481,6 +506,11 @@ function PortfolioTabelle({
               </td>
               <td className="px-3 text-right">
                 {o.dscr == null ? "–" : dezimal(o.dscr, 2)}
+              </td>
+              <td className="px-3 text-right">
+                {o.kennzahlen.cashOnCash == null
+                  ? "–"
+                  : prozent(o.kennzahlen.cashOnCash, 1)}
               </td>
             </tr>
           );
@@ -557,8 +587,10 @@ type Zeile =
       plan?: number;
       stark?: boolean;
     }
+  | { art: "titel"; label: string }
   | { art: "soll" };
 
+/** Aufbau wie in einer Investoren-Rechnung: Miete → NOI → Kapitaldienst → Cashflow */
 function zeilen(o: ObjektCf): Zeile[] {
   const p = o.plan;
   const kat = (k: CfKategorie, plan?: number): Zeile => ({
@@ -573,20 +605,29 @@ function zeilen(o: ObjektCf): Zeile[] {
     {
       art: "summe",
       z: "einnahmen",
-      label: "Einnahmen",
+      label: "Einnahmen (netto kalt)",
       plan: p.sollMiete - p.mietausfall,
     },
-    kat("versorger"),
+    { art: "titel", label: "Umlagefähige Betriebskosten" },
     kat("grundbesitz"),
     kat("versicherung"),
+    kat("versorger"),
+    kat("umlagen"),
+    kat("nk_abrechnung"),
+    {
+      art: "summe",
+      z: "betriebskosten",
+      label: "Saldo Nebenkosten (nicht gedeckt)",
+      plan: 0,
+    },
+    { art: "titel", label: "Nicht umlagefähige Kosten" },
     kat("instandhaltung", -p.instandhaltung),
     kat("verwaltung", -p.verwaltung),
     kat("bank"),
-    kat("umlagen"),
     {
       art: "summe",
-      z: "bewirtschaftung",
-      label: "Bewirtschaftung",
+      z: "nichtUmlagefaehig",
+      label: "Nicht umlagefähige Kosten",
       plan: -(p.instandhaltung + p.verwaltung),
     },
     {
@@ -597,6 +638,11 @@ function zeilen(o: ObjektCf): Zeile[] {
       stark: true,
     },
     kat("zinsen"),
+    {
+      art: "summe",
+      z: "cfVorTilgung",
+      label: "Cashflow vor Tilgung",
+    },
     kat("tilgung"),
     {
       art: "summe",
@@ -611,11 +657,13 @@ function zeilen(o: ObjektCf): Zeile[] {
       plan: p.cfNachKd,
       stark: true,
     },
+    { art: "titel", label: "Einmalig, Finanzierung und Abgrenzung" },
     kat("ankauf"),
+    kat("verkauf"),
     kat("sanierung"),
     kat("finanzierung"),
     kat("kaution"),
-    kat("nk_abrechnung"),
+    kat("abgrenzung"),
     { art: "summe", z: "netto", label: "Veränderung Bankbestand", stark: true },
   ];
 }
@@ -633,22 +681,26 @@ function ObjektAnsicht({
       z.plan ||
       o.monate.some((m) => m.werte[z.k] !== 0),
   );
-  const zelle = (z: Zeile, m: CfMonat) =>
+  const zelle = (z: Exclude<Zeile, { art: "titel" }>, m: CfMonat) =>
     z.art === "soll"
       ? m.sollMiete
       : z.art === "kategorie"
         ? m.werte[z.k]
         : m.summen[z.z];
-  const gesamt = (z: Zeile) =>
+  const gesamt = (z: Exclude<Zeile, { art: "titel" }>) =>
     z.art === "soll"
       ? o.summe.sollMiete
       : z.art === "kategorie"
         ? o.summe.werte[z.k]
         : o.summe.summen[z.z];
-  const plan = (z: Zeile) => (z.art === "soll" ? undefined : z.plan);
+  const plan = (z: Zeile) =>
+    z.art === "soll" || z.art === "titel" ? undefined : z.plan;
+  const kz = o.kennzahlen;
+  const hochgerechnet =
+    kz.monate && kz.monate < 12 ? ` · aus ${kz.monate} M hochgerechnet` : "";
   return (
     <>
-      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         <BuehnenKennzahl
           label="Ist-Miete / Soll"
           wert={o.mieteQuote == null ? "–" : prozent(o.mieteQuote, 0)}
@@ -660,6 +712,11 @@ function ObjektAnsicht({
           hinweis={`Plan ${euroKompakt(o.plan.noi)}`}
         />
         <BuehnenKennzahl
+          label="NOI-Rendite"
+          wert={kz.noiRendite == null ? "–" : prozent(kz.noiRendite, 1)}
+          hinweis={`NOI p. a. ${euroKompakt(kz.noiJahr)} / Kaufpreis + NK${hochgerechnet}`}
+        />
+        <BuehnenKennzahl
           label="Cashflow nach KD"
           wert={euroKompakt(o.summe.summen.cfNachKd)}
           hinweis={`Plan ${euroKompakt(o.plan.cfNachKd)}`}
@@ -669,6 +726,24 @@ function ObjektAnsicht({
           label="DSCR"
           wert={o.dscr == null ? "–" : dezimal(o.dscr, 2)}
           hinweis="NOI / Kapitaldienst"
+          ampel={
+            o.dscr == null
+              ? "grau"
+              : o.dscr >= 1.2
+                ? "gruen"
+                : o.dscr >= 1
+                  ? "gelb"
+                  : "rot"
+          }
+        />
+        <BuehnenKennzahl
+          label="Cash-on-Cash"
+          wert={kz.cashOnCash == null ? "–" : prozent(kz.cashOnCash, 1)}
+          hinweis={
+            o.eigenkapital
+              ? `CF p. a. ${euroKompakt(kz.cfJahr)} / EK ${euroKompakt(o.eigenkapital)}${hochgerechnet}`
+              : "Eigenkapital in den Stammdaten fehlt"
+          }
         />
       </div>
 
@@ -704,6 +779,15 @@ function ObjektAnsicht({
             </thead>
             <tbody>
               {sichtbar.map((z, i) => {
+                if (z.art === "titel")
+                  return (
+                    <tr key={i}>
+                      <td className="sticky left-0 z-10 h-8 bg-surface px-3 pt-3 text-[11px] font-medium tracking-wide whitespace-nowrap text-text-subtle uppercase">
+                        {z.label}
+                      </td>
+                      <td colSpan={o.monate.length + 3} />
+                    </tr>
+                  );
                 const summe = z.art === "summe";
                 const stark = z.art === "summe" && z.stark;
                 const label =
@@ -861,7 +945,7 @@ function Annahmen() {
       titel="So wird gerechnet"
       beschreibung="Gegenüber der bisherigen Excel-Kalkulation: monatlich, aus echten Kontoumsätzen, mit Soll und Plan daneben."
     >
-      <Karte className="grid gap-6 p-5 text-sm md:grid-cols-3">
+      <Karte className="grid gap-6 p-5 text-sm md:grid-cols-2 xl:grid-cols-4">
         <div>
           <div className="mb-1 font-medium text-heading">Ist</div>
           <p className="text-text-muted">
@@ -871,6 +955,20 @@ function Annahmen() {
             Darlehensregister in Zins und Tilgung geteilt; Zahlungen an einen
             Darlehensgeber der Gruppe zählen beim Objekt, nicht beim Geber. Was
             nichts davon trifft, steht unter „Zu prüfen“.
+          </p>
+        </div>
+        <div>
+          <div className="mb-1 font-medium text-heading">Periodisierung</div>
+          <p className="text-text-muted">
+            Grundbesitzabgaben, Versicherungen und Wartungsverträge werden auf
+            die Monate verteilt, für die sie gelten: nach dem Zeitraum im
+            Verwendungszweck, sonst nach den festen Kosten des Objekts, sonst
+            Versicherung jährlich und Grundbesitzabgaben quartalsweise. Der
+            Unterschied zur Zahlung steht als „Zeitliche Abgrenzung“ unter dem
+            Cashflow; die Veränderung des Bankbestands stimmt weiter.
+            Rendite-Kennzahlen sind auf 12 Monate hochgerechnet: Cash-on-Cash
+            auf das Eigenkapital, NOI-Rendite auf Kaufpreis plus
+            Kaufnebenkosten.
           </p>
         </div>
         <div>
