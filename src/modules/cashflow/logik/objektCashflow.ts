@@ -5,6 +5,12 @@
  * Kapitaldienst → Cashflow), aber monatlich, aus der Bank (Ist) und mit
  * Soll aus den Mietverträgen und einem Plan daneben.
  * Kosten ohne Objektbezug stehen getrennt unter „Gesellschaft allgemein“.
+ *
+ * Periodisierung: Jahres-, Halbjahres- und Quartalszahlungen (Grundbesitz-
+ * abgaben, Versicherungen, Wartungsverträge) werden auf die Monate verteilt,
+ * für die sie gelten. Der Unterschied zur Zahlung steht als „Zeitliche
+ * Abgrenzung“ unter dem Cashflow, so dass die Veränderung des Bankbestands
+ * weiter stimmt.
  */
 import {
   monatsanfang,
@@ -12,7 +18,7 @@ import {
   plusMonate,
   type IsoDatum,
 } from "@/lib/kalender";
-import type { BoardDaten } from "@/lib/db/typen";
+import type { BoardDaten, ObjektFixkosten } from "@/lib/db/typen";
 import type { DarlehenStand } from "@/modules/darlehen/logik/auswertung";
 import { runden } from "@/modules/darlehen/logik/zinsplan";
 import { sollMiete } from "@/modules/immobilien/logik/mieten";
@@ -20,6 +26,8 @@ import {
   CF_KATEGORIEN,
   einordnen,
   gruppeVon,
+  normal,
+  UMLAGEFAEHIG,
   type CfGruppe,
   type CfKategorie,
   type CfPosten,
@@ -37,8 +45,11 @@ export const PLAN_ANNAHMEN = {
 
 export type Summenzeile =
   | "einnahmen"
+  | "betriebskosten"
+  | "nichtUmlagefaehig"
   | "bewirtschaftung"
   | "noi"
+  | "cfVorTilgung"
   | "kapitaldienst"
   | "cfNachKd"
   | "investition"
@@ -60,6 +71,9 @@ function summen(w: Werte): Record<Summenzeile, number> {
       .reduce((s, k) => s + w[k], 0);
   const einnahmen = g("einnahmen");
   const bewirtschaftung = g("bewirtschaftung");
+  const betriebskosten = (Object.keys(w) as CfKategorie[])
+    .filter((k) => UMLAGEFAEHIG.has(k))
+    .reduce((s, k) => s + w[k], 0);
   const noi = einnahmen + bewirtschaftung;
   const kapitaldienst = g("kapitaldienst");
   const cfNachKd = noi + kapitaldienst;
@@ -68,8 +82,11 @@ function summen(w: Werte): Record<Summenzeile, number> {
   const durchlaufend = g("durchlaufend");
   return {
     einnahmen: runden(einnahmen),
+    betriebskosten: runden(betriebskosten),
+    nichtUmlagefaehig: runden(bewirtschaftung - betriebskosten),
     bewirtschaftung: runden(bewirtschaftung),
     noi: runden(noi),
+    cfVorTilgung: runden(noi + w.zinsen),
     kapitaldienst: runden(kapitaldienst),
     cfNachKd: runden(cfNachKd),
     investition: runden(investition),
@@ -105,6 +122,21 @@ export interface CfPlan {
   cfNachKd: number;
 }
 
+/** Kennzahlen eines Investors, auf 12 Monate hochgerechnet aus dem Vergleichszeitraum */
+export interface Kennzahlen {
+  /** Anzahl Monate, aus denen hochgerechnet wird */
+  monate: number;
+  noiJahr: number;
+  cfJahr: number;
+  tilgungJahr: number;
+  /** Cashflow nach Kapitaldienst / eingesetztes Eigenkapital */
+  cashOnCash: number | null;
+  /** NOI / (Kaufpreis + Kaufnebenkosten) */
+  noiRendite: number | null;
+  /** nicht umlagefähige Kosten / Ist-Netto-Kaltmiete */
+  kostenquote: number | null;
+}
+
 export interface ObjektCf {
   /** null = Gesellschaft allgemein */
   objektId: string | null;
@@ -129,6 +161,12 @@ export interface ObjektCf {
   mieteQuote: number | null;
   /** NOI / Kapitaldienst im Vergleichszeitraum */
   dscr: number | null;
+  /** eingesetztes Eigenkapital laut Stammdaten */
+  eigenkapital: number | null;
+  /** Kaufpreis + Kaufnebenkosten */
+  gesamtinvest: number | null;
+  kennzahlen: Kennzahlen;
+  /** Bankbuchungen wie gezahlt (ohne Periodisierung) */
   posten: CfPosten[];
 }
 
@@ -143,6 +181,8 @@ export interface CashflowAuswertung {
     summe: ObjektCf["summe"];
     plan: CfPlan;
     dscr: number | null;
+    kennzahlen: Kennzahlen;
+    eigenkapital: number;
   };
   /** Anteil der Ausgaben, die eine Kategorie haben (0–1) */
   einordnungsQuote: number;
@@ -154,6 +194,137 @@ export function cfMonate(stichtag: IsoDatum, anzahl = 12): string[] {
   for (let i = anzahl; i >= 0; i--)
     monate.push(monatsanfang(plusMonate(stichtag, -i)).slice(0, 7));
   return monate;
+}
+
+const plusMonat = (monat: string, n: number) =>
+  plusMonate(`${monat}-01`, n).slice(0, 7);
+
+function monatsReihe(von: string, anzahl: number): string[] {
+  return Array.from({ length: anzahl }, (_, i) => plusMonat(von, i));
+}
+
+/** Kategorien, deren Zahlungen auf mehrere Monate verteilt werden können */
+const PERIODISIERBAR: ReadonlySet<CfKategorie> = new Set<CfKategorie>([
+  "grundbesitz",
+  "versicherung",
+  "versorger",
+  "instandhaltung",
+]);
+const ZEITRAUM =
+  /zeitraum:?\s*(\d{1,2})\.(\d{1,2})\.(\d{4})\s*(?:-|bis)\s*(\d{1,2})\.(\d{1,2})\.(\d{4})/;
+/** Abgaben der Kommune, die quartalsweise (15.2./15.5./15.8./15.11.) fällig werden */
+const QUARTALS_ABGABE =
+  /grundsteuer|grundbesitzabgab|abgaben lt|abfall|strassenreinigung|schmutzwasser|niederschlag/;
+
+/**
+ * Monate, auf die eine Ausgabe wirtschaftlich entfällt; null = Monat der Zahlung.
+ * Reihenfolge: „Zeitraum TT.MM.JJJJ-TT.MM.JJJJ“ im Text → passender Eintrag
+ * in den festen Kosten des Objekts (Betrag ±1 %) → Versicherung jährlich,
+ * Grundbesitzabgaben quartalsweise.
+ */
+export function abdeckung(
+  p: CfPosten,
+  fix: ObjektFixkosten[] = [],
+): string[] | null {
+  if (p.betrag >= 0 || !PERIODISIERBAR.has(p.kategorie)) return null;
+  const text = normal(`${p.gegenpartei} ${p.zweck}`);
+  const z = text.match(ZEITRAUM);
+  if (z) {
+    const von = `${z[3]}-${z[2].padStart(2, "0")}`;
+    const bis = `${z[6]}-${z[5].padStart(2, "0")}`;
+    // „bis 31.12.“ schließt den Monat ein, „bis 12.05.“ (Jahrestag) nicht
+    const letzter = Number(z[4]) >= 28 ? bis : plusMonat(bis, -1);
+    const reihe: string[] = [];
+    for (let m = von; m <= letzter && reihe.length < 25; m = plusMonat(m, 1))
+      reihe.push(m);
+    if (reihe.length >= 2 && reihe.length <= 24) return reihe;
+  }
+  const betrag = -p.betrag;
+  const treffer = fix.find(
+    (f) =>
+      f.rhythmus !== "monatlich" &&
+      f.betrag > 0 &&
+      Math.abs(f.betrag - betrag) <= Math.max(1, f.betrag * 0.01),
+  );
+  const rhythmus =
+    treffer?.rhythmus ??
+    (p.kategorie === "versicherung" && betrag >= 100
+      ? "jaehrlich"
+      : p.kategorie === "grundbesitz" &&
+          (QUARTALS_ABGABE.test(text) ||
+            ([2, 5, 8, 11].includes(Number(p.datum.slice(5, 7))) &&
+              Number(p.datum.slice(8, 10)) >= 10 &&
+              Number(p.datum.slice(8, 10)) <= 20))
+        ? "quartalsweise"
+        : null);
+  if (!rhythmus || rhythmus === "monatlich") return null;
+  const jahr = p.monat.slice(0, 4);
+  const mon = Number(p.monat.slice(5, 7));
+  if (rhythmus === "jaehrlich") return monatsReihe(p.monat, 12);
+  if (rhythmus === "halbjaehrlich")
+    return monatsReihe(`${jahr}-${mon <= 6 ? "01" : "07"}`, 6);
+  const q = Math.floor((mon - 1) / 3) * 3 + 1;
+  return monatsReihe(`${jahr}-${String(q).padStart(2, "0")}`, 3);
+}
+
+/**
+ * Verteilt Jahres-/Quartalszahlungen auf ihre Monate. Die Zahlung selbst
+ * wird zur „Zeitlichen Abgrenzung“, jeder Monat bekommt seinen Anteil als
+ * Kosten und als Gegenposten in der Abgrenzung. `vorlauf` sind Zahlungen vor
+ * dem Auswertungszeitraum, deren Anteile noch in ihn fallen.
+ */
+export function periodisieren(
+  posten: CfPosten[],
+  fix: ObjektFixkosten[] = [],
+  vorlauf: CfPosten[] = [],
+): CfPosten[] {
+  const ergebnis: CfPosten[] = [];
+  const verteilen = (p: CfPosten, monate: string[]) => {
+    const anteil = runden(p.betrag / monate.length);
+    monate.forEach((monat, i) => {
+      const betrag =
+        i === monate.length - 1
+          ? runden(p.betrag - anteil * (monate.length - 1))
+          : anteil;
+      ergebnis.push({ ...p, monat, betrag });
+      ergebnis.push({ ...p, monat, kategorie: "abgrenzung", betrag: -betrag });
+    });
+  };
+  for (const p of vorlauf) {
+    const monate = abdeckung(p, fix);
+    if (monate) verteilen(p, monate);
+  }
+  for (const p of posten) {
+    const monate = abdeckung(p, fix);
+    if (!monate) {
+      ergebnis.push(p);
+      continue;
+    }
+    ergebnis.push({ ...p, kategorie: "abgrenzung" });
+    verteilen(p, monate);
+  }
+  return ergebnis;
+}
+
+function kennzahlenBerechnen(
+  monate: number,
+  werte: Werte,
+  s: Record<Summenzeile, number>,
+  eigenkapital: number | null,
+  gesamtinvest: number | null,
+): Kennzahlen {
+  const f = monate ? 12 / monate : 0;
+  const noiJahr = runden(s.noi * f);
+  const cfJahr = runden(s.cfNachKd * f);
+  return {
+    monate,
+    noiJahr,
+    cfJahr,
+    tilgungJahr: runden(-werte.tilgung * f),
+    cashOnCash: monate && eigenkapital ? cfJahr / eigenkapital : null,
+    noiRendite: monate && gesamtinvest ? noiJahr / gesamtinvest : null,
+    kostenquote: werte.miete > 0 ? -s.nichtUmlagefaehig / werte.miete : null,
+  };
 }
 
 function kapitaldienstPlan(
@@ -213,7 +384,13 @@ export function mieteTeilen(
 function aufbauen(
   kopf: Pick<
     ObjektCf,
-    "objektId" | "companyId" | "name" | "flaeche" | "einheiten"
+    | "objektId"
+    | "companyId"
+    | "name"
+    | "flaeche"
+    | "einheiten"
+    | "eigenkapital"
+    | "gesamtinvest"
   >,
   posten: CfPosten[],
   monate: string[],
@@ -221,6 +398,7 @@ function aufbauen(
   datenAb: string | null,
   soll: (monat: string) => { warm: number; kalt: number },
   kdPlan: (monat: string) => number,
+  anzeige: CfPosten[] = posten,
 ): ObjektCf {
   const cfMonate: CfMonat[] = monate.map((monat) => {
     const werte = leer();
@@ -274,7 +452,14 @@ function aufbauen(
     datenAb,
     mieteQuote: sollKalt > 0 ? werte.miete / sollKalt : null,
     dscr: s.kapitaldienst < 0 ? s.noi / -s.kapitaldienst : null,
-    posten: posten.slice().sort((a, b) => b.datum.localeCompare(a.datum)),
+    kennzahlen: kennzahlenBerechnen(
+      vergleich.length,
+      werte,
+      s,
+      kopf.eigenkapital,
+      kopf.gesamtinvest,
+    ),
+    posten: anzeige.slice().sort((a, b) => b.datum.localeCompare(a.datum)),
   };
 }
 
@@ -324,8 +509,32 @@ function zusammenfassen(teile: ObjektCf[], monate: string[]) {
       cfNachKd: 0,
     },
   );
+  // Portfolio: Summe der hochgerechneten Objektwerte
+  const noiJahr = teile.reduce((a, t) => a + t.kennzahlen.noiJahr, 0);
+  const cfJahr = teile.reduce((a, t) => a + t.kennzahlen.cfJahr, 0);
+  const mitEk = teile.filter((t) => t.eigenkapital && t.kennzahlen.monate);
+  const eigenkapital = mitEk.reduce((a, t) => a + (t.eigenkapital ?? 0), 0);
+  const mitInvest = teile.filter((t) => t.gesamtinvest && t.kennzahlen.monate);
+  const invest = mitInvest.reduce((a, t) => a + (t.gesamtinvest ?? 0), 0);
+  const kennzahlen: Kennzahlen = {
+    monate: Math.max(0, ...teile.map((t) => t.kennzahlen.monate)),
+    noiJahr: runden(noiJahr),
+    cfJahr: runden(cfJahr),
+    tilgungJahr: runden(
+      teile.reduce((a, t) => a + t.kennzahlen.tilgungJahr, 0),
+    ),
+    cashOnCash: eigenkapital
+      ? mitEk.reduce((a, t) => a + t.kennzahlen.cfJahr, 0) / eigenkapital
+      : null,
+    noiRendite: invest
+      ? mitInvest.reduce((a, t) => a + t.kennzahlen.noiJahr, 0) / invest
+      : null,
+    kostenquote: werte.miete > 0 ? -s.nichtUmlagefaehig / werte.miete : null,
+  };
   return {
     monate: pm,
+    kennzahlen,
+    eigenkapital,
     summe: {
       werte,
       summen: s,
@@ -347,6 +556,7 @@ export function cashflowAuswerten(
     | "leaseEvents"
     | "bankAccounts"
     | "transactions"
+    | "fixkosten"
   >,
   staende: DarlehenStand[],
   anzahlMonate = 12,
@@ -359,10 +569,15 @@ export function cashflowAuswerten(
   );
   const accounts = daten.bankAccounts.filter((a) => !separat.has(a.companyId));
   const ibans = new Set(accounts.map((a) => a.iban));
-  const tx = daten.transactions.filter(
-    (t) => ibans.has(t.accountId) && t.bookingDate >= erster,
+  // zwölf Monate Vorlauf für Jahreszahlungen, die noch in den Zeitraum wirken
+  const vorlaufAb = `${plusMonat(monate[0], -12)}-01`;
+  const txAlle = daten.transactions.filter(
+    (t) => ibans.has(t.accountId) && t.bookingDate >= vorlaufAb,
   );
-  const posten = einordnen(tx, { accounts, properties: daten.properties });
+  const tx = txAlle.filter((t) => t.bookingDate >= erster);
+  const alle = einordnen(txAlle, { accounts, properties: daten.properties });
+  const posten = alle.filter((x) => x.datum >= erster);
+  const vorlauf = alle.filter((x) => x.datum < erster);
 
   // erster Buchungsmonat je Konto = ab da liegen Bankdaten vor
   const kontoAb = new Map<string, string>();
@@ -406,7 +621,12 @@ export function cashflowAuswerten(
         }
         return { warm, kalt };
       };
-      const eigene = mieteTeilen(roh, soll);
+      const fix = (daten.fixkosten ?? []).filter((f) => f.objektId === p.id);
+      const eigene = periodisieren(
+        mieteTeilen(roh, soll),
+        fix,
+        vorlauf.filter((x) => x.objektId === p.id),
+      );
       return aufbauen(
         {
           objektId: p.id,
@@ -414,6 +634,11 @@ export function cashflowAuswerten(
           name: p.name,
           flaeche: runden(units.reduce((a, u) => a + u.area, 0)),
           einheiten: units.length,
+          eigenkapital: p.equity ?? null,
+          gesamtinvest:
+            p.purchasePrice != null
+              ? p.purchasePrice + (p.purchaseCosts ?? 0)
+              : null,
         },
         eigene,
         monate,
@@ -421,6 +646,7 @@ export function cashflowAuswerten(
         datenAb,
         soll,
         (m) => kapitaldienstPlan(staende, p.id, m),
+        roh,
       );
     });
 
@@ -442,6 +668,8 @@ export function cashflowAuswerten(
           name: c.shortName,
           flaeche: 0,
           einheiten: 0,
+          eigenkapital: null,
+          gesamtinvest: null,
         },
         eigene,
         monate,

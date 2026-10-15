@@ -24,6 +24,25 @@ export type EbicsSyncLaufErgebnis = {
   bankLeer: boolean;
 };
 
+const NETZFEHLER =
+  /ECONNRESET|ETIMEDOUT|ECONNREFUSED|EAI_AGAIN|socket hang up|fetch failed/i;
+
+/** Kurze Netzabbrüche zur Bank (z. B. ECONNRESET beim ersten Abruf) bis zu zweimal wiederholen. */
+export async function mitWiederholung<T>(
+  fn: () => Promise<T>,
+  wartezeitenMs: number[] = [2000, 5000],
+): Promise<T> {
+  for (let versuch = 0; ; versuch++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (versuch >= wartezeitenMs.length || !NETZFEHLER.test(msg)) throw err;
+      await new Promise((r) => setTimeout(r, wartezeitenMs[versuch]));
+    }
+  }
+}
+
 function monatsgrenzen(zeitraum: string): { von: string; bis: string } {
   const start = new Date(`${zeitraum}-01T00:00:00Z`);
   if (Number.isNaN(start.getTime())) {
@@ -201,7 +220,9 @@ async function syncEinKunde(
   const { von, bis } = monatsgrenzen(zeitraum);
   try {
     const { ebicsC53Abrufen } = await import("@/lib/ebics/client");
-    const orderData = await ebicsC53Abrufen(admin, kunde, von, bis);
+    const orderData = await mitWiederholung(() =>
+      ebicsC53Abrufen(admin, kunde, von, bis),
+    );
 
     const bankLeer = orderData.length === 0;
     let anzahlNeu = 0;
@@ -217,7 +238,18 @@ async function syncEinKunde(
           kunde.gesellschaft_id,
         );
         await kontosaldenSpeichern(admin, parsed, gesellschaftId);
-        const neu = parsed.buchungen.filter((b) => !known.has(b.fingerprint));
+        // Auch Buchungen überspringen, die der tägliche Kontoabruf (ohne Lauf)
+        // für dieses Konto schon gespeichert hat, sonst entstehen Dubletten.
+        const bekanntKonto = parsed.kontoIban
+          ? await bekannteFingerprintsKonto(
+              admin,
+              parsed.kontoIban,
+              parsed.buchungen.map((b) => b.fingerprint),
+            )
+          : new Set<string>();
+        const neu = parsed.buchungen.filter(
+          (b) => !known.has(b.fingerprint) && !bekanntKonto.has(b.fingerprint),
+        );
         if (neu.length === 0) continue;
 
         const dateiname = `EBICS C53 ${parsed.kontoIban ?? kunde.partner_id} ${von}`;
@@ -409,7 +441,9 @@ export async function syncEbicsAlleKonten(
     }
     try {
       const { ebicsC53Abrufen } = await import("@/lib/ebics/client");
-      const orderData = await ebicsC53Abrufen(admin, kunde, von, bis);
+      const orderData = await mitWiederholung(() =>
+        ebicsC53Abrufen(admin, kunde, von, bis),
+      );
       let anzahlNeu = 0;
       const xmls =
         orderData.length === 0 ? [] : await extractCamt053Xmls(orderData);

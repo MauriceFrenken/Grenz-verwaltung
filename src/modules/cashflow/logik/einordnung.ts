@@ -43,7 +43,12 @@ export const CF_KATEGORIEN = {
     gruppe: "finanzierung",
   },
   kaution: { label: "Kautionen", gruppe: "durchlaufend" },
-  nk_abrechnung: { label: "Nebenkostenabrechnung", gruppe: "durchlaufend" },
+  // Nachzahlung/Erstattung der Mieter gleicht die umlagefähigen Kosten aus
+  nk_abrechnung: { label: "Nebenkostenabrechnung", gruppe: "bewirtschaftung" },
+  abgrenzung: {
+    label: "Zeitliche Abgrenzung (Jahres-/Quartalszahlungen)",
+    gruppe: "durchlaufend",
+  },
   steuern: { label: "Steuern", gruppe: "gesellschaft" },
   personal: { label: "Personal", gruppe: "gesellschaft" },
   gemeinkosten: { label: "Gemeinkosten", gruppe: "gesellschaft" },
@@ -53,6 +58,18 @@ export const CF_KATEGORIEN = {
 export type CfKategorie = keyof typeof CF_KATEGORIEN;
 
 export const gruppeVon = (k: CfKategorie): CfGruppe => CF_KATEGORIEN[k].gruppe;
+
+/**
+ * Bewirtschaftung, die nach BetrKV auf die Mieter umgelegt wird, und ihr
+ * Ausgleich (Vorauszahlungen, Abrechnung). Der Saldo zeigt, was nicht gedeckt ist.
+ */
+export const UMLAGEFAEHIG: ReadonlySet<CfKategorie> = new Set<CfKategorie>([
+  "versorger",
+  "grundbesitz",
+  "versicherung",
+  "umlagen",
+  "nk_abrechnung",
+]);
 
 export type Zuordnung =
   "darlehen" | "mietvertrag" | "adresse" | "konto" | "keine";

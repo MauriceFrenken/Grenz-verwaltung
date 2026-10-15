@@ -314,7 +314,7 @@ function begrenzeVisionFuerPrompt(
   return aktuell;
 }
 
-async function anthropicNachricht(
+export async function anthropicNachricht(
   system: string,
   userText: string,
   vision: DokumentVisionBlock[] = [],

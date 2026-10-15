@@ -30,6 +30,8 @@ import {
 } from "@/lib/trade-any-machine";
 
 import { baueAnhangAnalyseKontext } from "./anhang-kontext";
+import { ablageDatenwirkungNachholen } from "./ablage-datenwirkung";
+import { datenwirkungNachholen } from "./datenwirkung";
 import {
   dokumentPosteingangAblegenKategorieSicherstellen,
   dokumentPosteingangOutlookKategorieAblegen,
@@ -66,10 +68,7 @@ import type {
   DokumentPosteingangSyncErgebnis,
   RechnungDuplikatHinweis,
 } from "./typen";
-import {
-  ermittleGeschwisterHinweis,
-  finalisiereZuordnung,
-} from "./zuordnung";
+import { ermittleGeschwisterHinweis, finalisiereZuordnung } from "./zuordnung";
 
 const MAX_ANHANG_BYTES = 25 * 1024 * 1024;
 /** Max. Analysen pro UI-/Sync-Servercall (innerhalb maxDuration). */
@@ -221,7 +220,9 @@ async function analysiereEintrag(
       throw new Error("Der Anhang enthält keine Daten.");
     }
     if (bytes.byteLength > MAX_ANHANG_BYTES) {
-      throw new Error("Anhang ist größer als 25 MB und wurde nicht analysiert.");
+      throw new Error(
+        "Anhang ist größer als 25 MB und wurde nicht analysiert.",
+      );
     }
 
     const emailText = await ladeVollenMailText(accessToken, row);
@@ -537,6 +538,8 @@ const NACHTLAUF_MAX_FEHLER_IN_FOLGE = 3;
  * Reicht für große Posteingänge; echte Grenze ist deadlineMs / maxDuration.
  */
 const NACHTLAUF_MAX_ANALYSEN_PRO_LAUF = 200;
+/** OneDrive-Delta-Seiten (je 500 Einträge) pro Lauf; Erstaufnahme über mehrere Läufe */
+const NACHTLAUF_ABLAGE_MAX_SEITEN = 200;
 /** Max. Selbst-Fortsetzungen nach dem ersten Cron-Trigger. */
 export const NACHTLAUF_MAX_RUNDEN = 40;
 /**
@@ -554,6 +557,12 @@ export type DokumentPosteingangNachtlaufErgebnis = {
   /** Auto-Ablegen via Outlook-Kategorie „ablegen“. */
   kategorieAblegenVerarbeitet?: number;
   kategorieAblegenFehlgeschlagen?: number;
+  /** Datenqualität: geprüfte Einträge und neue Hinweise mit Wirkung auf Zahlen */
+  datenwirkungGeprueft?: number;
+  datenwirkungHinweise?: number;
+  /** Datenqualität: geprüfte Ablage-Dateien und neue Hinweise daraus */
+  ablageGeprueft?: number;
+  ablageHinweise?: number;
 };
 
 async function nachtlaufAblegenMailsSeeden(): Promise<number> {
@@ -709,6 +718,40 @@ export async function dokumentPosteingangNachtlauf(input?: {
     }
   }
 
+  // Phase 3: analysierte Post auf Auswirkungen auf die Zahlen prüfen
+  // (Datenqualität). Nur mit Restzeit; der Rest folgt im nächsten Lauf.
+  let datenwirkungGeprueft = 0;
+  let datenwirkungHinweise = 0;
+  if (!fortsetzen && Date.now() < deadlineMs - 30_000) {
+    try {
+      const dw = await datenwirkungNachholen({
+        max: NACHTLAUF_MAX_ANALYSEN_PRO_LAUF,
+        deadlineMs: deadlineMs - 15_000,
+      });
+      datenwirkungGeprueft = dw.geprueft;
+      datenwirkungHinweise = dw.neueHinweise;
+    } catch (err) {
+      console.error("[dokument-postfach] Datenwirkung prüfen", err);
+    }
+  }
+
+  // Phase 4: neue oder geänderte Dateien der OneDrive-Ablage ebenso prüfen
+  let ablageGeprueft = 0;
+  let ablageHinweise = 0;
+  if (!fortsetzen && Date.now() < deadlineMs - 30_000) {
+    try {
+      const ab = await ablageDatenwirkungNachholen({
+        max: NACHTLAUF_MAX_ANALYSEN_PRO_LAUF,
+        maxSeiten: NACHTLAUF_ABLAGE_MAX_SEITEN,
+        deadlineMs: deadlineMs - 15_000,
+      });
+      ablageGeprueft = ab.geprueft;
+      ablageHinweise = ab.neueHinweise;
+    } catch (err) {
+      console.error("[dokument-postfach] Ablage prüfen", err);
+    }
+  }
+
   return {
     analysiert,
     fehlgeschlagen,
@@ -718,5 +761,9 @@ export async function dokumentPosteingangNachtlauf(input?: {
     inboxSyncFehler,
     kategorieAblegenVerarbeitet,
     kategorieAblegenFehlgeschlagen,
+    datenwirkungGeprueft,
+    datenwirkungHinweise,
+    ablageGeprueft,
+    ablageHinweise,
   };
 }

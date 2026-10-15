@@ -4,6 +4,8 @@ import { dokumentPosteingangArchivieren } from "./archivieren";
 import { dokumentPosteingangSchnellAusfuehren } from "./ausfuehren";
 import { dokumentPosteingangAblegen } from "./ablegen";
 import { dokumentPosteingangBuchen } from "./buchen";
+import { ablageDatenwirkungPruefen } from "./ablage-datenwirkung";
+import { postfachDatenwirkungPruefen } from "./datenwirkung";
 import { dokumentPosteingangEintragLaden } from "./eintrag";
 import {
   dokumentRechnungsfreigabeLaden,
@@ -65,9 +67,7 @@ export const dokumentPosteingangAblegenFn = createServerFn({ method: "POST" })
     dokumentPosteingangAblegen({
       ...data,
       felder: data.felder as
-        | import("@/lib/dokument-ai").DokumentAnalyseFelder
-        | null
-        | undefined,
+        import("@/lib/dokument-ai").DokumentAnalyseFelder | null | undefined,
     }),
   );
 
@@ -88,9 +88,7 @@ export const dokumentPosteingangBuchenFn = createServerFn({ method: "POST" })
     dokumentPosteingangBuchen({
       ...data,
       felder: data.felder as
-        | import("@/lib/dokument-ai").DokumentAnalyseFelder
-        | null
-        | undefined,
+        import("@/lib/dokument-ai").DokumentAnalyseFelder | null | undefined,
     }),
   );
 
@@ -142,13 +140,13 @@ export const dokumentPosteingangZuTamFn = createServerFn({ method: "POST" })
     dokumentPosteingangZuTam({
       ...data,
       felder: data.felder as
-        | import("@/lib/dokument-ai").DokumentAnalyseFelder
-        | null
-        | undefined,
+        import("@/lib/dokument-ai").DokumentAnalyseFelder | null | undefined,
     }),
   );
 
-export const dokumentRechnungsfreigabeLadenFn = createServerFn({ method: "POST" })
+export const dokumentRechnungsfreigabeLadenFn = createServerFn({
+  method: "POST",
+})
   .validator((data: unknown) => data as { supabaseAccessToken: string })
   .handler(async ({ data }) => dokumentRechnungsfreigabeLaden(data));
 
@@ -170,3 +168,19 @@ export const dokumentRechnungsfreigabeVerschiebenFn = createServerFn({
       },
   )
   .handler(async ({ data }) => dokumentRechnungsfreigabeVerschieben(data));
+
+/** Datenqualität: Postfach auf Mails mit Auswirkung auf die Zahlen prüfen */
+export const postfachDatenwirkungPruefenFn = createServerFn({
+  method: "POST",
+})
+  .validator(
+    (data: unknown) => data as { supabaseAccessToken: string; max?: number },
+  )
+  .handler(async ({ data }) => postfachDatenwirkungPruefen(data));
+
+/** Datenqualität: neue Dateien der OneDrive-Ablage auf Auswirkungen prüfen */
+export const ablageDatenwirkungPruefenFn = createServerFn({
+  method: "POST",
+})
+  .validator((data: unknown) => data as { supabaseAccessToken: string })
+  .handler(async ({ data }) => ablageDatenwirkungPruefen(data));
