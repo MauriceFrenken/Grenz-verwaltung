@@ -194,7 +194,7 @@ export const LOAN_KIND_LABEL: Record<LoanKind, string> = {
   bank: "Bank",
   intercompany: "Intercompany",
   gesellschafter: "Gesellschafter",
-  sonstige: "Sonstige",
+  sonstige: "Privat & Dritte",
 };
 
 export const DAY_COUNTS = ["30/360", "act/360", "act/365"] as const;

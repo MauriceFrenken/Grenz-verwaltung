@@ -33,9 +33,28 @@ import { DarlehenDetail } from "./DarlehenDetail";
 import { ImportDialog } from "./ImportDialog";
 import type { AbgleichErgebnis } from "./logik/abgleich";
 import type { DarlehenStand, Faelligkeit } from "./logik/auswertung";
-import { useDarlehenAuswertung } from "./useDarlehen";
+import {
+  GeberDiagramm,
+  GesellschaftDiagramm,
+  Legende,
+  NettoDiagramm,
+  ProfilDiagramm,
+  Zusammensetzung,
+} from "./DarlehenDiagramme";
+import {
+  externeGeber,
+  faelligkeitsProfil,
+  GRUPPE_FARBE,
+  gruppe,
+  internNetto,
+  istExterneForderung,
+  kreis,
+  kreisSummen,
+  verbindlichkeitenJeGesellschaft,
+} from "./logik/kreise";
+import { useDarlehenAuswertung, type DarlehenAuswertung } from "./useDarlehen";
 
-type Reiter = "liste" | "abgleich" | "matrix" | "faelligkeiten";
+type Reiter = "ueberblick" | "extern" | "intern" | "abgleich" | "faelligkeiten";
 
 const AMPEL_FILTER = [
   { wert: "rot", label: "Rot" },
@@ -51,7 +70,7 @@ export function DarlehenSeite() {
   const filter = useGesellschaftsFilter();
   const { darlehen: offenId } = useSearch({ from: "/board/darlehen" });
   const navigate = useNavigate({ from: "/board/darlehen" });
-  const [reiter, setReiter] = useState<Reiter>("liste");
+  const [reiter, setReiter] = useState<Reiter>("ueberblick");
   const [importOffen, setImportOffen] = useState(false);
 
   const betrifft = (l: Loan) =>
@@ -88,16 +107,9 @@ export function DarlehenSeite() {
 
   const stichtag = auswertung.stichtag;
   const aktiv = staende.filter((s) => s.loan.status === "aktiv");
-  const bank = aktiv.filter((s) => s.loan.kind === "bank");
-  const intern = aktiv.filter((s) => s.loan.kind !== "bank");
-  const summe = (xs: DarlehenStand[]) =>
-    xs.reduce((a, s) => a + s.restschuld, 0);
-  const bankSumme = summe(bank);
-  const zinsSchnitt =
-    bankSumme > 0
-      ? bank.reduce((a, s) => a + s.restschuld * s.loan.rate, 0) / bankSumme
-      : null;
-  const zinsenJahr = aktiv.reduce((a, s) => a + s.zinsenLfdJahr, 0);
+  const summen = kreisSummen(staende);
+  const extern = summen.bank + summen.privat;
+  const zinsSchnittExtern = extern > 0 ? summen.zinsenExternPa / extern : null;
   const faelligAbgleich = abgleich.filter((a) => a.ampel !== "grau");
   const quote = faelligAbgleich.length
     ? faelligAbgleich.filter((a) => a.ampel === "gruen").length /
@@ -109,6 +121,9 @@ export function DarlehenSeite() {
     (f) => betrifft(f.loan) && tageZwischen(stichtag, f.datum) <= 365,
   );
   const faellig12Summe = faellig12.reduce((a, f) => a + f.restschuld, 0);
+  const ueberfaellig = aktiv.filter(
+    (s) => s.loan.maturityDate && s.loan.maturityDate < stichtag,
+  );
   const offen = offenId
     ? auswertung.staende.find((s) => s.loan.id === offenId)
     : undefined;
@@ -124,7 +139,7 @@ export function DarlehenSeite() {
     <>
       <SeitenKopf
         titel="Darlehen"
-        unterzeile={`${aktiv.length} aktive Darlehen · Stichtag ${datum(stichtag)}`}
+        unterzeile={`${aktiv.length} aktive Darlehen, gegliedert in extern (Banken, private Geber, Dritte) und intern (Gruppe und Gesellschafter) · Stichtag ${datum(stichtag)}`}
         aktionen={
           <Knopf onClick={() => setImportOffen(true)}>
             <FileSpreadsheet /> Excel importieren
@@ -133,19 +148,22 @@ export function DarlehenSeite() {
       >
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
           <BuehnenKennzahl
-            label="Bankverbindlichkeiten"
-            wert={euroKompakt(bankSumme)}
-            hinweis={`${bank.length} Darlehen · Ø ${prozent(zinsSchnitt)}`}
+            label="Extern"
+            wert={euroKompakt(extern)}
+            hinweis={`Banken ${euroKompakt(summen.bank)} · Privat ${euroKompakt(summen.privat)}`}
+            title="Restschuld gegenüber Banken, privaten Darlehensgebern und Dritten"
           />
           <BuehnenKennzahl
-            label="Interne Darlehen"
-            wert={euroKompakt(summe(intern))}
-            hinweis={`${intern.length} Verträge (IC und Gesellschafter)`}
+            label="Intern"
+            wert={euroKompakt(summen.intern)}
+            hinweis={`${summen.anzahl.intern} Verträge, gleichen sich in der Gruppe aus`}
+            title="Darlehen zwischen FRENKEN-Gesellschaften und Gesellschaftern"
           />
           <BuehnenKennzahl
-            label="Zinsen lfd. Jahr"
-            wert={euroKompakt(zinsenJahr)}
-            hinweis="laut Zinsplan, bis heute"
+            label="Zinsen extern p.a."
+            wert={euroKompakt(summen.zinsenExternPa)}
+            hinweis={`Ø ${prozent(zinsSchnittExtern)} auf die externe Restschuld`}
+            title="Restschuld × Zinssatz, hochgerechnet auf ein Jahr"
           />
           <BuehnenKennzahl
             label="Zinsabgleich"
@@ -156,9 +174,13 @@ export function DarlehenSeite() {
           <BuehnenKennzahl
             label="Fällig ≤ 12 Monate"
             wert={euroKompakt(faellig12Summe)}
-            hinweis={`${faellig12.length} Enden/Zinsbindungen`}
+            hinweis={
+              ueberfaellig.length
+                ? `${faellig12.length} Termine · ${ueberfaellig.length} überfällig`
+                : `${faellig12.length} Enden/Zinsbindungen`
+            }
             ampel={
-              faellig12.some((f) => f.ampel === "rot")
+              ueberfaellig.length || faellig12.some((f) => f.ampel === "rot")
                 ? "rot"
                 : faellig12.length
                   ? "gelb"
@@ -168,26 +190,42 @@ export function DarlehenSeite() {
         </div>
       </SeitenKopf>
 
-      <div className="mb-4">
+      <div className="mb-6">
         <Segmente
           label="Ansicht"
           wert={reiter}
           onChange={setReiter}
           optionen={[
-            { wert: "liste", label: "Darlehen" },
+            { wert: "ueberblick", label: "Überblick" },
+            {
+              wert: "extern",
+              label: `Extern (${summen.anzahl.bank + summen.anzahl.privat})`,
+            },
+            { wert: "intern", label: `Intern (${summen.anzahl.intern})` },
             {
               wert: "abgleich",
               label: `Zinsabgleich${rot + gelb ? ` (${rot + gelb})` : ""}`,
             },
-            { wert: "matrix", label: "Geber × Nehmer" },
             { wert: "faelligkeiten", label: "Fälligkeiten" },
           ]}
         />
       </div>
 
-      {reiter === "liste" ? (
-        <DarlehenListe
+      {reiter === "ueberblick" ? (
+        <Ueberblick staende={staende} stichtag={stichtag} n={n} />
+      ) : null}
+      {reiter === "extern" ? (
+        <ExternAnsicht
           staende={staende}
+          n={n}
+          offenId={offenId}
+          onOeffnen={setOffen}
+        />
+      ) : null}
+      {reiter === "intern" ? (
+        <InternAnsicht
+          staende={staende}
+          auswertung={auswertung}
           n={n}
           offenId={offenId}
           onOeffnen={setOffen}
@@ -196,7 +234,6 @@ export function DarlehenSeite() {
       {reiter === "abgleich" ? (
         <AbgleichTabelle ergebnisse={abgleich} n={n} onOeffnen={setOffen} />
       ) : null}
-      {reiter === "matrix" ? <Matrix auswertung={auswertung} n={n} /> : null}
       {reiter === "faelligkeiten" ? (
         <FaelligkeitenTabelle
           faelligkeiten={auswertung.faelligkeiten.filter((f) =>
@@ -226,18 +263,200 @@ export function DarlehenSeite() {
 
 type N = ReturnType<typeof useNachschlagen>;
 
-function ArtBadge({ kind }: { kind: Loan["kind"] }) {
+function ArtBadge({ loan }: { loan: Loan }) {
   return (
-    <span
-      className={cn(
-        "inline-flex h-5 items-center rounded px-1.5 text-[11px] font-medium",
-        kind === "bank"
-          ? "bg-surface-muted text-text-muted"
-          : "bg-accent-soft text-heading",
-      )}
-    >
-      {LOAN_KIND_LABEL[kind]}
+    <span className="inline-flex h-5 items-center gap-1.5 rounded bg-surface-muted px-1.5 text-[11px] font-medium text-text-muted">
+      <span
+        className="size-1.5 rounded-full"
+        style={{ background: GRUPPE_FARBE[gruppe(loan)] }}
+        aria-hidden
+      />
+      {LOAN_KIND_LABEL[loan.kind]}
     </span>
+  );
+}
+
+/** Kurzname für Gesellschaft oder Partei (Diagrammachsen). */
+function kurzName(n: N, id: string): string {
+  return n.companies.get(id)?.shortName ?? n.parties.get(id)?.name ?? id;
+}
+function langName(n: N, id: string): string {
+  return n.companies.get(id)?.name ?? n.parties.get(id)?.name ?? id;
+}
+
+function Ueberblick({
+  staende,
+  stichtag,
+  n,
+}: {
+  staende: DarlehenStand[];
+  stichtag: string;
+  n: N;
+}) {
+  const summen = kreisSummen(staende);
+  const geber = externeGeber(staende);
+  const nehmer = verbindlichkeitenJeGesellschaft(staende);
+  const profil = faelligkeitsProfil(staende, stichtag);
+  return (
+    <>
+      <Abschnitt
+        titel="Wie ist die Gruppe finanziert?"
+        beschreibung="Restschuld aller aktiven Darlehen, an denen eine FRENKEN-Gesellschaft Geld nimmt"
+      >
+        <Karte className="p-5">
+          <Zusammensetzung summen={summen} />
+          {summen.forderungenExtern > 0 ? (
+            <p className="mt-4 border-t border-hairline pt-3 text-xs text-text-muted">
+              Zusätzlich verleiht die Gruppe {euro(summen.forderungenExtern)} an
+              Dritte (siehe Extern → Forderungen an Dritte).
+            </p>
+          ) : null}
+        </Karte>
+      </Abschnitt>
+      <div className="grid gap-x-6 xl:grid-cols-2">
+        <Abschnitt
+          titel="Externe Darlehensgeber"
+          beschreibung="Bei wem die Gruppe extern Schulden hat; Tooltip mit Ø Zins und Zinsen p.a."
+          aktionen={<Legende gruppen={["bank", "privat"]} />}
+        >
+          <Karte className="p-4">
+            {geber.length ? (
+              <GeberDiagramm zeilen={geber} name={(id) => kurzName(n, id)} />
+            ) : (
+              <p className="p-6 text-center text-sm text-text-muted">
+                Keine externen Darlehen
+              </p>
+            )}
+          </Karte>
+        </Abschnitt>
+        <Abschnitt
+          titel="Verbindlichkeiten je Gesellschaft"
+          beschreibung="Wer wie viel schuldet, nach Banken, privaten Gebern und intern"
+          aktionen={<Legende gruppen={["bank", "privat", "intern"]} />}
+        >
+          <Karte className="p-4">
+            <GesellschaftDiagramm
+              zeilen={nehmer}
+              name={(id) => kurzName(n, id)}
+              langName={(id) => langName(n, id)}
+            />
+          </Karte>
+        </Abschnitt>
+      </div>
+      <Abschnitt
+        titel="Wann wird es fällig?"
+        beschreibung="Restschuld nach Jahr des Vertragsendes oder Zinsbindungsendes (was zuerst kommt); unbefristete Darlehen rechts"
+        aktionen={<Legende gruppen={["bank", "privat", "intern"]} />}
+      >
+        <Karte className="p-4">
+          <ProfilDiagramm jahre={profil} />
+        </Karte>
+      </Abschnitt>
+    </>
+  );
+}
+
+function ExternAnsicht({
+  staende,
+  n,
+  offenId,
+  onOeffnen,
+}: {
+  staende: DarlehenStand[];
+  n: N;
+  offenId: string | undefined;
+  onOeffnen: (id: string) => void;
+}) {
+  const ext = staende.filter((s) => kreis(s.loan) === "extern");
+  const bank = ext.filter((s) => s.loan.kind === "bank");
+  const privat = ext.filter(
+    (s) => s.loan.kind !== "bank" && !istExterneForderung(s.loan),
+  );
+  const forderungen = ext.filter((s) => istExterneForderung(s.loan));
+  const aktivSumme = (xs: DarlehenStand[]) =>
+    xs
+      .filter((s) => s.loan.status === "aktiv")
+      .reduce((a, s) => a + s.restschuld, 0);
+  return (
+    <>
+      <Abschnitt
+        titel="Banken"
+        beschreibung={`Restschuld ${euro(aktivSumme(bank))} · Salden laut Bank bzw. gebuchten Tilgungen`}
+      >
+        <DarlehenListe
+          staende={bank}
+          n={n}
+          offenId={offenId}
+          onOeffnen={onOeffnen}
+        />
+      </Abschnitt>
+      <Abschnitt
+        titel="Private Darlehensgeber und Dritte"
+        beschreibung={`Restschuld ${euro(aktivSumme(privat))} · Familie und Unternehmen außerhalb der FRENKEN-Gruppe`}
+      >
+        <DarlehenListe
+          staende={privat}
+          n={n}
+          offenId={offenId}
+          onOeffnen={onOeffnen}
+        />
+      </Abschnitt>
+      {forderungen.length ? (
+        <Abschnitt
+          titel="Forderungen an Dritte"
+          beschreibung={`${euro(aktivSumme(forderungen))} hat die Gruppe an Dritte verliehen`}
+        >
+          <DarlehenListe
+            staende={forderungen}
+            n={n}
+            offenId={offenId}
+            onOeffnen={onOeffnen}
+          />
+        </Abschnitt>
+      ) : null}
+    </>
+  );
+}
+
+function InternAnsicht({
+  staende,
+  auswertung,
+  n,
+  offenId,
+  onOeffnen,
+}: {
+  staende: DarlehenStand[];
+  auswertung: DarlehenAuswertung;
+  n: N;
+  offenId: string | undefined;
+  onOeffnen: (id: string) => void;
+}) {
+  const intern = staende.filter((s) => kreis(s.loan) === "intern");
+  const netto = internNetto(staende);
+  return (
+    <>
+      <Abschnitt
+        titel="Wer finanziert wen?"
+        beschreibung="Netto-Position aus internen Darlehen: gegebene minus genommene Restschuld"
+      >
+        <Karte className="p-4">
+          <NettoDiagramm
+            zeilen={netto}
+            name={(id) => kurzName(n, id)}
+            langName={(id) => langName(n, id)}
+          />
+        </Karte>
+      </Abschnitt>
+      <Matrix auswertung={auswertung} n={n} />
+      <Abschnitt titel="Alle internen Darlehen">
+        <DarlehenListe
+          staende={intern}
+          n={n}
+          offenId={offenId}
+          onOeffnen={onOeffnen}
+        />
+      </Abschnitt>
+    </>
   );
 }
 
@@ -270,7 +489,7 @@ function DarlehenListe({
     {
       id: "art",
       kopf: "Art",
-      zelle: (s) => <ArtBadge kind={s.loan.kind} />,
+      zelle: (s) => <ArtBadge loan={s.loan} />,
       sortierWert: (s) => s.loan.kind,
     },
     {
@@ -398,6 +617,7 @@ function DarlehenListe({
             { wert: "bank", label: "Bank" },
             { wert: "intercompany", label: "Intercompany" },
             { wert: "gesellschafter", label: "Gesellschafter" },
+            { wert: "sonstige", label: LOAN_KIND_LABEL.sonstige },
           ],
           passt: (s, w) => s.loan.kind === w,
         },
@@ -408,8 +628,7 @@ function DarlehenListe({
           passt: (s, w) => s.ampel === w,
         },
       ]}
-      startSortierung={{ id: "frist", richtung: "auf" }}
-      maxHoehe="calc(100vh - 260px)"
+      startSortierung={{ id: "restschuld", richtung: "ab" }}
       leer={
         <Leerzustand
           icon={Landmark}
