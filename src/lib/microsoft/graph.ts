@@ -1434,3 +1434,94 @@ export async function graphDriveDateiHochladen(
     optionen.parentItemId,
   );
 }
+
+export type GraphDriveDeltaItem = {
+  id: string;
+  name: string;
+  istOrdner: boolean;
+  geloescht: boolean;
+  groesse: number;
+  geaendertAm: string | null;
+  webUrl: string | null;
+  cTag: string | null;
+  /** Ordnerpfad ab OneDrive-Root, z. B. „/MTF Capital GmbH/05_Immobilien“ */
+  pfad: string;
+};
+
+/**
+ * Eine Seite der OneDrive-Änderungen (Delta). Ohne `url` beginnt die
+ * Aufzählung beim ersten Element; danach mit dem nextLink bzw. deltaLink
+ * der vorigen Antwort weiter.
+ */
+export async function graphDriveDelta(
+  accessToken: string,
+  benutzer: string,
+  url: string | null,
+): Promise<{
+  items: GraphDriveDeltaItem[];
+  nextLink: string | null;
+  deltaLink: string | null;
+}> {
+  const start = `${GRAPH_BASIS}/users/${encodeURIComponent(benutzer)}/drive/root/delta?${new URLSearchParams(
+    {
+      $select:
+        "id,name,folder,file,size,lastModifiedDateTime,webUrl,parentReference,deleted,cTag",
+      $top: "500",
+    },
+  ).toString()}`;
+  const res = await fetch(url ?? start, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const json: unknown = await res.json().catch(() => ({}));
+  if (!res.ok) throw graphFehler(res.status, json as GraphFehlerJson, benutzer);
+  const data = json as {
+    value?: Array<
+      RohDriveItem & {
+        deleted?: unknown;
+        cTag?: string;
+        parentReference?: { path?: string };
+      }
+    >;
+    "@odata.nextLink"?: string;
+    "@odata.deltaLink"?: string;
+  };
+  const items: GraphDriveDeltaItem[] = [];
+  for (const roh of data.value ?? []) {
+    if (!roh.id) continue;
+    const pfadRoh = roh.parentReference?.path ?? "";
+    const pfad = decodeURIComponent(pfadRoh.replace(/^\/drive\/root:?/, ""));
+    items.push({
+      id: roh.id,
+      name: roh.name ?? "",
+      istOrdner: roh.folder != null,
+      geloescht: roh.deleted != null,
+      groesse: typeof roh.size === "number" ? roh.size : 0,
+      geaendertAm: roh.lastModifiedDateTime ?? null,
+      webUrl: roh.webUrl ?? null,
+      cTag: roh.cTag ?? null,
+      pfad,
+    });
+  }
+  return {
+    items,
+    nextLink: data["@odata.nextLink"] ?? null,
+    deltaLink: data["@odata.deltaLink"] ?? null,
+  };
+}
+
+/** Inhalt einer OneDrive-Datei. */
+export async function graphDriveDateiInhalt(
+  accessToken: string,
+  benutzer: string,
+  itemId: string,
+): Promise<Uint8Array> {
+  const res = await fetch(
+    `${GRAPH_BASIS}/users/${encodeURIComponent(benutzer)}/drive/items/${encodeURIComponent(itemId)}/content`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) {
+    const json: unknown = await res.json().catch(() => ({}));
+    throw graphFehler(res.status, json as GraphFehlerJson, benutzer);
+  }
+  return new Uint8Array(await res.arrayBuffer());
+}

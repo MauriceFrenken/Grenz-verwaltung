@@ -1,6 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, CheckCircle2, Inbox, RefreshCw } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  ExternalLink,
+  Inbox,
+  RefreshCw,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Knopf } from "@/components/board/Knopf";
@@ -21,7 +27,7 @@ import { cn } from "@/lib/utils";
 
 const POSTFACH_HINWEISE_KEY = ["board", "postfach-hinweise"] as const;
 
-/** Runden à 6 Einträge je Klick auf „Postfach prüfen“ */
+/** Runden je Klick auf „Jetzt prüfen“ (Postfach à 6 Mails, Ablage à 4 Dateien) */
 const PRUEF_RUNDEN = 5;
 
 type Row = Record<string, unknown>;
@@ -32,6 +38,9 @@ const str = (v: unknown) => (v == null ? null : String(v));
 function abbilden(r: Row): PostfachHinweis {
   return {
     id: String(r.id),
+    quelle: r.quelle === "ablage" ? "ablage" : "postfach",
+    pfad: str(r.pfad),
+    webUrl: str(r.web_url),
     posteingangId: str(r.posteingang_id),
     art: r.art as HinweisArt,
     titel: String(r.titel ?? ""),
@@ -124,24 +133,37 @@ export function PostfachHinweise({
     const token = session?.access_token;
     if (!token || prueft) return;
     setPrueft(true);
-    let geprueft = 0;
+    let mails = 0;
+    let dateien = 0;
     let neu = 0;
     let offen = 0;
+    let ablageOffen = 0;
     try {
-      const { postfachDatenwirkungPruefenFn } =
+      const { postfachDatenwirkungPruefenFn, ablageDatenwirkungPruefenFn } =
         await import("@/lib/dokument-postfach/server-fn");
       for (let runde = 0; runde < PRUEF_RUNDEN; runde++) {
         const e = await postfachDatenwirkungPruefenFn({
           data: { supabaseAccessToken: token },
         });
-        geprueft += e.geprueft;
+        mails += e.geprueft;
         neu += e.neueHinweise;
         offen = e.offen;
         if (e.offen === 0 || e.geprueft === 0) break;
       }
+      for (let runde = 0; runde < PRUEF_RUNDEN; runde++) {
+        const a = await ablageDatenwirkungPruefenFn({
+          data: { supabaseAccessToken: token },
+        });
+        dateien += a.geprueft;
+        neu += a.neueHinweise;
+        ablageOffen = a.offen;
+        // Erstaufnahme der Ablage braucht evtl. mehrere Runden ohne Prüfung
+        if (a.aktuell && (a.offen === 0 || a.geprueft === 0)) break;
+      }
+      offen += ablageOffen;
       await queryClient.invalidateQueries({ queryKey: POSTFACH_HINWEISE_KEY });
       toast.success(
-        `${geprueft} Mails geprüft, ${neu} neue Hinweise${offen ? `, ${offen} noch offen (laufen im nächsten Postfach-Lauf mit)` : ""}`,
+        `${mails} Mails und ${dateien} Dateien geprüft, ${neu} neue Hinweise${offen ? `, ${offen} noch offen (laufen im nächsten Postfach-Lauf mit)` : ""}`,
       );
     } catch (e) {
       toast.error((e as Error).message);
@@ -156,8 +178,8 @@ export function PostfachHinweise({
 
   return (
     <Abschnitt
-      titel="Aus dem Postfach"
-      beschreibung="Post und E-Mails, die Zahlen im Board verändern: Mieterhöhungen, Kündigungen, Bescheide, Mahnungen, Darlehen, Kaufverträge. Die KI prüft jede analysierte Mail nach dem Postfach-Lauf."
+      titel="Aus Postfach und Ablage"
+      beschreibung="Post, E-Mails und neue Dateien in der OneDrive-Ablage, die Zahlen im Board verändern: Mieterhöhungen, Kündigungen, Bescheide, Mahnungen, Darlehen, Kaufverträge. Die KI prüft nach jedem Postfach-Lauf die analysierten Mails und die neuen oder geänderten Dateien der Gesellschaftsordner (letzte 30 Tage, ohne Archiv)."
       aktionen={
         aktiv && data !== null ? (
           <Knopf
@@ -166,7 +188,7 @@ export function PostfachHinweise({
             disabled={prueft || !session?.access_token}
           >
             <RefreshCw className={cn(prueft && "animate-spin")} />
-            {prueft ? "Prüft …" : "Postfach jetzt prüfen"}
+            {prueft ? "Prüft …" : "Jetzt prüfen"}
           </Knopf>
         ) : null
       }
@@ -225,7 +247,7 @@ export function PostfachHinweise({
                 icon={CheckCircle2}
                 titel={
                   filter === "offen"
-                    ? "Keine offenen Hinweise aus dem Postfach"
+                    ? "Keine offenen Hinweise aus Postfach und Ablage"
                     : "Keine Einträge"
                 }
               />
@@ -299,10 +321,31 @@ function HinweisZeile({
         <p className="mt-1 text-xs text-text-subtle">
           {bezug ? `${bezug} · ` : ""}
           {h.eingegangenAm
-            ? `Eingang ${datum(h.eingegangenAm.slice(0, 10))}`
+            ? `${h.quelle === "ablage" ? "Geändert" : "Eingang"} ${datum(h.eingegangenAm.slice(0, 10))}`
             : ""}
-          {h.absender ? ` · ${h.absender}` : ""}
-          {h.anhangName ? ` · ${h.anhangName}` : ""}
+          {h.quelle === "ablage" ? (
+            <>
+              {" · Ablage: "}
+              {h.webUrl ? (
+                <a
+                  href={h.webUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-0.5 underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  {h.pfad ?? h.anhangName}
+                  <ExternalLink className="size-3" />
+                </a>
+              ) : (
+                (h.pfad ?? h.anhangName)
+              )}
+            </>
+          ) : (
+            <>
+              {h.absender ? ` · ${h.absender}` : ""}
+              {h.anhangName ? ` · ${h.anhangName}` : ""}
+            </>
+          )}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">

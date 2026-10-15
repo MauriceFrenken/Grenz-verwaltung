@@ -24,17 +24,17 @@ import {
   type HinweisVorschlag,
 } from "./datenwirkung-logik";
 
-const HINWEISE = "postfach_datenhinweise";
+export const HINWEISE = "postfach_datenhinweise";
 const POSTEINGANG = "dokument_posteingang";
 /** Einträge je Aufruf aus der Oberfläche (innerhalb maxDuration) */
 const BATCH_UI = 6;
 /** Nur Post der letzten Tage nachholen, ältere ist meist schon erledigt */
 const RUECKBLICK_TAGE = 60;
-const MAX_ANHANG_BYTES = 25 * 1024 * 1024;
-const MAX_FEHLER_IN_FOLGE = 3;
+export const MAX_ANHANG_BYTES = 25 * 1024 * 1024;
+export const MAX_FEHLER_IN_FOLGE = 3;
 
 const SYSTEM = `
-Du prüfst eingehende Post (E-Mails und Anhänge) der FRENKEN Gruppe, eines Immobilienunternehmens (Aufteiler und Bestandshalter). Das Management Board rechnet Mieten, Cashflow je Objekt, Liquidität je Gesellschaft, Darlehen und Kauf/Verkauf. Deine Aufgabe: erkennen, ob dieses Dokument eine Zahl im Board verändert oder eine Zahlung auslöst.
+Du prüfst eingehende Post (E-Mails und Anhänge) und neue Dateien in der OneDrive-Ablage der FRENKEN Gruppe, eines Immobilienunternehmens (Aufteiler und Bestandshalter). Das Management Board rechnet Mieten, Cashflow je Objekt, Liquidität je Gesellschaft, Darlehen und Kauf/Verkauf. Deine Aufgabe: erkennen, ob dieses Dokument eine Zahl im Board verändert oder eine Zahlung auslöst.
 
 Melde einen Hinweis nur für:
 - mieterhoehung: Mieterhöhungsverlangen, Staffel- oder Indexanpassung, Zustimmung dazu (neue Kaltmiete, ab wann)
@@ -48,6 +48,8 @@ Melde einen Hinweis nur für:
 - sonstiges: anderes mit klarer Auswirkung auf Zahlen (z. B. Mietminderung, Schaden mit erwarteten Kosten)
 
 KEIN Hinweis für: Werbung, Newsletter, private Bestellungen, Unzustellbar-Meldungen, Protokolle ohne Zahlen, Baugenehmigungen, Vollmachten, Formulare, Zugangsdaten, Exposés fremder Objekte, allgemeine Korrespondenz.
+
+Dateien aus der OneDrive-Ablage sind oft Verträge, Bescheide, Abrechnungen oder Tabellen, die jemand abgelegt hat. Melde dort nur, was neu ist oder von den Stammdaten abweicht (z. B. Mietvertrag eines Mieters, der fehlt oder eine andere Miete hat; Bescheid mit anderem Betrag als die festen Kosten). Was die Stammdaten schon so enthalten, ist KEIN Hinweis.
 
 Nutze die Stammdaten: nenne objekt (ID wie O-03) und gesellschaft (ID wie G-02), wenn erkennbar. Bei Mieten: mieter (Name), betragAlt = aktueller Wert laut Stammdaten, betrag = neuer Wert. Beträge in Euro als Zahl, Daten als JJJJ-MM-TT. Ein Dokument ergibt meist höchstens einen Hinweis.
 
@@ -74,7 +76,7 @@ type Zeile = {
   felder: Record<string, { value?: string | null } | undefined> | null;
 };
 
-type Kontext = {
+export type Kontext = {
   text: string;
   objekte: Set<string>;
   gesellschaften: Set<string>;
@@ -85,7 +87,7 @@ const euro = (v: unknown) =>
   v == null ? "–" : `${Number(v).toLocaleString("de-DE")} €`;
 
 /** Stammdaten als kompakter Text: Gesellschaften, Objekte, Mieter, Darlehen, feste Kosten */
-async function ladeKontext(): Promise<Kontext> {
+export async function ladeKontext(): Promise<Kontext> {
   const admin = createServiceRoleClient();
   const heute = new Date().toISOString().slice(0, 10);
   const [g, o, m, d, f] = await Promise.all([
@@ -181,7 +183,7 @@ export async function zaehleUngeprueft(): Promise<number> {
 }
 
 /** Bereits vorhandene Hinweise der letzten 120 Tage (gegen Doppelte) */
-async function vorhandeneSchluessel(): Promise<Set<string>> {
+export async function vorhandeneSchluessel(): Promise<Set<string>> {
   const admin = createServiceRoleClient();
   const ab = new Date(Date.now() - 120 * 86_400_000).toISOString();
   const { data } = await admin
@@ -200,6 +202,54 @@ async function vorhandeneSchluessel(): Promise<Set<string>> {
       }),
     ),
   );
+}
+
+/**
+ * KI fragen und Hinweise prüfen. Fehlt der KI Objekt oder Gesellschaft,
+ * gelten die Vorgaben (z. B. Zuordnung aus der Postfach-Analyse oder dem Ordner).
+ */
+export async function kiHinweise(
+  teile: Array<string | null | undefined>,
+  vision: DokumentVisionBlock[],
+  kontext: Kontext,
+  vorgabe: { objektId: string | null; gesellschaftId: string | null },
+): Promise<HinweisVorschlag[]> {
+  const userText = [
+    "=== STAMMDATEN ===",
+    kontext.text,
+    "",
+    ...teile.filter((z): z is string => z != null),
+  ].join("\n");
+  const antwort = await anthropicNachricht(SYSTEM, userText, vision, 1500);
+  return hinweiseAusAntwort(antwort, kontext).map((h) => {
+    const objektId = h.objektId ?? vorgabe.objektId;
+    return {
+      ...h,
+      objektId,
+      gesellschaftId:
+        h.gesellschaftId ??
+        (objektId ? (kontext.objektFirma.get(objektId) ?? null) : null) ??
+        vorgabe.gesellschaftId,
+    };
+  });
+}
+
+/** Spalten eines Hinweises für postfach_datenhinweise (ohne Herkunft) */
+export function hinweisSpalten(h: HinweisVorschlag) {
+  return {
+    art: h.art,
+    titel: h.titel,
+    beschreibung: h.beschreibung,
+    aktion: h.aktion,
+    gesellschaft_id: h.gesellschaftId,
+    objekt_id: h.objektId,
+    mieter: h.mieter,
+    betrag: h.betrag,
+    betrag_alt: h.betragAlt,
+    gueltig_ab: h.gueltigAb,
+    faellig_am: h.faelligAm,
+    konfidenz: h.konfidenz,
+  };
 }
 
 async function pruefeEintrag(
@@ -245,34 +295,22 @@ async function pruefeEintrag(
   }
   const titel = row.felder?.dokumentTitel?.value;
   const betrag = row.felder?.rechnungsbetrag?.value;
-  const userText = [
-    "=== STAMMDATEN ===",
-    kontext.text,
-    "",
-    "=== MAIL ===",
-    mailKontext || "(kein Mailtext)",
-    "",
-    "=== DOKUMENT ===",
-    `Anhang: ${row.anhang_name ?? "–"}`,
-    titel ? `Titel laut Analyse: ${titel}` : null,
-    betrag ? `Betrag laut Analyse: ${betrag}` : null,
-    row.objekt_id ? `Objekt laut Analyse: ${row.objekt_id}` : null,
-    dokument || "(kein Dokumenttext)",
-  ]
-    .filter((z) => z != null)
-    .join("\n");
-  const antwort = await anthropicNachricht(SYSTEM, userText, vision, 1500);
-  return hinweiseAusAntwort(antwort, kontext).map((h) => {
-    const objektId = h.objektId ?? row.objekt_id;
-    return {
-      ...h,
-      objektId,
-      gesellschaftId:
-        h.gesellschaftId ??
-        (objektId ? (kontext.objektFirma.get(objektId) ?? null) : null) ??
-        row.gesellschaft_id,
-    };
-  });
+  return kiHinweise(
+    [
+      "=== MAIL ===",
+      mailKontext || "(kein Mailtext)",
+      "",
+      "=== DOKUMENT ===",
+      `Anhang: ${row.anhang_name ?? "–"}`,
+      titel ? `Titel laut Analyse: ${titel}` : null,
+      betrag ? `Betrag laut Analyse: ${betrag}` : null,
+      row.objekt_id ? `Objekt laut Analyse: ${row.objekt_id}` : null,
+      dokument || "(kein Dokumenttext)",
+    ],
+    vision,
+    kontext,
+    { objektId: row.objekt_id, gesellschaftId: row.gesellschaft_id },
+  );
 }
 
 export type DatenwirkungErgebnis = {
@@ -316,19 +354,9 @@ export async function datenwirkungNachholen(input: {
       if (neu.length) {
         const { error } = await admin.from(HINWEISE).insert(
           neu.map((h) => ({
+            ...hinweisSpalten(h),
+            quelle: "postfach",
             posteingang_id: row.id,
-            art: h.art,
-            titel: h.titel,
-            beschreibung: h.beschreibung,
-            aktion: h.aktion,
-            gesellschaft_id: h.gesellschaftId,
-            objekt_id: h.objektId,
-            mieter: h.mieter,
-            betrag: h.betrag,
-            betrag_alt: h.betragAlt,
-            gueltig_ab: h.gueltigAb,
-            faellig_am: h.faelligAm,
-            konfidenz: h.konfidenz,
             betreff: row.betreff,
             absender: row.absender_name ?? row.absender_mail,
             anhang_name: row.anhang_name,

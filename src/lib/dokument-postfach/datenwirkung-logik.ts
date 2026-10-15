@@ -65,6 +65,11 @@ export interface HinweisVorschlag {
 /** Gespeicherter Hinweis (Tabelle postfach_datenhinweise) */
 export interface PostfachHinweis extends HinweisVorschlag {
   id: string;
+  /** Mail im Postfach oder Datei in der OneDrive-Ablage */
+  quelle: "postfach" | "ablage";
+  /** Ablage: Pfad der Datei und Link zum Öffnen in OneDrive */
+  pfad: string | null;
+  webUrl: string | null;
   posteingangId: string | null;
   betreff: string | null;
   absender: string | null;
@@ -174,4 +179,38 @@ export function hinweisSchluessel(h: {
       ? `${h.betrag?.toFixed(2) ?? ""}|${h.gueltigAb ?? ""}`
       : h.titel.toLowerCase().replace(/[^a-z0-9äöüß]/g, "");
   return [h.art, h.objektId ?? "", mieter, kern].join("|");
+}
+
+/** Dateitypen aus der Ablage, deren Inhalt die KI lesen kann */
+const ABLAGE_ENDUNGEN = /\.(pdf|jpe?g|png|docx?|xlsx?|csv|txt)$/i;
+/** Nur Dateien, die in den letzten Tagen neu oder geändert sind */
+export const ABLAGE_RUECKBLICK_TAGE = 30;
+const ABLAGE_MAX_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Soll eine Datei aus dem OneDrive-Delta geprüft werden?
+ * Nur Gesellschaftsordner (`istRoot` prüft den obersten Ordner), keine
+ * Archive, keine temporären Office-Dateien, nur lesbare Typen.
+ */
+export function ablageDateiRelevant(
+  d: {
+    name: string;
+    pfad: string;
+    groesse: number;
+    geaendertAm: string | null;
+    istOrdner: boolean;
+    geloescht: boolean;
+  },
+  jetzt: Date,
+  istRoot: (ordner: string) => boolean,
+): boolean {
+  if (d.istOrdner || d.geloescht) return false;
+  if (!ABLAGE_ENDUNGEN.test(d.name) || /^~\$|^\./.test(d.name)) return false;
+  if (d.groesse <= 0 || d.groesse > ABLAGE_MAX_BYTES) return false;
+  const segmente = d.pfad.split("/").filter(Boolean);
+  if (!segmente.length || !istRoot(segmente[0])) return false;
+  if (segmente.some((s) => /archiv/i.test(s))) return false;
+  if (!d.geaendertAm) return false;
+  const alter = jetzt.getTime() - new Date(d.geaendertAm).getTime();
+  return alter <= ABLAGE_RUECKBLICK_TAGE * 86_400_000;
 }

@@ -30,6 +30,7 @@ import {
 } from "@/lib/trade-any-machine";
 
 import { baueAnhangAnalyseKontext } from "./anhang-kontext";
+import { ablageDatenwirkungNachholen } from "./ablage-datenwirkung";
 import { datenwirkungNachholen } from "./datenwirkung";
 import {
   dokumentPosteingangAblegenKategorieSicherstellen,
@@ -537,6 +538,8 @@ const NACHTLAUF_MAX_FEHLER_IN_FOLGE = 3;
  * Reicht für große Posteingänge; echte Grenze ist deadlineMs / maxDuration.
  */
 const NACHTLAUF_MAX_ANALYSEN_PRO_LAUF = 200;
+/** OneDrive-Delta-Seiten (je 500 Einträge) pro Lauf; Erstaufnahme über mehrere Läufe */
+const NACHTLAUF_ABLAGE_MAX_SEITEN = 200;
 /** Max. Selbst-Fortsetzungen nach dem ersten Cron-Trigger. */
 export const NACHTLAUF_MAX_RUNDEN = 40;
 /**
@@ -557,6 +560,9 @@ export type DokumentPosteingangNachtlaufErgebnis = {
   /** Datenqualität: geprüfte Einträge und neue Hinweise mit Wirkung auf Zahlen */
   datenwirkungGeprueft?: number;
   datenwirkungHinweise?: number;
+  /** Datenqualität: geprüfte Ablage-Dateien und neue Hinweise daraus */
+  ablageGeprueft?: number;
+  ablageHinweise?: number;
 };
 
 async function nachtlaufAblegenMailsSeeden(): Promise<number> {
@@ -729,6 +735,23 @@ export async function dokumentPosteingangNachtlauf(input?: {
     }
   }
 
+  // Phase 4: neue oder geänderte Dateien der OneDrive-Ablage ebenso prüfen
+  let ablageGeprueft = 0;
+  let ablageHinweise = 0;
+  if (!fortsetzen && Date.now() < deadlineMs - 30_000) {
+    try {
+      const ab = await ablageDatenwirkungNachholen({
+        max: NACHTLAUF_MAX_ANALYSEN_PRO_LAUF,
+        maxSeiten: NACHTLAUF_ABLAGE_MAX_SEITEN,
+        deadlineMs: deadlineMs - 15_000,
+      });
+      ablageGeprueft = ab.geprueft;
+      ablageHinweise = ab.neueHinweise;
+    } catch (err) {
+      console.error("[dokument-postfach] Ablage prüfen", err);
+    }
+  }
+
   return {
     analysiert,
     fehlgeschlagen,
@@ -740,5 +763,7 @@ export async function dokumentPosteingangNachtlauf(input?: {
     kategorieAblegenFehlgeschlagen,
     datenwirkungGeprueft,
     datenwirkungHinweise,
+    ablageGeprueft,
+    ablageHinweise,
   };
 }

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { hinweiseAusAntwort, hinweisSchluessel } from "./datenwirkung-logik";
+import {
+  ablageDateiRelevant,
+  hinweiseAusAntwort,
+  hinweisSchluessel,
+} from "./datenwirkung-logik";
 
 const bekannt = {
   objekte: new Set(["O-03"]),
@@ -64,5 +68,39 @@ describe("Postfach-Datenhinweise", () => {
     expect(hinweisSchluessel(a)).not.toBe(
       hinweisSchluessel({ ...a, betrag: 600 }),
     );
+  });
+});
+
+describe("Ablage-Dateien", () => {
+  const jetzt = new Date("2026-10-15T12:00:00Z");
+  const istRoot = (o: string) => /GmbH$/.test(o);
+  const datei = {
+    name: "Grundsteuerbescheid 2027.pdf",
+    pfad: "/MTF Capital GmbH/05_Immobilien/Kalkumer",
+    groesse: 120_000,
+    geaendertAm: "2026-10-10T08:00:00Z",
+    istOrdner: false,
+    geloescht: false,
+  };
+
+  it("neue PDF im Gesellschaftsordner wird geprüft", () => {
+    expect(ablageDateiRelevant(datei, jetzt, istRoot)).toBe(true);
+  });
+
+  it("überspringt Archiv, fremde Ordner, alte und temporäre Dateien", () => {
+    const nicht = [
+      { pfad: "/MTF Capital GmbH/99_Archiv/2020" },
+      { pfad: "/Privat/Fotos" },
+      { geaendertAm: "2026-08-01T08:00:00Z" },
+      { name: "~$Mieterliste.xlsx" },
+      { name: "Film.mp4" },
+      { groesse: 0 },
+      { istOrdner: true },
+      { geloescht: true },
+    ];
+    for (const n of nicht)
+      expect(ablageDateiRelevant({ ...datei, ...n }, jetzt, istRoot)).toBe(
+        false,
+      );
   });
 });

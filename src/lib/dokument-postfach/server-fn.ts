@@ -4,6 +4,7 @@ import { dokumentPosteingangArchivieren } from "./archivieren";
 import { dokumentPosteingangSchnellAusfuehren } from "./ausfuehren";
 import { dokumentPosteingangAblegen } from "./ablegen";
 import { dokumentPosteingangBuchen } from "./buchen";
+import { ablageDatenwirkungPruefen } from "./ablage-datenwirkung";
 import { postfachDatenwirkungPruefen } from "./datenwirkung";
 import { dokumentPosteingangEintragLaden } from "./eintrag";
 import {
@@ -176,3 +177,10 @@ export const postfachDatenwirkungPruefenFn = createServerFn({
     (data: unknown) => data as { supabaseAccessToken: string; max?: number },
   )
   .handler(async ({ data }) => postfachDatenwirkungPruefen(data));
+
+/** Datenqualität: neue Dateien der OneDrive-Ablage auf Auswirkungen prüfen */
+export const ablageDatenwirkungPruefenFn = createServerFn({
+  method: "POST",
+})
+  .validator((data: unknown) => data as { supabaseAccessToken: string })
+  .handler(async ({ data }) => ablageDatenwirkungPruefen(data));
