@@ -467,6 +467,7 @@ export function abbilden(r: LiveRohdaten): BoardDaten {
       maturityDate: maturity,
       repayment,
       frequency,
+      interestAtMaturity: zz === "endfaellig",
       dayCount: "30/360",
       status,
       guarantee: null,

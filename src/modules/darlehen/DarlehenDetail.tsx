@@ -108,7 +108,12 @@ export function DarlehenDetail({
                 },
                 { label: "Zinssatz", wert: `${prozent(l.rate)} ${l.rateType}` },
                 { label: "Zinsmethode", wert: l.dayCount },
-                { label: "Zahlweise", wert: FREQ_LABEL[l.frequency] },
+                {
+                  label: "Zinszahlung",
+                  wert: l.interestAtMaturity
+                    ? "bei Rückzahlung"
+                    : FREQ_LABEL[l.frequency],
+                },
                 { label: "Tilgung", wert: TILGUNG_LABEL[l.repayment.kind] },
                 {
                   label:

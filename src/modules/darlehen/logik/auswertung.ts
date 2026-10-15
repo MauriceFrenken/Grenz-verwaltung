@@ -132,7 +132,7 @@ export interface MatrixZelle {
 }
 
 /**
- * Matrix Geber × Nehmer für interne Darlehen (Intercompany und Gesellschafter),
+ * Matrix Geber × Nehmer für interne Darlehen (nur Intercompany und Gesellschafter),
  * Wert = Restschuld zum Stichtag. Schlüssel: Gesellschafts- oder Partei-ID.
  */
 export function matrix(staende: DarlehenStand[]): {
@@ -146,6 +146,7 @@ export function matrix(staende: DarlehenStand[]): {
   for (const s of staende) {
     if (
       s.loan.kind === "bank" ||
+      s.loan.kind === "sonstige" ||
       s.loan.status !== "aktiv" ||
       s.restschuld <= 0
     )

@@ -198,7 +198,7 @@ export const LOAN_KIND_LABEL: Record<LoanKind, string> = {
   bank: "Bank",
   intercompany: "Intercompany",
   gesellschafter: "Gesellschafter",
-  sonstige: "Sonstige",
+  sonstige: "Privat & Dritte",
 };
 
 export const DAY_COUNTS = ["30/360", "act/360", "act/365"] as const;
@@ -234,6 +234,8 @@ export const loanSchema = z
     maturityDate: isoDatum.nullable(),
     repayment: repaymentSchema,
     frequency: z.enum(FREQUENZEN),
+    /** Zinsen werden nicht laufend gezahlt, sondern mit der Rückzahlung (kein Zinsabgleich) */
+    interestAtMaturity: z.boolean().optional(),
     dayCount: z.enum(DAY_COUNTS),
     status: z.enum(["aktiv", "beendet", "entwurf"]),
     guarantee: z
