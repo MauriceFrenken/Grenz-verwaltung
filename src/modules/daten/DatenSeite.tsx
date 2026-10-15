@@ -31,6 +31,7 @@ import {
 } from "@/lib/db/typen";
 import { datum, euro, ganzzahl, parseDeutscheZahl } from "@/lib/format/de";
 import { BOARD_DATEN_KEY, useBoardDaten } from "@/modules/shell/daten";
+import { PostfachHinweise } from "./PostfachHinweise";
 
 const ZIEL: Record<DatenLuecke["bereich"], string | null> = {
   gesellschaften: "#gesellschaften",
@@ -154,6 +155,14 @@ export function DatenSeite() {
           <QuellenTabelle quellen={data.datenstand} />
         )}
       </Abschnitt>
+
+      <PostfachHinweise
+        aktiv={data.quelle === "live"}
+        objektName={(id) => data.properties.find((p) => p.id === id)?.name}
+        gesellschaftName={(id) =>
+          data.companies.find((c) => c.id === id)?.shortName ?? id
+        }
+      />
 
       <Abschnitt
         titel="Lücken"

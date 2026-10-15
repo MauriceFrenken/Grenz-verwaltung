@@ -30,6 +30,7 @@ import {
 } from "@/lib/trade-any-machine";
 
 import { baueAnhangAnalyseKontext } from "./anhang-kontext";
+import { datenwirkungNachholen } from "./datenwirkung";
 import {
   dokumentPosteingangAblegenKategorieSicherstellen,
   dokumentPosteingangOutlookKategorieAblegen,
@@ -66,10 +67,7 @@ import type {
   DokumentPosteingangSyncErgebnis,
   RechnungDuplikatHinweis,
 } from "./typen";
-import {
-  ermittleGeschwisterHinweis,
-  finalisiereZuordnung,
-} from "./zuordnung";
+import { ermittleGeschwisterHinweis, finalisiereZuordnung } from "./zuordnung";
 
 const MAX_ANHANG_BYTES = 25 * 1024 * 1024;
 /** Max. Analysen pro UI-/Sync-Servercall (innerhalb maxDuration). */
@@ -221,7 +219,9 @@ async function analysiereEintrag(
       throw new Error("Der Anhang enthält keine Daten.");
     }
     if (bytes.byteLength > MAX_ANHANG_BYTES) {
-      throw new Error("Anhang ist größer als 25 MB und wurde nicht analysiert.");
+      throw new Error(
+        "Anhang ist größer als 25 MB und wurde nicht analysiert.",
+      );
     }
 
     const emailText = await ladeVollenMailText(accessToken, row);
@@ -554,6 +554,9 @@ export type DokumentPosteingangNachtlaufErgebnis = {
   /** Auto-Ablegen via Outlook-Kategorie „ablegen“. */
   kategorieAblegenVerarbeitet?: number;
   kategorieAblegenFehlgeschlagen?: number;
+  /** Datenqualität: geprüfte Einträge und neue Hinweise mit Wirkung auf Zahlen */
+  datenwirkungGeprueft?: number;
+  datenwirkungHinweise?: number;
 };
 
 async function nachtlaufAblegenMailsSeeden(): Promise<number> {
@@ -709,6 +712,23 @@ export async function dokumentPosteingangNachtlauf(input?: {
     }
   }
 
+  // Phase 3: analysierte Post auf Auswirkungen auf die Zahlen prüfen
+  // (Datenqualität). Nur mit Restzeit; der Rest folgt im nächsten Lauf.
+  let datenwirkungGeprueft = 0;
+  let datenwirkungHinweise = 0;
+  if (!fortsetzen && Date.now() < deadlineMs - 30_000) {
+    try {
+      const dw = await datenwirkungNachholen({
+        max: NACHTLAUF_MAX_ANALYSEN_PRO_LAUF,
+        deadlineMs: deadlineMs - 15_000,
+      });
+      datenwirkungGeprueft = dw.geprueft;
+      datenwirkungHinweise = dw.neueHinweise;
+    } catch (err) {
+      console.error("[dokument-postfach] Datenwirkung prüfen", err);
+    }
+  }
+
   return {
     analysiert,
     fehlgeschlagen,
@@ -718,5 +738,7 @@ export async function dokumentPosteingangNachtlauf(input?: {
     inboxSyncFehler,
     kategorieAblegenVerarbeitet,
     kategorieAblegenFehlgeschlagen,
+    datenwirkungGeprueft,
+    datenwirkungHinweise,
   };
 }
