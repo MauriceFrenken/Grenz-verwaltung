@@ -9,7 +9,9 @@ import {
   kreis,
   kreisSummen,
   verbindlichkeitenJeGesellschaft,
+  zinsenBeiRueckzahlung,
 } from "./kreise";
+import { sollZahlungen } from "./abgleich";
 
 const STICHTAG = "2026-10-15";
 
@@ -189,5 +191,42 @@ describe("externe Laufzeiten", () => {
       ["BK-F", "zinsbindung", "2031-01-30"],
       ["DL-P", "unbefristet", null],
     ]);
+  });
+});
+
+describe("Zinsen bei Rückzahlung", () => {
+  it("rechnet aufgelaufene Zinsen nur für Darlehen mit Zinsen bei Rückzahlung", () => {
+    const ls = [
+      dl({
+        id: "DL-A",
+        interestAtMaturity: true,
+        principal: 100_000,
+        disbursementDate: "2025-10-15",
+      }),
+      dl({ id: "DL-B", principal: 100_000 }),
+    ];
+    const z = zinsenBeiRueckzahlung(
+      ls.map((l) => darlehenStand(l, STICHTAG)),
+      STICHTAG,
+    );
+    expect(z.map((r) => r.loan.id)).toEqual(["DL-A"]);
+    expect(z[0].aufgelaufen).toBeCloseTo(3_041.67, 1);
+  });
+
+  it("erzeugt für solche Darlehen keine Soll-Zahlungen im Abgleich", () => {
+    const l = dl({
+      id: "DL-A",
+      interestAtMaturity: true,
+      frequency: "quartalsweise",
+    });
+    const s = darlehenStand(l, STICHTAG);
+    const soll = sollZahlungen(
+      [l],
+      new Map([[l.id, s.plan]]),
+      { companies: [], parties: [], accounts: [] },
+      "2026-01-01",
+      "2026-12-31",
+    );
+    expect(soll).toEqual([]);
   });
 });

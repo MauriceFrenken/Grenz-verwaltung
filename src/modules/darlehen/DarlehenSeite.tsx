@@ -53,6 +53,8 @@ import {
   kreis,
   kreisSummen,
   verbindlichkeitenJeGesellschaft,
+  zinsenBeiRueckzahlung,
+  type AufgelaufenZeile,
 } from "./logik/kreise";
 import { useDarlehenAuswertung, type DarlehenAuswertung } from "./useDarlehen";
 
@@ -235,7 +237,19 @@ export function DarlehenSeite() {
         />
       ) : null}
       {reiter === "abgleich" ? (
-        <AbgleichTabelle ergebnisse={abgleich} n={n} onOeffnen={setOffen} />
+        <>
+          <ZinsenBeiRueckzahlung
+            zeilen={zinsenBeiRueckzahlung(staende, stichtag)}
+            n={n}
+            onOeffnen={setOffen}
+          />
+          <Abschnitt
+            titel="Laufende Zinszahlungen"
+            beschreibung="Soll laut Vertrag gegen die Kontoumsätze der letzten 12 Monate"
+          >
+            <AbgleichTabelle ergebnisse={abgleich} n={n} onOeffnen={setOffen} />
+          </Abschnitt>
+        </>
       ) : null}
       {reiter === "faelligkeiten" ? (
         <FaelligkeitenTabelle
@@ -679,6 +693,91 @@ function DarlehenListe({
         </div>
       }
     />
+  );
+}
+
+function ZinsenBeiRueckzahlung({
+  zeilen,
+  n,
+  onOeffnen,
+}: {
+  zeilen: AufgelaufenZeile[];
+  n: N;
+  onOeffnen: (id: string) => void;
+}) {
+  if (!zeilen.length) return null;
+  const summe = zeilen.reduce((a, z) => a + z.aufgelaufen, 0);
+  const spalten: Spalte<AufgelaufenZeile>[] = [
+    {
+      id: "darlehen",
+      kopf: "Darlehen",
+      sortierWert: (z) => z.loan.id,
+      zelle: (z) => (
+        <div className="min-w-0">
+          <div className="font-medium text-heading">{z.loan.id}</div>
+          <div className="truncate text-xs text-text-subtle">
+            {n.parteiName(z.loan.lenderCompanyId, z.loan.lenderPartyId)} →{" "}
+            {n.gesellschaftKurz(z.loan.borrowerCompanyId) !== "–"
+              ? n.gesellschaftKurz(z.loan.borrowerCompanyId)
+              : n.parteiName(null, z.loan.borrowerPartyId)}
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "seit",
+      kopf: "Ausgezahlt",
+      sortierWert: (z) => z.loan.disbursementDate,
+      zelle: (z) => (
+        <span className="tabular-nums">{datum(z.loan.disbursementDate)}</span>
+      ),
+    },
+    {
+      id: "rest",
+      kopf: "Restschuld",
+      ausrichtung: "rechts",
+      sortierWert: (z) => z.restschuld,
+      zelle: (z) => euro(z.restschuld),
+    },
+    {
+      id: "zins",
+      kopf: "Zins",
+      ausrichtung: "rechts",
+      sortierWert: (z) => z.loan.rate,
+      zelle: (z) => prozent(z.loan.rate),
+    },
+    {
+      id: "auf",
+      kopf: "Aufgelaufen",
+      ausrichtung: "rechts",
+      sortierWert: (z) => z.aufgelaufen,
+      zelle: (z) => (
+        <span className="font-medium text-heading">{euro(z.aufgelaufen)}</span>
+      ),
+    },
+  ];
+  return (
+    <Abschnitt
+      titel="Zinsen bei Rückzahlung"
+      beschreibung={`${zeilen.length} Darlehen zahlen keine laufenden Zinsen; rechnerisch aufgelaufen bis heute ${euro(summe)} (fällig mit der Rückzahlung, nicht im Abgleich)`}
+    >
+      <DatenTabelle
+        label="Zinsen bei Rückzahlung"
+        zeilen={zeilen}
+        spalten={spalten}
+        schluessel={(z) => z.loan.id}
+        onZeileKlick={(z) => onOeffnen(z.loan.id)}
+        startSortierung={{ id: "auf", richtung: "ab" }}
+        fusszeile={
+          <div className="flex justify-between tabular-nums">
+            <span className="text-text-muted">
+              Restschuld × Zins × Tage seit Auszahlung / 360, ohne Zinseszins
+            </span>
+            <span>Aufgelaufen gesamt {euro(summe)}</span>
+          </div>
+        }
+      />
+    </Abschnitt>
   );
 }
 

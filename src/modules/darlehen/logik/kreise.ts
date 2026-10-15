@@ -2,7 +2,7 @@
  * Gliederung der Darlehen in intern (Gruppe und Gesellschafter) und extern
  * (Banken, private Darlehensgeber, Dritte) plus Auswertungen für die Diagramme.
  */
-import { teile, type IsoDatum } from "@/lib/kalender";
+import { tageZwischen, teile, type IsoDatum } from "@/lib/kalender";
 import type { Loan } from "@/lib/db/typen";
 import type { DarlehenStand } from "./auswertung";
 import { runden } from "./zinsplan";
@@ -297,4 +297,34 @@ export function externeLaufzeiten(staende: DarlehenStand[]): LaufzeitZeile[] {
       (a.bis ?? "").localeCompare(b.bis ?? "") ||
       b.restschuld - a.restschuld,
   );
+}
+
+export interface AufgelaufenZeile {
+  loan: Loan;
+  restschuld: number;
+  /** rechnerisch aufgelaufene Zinsen seit Auszahlung (30/360, ohne Zinseszins) */
+  aufgelaufen: number;
+}
+
+/**
+ * Darlehen, deren Zinsen erst mit der Rückzahlung fließen, mit den bis zum
+ * Stichtag rechnerisch aufgelaufenen Zinsen (größte zuerst).
+ */
+export function zinsenBeiRueckzahlung(
+  staende: DarlehenStand[],
+  stichtag: IsoDatum,
+): AufgelaufenZeile[] {
+  return staende
+    .filter((s) => offen(s) && s.loan.interestAtMaturity)
+    .map((s) => ({
+      loan: s.loan,
+      restschuld: s.restschuld,
+      aufgelaufen: runden(
+        (s.restschuld *
+          s.loan.rate *
+          Math.max(0, tageZwischen(s.loan.disbursementDate, stichtag))) /
+          360,
+      ),
+    }))
+    .sort((a, b) => b.aufgelaufen - a.aufgelaufen);
 }

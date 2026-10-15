@@ -67,6 +67,8 @@ export function sollZahlungen(
   const ergebnis: SollZahlung[] = [];
   for (const loan of loans) {
     if (!loan.borrowerCompanyId || loan.status !== "aktiv") continue;
+    // Zinsen erst mit der Rückzahlung: keine laufenden Soll-Zahlungen
+    if (loan.interestAtMaturity) continue;
     const plan = plaene.get(loan.id) ?? [];
     const payeeName = loan.lenderCompanyId
       ? (companies.get(loan.lenderCompanyId)?.name ?? "")
