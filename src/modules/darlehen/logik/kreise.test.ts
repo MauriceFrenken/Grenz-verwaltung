@@ -3,6 +3,7 @@ import type { Loan } from "@/lib/db/typen";
 import { darlehenStand } from "./auswertung";
 import {
   externeGeber,
+  externeLaufzeiten,
   faelligkeitsProfil,
   internNetto,
   kreis,
@@ -141,5 +142,52 @@ describe("Gliederung intern / extern", () => {
       netto: 80_000,
     });
     expect(n.at(-1)).toMatchObject({ id: "G-04", netto: -100_000 });
+  });
+});
+
+describe("externe Laufzeiten", () => {
+  it("stellt variable Darlehen voran und sortiert den Rest nach Ablauf", () => {
+    const ls = [
+      dl({
+        id: "BK-F",
+        kind: "bank",
+        lenderCompanyId: null,
+        lenderPartyId: "vb",
+        borrowerCompanyId: "G-01",
+        fixedUntil: "2031-01-30",
+        maturityDate: "2040-01-30",
+      }),
+      dl({
+        id: "BK-V",
+        kind: "bank",
+        lenderCompanyId: null,
+        lenderPartyId: "vb",
+        borrowerCompanyId: "G-01",
+        rateType: "variabel",
+      }),
+      dl({
+        id: "DL-P",
+        kind: "sonstige",
+        lenderCompanyId: null,
+        lenderPartyId: "hbf",
+        borrowerCompanyId: "G-05",
+      }),
+      dl({
+        id: "DL-E",
+        kind: "sonstige",
+        lenderCompanyId: null,
+        lenderPartyId: "bsf",
+        borrowerCompanyId: "G-02",
+        maturityDate: "2026-12-31",
+      }),
+      dl({ id: "DL-I", kind: "intercompany" }),
+    ];
+    const z = externeLaufzeiten(ls.map((l) => darlehenStand(l, STICHTAG)));
+    expect(z.map((r) => [r.loan.id, r.art, r.bis])).toEqual([
+      ["BK-V", "variabel", null],
+      ["DL-E", "ende", "2026-12-31"],
+      ["BK-F", "zinsbindung", "2031-01-30"],
+      ["DL-P", "unbefristet", null],
+    ]);
   });
 });

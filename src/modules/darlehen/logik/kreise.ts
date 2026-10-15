@@ -252,3 +252,49 @@ export function internNetto(staende: DarlehenStand[]): NettoZeile[] {
     }))
     .sort((a, b) => b.netto - a.netto);
 }
+
+export type Laufzeitart = "variabel" | "zinsbindung" | "ende" | "unbefristet";
+
+export interface LaufzeitZeile {
+  loan: Loan;
+  gruppe: Exclude<Gruppe, "intern">;
+  restschuld: number;
+  art: Laufzeitart;
+  /** Ende der Zinsbindung bzw. des Vertrags; null = offen */
+  bis: IsoDatum | null;
+}
+
+/**
+ * Externe Verbindlichkeiten mit ihrer Zins- bzw. Vertragslaufzeit:
+ * variabel verzinste zuerst, danach nach Datum, unbefristete am Schluss.
+ * Festzins: Zinsbindungsende, sonst Vertragsende; variabel: Vertragsende.
+ */
+export function externeLaufzeiten(staende: DarlehenStand[]): LaufzeitZeile[] {
+  const zeilen: LaufzeitZeile[] = [];
+  for (const s of staende) {
+    if (!offen(s) || !istExterneVerbindlichkeit(s.loan)) continue;
+    const l = s.loan;
+    const variabel = l.rateType === "variabel";
+    const bis = variabel ? l.maturityDate : (l.fixedUntil ?? l.maturityDate);
+    zeilen.push({
+      loan: l,
+      gruppe: gruppe(l) as LaufzeitZeile["gruppe"],
+      restschuld: s.restschuld,
+      art: variabel
+        ? "variabel"
+        : l.fixedUntil
+          ? "zinsbindung"
+          : l.maturityDate
+            ? "ende"
+            : "unbefristet",
+      bis,
+    });
+  }
+  const rang = (z: LaufzeitZeile) => (z.art === "variabel" ? 0 : z.bis ? 1 : 2);
+  return zeilen.sort(
+    (a, b) =>
+      rang(a) - rang(b) ||
+      (a.bis ?? "").localeCompare(b.bis ?? "") ||
+      b.restschuld - a.restschuld,
+  );
+}

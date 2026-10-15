@@ -10,7 +10,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { euro, euroKompakt, prozent } from "@/lib/format/de";
+import { datum as datumDe, euro, euroKompakt, prozent } from "@/lib/format/de";
+import { plusMonate, tageZwischen, teile, type IsoDatum } from "@/lib/kalender";
 import { cn } from "@/lib/utils";
 import {
   GRUPPE_FARBE,
@@ -18,6 +19,7 @@ import {
   type GeberZeile,
   type Gruppe,
   type KreisSummen,
+  type LaufzeitZeile,
   type NehmerZeile,
   type NettoZeile,
   type ProfilJahr,
@@ -493,6 +495,219 @@ export function NettoDiagramm({
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+    </figure>
+  );
+}
+
+const LAUFZEIT_TEXT: Record<LaufzeitZeile["art"], string> = {
+  variabel: "variabel",
+  zinsbindung: "Zinsbindung bis",
+  ende: "läuft bis",
+  unbefristet: "unbefristet",
+};
+
+/** Schraffur für variabel verzinste Darlehen (Identität nicht nur über Farbe). */
+function schraffur(farbe: string) {
+  return `repeating-linear-gradient(135deg, ${farbe} 0 5px, color-mix(in oklch, ${farbe} 35%, transparent) 5px 9px)`;
+}
+
+/**
+ * Laufzeiten externer Darlehen als Zeitstrahl ab heute: Festzins bis
+ * Zinsbindungs- bzw. Vertragsende, variabel schraffiert, unbefristet blendet aus.
+ */
+export function LaufzeitDiagramm({
+  zeilen,
+  stichtag,
+  name,
+  kurz,
+}: {
+  zeilen: LaufzeitZeile[];
+  stichtag: IsoDatum;
+  name: (z: LaufzeitZeile) => string;
+  kurz: (z: LaufzeitZeile) => string;
+}) {
+  const startJahr = teile(stichtag).jahr;
+  const letztes = Math.max(
+    startJahr + 5,
+    ...zeilen.filter((z) => z.bis).map((z) => teile(z.bis!).jahr + 1),
+  );
+  const endJahr = Math.min(letztes, startJahr + 15);
+  const ende = `${endJahr}-12-31`;
+  const spanne = tageZwischen(stichtag, ende);
+  const pos = (d: IsoDatum) =>
+    Math.max(0, Math.min(1, tageZwischen(stichtag, d) / spanne)) * 100;
+  const jahre = Array.from(
+    { length: endJahr - startJahr },
+    (_, i) => startJahr + 1 + i,
+  );
+  const variabel = zeilen.filter((z) => z.art === "variabel");
+  const summe = zeilen.reduce((a, z) => a + z.restschuld, 0) || 1;
+  const sv = variabel.reduce((a, z) => a + z.restschuld, 0);
+  const naechste = zeilen
+    .filter((z) => z.art !== "variabel" && z.bis)
+    .sort((a, b) => a.bis!.localeCompare(b.bis!))[0];
+  const zwoelf = pos(plusMonate(stichtag, 12));
+
+  return (
+    <figure aria-label="Zinsbindung und Laufzeit externer Darlehen">
+      <dl className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div>
+          <dt className="text-xs text-text-muted">Variabel verzinst</dt>
+          <dd className="mt-1 text-xl font-semibold tracking-[-0.02em] text-heading tabular-nums">
+            {euroKompakt(sv)}
+          </dd>
+          <dd className="mt-0.5 text-xs text-text-muted">
+            {variabel.length} Darlehen · {prozent(sv / summe, 0)} der externen
+            Restschuld
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs text-text-muted">Fester Zins</dt>
+          <dd className="mt-1 text-xl font-semibold tracking-[-0.02em] text-heading tabular-nums">
+            {euroKompakt(summe - sv)}
+          </dd>
+          <dd className="mt-0.5 text-xs text-text-muted">
+            {zeilen.length - variabel.length} Darlehen
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs text-text-muted">Nächster Ablauf</dt>
+          <dd className="mt-1 text-xl font-semibold tracking-[-0.02em] text-heading tabular-nums">
+            {naechste ? datumDe(naechste.bis) : "–"}
+          </dd>
+          <dd className="mt-0.5 truncate text-xs text-text-muted">
+            {naechste
+              ? `${naechste.loan.id} · ${kurz(naechste)} · ${euroKompakt(naechste.restschuld)}`
+              : "kein festes Enddatum"}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
+        <Legende gruppen={["bank", "privat"]} />
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className="h-2.5 w-4 rounded-sm"
+            style={{ background: schraffur("var(--text-muted)") }}
+            aria-hidden
+          />
+          variabel verzinst
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className="h-2.5 w-4 rounded-sm"
+            style={{
+              background:
+                "linear-gradient(to right, var(--text-muted), transparent)",
+            }}
+            aria-hidden
+          />
+          unbefristet
+        </span>
+      </div>
+
+      <div className="grid grid-cols-[minmax(0,8.5rem)_minmax(0,1fr)_auto] items-center gap-x-3 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_auto]">
+        {/* Achse */}
+        <div />
+        <div className="relative h-5 text-[11px] text-text-subtle">
+          <span className="absolute left-0">heute</span>
+          {jahre.map((j) => {
+            const x = pos(`${j}-01-01`);
+            return x < 97 && x > 6 ? (
+              <span
+                key={j}
+                className="absolute -translate-x-1/2 tabular-nums"
+                style={{ left: `${x}%` }}
+              >
+                {j}
+              </span>
+            ) : null;
+          })}
+        </div>
+        <div />
+
+        {zeilen.map((z) => {
+          const farbe = GRUPPE_FARBE[z.gruppe];
+          const breite = z.bis ? Math.max(pos(z.bis), 1.2) : 100;
+          const hintergrund =
+            z.art === "variabel"
+              ? schraffur(farbe)
+              : z.bis
+                ? farbe
+                : `linear-gradient(to right, ${farbe} 55%, transparent)`;
+          return (
+            <div key={z.loan.id} className="group contents">
+              <div className="min-w-0 border-t border-hairline py-2">
+                <div className="truncate text-sm font-medium text-heading">
+                  {z.loan.id}
+                </div>
+                <div className="truncate text-xs text-text-subtle">
+                  {kurz(z)}
+                </div>
+              </div>
+              <div className="relative h-full border-t border-hairline py-2">
+                <div className="relative h-full min-h-8">
+                  {jahre.map((j) => (
+                    <span
+                      key={j}
+                      className="absolute inset-y-0 w-px bg-hairline"
+                      style={{ left: `${pos(`${j}-01-01`)}%` }}
+                      aria-hidden
+                    />
+                  ))}
+                  <span
+                    className="absolute inset-y-0 border-l border-dashed border-warn/60"
+                    style={{ left: `${zwoelf}%` }}
+                    aria-hidden
+                  />
+                  <div
+                    className="absolute top-1/2 h-3.5 -translate-y-1/2 rounded-r-[4px]"
+                    style={{ width: `${breite}%`, background: hintergrund }}
+                  />
+                  <div
+                    role="tooltip"
+                    className="pointer-events-none absolute left-2 top-full z-20 mt-1 hidden w-64 group-hover:block"
+                  >
+                    <TipRahmen titel={`${z.loan.id} · ${name(z)}`}>
+                      <TipZeile
+                        farbe={farbe}
+                        label="Restschuld"
+                        wert={euro(z.restschuld)}
+                        fett
+                      />
+                      <TipZeile label="Zins" wert={prozent(z.loan.rate)} />
+                      <TipZeile
+                        label="Zinsart"
+                        wert={z.art === "variabel" ? "variabel" : "fest"}
+                      />
+                      <TipZeile
+                        label={LAUFZEIT_TEXT[z.art]}
+                        wert={z.bis ? datumDe(z.bis) : "offen"}
+                      />
+                    </TipRahmen>
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-hairline py-2 text-right">
+                <div className="text-sm tabular-nums text-foreground">
+                  {euroKompakt(z.restschuld)}
+                </div>
+                <div className="text-xs tabular-nums text-text-subtle">
+                  {z.art === "variabel" && !z.bis
+                    ? "variabel"
+                    : z.bis
+                      ? `${z.art === "variabel" ? "variabel, " : ""}${datumDe(z.bis)}`
+                      : "unbefristet"}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-xs text-text-muted">
+        Gestrichelte Linie: in 12 Monaten. Bei Festzins endet der Balken mit der
+        Zinsbindung, sonst mit dem Vertragsende.
+      </p>
     </figure>
   );
 }

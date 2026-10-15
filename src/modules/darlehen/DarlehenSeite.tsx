@@ -36,6 +36,7 @@ import type { DarlehenStand, Faelligkeit } from "./logik/auswertung";
 import {
   GeberDiagramm,
   GesellschaftDiagramm,
+  LaufzeitDiagramm,
   Legende,
   NettoDiagramm,
   ProfilDiagramm,
@@ -43,6 +44,7 @@ import {
 } from "./DarlehenDiagramme";
 import {
   externeGeber,
+  externeLaufzeiten,
   faelligkeitsProfil,
   GRUPPE_FARBE,
   gruppe,
@@ -217,6 +219,7 @@ export function DarlehenSeite() {
       {reiter === "extern" ? (
         <ExternAnsicht
           staende={staende}
+          stichtag={stichtag}
           n={n}
           offenId={offenId}
           onOeffnen={setOffen}
@@ -358,11 +361,13 @@ function Ueberblick({
 
 function ExternAnsicht({
   staende,
+  stichtag,
   n,
   offenId,
   onOeffnen,
 }: {
   staende: DarlehenStand[];
+  stichtag: string;
   n: N;
   offenId: string | undefined;
   onOeffnen: (id: string) => void;
@@ -377,8 +382,31 @@ function ExternAnsicht({
     xs
       .filter((s) => s.loan.status === "aktiv")
       .reduce((a, s) => a + s.restschuld, 0);
+  const laufzeiten = externeLaufzeiten(staende);
+  const kurzZeile = (z: { loan: Loan }) =>
+    `${kurzName(n, z.loan.lenderPartyId ?? z.loan.lenderCompanyId ?? "")} → ${n.gesellschaftKurz(z.loan.borrowerCompanyId)}${z.loan.propertyId ? ` · ${n.properties.get(z.loan.propertyId)?.name ?? ""}` : ""}`;
   return (
     <>
+      {laufzeiten.length ? (
+        <Abschnitt
+          titel="Zinsbindung und Laufzeit"
+          beschreibung="Welche Darlehen variabel verzinst sind und wann die übrigen auslaufen oder neu verhandelt werden"
+        >
+          <Karte className="p-5">
+            <LaufzeitDiagramm
+              zeilen={laufzeiten}
+              stichtag={stichtag}
+              name={(z) =>
+                langName(
+                  n,
+                  z.loan.lenderPartyId ?? z.loan.lenderCompanyId ?? "",
+                )
+              }
+              kurz={kurzZeile}
+            />
+          </Karte>
+        </Abschnitt>
+      ) : null}
       <Abschnitt
         titel="Banken"
         beschreibung={`Restschuld ${euro(aktivSumme(bank))} · Salden laut Bank bzw. gebuchten Tilgungen`}
