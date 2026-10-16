@@ -6,6 +6,6 @@ export const Route = createFileRoute("/board/cashflow")({
   validateSearch: z.object({
     objekt: z.string().optional(),
   }),
-  head: () => ({ meta: [{ title: "Cashflow — FRENKEN Management Board" }] }),
+  head: () => ({ meta: [{ title: "Cashflow — Grenz & Co. Management Board" }] }),
   component: CashflowSeite,
 });

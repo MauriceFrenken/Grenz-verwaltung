@@ -208,7 +208,7 @@ export function DesignSeite() {
 
       <Abschnitt
         titel="Farben"
-        beschreibung="Monochrom mit FRENKEN-Blau (#273FDD) für Auswahl, Links und Diagrammlinien; Blau heißt nie Warnung. Text in Blau nutzt die hellere Stufe (#9DA8F0)."
+        beschreibung="Hell mit Grenz-&-Co.-Navy (#1A2B4B) für Auswahl, Links und Diagrammlinien; Navy heißt nie Warnung. Sekundärer Text nutzt die hellere Stufe (#3D5A8A)."
       >
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-9">
           {[

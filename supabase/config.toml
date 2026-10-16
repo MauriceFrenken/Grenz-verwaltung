@@ -259,13 +259,13 @@ otp_expiry = 86400
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# FRENKEN-branded auth emails (see supabase/templates/)
+# Grenz-&-Co.-branded auth emails (see supabase/templates/)
 [auth.email.template.invite]
-subject = "Einladung zu FRENKEN Verwaltung"
+subject = "Einladung zu Grenz & Co. Verwaltung"
 content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.recovery]
-subject = "Passwort zurücksetzen — FRENKEN Verwaltung"
+subject = "Passwort zurücksetzen — Grenz & Co. Verwaltung"
 content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template

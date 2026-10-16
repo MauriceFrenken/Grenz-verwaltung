@@ -18,6 +18,13 @@ export function AuthDatenschutzLink({
         >
           Datenschutzerklärung
         </Link>
+        .{" "}
+        <Link
+          to="/impressum"
+          className="underline underline-offset-2 transition-colors hover:text-heading"
+        >
+          Impressum
+        </Link>
       </p>
     );
   }
@@ -29,6 +36,15 @@ export function AuthDatenschutzLink({
         className="underline underline-offset-2 transition-colors hover:text-heading"
       >
         Datenschutzerklärung
+      </Link>
+      <span className="mx-2 text-text-subtle" aria-hidden>
+        |
+      </span>
+      <Link
+        to="/impressum"
+        className="underline underline-offset-2 transition-colors hover:text-heading"
+      >
+        Impressum
       </Link>
     </p>
   );

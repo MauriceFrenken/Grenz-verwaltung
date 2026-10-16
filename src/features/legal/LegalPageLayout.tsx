@@ -1,23 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-
-/** Monogram: light tile on dark panels so the F stays legible. */
-function BrandMark({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 32 32"
-      className={className}
-      aria-hidden
-      focusable="false"
-    >
-      <rect width="32" height="32" fill="#fff" />
-      <rect x="8" y="7" width="5" height="18" fill="#0A0A0A" />
-      <rect x="8" y="7" width="16" height="5" fill="#0A0A0A" />
-      <rect x="8" y="14" width="12" height="5" fill="#0A0A0A" />
-    </svg>
-  );
-}
+import { GrenzCoLogo } from "@/components/marke/GrenzCoLogo";
 
 interface LegalPageLayoutProps {
   titel: string;
@@ -34,17 +18,13 @@ export function LegalPageLayout({
     <div className="min-h-screen bg-background">
       <header
         data-op-zensur-ziel=""
-        className="flex items-center gap-3 border-b border-hairline bg-heading px-6 py-4 text-primary-foreground"
+        className="flex items-center gap-4 border-b border-sidebar-border bg-sidebar px-6 py-4 text-sidebar-foreground"
       >
-        <BrandMark className="size-8" />
-        <div>
-          <p className="text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-white/50">
-            FRENKEN
-          </p>
-          <p className="text-sm font-semibold tracking-tight text-white">
-            Verwaltung
-          </p>
-        </div>
+        <GrenzCoLogo className="h-8" />
+        <div className="h-8 w-px bg-sidebar-foreground/20" aria-hidden />
+        <p className="text-sm font-medium tracking-tight text-sidebar-foreground/80">
+          Verwaltung
+        </p>
       </header>
 
       <main className="mx-auto max-w-2xl px-6 py-10 sm:px-10 sm:py-14">

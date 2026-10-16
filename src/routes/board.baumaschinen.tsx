@@ -5,7 +5,7 @@ import { BaumaschinenSeite } from "@/modules/baumaschinen/BaumaschinenSeite";
 export const Route = createFileRoute("/board/baumaschinen")({
   validateSearch: z.object({ maschine: z.string().optional() }),
   head: () => ({
-    meta: [{ title: "Baumaschinen — FRENKEN Management Board" }],
+    meta: [{ title: "Baumaschinen — Grenz & Co. Management Board" }],
   }),
   component: BaumaschinenSeite,
 });

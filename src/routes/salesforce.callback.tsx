@@ -18,7 +18,7 @@ import {
 
 export const Route = createFileRoute("/salesforce/callback")({
   head: () => ({
-    meta: [{ title: "Salesforce — FRENKEN Verwaltung" }],
+    meta: [{ title: "Salesforce — Grenz & Co. Verwaltung" }],
   }),
   component: SalesforceCallbackPage,
 });

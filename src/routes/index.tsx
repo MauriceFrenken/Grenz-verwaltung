@@ -5,11 +5,11 @@ import { BoardRahmen } from "@/modules/shell/BoardRahmen";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Cockpit — FRENKEN" },
+      { title: "Cockpit — Grenz & Co." },
       {
         name: "description",
         content:
-          "Liquidität, Darlehen, Immobilien, Baumaschinen und offene Prüffälle der FRENKEN Gruppe.",
+          "Liquidität, Darlehen, Immobilien, Baumaschinen und offene Prüffälle von Grenz & Co.",
       },
     ],
   }),

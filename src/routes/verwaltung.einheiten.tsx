@@ -12,6 +12,6 @@ export const Route = createFileRoute("/verwaltung/einheiten")({
       typeof search.gesellschaft === "string" ? search.gesellschaft : undefined,
     objekt: typeof search.objekt === "string" ? search.objekt : undefined,
   }),
-  head: () => ({ meta: [{ title: "Einheiten — FRENKEN Verwaltung" }] }),
+  head: () => ({ meta: [{ title: "Einheiten — Grenz & Co. Verwaltung" }] }),
   component: EinheitenPage,
 });

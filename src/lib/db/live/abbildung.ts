@@ -806,7 +806,7 @@ export function abbilden(r: LiveRohdaten): BoardDaten {
     {
       id: "stammdaten",
       label: "Gesellschaften, Objekte, Einheiten, Mietverträge",
-      system: "FRENKEN Verwaltung (Supabase)",
+      system: "Grenz & Co. Verwaltung (Supabase)",
       stand: maxIso(
         [...r.objekte, ...r.einheiten, ...r.mietverhaeltnisse].map(
           (x) => x.updated_at,

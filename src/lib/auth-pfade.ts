@@ -4,6 +4,7 @@ const OEFFENTLICHE_PFADE = new Set([
   "/einladung",
   "/passwort-zuruecksetzen",
   "/datenschutz",
+  "/impressum",
   "/salesforce/callback",
   "/microsoft/callback",
 ]);

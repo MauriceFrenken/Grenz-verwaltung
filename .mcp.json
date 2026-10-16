@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "supabase-grenzco": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref",
+        "dibvypmrtloxvbvtbgkj"
+      ],
+      "envFile": "${workspaceFolder}/.env.local"
+    }
+  }
+}

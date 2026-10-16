@@ -104,19 +104,26 @@ from public.ebics_kunden k
 join public.gesellschaften g on g.id = k.gesellschaft_id;
 
 -- Seed: G-01 … G-05 aus BPD (Volksbank / Multivia).
+-- Nur wenn die Gesellschaften bereits existieren (Greenfield ohne Stammdaten → no-op).
 insert into public.ebics_kunden
   (gesellschaft_id, partner_id, user_id, host_id, url, bank_name)
-values
-  ('G-01', 'MV134597', 'EBICS001', 'MULTIVIA',
-   'https://ebics.multivia-suite.de/ebicsweb/ebicsweb', 'Volksbank im Rheinland eG'),
-  ('G-02', 'MV134600', 'EBICS001', 'MULTIVIA',
-   'https://ebics.multivia-suite.de/ebicsweb/ebicsweb', 'Volksbank im Rheinland eG'),
-  ('G-03', 'MV134607', 'EBICS001', 'MULTIVIA',
-   'https://ebics.multivia-suite.de/ebicsweb/ebicsweb', 'Volksbank im Rheinland eG'),
-  ('G-04', 'MV134594', 'EBICS001', 'MULTIVIA',
-   'https://ebics.multivia-suite.de/ebicsweb/ebicsweb', 'Volksbank im Rheinland eG'),
-  ('G-05', 'MV134596', 'EBICS001', 'MULTIVIA',
-   'https://ebics.multivia-suite.de/ebicsweb/ebicsweb', 'Volksbank im Rheinland eG')
+select v.gesellschaft_id, v.partner_id, v.user_id, v.host_id, v.url, v.bank_name
+from (
+  values
+    ('G-01', 'MV134597', 'EBICS001', 'MULTIVIA',
+     'https://ebics.multivia-suite.de/ebicsweb/ebicsweb', 'Volksbank im Rheinland eG'),
+    ('G-02', 'MV134600', 'EBICS001', 'MULTIVIA',
+     'https://ebics.multivia-suite.de/ebicsweb/ebicsweb', 'Volksbank im Rheinland eG'),
+    ('G-03', 'MV134607', 'EBICS001', 'MULTIVIA',
+     'https://ebics.multivia-suite.de/ebicsweb/ebicsweb', 'Volksbank im Rheinland eG'),
+    ('G-04', 'MV134594', 'EBICS001', 'MULTIVIA',
+     'https://ebics.multivia-suite.de/ebicsweb/ebicsweb', 'Volksbank im Rheinland eG'),
+    ('G-05', 'MV134596', 'EBICS001', 'MULTIVIA',
+     'https://ebics.multivia-suite.de/ebicsweb/ebicsweb', 'Volksbank im Rheinland eG')
+) as v(gesellschaft_id, partner_id, user_id, host_id, url, bank_name)
+where exists (
+  select 1 from public.gesellschaften g where g.id = v.gesellschaft_id
+)
 on conflict (gesellschaft_id) do update set
   partner_id = excluded.partner_id,
   user_id = excluded.user_id,

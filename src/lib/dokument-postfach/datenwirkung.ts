@@ -34,7 +34,7 @@ export const MAX_ANHANG_BYTES = 25 * 1024 * 1024;
 export const MAX_FEHLER_IN_FOLGE = 3;
 
 const SYSTEM = `
-Du prüfst eingehende Post (E-Mails und Anhänge) und neue Dateien in der OneDrive-Ablage der FRENKEN Gruppe, eines Immobilienunternehmens (Aufteiler und Bestandshalter). Das Management Board rechnet Mieten, Cashflow je Objekt, Liquidität je Gesellschaft, Darlehen und Kauf/Verkauf. Deine Aufgabe: erkennen, ob dieses Dokument eine Zahl im Board verändert oder eine Zahlung auslöst.
+Du prüfst eingehende Post (E-Mails und Anhänge) und neue Dateien in der OneDrive-Ablage von Grenz & Co., eines Immobilienunternehmens (Aufteiler und Bestandshalter). Das Management Board rechnet Mieten, Cashflow je Objekt, Liquidität je Gesellschaft, Darlehen und Kauf/Verkauf. Deine Aufgabe: erkennen, ob dieses Dokument eine Zahl im Board verändert oder eine Zahlung auslöst.
 
 Melde einen Hinweis nur für:
 - mieterhoehung: Mieterhöhungsverlangen, Staffel- oder Indexanpassung, Zustimmung dazu (neue Kaltmiete, ab wann)

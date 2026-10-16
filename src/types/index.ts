@@ -1,4 +1,4 @@
-// Zentrales Domain-Modell für FRENKEN Verwaltung.
+// Zentrales Domain-Modell für Grenz & Co. Verwaltung.
 // Konsistente IDs (Gesellschafts-ID, Objekt-ID) werden modulübergreifend verwendet.
 
 export type GesellschaftId = string;

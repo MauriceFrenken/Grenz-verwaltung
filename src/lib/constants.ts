@@ -1,6 +1,6 @@
 import type { RolleName, RollenDefinition } from "@/types";
 
-export const APP_NAME = "FRENKEN Verwaltung";
+export const APP_NAME = "Grenz & Co. Verwaltung";
 
 export const ROLLEN: Record<RolleName, { bezeichnung: string; beschreibung: string }> = {
   op_admin: {

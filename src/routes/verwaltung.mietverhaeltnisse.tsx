@@ -14,6 +14,6 @@ export const Route = createFileRoute("/verwaltung/mietverhaeltnisse")({
       typeof search.gesellschaft === "string" ? search.gesellschaft : undefined,
     objekt: typeof search.objekt === "string" ? search.objekt : undefined,
   }),
-  head: () => ({ meta: [{ title: "Mietverhältnisse — FRENKEN Verwaltung" }] }),
+  head: () => ({ meta: [{ title: "Mietverhältnisse — Grenz & Co. Verwaltung" }] }),
   component: MietverhaeltnissePage,
 });

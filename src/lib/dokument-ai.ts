@@ -156,7 +156,7 @@ export type AnalyzeDokumentResponse = {
 };
 
 const ABLAGESTRUKTUR = `
-FRENKEN – Einheitliche Ablagestruktur (Zielordner):
+Einheitliche Ablagestruktur (Zielordner, OneDrive-Namen können historisch „FRENKEN …“ heißen):
 
 Oberste Ebene (OneDrive-Roots, exakte Namen können leicht abweichen):
 - FRENKEN Holding … Maurice (nur die Maurice-Variante; nicht andere Holding-Ordner)
@@ -406,7 +406,7 @@ Scan-/Bild-Modus (wichtig):
 - Abschnitt „ANDERE ANHÄNGE DIESER MAIL“: bei Unsicherheit die sichere Geschwister-Zuordnung übernehmen.
 `;
 
-  const systemPrompt = `Du analysierst eingehende E-Mail-Anhänge für die FRENKEN-Gruppe.
+  const systemPrompt = `Du analysierst eingehende E-Mail-Anhänge für Grenz & Co.
 
 Schritt 1: Klassifiziere den Anhang in genau einen Typ:
 - "rechnung": Rechnung, Invoice, Gutschrift mit Betrag und Zahlungsaufforderung
@@ -421,14 +421,14 @@ ${ABLAGESTRUKTUR}
 
 Regeln:
 - dokumentTitel: nur für allgemeine Dokumente einen kurzen, präzisen Dateinamen-Titel aus dem Inhalt bilden (z. B. "Nachtrag Wohngebäudeversicherung Alt-Pempelfort 7" oder "Versicherungsbestätigung Alt-Pempelfort 7"). Keine Dateiendung, kein Datum, keine internen IDs erfinden. Für Rechnungen und Exposés null.
-- gesellschaftName = die FRENKEN-Gesellschaft, DER das Dokument gehört / die betroffen ist (Briefempfänger, Vertragspartner, gegründete Gesellschaft), exakt aus STAMMDATEN. Nicht Absender/Versicherer/Rechnungssteller, nicht bloß ein Gesellschafter oder Notar.
+- gesellschaftName = die Grenz-&-Co.-Gesellschaft, DER das Dokument gehört / die betroffen ist (Briefempfänger, Vertragspartner, gegründete Gesellschaft), exakt aus STAMMDATEN. Nicht Absender/Versicherer/Rechnungssteller, nicht bloß ein Gesellschafter oder Notar.
 - Spezifische Marker nutzen (Immobilien, Holding, Investment, Capital, MTF). „Frenken“ allein reicht nicht — Holding nur wenn klar Holding ohne Objektbezug.
 - Objektadresse nur wenn das Dokument dieses Immobilienobjekt betrifft (Straße/Ort als Objektbezug) → zugehörige Objekt-Gesellschaft (meist Immobilien), nicht Holding.
 - Ausnahme: eindeutig an TradeAnyMachine GmbH (TAM) adressiert → gesellschaftName exakt "TradeAnyMachine GmbH" (steht nicht in Stammdaten).
 - objektBezeichnung: nur bei echtem Objektbezug (z. B. „Alt-Pempelfort 7, Düsseldorf“). Bei digitalem Text oft null — Zuordnung läuft dann serverseitig. Keine erfundenen Namen. Keine Gesellschafter-Privat-/Firmenadressen als Objekt.
 - Adressen, Maschinen, Fahrzeuge oder Objekte aus Exposés/Verkaufsunterlagen sind KEINE Stammdaten-Objekte.
 - ordnerPfad: immer null lassen (wird separat über OneDrive ermittelt).
-- Bei Rechnungen (Eingangsrechnungen an FRENKEN): zahlungsempfaenger = FRENKEN-Gesellschaft an die gezahlt/adressiert wird, rechnungssteller = Aussteller/Lieferant.
+- Bei Rechnungen (Eingangsrechnungen an Grenz & Co.): zahlungsempfaenger = Grenz-&-Co.-Gesellschaft an die gezahlt/adressiert wird, rechnungssteller = Aussteller/Lieferant.
 - rechnungsbetrag: nur Zahl mit Dezimalpunkt, keine Währung.
 - waehrung: z. B. EUR.
 - Nur Informationen aus Dokument + E-Mail — nichts erfinden. Bei Unsicherheit: value null, konfidenz niedrig.
@@ -513,7 +513,7 @@ export async function waehleGesellschaftRootOrdner(
     return { gewaehlterOrdner: input.rootOrdner[0]!, konfidenz: 1 };
   }
 
-  const systemPrompt = `Du ordnest eine Gesellschaft aus den FRENKEN-Stammdaten dem passenden OneDrive-Oberordner zu.
+  const systemPrompt = `Du ordnest eine Gesellschaft aus den Grenz-&-Co.-Stammdaten dem passenden OneDrive-Oberordner zu.
 
 ${ABLAGESTRUKTUR}
 
@@ -556,7 +556,7 @@ export async function waehleUnterordnerSchritt(
     ? input.objektBezeichnung.trim()
     : "— (nur Gesellschaftsebene, kein Objekt)";
 
-  const systemPrompt = `Du wählst den passenden Unterordner für ein Geschäftsdokument in der FRENKEN-Ablage.
+  const systemPrompt = `Du wählst den passenden Unterordner für ein Geschäftsdokument in der Grenz-&-Co.-Ablage.
 
 ${ABLAGESTRUKTUR}
 

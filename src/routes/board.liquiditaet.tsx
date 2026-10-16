@@ -4,6 +4,6 @@ import { LiquiditaetSeite } from "@/modules/liquiditaet/LiquiditaetSeite";
 
 export const Route = createFileRoute("/board/liquiditaet")({
   validateSearch: z.object({ firma: z.string().optional() }),
-  head: () => ({ meta: [{ title: "Liquidität — FRENKEN Management Board" }] }),
+  head: () => ({ meta: [{ title: "Liquidität — Grenz & Co. Management Board" }] }),
   component: LiquiditaetSeite,
 });

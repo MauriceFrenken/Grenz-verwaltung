@@ -10,6 +10,6 @@ export const Route = createFileRoute("/verwaltung/objekte")({
     gesellschaft:
       typeof search.gesellschaft === "string" ? search.gesellschaft : undefined,
   }),
-  head: () => ({ meta: [{ title: "Objekte — FRENKEN Verwaltung" }] }),
+  head: () => ({ meta: [{ title: "Objekte — Grenz & Co. Verwaltung" }] }),
   component: () => <Outlet />,
 });

@@ -14,6 +14,11 @@
 
 -- ---------------------------------------------------------------- Stammdaten
 
+-- Auf Produktiv ggf. manuell vorhanden; für Greenfield hier nachziehen.
+alter table public.bankkonten
+  add column if not exists objekt_id text
+    references public.objekte (id) on update cascade on delete set null;
+
 alter table public.objekte add column if not exists mieten_ab date;
 comment on column public.objekte.mieten_ab is
   'Erster Monat, ab dem Mieten im Mietkonto erwartet werden (Übernahme bzw. Beginn der Bankdaten). Leer = 01.11.2025.';

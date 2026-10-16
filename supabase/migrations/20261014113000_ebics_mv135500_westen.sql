@@ -1,18 +1,18 @@
 -- Neuer EBICS-Zugang Volksbank im Westen (MV135500 / FRENKENM).
 -- Platzhalter: G-09 FB — Gesellschaftszuordnung später korrigierbar.
+-- Greenfield ohne Gesellschaft G-09 → no-op.
 
 insert into public.ebics_kunden
   (gesellschaft_id, partner_id, user_id, host_id, url, bank_name, status)
-values
-  (
-    'G-09',
-    'MV135500',
-    'FRENKENM',
-    'MULTIVIA',
-    'https://ebics.multivia-suite.de/ebicsweb/ebicsweb',
-    'Volksbank im Westen eG',
-    'nicht_initialisiert'
-  )
+select
+  'G-09',
+  'MV135500',
+  'FRENKENM',
+  'MULTIVIA',
+  'https://ebics.multivia-suite.de/ebicsweb/ebicsweb',
+  'Volksbank im Westen eG',
+  'nicht_initialisiert'
+where exists (select 1 from public.gesellschaften g where g.id = 'G-09')
 on conflict (gesellschaft_id) do update set
   partner_id = excluded.partner_id,
   user_id = excluded.user_id,
@@ -38,39 +38,15 @@ on conflict (iban) do update set
   aktiv = excluded.aktiv;
 
 insert into public.bankkonten (iban, gesellschaft_id, bank, bezeichnung, zugang, aktiv)
-values
-  (
-    'DE62370694123306926011',
-    'G-09',
-    'Volksbank im Westen eG',
-    null,
-    'ebics',
-    true
-  ),
-  (
-    'DE03370694123311239014',
-    'G-09',
-    'Volksbank im Westen eG',
-    null,
-    'ebics',
-    true
-  ),
-  (
-    'DE09370694123008834228',
-    'G-09',
-    'Volksbank im Westen eG',
-    null,
-    'ebics',
-    true
-  ),
-  (
-    'DE37370694123008834015',
-    'G-09',
-    'Volksbank im Westen eG',
-    null,
-    'ebics',
-    true
-  )
+select v.iban, v.gesellschaft_id, v.bank, v.bezeichnung, v.zugang, v.aktiv
+from (
+  values
+    ('DE62370694123306926011', 'G-09', 'Volksbank im Westen eG', null::text, 'ebics', true),
+    ('DE03370694123311239014', 'G-09', 'Volksbank im Westen eG', null::text, 'ebics', true),
+    ('DE09370694123008834228', 'G-09', 'Volksbank im Westen eG', null::text, 'ebics', true),
+    ('DE37370694123008834015', 'G-09', 'Volksbank im Westen eG', null::text, 'ebics', true)
+) as v(iban, gesellschaft_id, bank, bezeichnung, zugang, aktiv)
+where exists (select 1 from public.gesellschaften g where g.id = v.gesellschaft_id)
 on conflict (iban) do update set
   gesellschaft_id = excluded.gesellschaft_id,
   bank = excluded.bank,

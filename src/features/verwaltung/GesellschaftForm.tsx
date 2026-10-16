@@ -116,7 +116,7 @@ export function GesellschaftForm({
         <Label htmlFor="name">Gesellschaft</Label>
         <Input
           id="name"
-          placeholder="FRENKEN Holding GmbH"
+          placeholder="Grenz & Co. Immobilienberatungs-GmbH"
           {...form.register("name", {
             onBlur: (e) => {
               if (istBearbeitung || form.getValues("id")) return;

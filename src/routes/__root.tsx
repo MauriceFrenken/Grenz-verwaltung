@@ -105,17 +105,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       meta: [
         { charSet: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1" },
-        { title: "FRENKEN Verwaltung" },
+        { title: "Grenz & Co. Verwaltung" },
         {
           name: "description",
           content:
-            "Internes Verwaltungsprogramm der FRENKEN Holding — Dokumentenablage, Miet- und NK-Verwaltung, Ankaufs-Transaktionen.",
+            "Internes Verwaltungsprogramm von Grenz & Co. — Dokumentenablage, Miet- und NK-Verwaltung, Ankaufs-Transaktionen.",
         },
-        { name: "author", content: "FRENKEN Holding GmbH" },
-        { property: "og:title", content: "FRENKEN Verwaltung" },
+        { name: "author", content: "Grenz & Co. Immobilienberatungs-GmbH" },
+        { property: "og:title", content: "Grenz & Co. Verwaltung" },
         {
           property: "og:description",
-          content: "Internes Verwaltungsprogramm der FRENKEN Holding.",
+          content: "Internes Verwaltungsprogramm von Grenz & Co.",
         },
         { property: "og:type", content: "website" },
         { name: "twitter:card", content: "summary" },
@@ -141,7 +141,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="de">
       <head>
         <HeadContent />
       </head>

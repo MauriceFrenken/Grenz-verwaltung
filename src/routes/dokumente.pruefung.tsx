@@ -9,6 +9,6 @@ export const Route = createFileRoute("/dokumente/pruefung")({
   validateSearch: (search: Record<string, unknown>): DokumentPruefungSearch => ({
     postfach: typeof search.postfach === "string" ? search.postfach : undefined,
   }),
-  head: () => ({ meta: [{ title: "Dokument prüfen — FRENKEN Verwaltung" }] }),
+  head: () => ({ meta: [{ title: "Dokument prüfen — Grenz & Co. Verwaltung" }] }),
   component: DokumentPruefungPage,
 });

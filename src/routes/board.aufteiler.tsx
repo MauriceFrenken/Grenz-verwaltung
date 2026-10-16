@@ -7,7 +7,7 @@ export const Route = createFileRoute("/board/aufteiler")({
     projekt: z.string().optional(),
   }),
   head: () => ({
-    meta: [{ title: "Aufteilerprojekte — FRENKEN Management Board" }],
+    meta: [{ title: "Aufteilerprojekte — Grenz & Co. Management Board" }],
   }),
   component: AufteilerSeite,
 });

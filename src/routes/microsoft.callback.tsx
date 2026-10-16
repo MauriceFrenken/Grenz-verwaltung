@@ -8,7 +8,7 @@ import { Link } from "@tanstack/react-router";
  */
 export const Route = createFileRoute("/microsoft/callback")({
   head: () => ({
-    meta: [{ title: "Microsoft — FRENKEN Verwaltung" }],
+    meta: [{ title: "Microsoft — Grenz & Co. Verwaltung" }],
   }),
   component: MicrosoftCallbackPage,
 });

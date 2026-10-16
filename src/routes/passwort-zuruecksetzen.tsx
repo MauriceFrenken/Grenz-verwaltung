@@ -3,7 +3,7 @@ import { PasswortZuruecksetzenPage } from "@/features/auth/PasswortZuruecksetzen
 
 export const Route = createFileRoute("/passwort-zuruecksetzen")({
   head: () => ({
-    meta: [{ title: "Passwort zurücksetzen — FRENKEN Verwaltung" }],
+    meta: [{ title: "Passwort zurücksetzen — Grenz & Co. Verwaltung" }],
   }),
   component: PasswortZuruecksetzenPage,
 });

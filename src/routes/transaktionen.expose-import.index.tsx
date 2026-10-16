@@ -10,6 +10,6 @@ export const Route = createFileRoute("/transaktionen/expose-import/")({
   validateSearch: (search: Record<string, unknown>): ExposeImportSearch => ({
     postfach: typeof search.postfach === "string" ? search.postfach : undefined,
   }),
-  head: () => ({ meta: [{ title: "Exposé-Import — FRENKEN Verwaltung" }] }),
+  head: () => ({ meta: [{ title: "Exposé-Import — Grenz & Co. Verwaltung" }] }),
   component: ExposeImportPage,
 });

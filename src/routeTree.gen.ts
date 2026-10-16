@@ -16,6 +16,7 @@ import { Route as DatenschutzRouteImport } from './routes/datenschutz'
 import { Route as DokumenteRouteImport } from './routes/dokumente'
 import { Route as EinladungRouteImport } from './routes/einladung'
 import { Route as EinstellungenRouteImport } from './routes/einstellungen'
+import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TransaktionenRouteImport } from './routes/transaktionen'
@@ -103,6 +104,11 @@ const EinladungRoute = EinladungRouteImport.update({
 const EinstellungenRoute = EinstellungenRouteImport.update({
   id: '/einstellungen',
   path: '/einstellungen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImpressumRoute = ImpressumRouteImport.update({
+  id: '/impressum',
+  path: '/impressum',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PasswortZuruecksetzenRoute = PasswortZuruecksetzenRouteImport.update({
@@ -388,6 +394,7 @@ export interface FileRoutesByFullPath {
   '/dokumente': typeof DokumenteRouteWithChildren
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
+  '/impressum': typeof ImpressumRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/transaktionen': typeof TransaktionenRouteWithChildren
@@ -447,6 +454,7 @@ export interface FileRoutesByTo {
   '/anmelden': typeof AnmeldenRoute
   '/datenschutz': typeof DatenschutzRoute
   '/einladung': typeof EinladungRoute
+  '/impressum': typeof ImpressumRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/board/ablage': typeof BoardAblageRoute
@@ -505,6 +513,7 @@ export interface FileRoutesById {
   '/dokumente': typeof DokumenteRouteWithChildren
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
+  '/impressum': typeof ImpressumRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/transaktionen': typeof TransaktionenRouteWithChildren
@@ -569,6 +578,7 @@ export interface FileRouteTypes {
     | '/dokumente'
     | '/einladung'
     | '/einstellungen'
+    | '/impressum'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
     | '/transaktionen'
@@ -628,6 +638,7 @@ export interface FileRouteTypes {
     | '/anmelden'
     | '/datenschutz'
     | '/einladung'
+    | '/impressum'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
     | '/board/ablage'
@@ -685,6 +696,7 @@ export interface FileRouteTypes {
     | '/dokumente'
     | '/einladung'
     | '/einstellungen'
+    | '/impressum'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
     | '/transaktionen'
@@ -748,6 +760,7 @@ export interface RootRouteChildren {
   DokumenteRoute: typeof DokumenteRouteWithChildren
   EinladungRoute: typeof EinladungRoute
   EinstellungenRoute: typeof EinstellungenRouteWithChildren
+  ImpressumRoute: typeof ImpressumRoute
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TransaktionenRoute: typeof TransaktionenRouteWithChildren
@@ -808,6 +821,13 @@ declare module '@tanstack/react-router' {
       path: '/einstellungen'
       fullPath: '/einstellungen'
       preLoaderRoute: typeof EinstellungenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/impressum': {
+      id: '/impressum'
+      path: '/impressum'
+      fullPath: '/impressum'
+      preLoaderRoute: typeof ImpressumRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/passwort-zuruecksetzen': {
@@ -1362,6 +1382,7 @@ const rootRouteChildren: RootRouteChildren = {
   DokumenteRoute: DokumenteRouteWithChildren,
   EinladungRoute: EinladungRoute,
   EinstellungenRoute: EinstellungenRouteWithChildren,
+  ImpressumRoute: ImpressumRoute,
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TransaktionenRoute: TransaktionenRouteWithChildren,

@@ -35,12 +35,12 @@ export function gruppe(loan: Loan): Gruppe {
   return loan.kind === "bank" ? "bank" : "privat";
 }
 
-/** Externes Darlehen, bei dem eine FRENKEN-Gesellschaft Geld nimmt. */
+/** Externes Darlehen, bei dem eine Grenz-&-Co.-Gesellschaft Geld nimmt. */
 export function istExterneVerbindlichkeit(loan: Loan): boolean {
   return kreis(loan) === "extern" && loan.borrowerCompanyId != null;
 }
 
-/** Externes Darlehen, bei dem eine FRENKEN-Gesellschaft Geld an Dritte gibt. */
+/** Externes Darlehen, bei dem eine Grenz-&-Co.-Gesellschaft Geld an Dritte gibt. */
 export function istExterneForderung(loan: Loan): boolean {
   return (
     kreis(loan) === "extern" &&
@@ -154,7 +154,7 @@ export interface NehmerZeile {
   intern: number;
 }
 
-/** Verbindlichkeiten je FRENKEN-Gesellschaft, gestapelt nach Gruppe. */
+/** Verbindlichkeiten je Grenz-&-Co.-Gesellschaft, gestapelt nach Gruppe. */
 export function verbindlichkeitenJeGesellschaft(
   staende: DarlehenStand[],
 ): NehmerZeile[] {

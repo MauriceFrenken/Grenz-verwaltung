@@ -22,7 +22,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { prefetchGraphRoute } from "@/lib/graph-cache";
-import { FrenkenLogo, FrenkenZeichen } from "@/components/marke/FrenkenLogo";
+import { GrenzCoLogo, GrenzCoZeichen } from "@/components/marke/GrenzCoLogo";
 import { cn } from "@/lib/utils";
 import { laborAktiv, STEUERUNG } from "@/modules/shell/navigation";
 import { useUiStore } from "@/store/ui";
@@ -147,13 +147,13 @@ export function Sidebar() {
       )}
     >
       {!benutzer ? (
-        <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-5 text-heading">
+        <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-5 text-sidebar-foreground">
           {collapsed ? (
-            <FrenkenZeichen className="h-[15px]" />
+            <GrenzCoZeichen />
           ) : (
             <>
-              <FrenkenLogo className="h-[15px]" />
-              <span className="rounded-md border border-hairline px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-text-muted">
+              <GrenzCoLogo className="h-8" />
+              <span className="rounded-md border border-sidebar-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-sidebar-foreground/55">
                 Board
               </span>
             </>
@@ -164,11 +164,11 @@ export function Sidebar() {
         {sections.map((section) => (
           <div key={section.label} className="py-2.5">
             {!collapsed ? (
-              <div className="px-2.5 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-subtle">
+              <div className="px-2.5 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/45">
                 {section.label}
               </div>
             ) : (
-              <div className="mx-3 my-2 h-px bg-hairline" />
+              <div className="mx-3 my-2 h-px bg-sidebar-border" />
             )}
             <ul className="space-y-px">
               {section.items.map((item) => {
@@ -184,15 +184,15 @@ export function Sidebar() {
                       onMouseEnter={() => prefetchWennGraph(item.to)}
                       onFocus={() => prefetchWennGraph(item.to)}
                       className={cn(
-                        "relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-[13.5px] text-text-muted transition-colors hover:bg-sidebar-accent hover:text-heading",
+                        "relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-[13.5px] text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
                         aktiv &&
-                          "bg-brand-soft font-medium text-heading [&>svg]:text-brand-text",
+                          "bg-sidebar-accent font-medium text-sidebar-foreground [&>svg]:text-sidebar-foreground",
                       )}
                       title={collapsed ? item.label : undefined}
                     >
                       {aktiv ? (
                         <span
-                          className="absolute -left-2 inset-y-1.5 w-[3px] rounded-r-full bg-brand"
+                          className="absolute -left-2 inset-y-1.5 w-[3px] rounded-r-full bg-sidebar-foreground"
                           aria-hidden
                         />
                       ) : null}
@@ -214,7 +214,7 @@ export function Sidebar() {
       <button
         type="button"
         onClick={toggle}
-        className="hairline-t flex h-10 items-center justify-center border-t border-sidebar-border text-text-muted hover:bg-sidebar-accent"
+        className="flex h-10 items-center justify-center border-t border-sidebar-border text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-sidebar-foreground"
         aria-label={collapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
       >
         {collapsed ? (

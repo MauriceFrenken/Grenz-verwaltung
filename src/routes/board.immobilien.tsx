@@ -7,6 +7,6 @@ export const Route = createFileRoute("/board/immobilien")({
     objekt: z.string().optional(),
     mietvertrag: z.string().optional(),
   }),
-  head: () => ({ meta: [{ title: "Immobilien — FRENKEN Management Board" }] }),
+  head: () => ({ meta: [{ title: "Immobilien — Grenz & Co. Management Board" }] }),
   component: ImmobilienSeite,
 });

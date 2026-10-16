@@ -161,7 +161,7 @@ export function DarlehenSeite() {
             label="Intern"
             wert={euroKompakt(summen.intern)}
             hinweis={`${summen.anzahl.intern} Verträge, gleichen sich in der Gruppe aus`}
-            title="Darlehen zwischen FRENKEN-Gesellschaften und Gesellschaftern"
+            title="Darlehen zwischen Grenz-&-Co.-Gesellschaften und Gesellschaftern"
           />
           <BuehnenKennzahl
             label="Zinsen extern p.a."
@@ -318,7 +318,7 @@ function Ueberblick({
     <>
       <Abschnitt
         titel="Wie ist die Gruppe finanziert?"
-        beschreibung="Restschuld aller aktiven Darlehen, an denen eine FRENKEN-Gesellschaft Geld nimmt"
+        beschreibung="Restschuld aller aktiven Darlehen, an denen eine Grenz-&-Co.-Gesellschaft Geld nimmt"
       >
         <Karte className="p-5">
           <Zusammensetzung summen={summen} />
@@ -434,7 +434,7 @@ function ExternAnsicht({
       </Abschnitt>
       <Abschnitt
         titel="Private Darlehensgeber und Dritte"
-        beschreibung={`Restschuld ${euro(aktivSumme(privat))} · Familie und Unternehmen außerhalb der FRENKEN-Gruppe`}
+        beschreibung={`Restschuld ${euro(aktivSumme(privat))} · Familie und Unternehmen außerhalb der Grenz-&-Co.-Gruppe`}
       >
         <DarlehenListe
           staende={privat}

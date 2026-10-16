@@ -1,14 +1,15 @@
-const LETZTE_AKTUALISIERUNG = "Juli 2026";
+const LETZTE_AKTUALISIERUNG = "Oktober 2026";
 
 export function DatenschutzInhalt() {
   return (
     <div className="space-y-8 text-sm leading-relaxed text-text-muted">
       <p>
-        Diese Datenschutzerklärung gilt für die interne Webanwendung „FRENKEN
-        Verwaltung“. Die Anwendung richtet sich ausschließlich an berechtigte
-        Mitarbeiterinnen und Mitarbeiter der FRENKEN Holding GmbH und ihrer
-        verbundenen Unternehmen. Wir informieren Sie nachfolgend gemäß Art. 13
-        und 14 der Datenschutz-Grundverordnung (DSGVO) über die Verarbeitung
+        Diese Datenschutzerklärung gilt für die interne Webanwendung „Grenz &amp;
+        Co. Verwaltung“. Die Anwendung richtet sich ausschließlich an berechtigte
+        Mitarbeiterinnen und Mitarbeiter der Grenz &amp; Co.
+        Immobilienberatungs-GmbH und ihrer verbundenen Unternehmen. Wir
+        informieren Sie nachfolgend gemäß Art. 13 und 14 der
+        Datenschutz-Grundverordnung (DSGVO) über die Verarbeitung
         personenbezogener Daten bei der Nutzung dieser Anwendung.
       </p>
 
@@ -18,17 +19,17 @@ export function DatenschutzInhalt() {
         </h3>
         <p>Verantwortlicher im Sinne des Art. 4 Nr. 7 DSGVO ist:</p>
         <p>
-          FRENKEN Holding GmbH
+          Grenz &amp; Co. Immobilienberatungs-GmbH
           <br />
-          Rheinpromenade 11
+          Friesenplatz 1
           <br />
-          40789 Monheim am Rhein
+          50672 Köln, Deutschland
           <br />
-          Telefon: +49 2173 999 418 0
+          Telefon: +49 (0)221 669 648 50
           <br />
-          E-Mail: mail@frenken-group.com
+          E-Mail: info@grenz-co.de
         </p>
-        <p>Vertreten durch die Geschäftsführer: Maurice Frenken, Tim Frenken</p>
+        <p>Vertreten durch den Geschäftsführer: Sebastian Grenz</p>
       </section>
 
       <section className="space-y-3">
@@ -37,11 +38,7 @@ export function DatenschutzInhalt() {
         </h3>
         <p>
           Bei Fragen zur Verarbeitung Ihrer personenbezogenen Daten oder zur
-          Ausübung Ihrer Rechte wenden Sie sich bitte an: mail@frenken-group.com
-          {/* Hinweis: Sollte ein Datenschutzbeauftragter benannt sein oder werden
-              (Benennungspflicht prüfen, § 38 BDSG: i. d. R. ab 20 Personen mit
-              ständiger automatisierter Verarbeitung), hier dessen Kontaktdaten
-              ergänzen (Art. 13 Abs. 1 lit. b DSGVO). */}
+          Ausübung Ihrer Rechte wenden Sie sich bitte an: info@grenz-co.de
         </p>
       </section>
 

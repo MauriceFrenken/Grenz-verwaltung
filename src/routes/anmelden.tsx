@@ -12,8 +12,8 @@ export const Route = createFileRoute("/anmelden")({
   }),
   head: () => ({
     meta: [
-      { title: "Anmelden — FRENKEN Verwaltung" },
-      { name: "description", content: "Anmeldung bei FRENKEN Verwaltung." },
+      { title: "Anmelden — Grenz & Co. Verwaltung" },
+      { name: "description", content: "Anmeldung bei Grenz & Co. Verwaltung." },
     ],
   }),
   component: AnmeldenPage,

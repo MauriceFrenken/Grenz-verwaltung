@@ -104,7 +104,7 @@ export function EinladungPage() {
   return (
     <AuthShell
       title="Willkommen"
-      description="Willkommen bei FRENKEN Verwaltung. Bitte wählen Sie ein Passwort für Ihr Konto."
+      description="Willkommen bei Grenz & Co. Verwaltung. Bitte wählen Sie ein Passwort für Ihr Konto."
     >
       <form onSubmit={onSubmit} className="space-y-5">
         <div className="space-y-2">

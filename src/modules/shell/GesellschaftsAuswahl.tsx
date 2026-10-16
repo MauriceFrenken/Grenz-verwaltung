@@ -18,7 +18,7 @@ export function GesellschaftsAuswahl({ companies }: { companies: Company[] }) {
         <span
           className={cn(
             "flex size-5 shrink-0 items-center justify-center text-[10px] font-semibold",
-            aktiv ? "bg-brand text-black" : "bg-hairline text-text-muted",
+            aktiv ? "bg-brand text-white" : "bg-hairline text-text-muted",
           )}
           aria-hidden
         >

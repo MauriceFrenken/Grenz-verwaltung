@@ -170,7 +170,7 @@ function buildPrompt(): string {
   ).join(",\n");
 
   return [
-    "Du bist ein Assistent für deutsche Immobilien-Exposés (FRENKEN Verwaltung).",
+    "Du bist ein Assistent für deutsche Immobilien-Exposés (Grenz & Co. Verwaltung).",
     "Extrahiere strukturierte Felder aus dem bereitgestellten PDF-Text.",
     "",
     "=== OBJEKTADRESSE (ZUERST PRÜFEN) ===",

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ObjektDetailPage } from "@/features/verwaltung/ObjektDetailPage";
 
 export const Route = createFileRoute("/verwaltung/objekte/$id")({
-  head: () => ({ meta: [{ title: "Objekt — FRENKEN Verwaltung" }] }),
+  head: () => ({ meta: [{ title: "Objekt — Grenz & Co. Verwaltung" }] }),
   component: RouteComponent,
 });
 
