@@ -3,6 +3,7 @@ import {
   FileText,
   Inbox,
   Landmark,
+  MapPin,
   Plug,
   ScrollText,
   UserCog,
@@ -32,6 +33,7 @@ export const NAVIGATION: NavSection[] = [
       { to: "/exposes", label: "Offene Exposés", icon: Inbox },
       { to: "/exposes/import", label: "Exposé-Import", icon: FileText },
       { to: "/exposes/auswertung", label: "Exposé-Auswertung", icon: ChartColumn },
+      { to: "/exposes/karte", label: "Exposé-Karte", icon: MapPin },
     ],
   },
   {

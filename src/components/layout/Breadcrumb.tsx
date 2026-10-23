@@ -7,6 +7,7 @@ const LABELS: Record<string, string> = {
   "/exposes/import": "Exposé-Import",
   "/exposes/import/salesforce": "Salesforce-Export",
   "/exposes/auswertung": "Exposé-Auswertung",
+  "/exposes/karte": "Exposé-Karte",
   "/ebics": "EBICS",
   "/einstellungen": "Einstellungen",
   "/einstellungen/benutzer": "Benutzer",

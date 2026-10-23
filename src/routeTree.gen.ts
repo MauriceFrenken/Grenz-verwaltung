@@ -27,6 +27,7 @@ import { Route as EinstellungenIntegrationenRouteImport } from './routes/einstel
 import { Route as ExposesIndexRouteImport } from './routes/exposes.index'
 import { Route as ExposesAuswertungRouteImport } from './routes/exposes.auswertung'
 import { Route as ExposesImportRouteImport } from './routes/exposes.import'
+import { Route as ExposesKarteRouteImport } from './routes/exposes.karte'
 import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
@@ -125,6 +126,11 @@ const ExposesImportRoute = ExposesImportRouteImport.update({
   path: '/import',
   getParentRoute: () => ExposesRoute,
 } as any)
+const ExposesKarteRoute = ExposesKarteRouteImport.update({
+  id: '/karte',
+  path: '/karte',
+  getParentRoute: () => ExposesRoute,
+} as any)
 const MicrosoftCallbackRoute = MicrosoftCallbackRouteImport.update({
   id: '/microsoft/callback',
   path: '/microsoft/callback',
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
+  '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
@@ -196,6 +203,7 @@ export interface FileRoutesByTo {
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/exposes/auswertung': typeof ExposesAuswertungRoute
+  '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/einstellungen': typeof EinstellungenIndexRoute
@@ -223,6 +231,7 @@ export interface FileRoutesById {
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
+  '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
@@ -251,6 +260,7 @@ export interface FileRouteTypes {
     | '/einstellungen/integrationen'
     | '/exposes/auswertung'
     | '/exposes/import'
+    | '/exposes/karte'
     | '/microsoft/callback'
     | '/salesforce/callback'
     | '/einstellungen/'
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
     | '/exposes/auswertung'
+    | '/exposes/karte'
     | '/microsoft/callback'
     | '/salesforce/callback'
     | '/einstellungen'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/einstellungen/integrationen'
     | '/exposes/auswertung'
     | '/exposes/import'
+    | '/exposes/karte'
     | '/microsoft/callback'
     | '/salesforce/callback'
     | '/einstellungen/'
@@ -456,6 +468,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExposesImportRouteImport
       parentRoute: typeof ExposesRoute
     }
+    '/exposes/karte': {
+      id: '/exposes/karte'
+      path: '/karte'
+      fullPath: '/exposes/karte'
+      preLoaderRoute: typeof ExposesKarteRouteImport
+      parentRoute: typeof ExposesRoute
+    }
     '/microsoft/callback': {
       id: '/microsoft/callback'
       path: '/microsoft/callback'
@@ -536,12 +555,14 @@ const ExposesImportRouteWithChildren = ExposesImportRoute._addFileChildren(
 interface ExposesRouteChildren {
   ExposesAuswertungRoute: typeof ExposesAuswertungRoute
   ExposesImportRoute: typeof ExposesImportRouteWithChildren
+  ExposesKarteRoute: typeof ExposesKarteRoute
   ExposesIndexRoute: typeof ExposesIndexRoute
 }
 
 const ExposesRouteChildren: ExposesRouteChildren = {
   ExposesAuswertungRoute: ExposesAuswertungRoute,
   ExposesImportRoute: ExposesImportRouteWithChildren,
+  ExposesKarteRoute: ExposesKarteRoute,
   ExposesIndexRoute: ExposesIndexRoute,
 }
 

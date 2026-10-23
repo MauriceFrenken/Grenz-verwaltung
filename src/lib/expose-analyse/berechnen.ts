@@ -90,42 +90,47 @@ function zaehle<T extends string>(
   return limit ? liste.slice(0, limit) : liste;
 }
 
+/** Kennzahlen eines einzelnen Exposés aus den KI-Feldern. */
+export function objektAusExpose(e: RohExpose) {
+  const preis = zahl(feld(e, "angebotspreis"));
+  const miete = zahl(feld(e, "jahresnettokaltmiete"));
+  const flaeche =
+    zahl(feld(e, "mietflaecheGesamt")) ?? zahl(feld(e, "wohnflaeche"));
+  const baujahrRoh = zahl(feld(e, "baujahr"));
+  const baujahr =
+    baujahrRoh && baujahrRoh >= 1700 && baujahrRoh <= 2100
+      ? Math.round(baujahrRoh)
+      : null;
+  const faktor = preis && miete ? preis / miete : null;
+  return {
+    id: e.id,
+    eingegangenAm: e.eingegangenAm,
+    status: e.status,
+    exportiert: Boolean(e.exportiertAm) || e.status === "exportiert",
+    adresse: feld(e, "objektadresse"),
+    plz: feld(e, "plz"),
+    stadt: stadtNormalisiert(feld(e, "stadt")),
+    objektart: feld(e, "objektart"),
+    makler: feld(e, "makler") ?? e.absenderName?.trim() ?? null,
+    energieklasse: feld(e, "energieausweis")?.toUpperCase() ?? null,
+    einheiten: zahl(feld(e, "anzahlWohnungen")),
+    baujahr,
+    flaeche,
+    preis,
+    miete,
+    faktor: faktor && faktor > 2 && faktor < 80 ? runde(faktor, 1) : null,
+    rendite:
+      faktor && faktor > 2 && faktor < 80 ? runde(100 / faktor, 2) : null,
+    mieteQm: miete && flaeche ? runde(miete / 12 / flaeche) : null,
+    preisQm: preis && flaeche ? Math.round(preis / flaeche) : null,
+    betreff: e.betreff,
+  };
+}
+
+export type ExposeObjekt = ReturnType<typeof objektAusExpose>;
+
 export function berechneExposeAnalyse(exposes: RohExpose[]): ExposeAnalyseDto {
-  const objekte = exposes.map((e) => {
-    const preis = zahl(feld(e, "angebotspreis"));
-    const miete = zahl(feld(e, "jahresnettokaltmiete"));
-    const flaeche =
-      zahl(feld(e, "mietflaecheGesamt")) ?? zahl(feld(e, "wohnflaeche"));
-    const baujahrRoh = zahl(feld(e, "baujahr"));
-    const baujahr =
-      baujahrRoh && baujahrRoh >= 1700 && baujahrRoh <= 2100
-        ? Math.round(baujahrRoh)
-        : null;
-    const faktor = preis && miete ? preis / miete : null;
-    return {
-      id: e.id,
-      eingegangenAm: e.eingegangenAm,
-      status: e.status,
-      exportiert: Boolean(e.exportiertAm) || e.status === "exportiert",
-      adresse: feld(e, "objektadresse"),
-      plz: feld(e, "plz"),
-      stadt: stadtNormalisiert(feld(e, "stadt")),
-      objektart: feld(e, "objektart"),
-      makler: feld(e, "makler") ?? e.absenderName?.trim() ?? null,
-      energieklasse: feld(e, "energieausweis")?.toUpperCase() ?? null,
-      einheiten: zahl(feld(e, "anzahlWohnungen")),
-      baujahr,
-      flaeche,
-      preis,
-      miete,
-      faktor: faktor && faktor > 2 && faktor < 80 ? runde(faktor, 1) : null,
-      rendite:
-        faktor && faktor > 2 && faktor < 80 ? runde(100 / faktor, 2) : null,
-      mieteQm: miete && flaeche ? runde(miete / 12 / flaeche) : null,
-      preisQm: preis && flaeche ? Math.round(preis / flaeche) : null,
-      betreff: e.betreff,
-    };
-  });
+  const objekte = exposes.map(objektAusExpose);
 
   const analysiert = objekte.filter(
     (o) => o.status !== "neu" && o.status !== "fehler",
