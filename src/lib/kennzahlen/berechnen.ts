@@ -87,8 +87,9 @@ export function berechneKennzahlen(input: {
   const jeKategorie = new Map<Kategorie, number>();
   const jeEmpfaenger = new Map<
     string,
-    { betrag: number; kategorie: Kategorie }
+    { betrag: number; kategorie: Kategorie; monate: Set<string> }
   >();
+  const kategorieJeMonat = new Map<string, Map<Kategorie, number>>();
   const provisionen: KennzahlenDto["provisionen"] = [];
   let steuern = 0;
 
@@ -103,9 +104,17 @@ export function berechneKennzahlen(input: {
     } else {
       m.ausgaben += -b.betrag;
       const name = (b.auftraggeberName ?? "Unbekannt").trim();
-      const e = jeEmpfaenger.get(name) ?? { betrag: 0, kategorie };
+      const e = jeEmpfaenger.get(name) ?? {
+        betrag: 0,
+        kategorie,
+        monate: new Set<string>(),
+      };
       e.betrag += -b.betrag;
+      e.monate.add(m.monat);
       jeEmpfaenger.set(name, e);
+      const km = kategorieJeMonat.get(m.monat) ?? new Map<Kategorie, number>();
+      km.set(kategorie, (km.get(kategorie) ?? 0) - b.betrag);
+      kategorieJeMonat.set(m.monat, km);
     }
     if (kategorie === "steuern") steuern += -b.betrag;
     if (kategorie === "provision") {
@@ -156,9 +165,87 @@ export function berechneKennzahlen(input: {
     saldoMonatsende.set(monat, runde(laufend));
   }
 
+  // Größte Ausgabenkategorien je Monat, der Rest wird „Sonstiges“.
+  const TOP_KATEGORIEN = 4;
+  const topKategorien = [...jeKategorie.entries()]
+    .filter(([k, v]) => !EINNAHME_KATEGORIEN.has(k) && v < 0)
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, TOP_KATEGORIEN)
+    .map(([k]) => k);
+  const monateMitDaten = monate.filter(
+    (m) => m.monat <= heute.slice(0, 7) && (m.ausgaben || m.einnahmen),
+  );
+  const kategorienMonat: KennzahlenDto["kategorienMonat"] = {
+    kategorien: [
+      ...topKategorien.map((k) => ({
+        schluessel: k,
+        label: KATEGORIE_LABEL[k],
+      })),
+      { schluessel: "rest", label: "Übrige" },
+    ],
+    monate: monateMitDaten.map((m) => {
+      const km = kategorieJeMonat.get(m.monat) ?? new Map<Kategorie, number>();
+      const zeile: { monat: string } & Record<string, number | string> = {
+        monat: m.monat,
+      };
+      let rest = 0;
+      for (const [k, v] of km) {
+        if (topKategorien.includes(k)) zeile[k] = runde(v);
+        else rest += v;
+      }
+      for (const k of topKategorien) zeile[k] ??= 0;
+      zeile.rest = runde(rest);
+      return zeile;
+    }),
+  };
+
+  // Fixkosten: Empfänger, die in mindestens drei Monaten bezahlt wurden.
+  const fixPosten = [...jeEmpfaenger.entries()]
+    .filter(([, e]) => e.monate.size >= 3 && e.kategorie !== "steuern")
+    .map(([name, e]) => ({
+      name,
+      kategorie: KATEGORIE_LABEL[e.kategorie],
+      monate: e.monate.size,
+      summe: runde(e.betrag),
+      proMonat: runde(e.betrag / Math.max(1, monateBisher)),
+    }))
+    .sort((a, b) => b.summe - a.summe);
+  const fixSumme = fixPosten.reduce((s, p) => s + p.summe, 0);
+
+  let provKum = 0;
+  let ausgKum = 0;
+  const kumuliert = monateMitDaten.map((m) => {
+    provKum += m.provisionen;
+    ausgKum += m.ausgaben;
+    return {
+      monat: m.monat,
+      provisionen: runde(provKum),
+      ausgaben: runde(ausgKum),
+    };
+  });
+
+  const jeZahler = new Map<string, { anzahl: number; brutto: number }>();
+  for (const p of provisionen) {
+    const z = jeZahler.get(p.zahler || "Unbekannt") ?? { anzahl: 0, brutto: 0 };
+    z.anzahl++;
+    z.brutto += p.brutto;
+    jeZahler.set(p.zahler || "Unbekannt", z);
+  }
+
   return {
     jahr,
     stand: heute,
+    kategorienMonat,
+    fixkosten: {
+      fixSumme: runde(fixSumme),
+      variabelSumme: runde(ausgabenOhneSteuern - fixSumme),
+      fixProMonat: runde(fixSumme / Math.max(1, monateBisher)),
+      posten: fixPosten.slice(0, 12),
+    },
+    kumuliert,
+    provisionsZahler: [...jeZahler.entries()]
+      .map(([name, z]) => ({ name, anzahl: z.anzahl, brutto: runde(z.brutto) }))
+      .sort((a, b) => b.brutto - a.brutto),
     konten: input.konten.map((k) => ({
       iban: k.iban,
       bezeichnung: k.bezeichnung,

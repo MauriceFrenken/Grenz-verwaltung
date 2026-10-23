@@ -108,6 +108,13 @@
   --chart-3: #c4922a;
   --chart-4: #5a6a85;
   --chart-5: #8a97ab;
+  /* Analyse-Diagramme: geprüfte Kategorienfarben (feste Reihenfolge). */
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-5: #e87ba4;
+  --viz-gitter: #e2e6ee;
   --sidebar: #1a2b4b;
   --sidebar-foreground: #f0f3f8;
   --sidebar-primary: #ffffff;

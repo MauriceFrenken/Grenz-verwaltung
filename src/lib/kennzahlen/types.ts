@@ -39,6 +39,28 @@ export type KennzahlenDto = {
   }>;
   kategorien: Array<{ kategorie: Kategorie; label: string; betrag: number }>;
   topEmpfaenger: Array<{ name: string; kategorie: string; betrag: number }>;
+  /** Ausgaben je Monat nach den größten Kategorien (Rest = „Sonstiges“). */
+  kategorienMonat: {
+    kategorien: Array<{ schluessel: string; label: string }>;
+    monate: Array<{ monat: string } & Record<string, number | string>>;
+  };
+  /** Wiederkehrende Zahlungen (Empfänger in mind. 3 Monaten) vs. einmalige. */
+  fixkosten: {
+    fixSumme: number;
+    variabelSumme: number;
+    fixProMonat: number;
+    posten: Array<{
+      name: string;
+      kategorie: string;
+      monate: number;
+      summe: number;
+      proMonat: number;
+    }>;
+  };
+  /** Laufende Summen über das Jahr (für Break-even-Sicht). */
+  kumuliert: Array<{ monat: string; provisionen: number; ausgaben: number }>;
+  /** Provisionen gruppiert nach Zahler. */
+  provisionsZahler: Array<{ name: string; anzahl: number; brutto: number }>;
   provisionen: Array<{
     datum: string;
     zahler: string;
