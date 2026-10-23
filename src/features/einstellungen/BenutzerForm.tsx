@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { einstellungenApi } from "@/api/einstellungen";
-import { verwaltungApi } from "@/api/verwaltung";
+import { gesellschaftenApi } from "@/api/gesellschaften";
 import { useApi } from "@/hooks/useApi";
 import { gesellschaftIdsAusBenutzer } from "@/lib/auth";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
@@ -130,7 +130,7 @@ export function BenutzerForm({
     [rollen, bisherigeRolle],
   );
   const zuweisbareSchluessel = zuweisbare.join("\0");
-  const gesellschaften = useApi(() => verwaltungApi.listGesellschaften(), []);
+  const gesellschaften = useApi(() => gesellschaftenApi.list(), []);
 
   const schema = useMemo(
     () => schemaFuerRollen(zuweisbare, rollen, istBearbeitung),
@@ -187,7 +187,7 @@ export function BenutzerForm({
   );
   const darfAlleGesellschaften = gesellschaftZuweisung === "alle";
   const darfMehrereGesellschaftenZuweisen = gesellschaftZuweisung !== "einzeln";
-  const gesellschaftenListe = gesellschaften.data?.items ?? [];
+  const gesellschaftenListe = gesellschaften.data ?? [];
   const hatGesellschaften = gesellschaftenListe.length > 0;
 
   const gesellschaftStateFuerRolle = (rolle: string) => {

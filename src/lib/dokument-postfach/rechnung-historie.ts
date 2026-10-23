@@ -199,7 +199,7 @@ export async function loescheAlteRechnungsHistorie(): Promise<number> {
 async function ladeDatevEmpfaenger(): Promise<string[]> {
   const admin = createServiceRoleClient();
   const { data, error } = await admin
-    .from("v_gesellschaften")
+    .from("gesellschaften")
     .select("datev_postfach");
 
   if (error) {

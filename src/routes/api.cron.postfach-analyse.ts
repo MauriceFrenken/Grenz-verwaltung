@@ -8,7 +8,6 @@ import {
   NACHTLAUF_MAX_RUNDEN,
   type DokumentPosteingangNachtlaufErgebnis,
 } from "@/lib/dokument-postfach/sync";
-import { MICROSOFT_PRODUCTION_ORIGIN } from "@/lib/microsoft/config";
 
 type RequestWithWaitUntil = Request & {
   waitUntil?: (promise: Promise<unknown>) => void;
@@ -27,11 +26,11 @@ function scheduleAfterResponse(
   vercelWaitUntil(promise);
 }
 
-function cronFortsetzungUrl(runde: number): string {
+function cronFortsetzungUrl(request: Request, runde: number): string {
   const base = (
     process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : MICROSOFT_PRODUCTION_ORIGIN
+      : new URL(request.url).origin
   ).replace(/\/$/, "");
   const url = new URL("/api/cron/postfach-analyse", base);
   url.searchParams.set("runde", String(runde));
@@ -51,13 +50,16 @@ function fortsetzungsHeaders(secret: string): HeadersInit {
   return headers;
 }
 
-async function starteFolgeRunde(runde: number): Promise<void> {
+async function starteFolgeRunde(
+  request: Request,
+  runde: number,
+): Promise<void> {
   const secret = (process.env.CRON_SECRET ?? "").trim();
   if (!secret) {
     console.error("[cron/postfach-analyse] Fortsetzung ohne CRON_SECRET");
     return;
   }
-  const weiter = cronFortsetzungUrl(runde);
+  const weiter = cronFortsetzungUrl(request, runde);
   try {
     const res = await fetch(weiter, {
       method: "GET",
@@ -100,7 +102,7 @@ function ggfFortsetzen(
     );
     return;
   }
-  scheduleAfterResponse(request, starteFolgeRunde(runde + 1));
+  scheduleAfterResponse(request, starteFolgeRunde(request, runde + 1));
 }
 
 /**

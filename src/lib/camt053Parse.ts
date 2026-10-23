@@ -13,7 +13,7 @@ export interface Camt053ParseErgebnis {
   zeitraumVon: string | null;
   zeitraumBis: string | null;
   kontoIban: string | null;
-  /** Gebuchte Tagesendsalden (CLBD) je Konto, für die Liquidität im Management Board. */
+  /** Gebuchte Tagesendsalden (CLBD) je Konto, für den Kontostand auf der EBICS-Seite. */
   salden: Camt053Saldo[];
   warnungen: string[];
 }

@@ -3,7 +3,7 @@ import {
   graphMasterKategorieSicherstellen,
   graphPostfachPruefen,
 } from "./graph";
-import { microsoftOneDriveUser, microsoftPostMailboxZweit } from "./ablage";
+import { microsoftAblegenKategoriePostfach, microsoftOneDriveUser } from "./ablage";
 import {
   MICROSOFT_ABLEGEN_KATEGORIE,
   MICROSOFT_ABLEGEN_KATEGORIE_FARBE,
@@ -35,9 +35,8 @@ export type MicrosoftStatusPayload = MicrosoftIntegrationStatus & {
 };
 
 async function ablegenKategorieSicherstellen(accessToken: string): Promise<void> {
-  const postfach = microsoftPostMailboxZweit();
-  if (!postfach) return;
   try {
+    const postfach = microsoftAblegenKategoriePostfach();
     await graphMasterKategorieSicherstellen(
       accessToken,
       postfach,
@@ -53,6 +52,15 @@ async function ablegenKategorieSicherstellen(accessToken: string): Promise<void>
   }
 }
 
+/** Für die Statusanzeige: leer statt Fehler, solange MICROSOFT_MAILBOX fehlt. */
+function konfiguriertesPostfach(): string {
+  try {
+    return microsoftPostfach();
+  } catch {
+    return "";
+  }
+}
+
 function statusPayload(
   status: MicrosoftIntegrationStatus,
   postfachNachrichten: number | null = null,
@@ -60,7 +68,7 @@ function statusPayload(
   return {
     ...status,
     azureKonfiguriert: microsoftAzureIstKonfiguriert(),
-    postfach: microsoftPostfach(),
+    postfach: konfiguriertesPostfach(),
     postfachNachrichten,
     modus: "app-only",
   };
@@ -91,7 +99,7 @@ export async function microsoftStatusFuerNutzer(supabaseAccessToken: string): Pr
 }
 
 /**
- * App-only verbinden: Client Credentials → Postfach ankauf@ prüfen → speichern.
+ * App-only verbinden: Client Credentials → Exposé-Postfach prüfen → speichern.
  */
 export async function completeMicrosoftConnect(input: {
   supabaseAccessToken: string;

@@ -28,7 +28,7 @@ async function ladeDatevUndName(gesellschaftId: string): Promise<{
 }> {
   const admin = createServiceRoleClient();
   const { data, error } = await admin
-    .from("v_gesellschaften")
+    .from("gesellschaften")
     .select("name,datev_postfach")
     .eq("id", gesellschaftId)
     .maybeSingle();
@@ -41,7 +41,7 @@ async function ladeDatevUndName(gesellschaftId: string): Promise<{
   const datev = (data.datev_postfach as string | null)?.trim() ?? "";
   if (!datev) {
     throw new Error(
-      "Für diese Gesellschaft ist kein DATEV-Postfach hinterlegt (Verwaltung › Gesellschaften).",
+      "Für diese Gesellschaft ist kein DATEV-Postfach hinterlegt (Spalte datev_postfach in der Tabelle gesellschaften).",
     );
   }
   return {
@@ -57,7 +57,6 @@ export async function dokumentPosteingangBuchen(input: {
   ordnerItemId?: string | null;
   ordnerPfad?: string | null;
   gesellschaftId?: string | null;
-  objektId?: string | null;
   felder?: DokumentAnalyseFelder | null;
 }): Promise<DokumentBuchenErgebnis> {
   await microsoftCallerAusJwt(input.supabaseAccessToken);
@@ -86,8 +85,6 @@ export async function dokumentPosteingangBuchen(input: {
     throw new Error("Keine Felddaten zum Speichern vorhanden.");
   }
 
-  const objektId = input.objektId ?? row.objekt_id;
-
   const { accessToken } = await microsoftAccessToken();
 
   // Immer frisch auflösen — nie gespeicherte/manuelle Ordner (Ausgangsrechnungen etc.)
@@ -110,7 +107,6 @@ export async function dokumentPosteingangBuchen(input: {
   await speicherePruefung(id, {
     felder,
     gesellschaftId,
-    objektId,
     ablageOrdnerId: ordnerId,
     ablageOrdnerPfad: ordnerPfad,
     istRechnung: true,
@@ -147,7 +143,6 @@ export async function dokumentPosteingangBuchen(input: {
     ordnerId,
     felder,
     gesellschaftId,
-    objektId,
     ablageDateiname: dateiname,
   });
 

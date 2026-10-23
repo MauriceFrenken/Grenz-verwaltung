@@ -75,16 +75,28 @@ export function readOauthStateOrigin(state: string): string | null {
  * könnte eine fremde Seite den gemeinsamen Callback für sich abgreifen.
  */
 export function istErlaubteOauthHerkunft(origin: string): boolean {
-  if (origin === SALESFORCE_PRODUCTION_ORIGIN) return true;
+  if (SALESFORCE_PRODUCTION_ORIGIN && origin === SALESFORCE_PRODUCTION_ORIGIN) {
+    return true;
+  }
+  if (typeof window !== "undefined" && origin === window.location.origin) {
+    return true;
+  }
   try {
     const url = new URL(origin);
     if (url.hostname === "localhost" || url.hostname === "127.0.0.1")
       return true;
-    // Preview-Deployments dieses Projekts: frenken-expose-<hash>.vercel.app
+    // Preview-Deployments dieses Projekts: <projekt>-<hash>.vercel.app
+    const produktion = SALESFORCE_PRODUCTION_ORIGIN
+      ? new URL(SALESFORCE_PRODUCTION_ORIGIN).hostname
+      : "";
+    const projekt = produktion.endsWith(".vercel.app")
+      ? produktion.slice(0, -".vercel.app".length)
+      : "";
     return (
+      Boolean(projekt) &&
       url.protocol === "https:" &&
       url.hostname.endsWith(".vercel.app") &&
-      url.hostname.startsWith("frenken-expose")
+      url.hostname.startsWith(`${projekt}-`)
     );
   } catch {
     return false;

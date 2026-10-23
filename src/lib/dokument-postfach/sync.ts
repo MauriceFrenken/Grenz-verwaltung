@@ -7,15 +7,9 @@ import {
   microsoftAblegenKategorieMailsLesen,
   microsoftDokumentPosteingangLesenIntern,
   microsoftDokumentPosteingangQuellen,
-  istAblageRootOrdner,
-  microsoftOneDriveUser,
   type DokumentPosteingangNachricht,
 } from "@/lib/microsoft/ablage";
-import {
-  graphAnhangBinary,
-  graphDriveRootKinder,
-  graphNachrichtBodyText,
-} from "@/lib/microsoft/graph";
+import { graphAnhangBinary, graphNachrichtBodyText } from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
 import {
   createServiceRoleClient,
@@ -23,15 +17,7 @@ import {
   microsoftCronAuthToken,
 } from "@/lib/microsoft/supabase-admin";
 
-import {
-  istTamAusFeldern,
-  istTamGesellschaft,
-  TRADE_ANY_MACHINE_NAME,
-} from "@/lib/trade-any-machine";
-
 import { baueAnhangAnalyseKontext } from "./anhang-kontext";
-import { ablageDatenwirkungNachholen } from "./ablage-datenwirkung";
-import { datenwirkungNachholen } from "./datenwirkung";
 import {
   dokumentPosteingangAblegenKategorieSicherstellen,
   dokumentPosteingangOutlookKategorieAblegen,
@@ -44,7 +30,6 @@ import {
 import {
   ermittleZielordnerIterativ,
   findeEingangsrechnungenOrdner,
-  findeGesellschaftRootDeterministisch,
   ladeStammdatenKontext,
 } from "./ablage-kontext";
 import {
@@ -82,29 +67,17 @@ function fehlerText(err: unknown): string {
 
 type StammdatenCache = {
   gesellschaften: Array<{ id: string; name: string; kuerzel: string }>;
-  objekte: Array<{
-    id: string;
-    bezeichnung: string;
-    gesellschaft_id: string;
-    strasse?: string | null;
-    ort?: string | null;
-  }>;
   stammdatenKontext: string;
 };
 
 async function ladeStammdatenCache(): Promise<StammdatenCache> {
   const admin = createServiceRoleClient();
-  const [{ data: gesellschaften }, { data: objekte }, stammdatenKontext] =
-    await Promise.all([
-      admin.from("v_gesellschaften").select("id,name,kuerzel"),
-      admin
-        .from("v_objekte")
-        .select("id,bezeichnung,gesellschaft_id,strasse,ort"),
-      ladeStammdatenKontext(),
-    ]);
+  const [{ data: gesellschaften }, stammdatenKontext] = await Promise.all([
+    admin.from("gesellschaften").select("id,name,kuerzel"),
+    ladeStammdatenKontext(),
+  ]);
   return {
     gesellschaften: gesellschaften ?? [],
-    objekte: objekte ?? [],
     stammdatenKontext,
   };
 }
@@ -236,7 +209,6 @@ async function analysiereEintrag(
       siblings,
       row.id,
       cache.gesellschaften,
-      cache.objekte,
     );
 
     const kontext = await baueAnhangAnalyseKontext({
@@ -266,38 +238,17 @@ async function analysiereEintrag(
       value: null,
     };
 
-    const istTam = istTamAusFeldern(ergebnis.felder);
-
-    if (istTam) {
-      ergebnis.felder.gesellschaftName = {
-        ...ergebnis.felder.gesellschaftName,
-        value: TRADE_ANY_MACHINE_NAME,
-      };
-      ergebnis.felder.objektBezeichnung = {
-        ...ergebnis.felder.objektBezeichnung,
-        value: null,
-      };
-    }
-
     const zuordnung = finalisiereZuordnung({
       felder: ergebnis.felder,
-      dokumentTyp: ergebnis.dokumentTyp,
-      istScanVision: kontext.istScanVision,
-      istTam,
       betreff: row.betreff,
       anhangName: row.anhang_name ?? anhang.name,
       mailKontext: kontext.mailKontext,
-      modelContext: kontext.modelContext,
       geschwister,
       gesellschaften: cache.gesellschaften,
-      objekte: cache.objekte,
     });
 
     ergebnis.felder = zuordnung.felder;
     const gesellschaftId = zuordnung.gesellschaftId;
-    const objektId = zuordnung.objektId;
-    const gematchtesObjekt =
-      cache.objekte.find((o) => o.id === objektId) ?? null;
 
     const gesellschaftName =
       cache.gesellschaften.find((g) => g.id === gesellschaftId)?.name ??
@@ -308,9 +259,7 @@ async function analysiereEintrag(
     let ablageOrdnerPfad: string | null = null;
 
     if (ergebnis.dokumentTyp === "rechnung") {
-      const zielName = istTam
-        ? TRADE_ANY_MACHINE_NAME
-        : gesellschaftName.trim() || null;
+      const zielName = gesellschaftName.trim() || null;
       if (zielName) {
         const ziel = await findeEingangsrechnungenOrdner(accessToken, zielName);
         if (ziel) {
@@ -322,36 +271,16 @@ async function analysiereEintrag(
           };
         }
       }
-    } else if (istTam) {
-      const benutzer = microsoftOneDriveUser();
-      const root = await graphDriveRootKinder(accessToken, benutzer);
-      const kandidaten = root.filter(
-        (item) => item.istOrdner && istAblageRootOrdner(item.name),
-      );
-      const treffer = findeGesellschaftRootDeterministisch(
-        kandidaten,
-        TRADE_ANY_MACHINE_NAME,
-      );
-      if (treffer) {
-        ablageOrdnerId = treffer.id;
-        ablageOrdnerPfad = treffer.name;
-        ergebnis.felder.ordnerPfad = {
-          ...ergebnis.felder.ordnerPfad,
-          value: treffer.name,
-        };
-      }
     } else if (
       ergebnis.dokumentTyp !== "expose" &&
       gesellschaftId &&
-      gesellschaftName &&
-      !istTamGesellschaft(gesellschaftName)
+      gesellschaftName
     ) {
       const ziel = await ermittleZielordnerIterativ(
         accessToken,
         {
           gesellschaftId,
           gesellschaftName,
-          objektBezeichnung: gematchtesObjekt?.bezeichnung ?? null,
           dokumentTyp: ergebnis.dokumentTyp,
           documentTitle: kontext.titel,
           mailKontext: kontext.mailKontext,
@@ -389,7 +318,6 @@ async function analysiereEintrag(
       dokumentTyp: ergebnis.dokumentTyp,
       felder: ergebnis.felder,
       gesellschaftId,
-      objektId,
       ablageOrdnerId,
       ablageOrdnerPfad,
       duplikatHinweis,
@@ -538,8 +466,6 @@ const NACHTLAUF_MAX_FEHLER_IN_FOLGE = 3;
  * Reicht für große Posteingänge; echte Grenze ist deadlineMs / maxDuration.
  */
 const NACHTLAUF_MAX_ANALYSEN_PRO_LAUF = 200;
-/** OneDrive-Delta-Seiten (je 500 Einträge) pro Lauf; Erstaufnahme über mehrere Läufe */
-const NACHTLAUF_ABLAGE_MAX_SEITEN = 200;
 /** Max. Selbst-Fortsetzungen nach dem ersten Cron-Trigger. */
 export const NACHTLAUF_MAX_RUNDEN = 40;
 /**
@@ -557,12 +483,6 @@ export type DokumentPosteingangNachtlaufErgebnis = {
   /** Auto-Ablegen via Outlook-Kategorie „ablegen“. */
   kategorieAblegenVerarbeitet?: number;
   kategorieAblegenFehlgeschlagen?: number;
-  /** Datenqualität: geprüfte Einträge und neue Hinweise mit Wirkung auf Zahlen */
-  datenwirkungGeprueft?: number;
-  datenwirkungHinweise?: number;
-  /** Datenqualität: geprüfte Ablage-Dateien und neue Hinweise daraus */
-  ablageGeprueft?: number;
-  ablageHinweise?: number;
 };
 
 async function nachtlaufAblegenMailsSeeden(): Promise<number> {
@@ -718,40 +638,6 @@ export async function dokumentPosteingangNachtlauf(input?: {
     }
   }
 
-  // Phase 3: analysierte Post auf Auswirkungen auf die Zahlen prüfen
-  // (Datenqualität). Nur mit Restzeit; der Rest folgt im nächsten Lauf.
-  let datenwirkungGeprueft = 0;
-  let datenwirkungHinweise = 0;
-  if (!fortsetzen && Date.now() < deadlineMs - 30_000) {
-    try {
-      const dw = await datenwirkungNachholen({
-        max: NACHTLAUF_MAX_ANALYSEN_PRO_LAUF,
-        deadlineMs: deadlineMs - 15_000,
-      });
-      datenwirkungGeprueft = dw.geprueft;
-      datenwirkungHinweise = dw.neueHinweise;
-    } catch (err) {
-      console.error("[dokument-postfach] Datenwirkung prüfen", err);
-    }
-  }
-
-  // Phase 4: neue oder geänderte Dateien der OneDrive-Ablage ebenso prüfen
-  let ablageGeprueft = 0;
-  let ablageHinweise = 0;
-  if (!fortsetzen && Date.now() < deadlineMs - 30_000) {
-    try {
-      const ab = await ablageDatenwirkungNachholen({
-        max: NACHTLAUF_MAX_ANALYSEN_PRO_LAUF,
-        maxSeiten: NACHTLAUF_ABLAGE_MAX_SEITEN,
-        deadlineMs: deadlineMs - 15_000,
-      });
-      ablageGeprueft = ab.geprueft;
-      ablageHinweise = ab.neueHinweise;
-    } catch (err) {
-      console.error("[dokument-postfach] Ablage prüfen", err);
-    }
-  }
-
   return {
     analysiert,
     fehlgeschlagen,
@@ -761,9 +647,5 @@ export async function dokumentPosteingangNachtlauf(input?: {
     inboxSyncFehler,
     kategorieAblegenVerarbeitet,
     kategorieAblegenFehlgeschlagen,
-    datenwirkungGeprueft,
-    datenwirkungHinweise,
-    ablageGeprueft,
-    ablageHinweise,
   };
 }

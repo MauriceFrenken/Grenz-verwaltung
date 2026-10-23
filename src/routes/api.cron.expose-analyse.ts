@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { waitUntil as vercelWaitUntil } from "@vercel/functions";
 
 import { cronSecretOk } from "@/lib/cron-auth";
-import { MICROSOFT_PRODUCTION_ORIGIN } from "@/lib/microsoft/config";
 import {
   NACHTLAUF_DEFAULT_BUDGET_MS,
   NACHTLAUF_MAX_RUNDEN,
@@ -27,11 +26,11 @@ function scheduleAfterResponse(
   vercelWaitUntil(promise);
 }
 
-function cronFortsetzungUrl(runde: number): string {
+function cronFortsetzungUrl(request: Request, runde: number): string {
   const base = (
     process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : MICROSOFT_PRODUCTION_ORIGIN
+      : new URL(request.url).origin
   ).replace(/\/$/, "");
   const url = new URL("/api/cron/expose-analyse", base);
   url.searchParams.set("runde", String(runde));
@@ -51,13 +50,16 @@ function fortsetzungsHeaders(secret: string): HeadersInit {
   return headers;
 }
 
-async function starteFolgeRunde(runde: number): Promise<void> {
+async function starteFolgeRunde(
+  request: Request,
+  runde: number,
+): Promise<void> {
   const secret = (process.env.CRON_SECRET ?? "").trim();
   if (!secret) {
     console.error("[cron/expose-analyse] Fortsetzung ohne CRON_SECRET");
     return;
   }
-  const weiter = cronFortsetzungUrl(runde);
+  const weiter = cronFortsetzungUrl(request, runde);
   try {
     const res = await fetch(weiter, {
       method: "GET",
@@ -100,7 +102,7 @@ function ggfFortsetzen(
     );
     return;
   }
-  scheduleAfterResponse(request, starteFolgeRunde(runde + 1));
+  scheduleAfterResponse(request, starteFolgeRunde(request, runde + 1));
 }
 
 /**

@@ -140,8 +140,8 @@ export function DatenschutzInhalt() {
         </h3>
         <p>
           Innerhalb der Anwendung werden geschäftsbezogene Daten verarbeitet,
-          die für die interne Verwaltung erforderlich sind — z. B. Gesellschafts-,
-          Objekt- und Transaktionsdaten sowie hochgeladene Dokumente. Der
+          die für die interne Verwaltung erforderlich sind — z. B. Exposés,
+          E-Mail-Anhänge, Rechnungen, Kontoumsätze sowie hochgeladene Dokumente. Der
           Zugriff ist rollenbasiert beschränkt; Änderungen an Benutzerkonten und
           Berechtigungen können zu Nachweiszwecken protokolliert werden
           (Audit-Trail). Rechtsgrundlagen sind Art. 6 Abs. 1 lit. b und f DSGVO

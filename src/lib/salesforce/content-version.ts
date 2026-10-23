@@ -52,7 +52,7 @@ export function buildContentVersionMultipart(input: {
 }): ContentVersionMultipart {
   const fileName = sanitizePdfFileName(input.fileName);
   const title = normalizePdfTitle(fileName);
-  const boundary = `frenken_cv_${Date.now().toString(36)}`;
+  const boundary = `grenz_cv_${Date.now().toString(36)}`;
 
   const metaJson = JSON.stringify({
     Title: title,

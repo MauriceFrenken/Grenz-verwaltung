@@ -4,13 +4,14 @@ import {
   Link,
   Navigate,
   createRootRouteWithContext,
+  type ErrorComponentProps,
   useRouter,
   useRouterState,
   HeadContent,
   Scripts,
   redirect,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -20,9 +21,7 @@ import { OpAdminZensurSync } from "../components/op-admin/OpAdminZensurSync";
 import { Toaster } from "../components/ui/sonner";
 import { useAuth } from "../hooks/useAuth";
 import {
-  istBoardDemo,
   istOeffentlicherAuthPfad,
-  istSteuerungsPfad,
   sichererRueckweg,
 } from "../lib/auth-pfade";
 
@@ -50,7 +49,11 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error: fehler, reset }: ErrorComponentProps) {
+  const error = useMemo(
+    () => (fehler instanceof Error ? fehler : new Error(String(fehler))),
+    [fehler],
+  );
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -109,7 +112,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         {
           name: "description",
           content:
-            "Internes Verwaltungsprogramm von Grenz & Co. — Dokumentenablage, Miet- und NK-Verwaltung, Ankaufs-Transaktionen.",
+            "Internes Verwaltungsprogramm von Grenz & Co. — Exposés, Postfach, Dokumentenablage, Rechnungsfreigabe und EBICS.",
         },
         { name: "author", content: "Grenz & Co. Immobilienberatungs-GmbH" },
         { property: "og:title", content: "Grenz & Co. Verwaltung" },
@@ -125,7 +128,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           rel: "stylesheet",
           href: appCss,
         },
-        // Unique filenames (not /favicon.ico alone) so browsers drop the cached Lovable/IS icon.
+        // Eigene Dateinamen (nicht nur /favicon.ico), damit Browser alte Icons verwerfen.
         { rel: "icon", href: "/fv-icon.svg", type: "image/svg+xml" },
         { rel: "icon", href: "/fv-icon.ico", sizes: "32x32" },
         { rel: "shortcut icon", href: "/fv-icon.ico" },
@@ -164,6 +167,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   const istEinladungSeite = pathname === "/einladung";
   const istPasswortZuruecksetzenSeite = pathname === "/passwort-zuruecksetzen";
   const istDatenschutzSeite = pathname === "/datenschutz";
+  const istImpressumSeite = pathname === "/impressum";
   const istSalesforceCallback = pathname === "/salesforce/callback";
   const istMicrosoftCallback = pathname === "/microsoft/callback";
   const istOauthCallback = istSalesforceCallback || istMicrosoftCallback;
@@ -186,16 +190,12 @@ function AuthGate({ children }: { children: ReactNode }) {
     return <Navigate to="/anmelden" search={{ von: pathname }} replace />;
   }
 
-  // Demo-Modus (`npm run board`): Steuerungsseiten mit Musterdaten ohne Anmeldung.
-  if (!istAngemeldet && istBoardDemo() && istSteuerungsPfad(pathname)) {
-    return <AppShell>{children}</AppShell>;
-  }
-
   // Invite / recovery links establish a session and must set a password first.
   if (
     istEinladungSeite ||
     istPasswortZuruecksetzenSeite ||
-    istDatenschutzSeite
+    istDatenschutzSeite ||
+    istImpressumSeite
   ) {
     return children;
   }

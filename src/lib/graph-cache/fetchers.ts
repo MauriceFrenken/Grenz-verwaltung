@@ -165,7 +165,7 @@ export function prefetchGraphRoute(
     });
     return;
   }
-  if (pathname.startsWith("/transaktionen/liste")) {
+  if (pathname === "/exposes" || pathname === "/exposes/") {
     void queryClient.prefetchQuery({
       queryKey: graphKeys.exposePostfach(userId),
       queryFn: () =>

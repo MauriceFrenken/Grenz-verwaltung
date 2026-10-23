@@ -1,23 +1,16 @@
 /**
- * KI-Vorschlag direkt ausführen (Ablegen / DATEV / TAM). Server-only.
+ * KI-Vorschlag direkt ausführen (Ablegen / DATEV). Server-only.
  */
 import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
-import { istTamAusFeldern } from "@/lib/trade-any-machine";
 
 import { dokumentPosteingangAblegen } from "./ablegen";
 import { dokumentPosteingangBuchen } from "./buchen";
 import { leseEintrag } from "./store";
-import type {
-  DokumentAblegenErgebnis,
-  DokumentBuchenErgebnis,
-  DokumentTamErgebnis,
-} from "./typen";
-import { dokumentPosteingangZuTam } from "./zu-tam";
+import type { DokumentAblegenErgebnis, DokumentBuchenErgebnis } from "./typen";
 
 export type DokumentSchnellAusfuehrenErgebnis =
   | ({ aktion: "abgelegt" } & DokumentAblegenErgebnis)
-  | ({ aktion: "gebucht" } & DokumentBuchenErgebnis)
-  | ({ aktion: "tam" } & DokumentTamErgebnis);
+  | ({ aktion: "gebucht" } & DokumentBuchenErgebnis);
 
 export async function dokumentPosteingangSchnellAusfuehren(input: {
   supabaseAccessToken: string;
@@ -37,20 +30,11 @@ export async function dokumentPosteingangSchnellAusfuehren(input: {
     throw new Error("Exposés bitte über „Zu Exposés“ verschieben.");
   }
 
-  if (istTamAusFeldern(row.felder)) {
-    const ergebnis = await dokumentPosteingangZuTam({
-      supabaseAccessToken: input.supabaseAccessToken,
-      eintragId: id,
-    });
-    return { aktion: "tam", ...ergebnis };
-  }
-
   if (row.ist_rechnung || row.dokument_typ === "rechnung") {
     const ergebnis = await dokumentPosteingangBuchen({
       supabaseAccessToken: input.supabaseAccessToken,
       eintragId: id,
       gesellschaftId: row.gesellschaft_id,
-      objektId: row.objekt_id,
       felder: row.felder,
     });
     return { aktion: "gebucht", ...ergebnis };
@@ -68,7 +52,6 @@ export async function dokumentPosteingangSchnellAusfuehren(input: {
     ordnerItemId: row.ablage_ordner_id,
     ordnerPfad: row.ablage_ordner_pfad,
     gesellschaftId: row.gesellschaft_id,
-    objektId: row.objekt_id,
     felder: row.felder,
     istRechnung: false,
   });

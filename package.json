@@ -10,15 +10,10 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "board": "node scripts/board-demo.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "node scripts/typecheck-board.mjs",
-    "lint:board": "eslint --no-error-on-unmatched-pattern src/modules src/components/board src/lib/db src/lib/integrations src/lib/ai src/lib/format src/lib/kalender src/routes/board*.tsx scripts/*.ts vitest.config.ts",
-    "ablage:messen": "vite-node --config vitest.config.ts scripts/ablage-v2-messung.ts",
-    "testdaten:darlehen": "vite-node --config vitest.config.ts scripts/testdaten-darlehensregister.ts",
-    "check:board": "npm run lint:board && npm run typecheck && npm run test && npm run build",
-    "format:board": "prettier --write src/modules src/components/board src/lib/db src/lib/integrations src/lib/ai src/lib/format src/lib/kalender \"src/routes/board*.tsx\" \"scripts/*.ts\" scripts/board-demo.mjs scripts/typecheck-board.mjs vitest.config.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "check": "npm run typecheck && npm run test && npm run build",
     "postinstall": "patch-package"
   },
   "dependencies": {

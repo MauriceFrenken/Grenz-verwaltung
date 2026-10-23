@@ -5,7 +5,7 @@
  */
 import {
   microsoftAblegenKategorieMailsLesen,
-  microsoftPostMailboxZweit,
+  microsoftAblegenKategoriePostfach,
   type DokumentPosteingangNachricht,
 } from "@/lib/microsoft/ablage";
 import {
@@ -30,14 +30,12 @@ export type OutlookAblegenErgebnis = {
 };
 
 /**
- * Stellt die gelbe Master-Kategorie „ablegen“ im m.frenken-Postfach sicher.
+ * Stellt die gelbe Master-Kategorie „ablegen“ im Kategorie-Postfach sicher.
  * Fehler (z. B. fehlendes MailboxSettings.ReadWrite) werden geloggt, nicht geworfen.
  */
 export async function dokumentPosteingangAblegenKategorieSicherstellen(): Promise<void> {
-  const postfach = microsoftPostMailboxZweit();
-  if (!postfach) return;
-
   try {
+    const postfach = microsoftAblegenKategoriePostfach();
     const { accessToken } = await microsoftAccessToken();
     await graphMasterKategorieSicherstellen(
       accessToken,
@@ -55,14 +53,14 @@ export async function dokumentPosteingangAblegenKategorieSicherstellen(): Promis
 }
 
 /**
- * Analysierte Anhänge von Mails mit Kategorie „ablegen“ (nur m.frenken)
- * über Schnellausführen ablegen / buchen / TAM.
+ * Analysierte Anhänge von Mails mit Kategorie „ablegen“ (nur Kategorie-Postfach)
+ * über Schnellausführen ablegen / buchen.
  */
 export async function dokumentPosteingangOutlookKategorieAblegen(input: {
   supabaseAccessToken: string;
   nachrichten: DokumentPosteingangNachricht[];
 }): Promise<OutlookAblegenErgebnis> {
-  const zielPostfach = microsoftPostMailboxZweit().toLowerCase();
+  const zielPostfach = microsoftAblegenKategoriePostfach();
   const tagged = input.nachrichten.filter(
     (n) =>
       n.postfach.toLowerCase() === zielPostfach &&

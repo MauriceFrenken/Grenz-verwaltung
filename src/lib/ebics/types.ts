@@ -18,6 +18,25 @@ export type EbicsKundeStatusDto = {
   letzterFehler: string | null;
   initialisiertAm: string | null;
   bereitAm: string | null;
-  /** Konten inkl. Gesellschaft aus bankkonten (ein Zugang kann mehrere Firmen abdecken). */
+  /** Konten inkl. Gesellschaft aus bankkonten. */
   konten: EbicsKontoStatusDto[];
+};
+
+export type EbicsUmsaetzeDto = {
+  konten: Array<{
+    iban: string;
+    bezeichnung: string | null;
+    /** Letzter Tagesendsaldo aus dem camt.053 (null = noch kein Abruf). */
+    saldo: number | null;
+    saldoStichtag: string | null;
+  }>;
+  /** Die letzten 200 Buchungen, neueste zuerst. */
+  buchungen: Array<{
+    id: string;
+    kontoIban: string;
+    buchungsdatum: string;
+    betrag: number;
+    auftraggeberName: string | null;
+    verwendungszweck: string | null;
+  }>;
 };

@@ -1,1 +1,0 @@
--- Stand bereits in 20261007124005_darlehen_buchungen_zuordnen_funktion.sql enthalten (Remote-Historie).

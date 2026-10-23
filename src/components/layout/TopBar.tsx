@@ -1,4 +1,4 @@
-import { Bell, LogOut, Search } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Breadcrumb } from "./Breadcrumb";
 import { GrenzCoLogo } from "@/components/marke/GrenzCoLogo";
@@ -38,20 +38,6 @@ export function TopBar() {
         <Breadcrumb />
       </div>
       <div className="ml-auto flex items-center gap-1 pr-4">
-        <button
-          type="button"
-          className="flex h-10 w-10 items-center justify-center hover:bg-sidebar-accent"
-          aria-label="Suche"
-        >
-          <Search className="h-4 w-4 text-sidebar-foreground/70" strokeWidth={1.5} />
-        </button>
-        <button
-          type="button"
-          className="flex h-10 w-10 items-center justify-center hover:bg-sidebar-accent"
-          aria-label="Benachrichtigungen"
-        >
-          <Bell className="h-4 w-4 text-sidebar-foreground/70" strokeWidth={1.5} />
-        </button>
         {zeigtOpAdmin ? <OpAdminEinstellungen /> : null}
         <div className="ml-2 flex items-center gap-3 border-l border-sidebar-border pl-4">
           <div

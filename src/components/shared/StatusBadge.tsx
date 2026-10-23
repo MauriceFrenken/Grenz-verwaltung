@@ -3,30 +3,9 @@ import { cn } from "@/lib/utils";
 
 type Ton = "neutral" | "danger" | "success" | "warn";
 
-const DANGER = new Set(["fehler", "abgelehnt", "getrennt", "storniert", "fehlt"]);
-const WARN = new Set([
-  "in_pruefung",
-  "offen",
-  "wartung",
-  "geplant",
-  "entwurf",
-  "leerstand",
-  "analysiert",
-  "teilweise",
-  "ohne_iban",
-  "ueberzahlung",
-]);
-const SUCCESS = new Set([
-  "aktiv",
-  "verbunden",
-  "gebucht",
-  "vermietet",
-  "abgelegt",
-  "freigegeben",
-  "versendet",
-  "ausgeglichen",
-  "abgeschlossen",
-]);
+const DANGER = new Set(["fehler", "abgelehnt", "getrennt"]);
+const WARN = new Set(["in_pruefung", "offen", "analysiert"]);
+const SUCCESS = new Set(["verbunden", "gebucht", "abgelegt", "freigegeben"]);
 
 function tonFor(status: string): Ton {
   if (DANGER.has(status)) return "danger";

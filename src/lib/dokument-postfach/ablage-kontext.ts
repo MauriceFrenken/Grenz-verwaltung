@@ -18,10 +18,8 @@ import {
   microsoftOneDriveUser,
 } from "@/lib/microsoft/ablage";
 import { createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
-import { istTamGesellschaft } from "@/lib/trade-any-machine";
 
 const MAX_ORDNER_TIEFE = 8;
-const OBJEKT_KONFIDENZ_SCHWELLE = 0.45;
 
 export function normalisiereSuchtext(text: string): string {
   return text
@@ -32,85 +30,12 @@ export function normalisiereSuchtext(text: string): string {
     .trim();
 }
 
-export function ordnerSuchTokens(input: {
-  objektBezeichnung?: string | null;
-  strasse?: string | null;
-  ort?: string | null;
-  bezeichnung?: string | null;
-}): string[] {
-  const roh = [
-    input.objektBezeichnung,
-    input.strasse,
-    input.bezeichnung,
-    input.ort,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const norm = normalisiereSuchtext(roh);
-  const tokens = new Set<string>();
-
-  for (const teil of norm.split(/\s+/).filter((t) => t.length >= 4)) {
-    tokens.add(teil);
-  }
-
-  const strassenMatch = roh.match(
-    /([A-Za-zÄÖÜäöüß\-]+(?:straße|strasse|str\.?))/i,
-  );
-  if (strassenMatch?.[1]) {
-    const strasse = normalisiereSuchtext(
-      strassenMatch[1].replace(/(?:straße|strasse|str\.?)$/i, ""),
-    );
-    for (const teil of strasse.split(/\s+/).filter((t) => t.length >= 4)) {
-      tokens.add(teil);
-    }
-  }
-
-  return [...tokens];
-}
-
-function scoreObjektMatch(
-  objekt: {
-    bezeichnung: string;
-    strasse?: string | null;
-    ort?: string | null;
-  },
-  suchtext: string | null | undefined,
-  tokens: string[],
-): number {
-  const norm = normalisiereSuchtext(
-    [objekt.bezeichnung, objekt.strasse, objekt.ort].filter(Boolean).join(" "),
-  );
-  const suchNorm = normalisiereSuchtext(suchtext ?? "");
-  let score = 0;
-
-  if (suchNorm && norm === suchNorm) return 100;
-  if (suchNorm && (norm.includes(suchNorm) || suchNorm.includes(norm))) {
-    score += Math.min(suchNorm.length, norm.length);
-  }
-
-  for (const token of tokens) {
-    if (norm.includes(token)) {
-      score += token.length;
-      if (token.length >= 6) score += 4;
-    }
-  }
-
-  const nurOrt =
-    tokens.length === 1 &&
-    objekt.ort &&
-    normalisiereSuchtext(objekt.ort) === tokens[0];
-  if (nurOrt) score = Math.min(score, 3);
-
-  return score;
-}
-
-/** Nur Gesellschaften — Objekte werden serverseitig pro Gesellschaft gematcht (spart KI-Tokens). */
+/** Gesellschaften als KI-Kontext. */
 export async function ladeStammdatenKontext(): Promise<string> {
   const admin = createServiceRoleClient();
 
   const { data: gesellschaften } = await admin
-    .from("v_gesellschaften")
+    .from("gesellschaften")
     .select("id,name,kuerzel")
     .order("id");
 
@@ -170,40 +95,35 @@ export async function findeGesellschaftRootOrdner(
   return { id: treffer.id, pfad: treffer.name };
 }
 
-/**
- * Gesellschafts-Root ohne KI — feste Zuordnung über Namensmarker
- * (Holding → …-Maurice, TAM → SellAnyMachine, …).
- */
+/** Ordnername ohne Nummern-Präfix („01_“) und Rechtsform. */
+function ordnerKern(normalisiert: string): string {
+  return normalisiert
+    .replace(/^\d+\s+/, "")
+    .replace(/\b(gmbh|gbr|ag|kg|co|ug)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Gesellschafts-Root ohne KI — Zuordnung über den Gesellschaftsnamen. */
 export function findeGesellschaftRootDeterministisch(
   rootOrdner: Array<Pick<GraphDriveItem, "id" | "name">>,
   gesellschaftName: string,
 ): { id: string; name: string } | null {
   const g = normalisiereSuchtext(gesellschaftName);
   if (!g || rootOrdner.length === 0) return null;
+  const gKern = ordnerKern(g);
 
   const scored = rootOrdner.map((root) => {
     const r = normalisiereSuchtext(root.name);
+    const rKern = ordnerKern(r);
     let score = 0;
 
-    if (istTamGesellschaft(gesellschaftName) || g.includes("sell any machine")) {
-      if (/(?:sell|trade)\s*any\s*machine/.test(r)) score = 100;
-    } else if (g.includes("holding") && r.includes("holding")) {
-      score = r.includes("maurice") ? 100 : 40;
-    } else if (g.includes("immobilien") && r.includes("immobilien")) {
+    if (g === r || (gKern && gKern === rKern)) {
       score = 100;
-    } else if (g.includes("investment") && r.includes("investment")) {
-      score = 100;
-    } else if (/\bmtf\b/.test(g) && /\bmtf\b/.test(r)) {
-      score = 100;
-    } else if (
-      g.includes("capital") &&
-      r.includes("capital") &&
-      !/\bmtf\b/.test(g) &&
-      !/\bmtf\b/.test(r)
-    ) {
-      score = 100;
-    } else if (g === r || g.includes(r) || r.includes(g)) {
+    } else if (g.includes(r) || r.includes(g)) {
       score = Math.min(80, Math.min(g.length, r.length));
+    } else if (gKern && rKern && (rKern.includes(gKern) || gKern.includes(rKern))) {
+      score = Math.min(80, Math.min(gKern.length, rKern.length) + 40);
     }
 
     return { root, score };
@@ -345,7 +265,6 @@ export async function ermittleZielordnerIterativ(
   input: {
     gesellschaftId: string;
     gesellschaftName: string;
-    objektBezeichnung?: string | null;
     dokumentTyp: DokumentTyp;
     documentTitle?: string;
     mailKontext?: string;
@@ -382,7 +301,6 @@ export async function ermittleZielordnerIterativ(
       modelContext: input.modelContext,
       dokumentTyp: input.dokumentTyp,
       gesellschaftName: input.gesellschaftName,
-      objektBezeichnung: input.objektBezeichnung,
       aktuellerPfad: aktuell.pfad,
       unterordner: ordnerNamen,
     });
@@ -400,65 +318,6 @@ export async function ermittleZielordnerIterativ(
   return aktuell;
 }
 
-export function hatObjektZuordnung(
-  objektText: string | null | undefined,
-  konfidenz: number,
-): boolean {
-  const text = (objektText ?? "").trim();
-  if (!text) return false;
-  if (konfidenz < OBJEKT_KONFIDENZ_SCHWELLE) return false;
-  return true;
-}
-
-/** @deprecated Nicht mehr für KI-Kontext — Ordnerwahl läuft iterativ pro Gesellschaft. */
-export async function ladeOnedriveKontext(_accessToken: string): Promise<string> {
-  return "(Ordner werden serverseitig pro Gesellschaft Ebene für Ebene ermittelt)";
-}
-
-/** Ordner-ID anhand eines Pfads wie "02_FRENKEN IMMOBILIEN GMBH/02_Finanzen" auflösen. */
-export async function loeseOrdnerPfad(
-  accessToken: string,
-  pfad: string,
-): Promise<{ id: string; pfad: string } | null> {
-  const teile = pfad
-    .split("/")
-    .map((t) => t.trim())
-    .filter(Boolean);
-  if (teile.length === 0) return null;
-
-  const benutzer = microsoftOneDriveUser();
-  let items = await graphDriveRootKinder(accessToken, benutzer);
-  let aktuellerId: string | null = null;
-  const aufgeloest: string[] = [];
-
-  for (const teil of teile) {
-    const lower = teil.toLowerCase();
-    const treffer = items.find(
-      (item) =>
-        item.istOrdner &&
-        item.name.trim().toLowerCase() === lower,
-    );
-    if (!treffer) {
-      const fuzzy = items.find(
-        (item) =>
-          item.istOrdner &&
-          item.name.trim().toLowerCase().includes(lower),
-      );
-      if (!fuzzy) return null;
-      aktuellerId = fuzzy.id;
-      aufgeloest.push(fuzzy.name);
-      items = await graphDriveItemKinder(accessToken, benutzer, fuzzy.id);
-      continue;
-    }
-    aktuellerId = treffer.id;
-    aufgeloest.push(treffer.name);
-    items = await graphDriveItemKinder(accessToken, benutzer, treffer.id);
-  }
-
-  if (!aktuellerId) return null;
-  return { id: aktuellerId, pfad: aufgeloest.join("/") };
-}
-
 export function findeGesellschaftId(
   name: string | null | undefined,
   gesellschaften: Array<{ id: string; name: string; kuerzel: string }>,
@@ -474,18 +333,6 @@ export function findeGesellschaftId(
   );
   if (exakt) return exakt.id;
 
-  const markerBonus = (gn: string): number => {
-    let bonus = 0;
-    if (such.includes("immobilien") && gn.includes("immobilien")) bonus += 40;
-    if (such.includes("holding") && gn.includes("holding")) bonus += 40;
-    if (such.includes("investment") && gn.includes("investment")) bonus += 40;
-    if (such.includes("capital") && gn.includes("capital") && !/\bmtf\b/.test(such)) {
-      bonus += 35;
-    }
-    if (/\bmtf\b/.test(such) && /\bmtf\b/.test(gn)) bonus += 40;
-    return bonus;
-  };
-
   let best: { id: string; score: number } | null = null;
   for (const g of gesellschaften) {
     const gn = g.name.toLowerCase();
@@ -497,132 +344,8 @@ export function findeGesellschaftId(
       score = g.kuerzel.length + 10;
     }
 
-    score += markerBonus(gn);
-
-    // Reines „Frenken“ ohne spezifischen Marker: Holding nicht bevorzugen
-    if (
-      score > 0 &&
-      /frenken/.test(such) &&
-      !/(immobilien|holding|investment|capital|mtf)/.test(such)
-    ) {
-      if (gn.includes("holding")) score = Math.min(score, 3);
-    }
-
-    if (such.includes("frenken") && !gn.includes("frenken")) score *= 0.5;
     if (score > 0 && (!best || score > best.score)) best = { id: g.id, score };
   }
 
   return best && best.score >= 8 ? best.id : null;
-}
-
-export function findeObjektIdStaerkste(
-  bezeichnung: string | null | undefined,
-  objekte: Array<{
-    id: string;
-    bezeichnung: string;
-    gesellschaft_id: string;
-    strasse?: string | null;
-    ort?: string | null;
-  }>,
-  gesellschaftId?: string | null,
-): string | null {
-  const such = (bezeichnung ?? "").trim();
-  if (!such) return null;
-
-  const kandidaten = gesellschaftId
-    ? objekte.filter((o) => o.gesellschaft_id === gesellschaftId)
-    : objekte;
-  if (kandidaten.length === 0) return null;
-
-  const tokens = ordnerSuchTokens({ objektBezeichnung: such });
-  let best: { id: string; score: number } | null = null;
-
-  for (const o of kandidaten) {
-    const score = scoreObjektMatch(o, such, tokens);
-    if (score > 0 && (!best || score > best.score)) {
-      best = { id: o.id, score };
-    }
-  }
-
-  const strassenToken = tokens.find((t) => t.length >= 6);
-  const minScore = strassenToken ? 8 : 5;
-  return best && best.score >= minScore ? best.id : null;
-}
-
-/** Objekt über alle Gesellschaften — Adresse korrigiert ggf. die Gesellschaft. */
-export function findeObjektIdGlobalAusKontext(
-  texte: Array<string | null | undefined>,
-  objekte: Array<{
-    id: string;
-    bezeichnung: string;
-    gesellschaft_id: string;
-    strasse?: string | null;
-    ort?: string | null;
-  }>,
-): { objektId: string; gesellschaftId: string } | null {
-  if (objekte.length === 0) return null;
-
-  let best: { id: string; gesellschaftId: string; score: number } | null = null;
-  for (const text of texte) {
-    const such = (text ?? "").trim();
-    if (!such) continue;
-    const tokens = ordnerSuchTokens({ objektBezeichnung: such });
-    for (const o of objekte) {
-      const score = scoreObjektMatch(o, such, tokens);
-      if (score > 0 && (!best || score > best.score)) {
-        best = { id: o.id, gesellschaftId: o.gesellschaft_id, score };
-      }
-    }
-  }
-
-  const minScore = 8;
-  if (!best || best.score < minScore) return null;
-  return { objektId: best.id, gesellschaftId: best.gesellschaftId };
-}
-
-/** Objekt nur innerhalb einer Gesellschaft — aus Dokument-/Mail-Kontext. */
-export function findeObjektIdAusKontext(
-  texte: Array<string | null | undefined>,
-  gesellschaftId: string,
-  objekte: Array<{
-    id: string;
-    bezeichnung: string;
-    gesellschaft_id: string;
-    strasse?: string | null;
-    ort?: string | null;
-  }>,
-): string | null {
-  const gsObjekte = objekte.filter((o) => o.gesellschaft_id === gesellschaftId);
-  if (gsObjekte.length === 0) return null;
-
-  for (const text of texte) {
-    const id = findeObjektIdStaerkste(text, gsObjekte, gesellschaftId);
-    if (id) return id;
-  }
-  return null;
-}
-
-export function findeObjektId(
-  bezeichnung: string | null | undefined,
-  gesellschaftId: string | null,
-  objekte: Array<{
-    id: string;
-    bezeichnung: string;
-    gesellschaft_id: string;
-    strasse?: string | null;
-    ort?: string | null;
-  }>,
-): string | null {
-  const staerkste = findeObjektIdStaerkste(bezeichnung, objekte, gesellschaftId);
-  if (staerkste) return staerkste;
-
-  const such = (bezeichnung ?? "").trim().toLowerCase();
-  if (!such) return null;
-
-  const kandidaten = gesellschaftId
-    ? objekte.filter((o) => o.gesellschaft_id === gesellschaftId)
-    : objekte;
-
-  const exakt = kandidaten.find((o) => o.bezeichnung.toLowerCase() === such);
-  return exakt?.id ?? null;
 }

@@ -67,7 +67,6 @@ export type DokumentPosteingangRow = {
   analyse_fehler: string | null;
   analysiert_am: string | null;
   gesellschaft_id: string | null;
-  objekt_id: string | null;
   ablage_ordner_id: string | null;
   ablage_ordner_pfad: string | null;
   ablage_dateiname: string | null;
@@ -81,7 +80,7 @@ const SPALTEN =
   "id,postfach,graph_nachricht_id,internet_message_id,betreff,absender_name," +
   "absender_mail,eingegangen_am,web_link,anhang_id,anhang_name,anhang_content_type," +
   "anhang_groesse,status,freigabe_status,ist_rechnung,dokument_typ,felder,analyse_fehler,analysiert_am," +
-  "gesellschaft_id,objekt_id,ablage_ordner_id,ablage_ordner_pfad,ablage_dateiname," +
+  "gesellschaft_id,ablage_ordner_id,ablage_ordner_pfad,ablage_dateiname," +
   "abgelegt_am,abgelegt_onedrive_id,email_text,duplikat_hinweis";
 
 function fehler(kontext: string, message: string): Error {
@@ -121,7 +120,6 @@ export function zuEintrag(row: DokumentPosteingangRow): DokumentPosteingangEintr
     analyseFehler: row.analyse_fehler,
     analysiertAm: row.analysiert_am,
     gesellschaftId: row.gesellschaft_id,
-    objektId: row.objekt_id,
     ablageOrdnerId: row.ablage_ordner_id,
     ablageOrdnerPfad: row.ablage_ordner_pfad,
     ablageDateiname: row.ablage_dateiname,
@@ -338,7 +336,6 @@ export async function speichereAnalyse(
     dokumentTyp: DokumentTyp;
     felder: DokumentAnalyseFelder;
     gesellschaftId: string | null;
-    objektId: string | null;
     ablageOrdnerId: string | null;
     ablageOrdnerPfad: string | null;
     duplikatHinweis?: RechnungDuplikatHinweis | null;
@@ -356,7 +353,6 @@ export async function speichereAnalyse(
       duplikat_hinweis: input.duplikatHinweis ?? null,
       felder: input.felder,
       gesellschaft_id: input.gesellschaftId,
-      objekt_id: input.objektId,
       ablage_ordner_id: input.ablageOrdnerId,
       ablage_ordner_pfad: input.ablageOrdnerPfad,
       analyse_fehler: null,
@@ -407,7 +403,6 @@ export async function speicherePruefung(
   input: {
     felder: DokumentAnalyseFelder;
     gesellschaftId: string | null;
-    objektId: string | null;
     ablageOrdnerId: string | null;
     ablageOrdnerPfad: string | null;
     istRechnung: boolean;
@@ -419,7 +414,6 @@ export async function speicherePruefung(
     .update({
       felder: input.felder,
       gesellschaft_id: input.gesellschaftId,
-      objekt_id: input.objektId,
       ablage_ordner_id: input.ablageOrdnerId,
       ablage_ordner_pfad: input.ablageOrdnerPfad,
       ist_rechnung: input.istRechnung,
@@ -439,7 +433,6 @@ export async function markiereAbgelegt(
     ordnerId: string;
     felder: DokumentAnalyseFelder;
     gesellschaftId: string | null;
-    objektId: string | null;
     ablageDateiname?: string | null;
   },
 ): Promise<void> {
@@ -455,7 +448,6 @@ export async function markiereAbgelegt(
       ablage_dateiname: input.ablageDateiname ?? null,
       felder: input.felder,
       gesellschaft_id: input.gesellschaftId,
-      objekt_id: input.objektId,
     })
     .eq("id", id);
 
@@ -472,7 +464,6 @@ export async function markiereGebucht(
     ordnerId: string;
     felder: DokumentAnalyseFelder;
     gesellschaftId: string | null;
-    objektId: string | null;
     ablageDateiname?: string | null;
   },
 ): Promise<void> {
@@ -490,7 +481,6 @@ export async function markiereGebucht(
       ablage_dateiname: input.ablageDateiname ?? null,
       felder: input.felder,
       gesellschaft_id: input.gesellschaftId,
-      objekt_id: input.objektId,
     })
     .eq("id", id);
 

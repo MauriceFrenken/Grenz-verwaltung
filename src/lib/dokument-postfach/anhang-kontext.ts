@@ -23,7 +23,7 @@ export type AnhangAnalyseKontext = {
   mailKontext: string;
   modelContext: string;
   vision: DokumentVisionBlock[];
-  /** true = Scan/Bild-Pfad — Objekt-Matching darf KI-Felder nutzen. */
+  /** true = Scan/Bild-Pfad — Prompt betont Mail und Vision. */
   istScanVision: boolean;
 };
 

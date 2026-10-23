@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useApi } from "@/hooks/useApi";
 import { useAuth } from "@/hooks/useAuth";
 import { einstellungenApi } from "@/api/einstellungen";
-import { verwaltungApi } from "@/api/verwaltung";
+import { gesellschaftenApi } from "@/api/gesellschaften";
 import { gesellschaftIdsAusBenutzer } from "@/lib/auth";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import { ROLLEN } from "@/lib/constants";
@@ -77,8 +77,8 @@ export function BenutzerPage() {
   const [loeschenOffen, setLoeschenOffen] = useState(false);
   const [loeschenLaeuft, setLoeschenLaeuft] = useState(false);
   const { data, isLoading, isEmpty, reload } = useApi(() => einstellungenApi.listBenutzer(), []);
-  const gesellschaften = useApi(() => verwaltungApi.listGesellschaften(), []);
-  const spalten = spaltenFuerGesellschaften(gesellschaften.data?.items ?? []);
+  const gesellschaften = useApi(() => gesellschaftenApi.list(), []);
+  const spalten = spaltenFuerGesellschaften(gesellschaften.data ?? []);
 
   const schliesseBearbeitung = () => {
     setBearbeiten(null);

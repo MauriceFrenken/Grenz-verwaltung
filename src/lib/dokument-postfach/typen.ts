@@ -99,7 +99,6 @@ export type DokumentPosteingangEintrag = {
   analyseFehler: string | null;
   analysiertAm: string | null;
   gesellschaftId: string | null;
-  objektId: string | null;
   ablageOrdnerId: string | null;
   ablageOrdnerPfad: string | null;
   ablageDateiname: string | null;
@@ -155,11 +154,4 @@ export type DokumentBuchenErgebnis = {
   datevPostfach: string;
   /** Karte für die Board-Spalte „An DATEV“ (null, wenn nicht gespeichert). */
   historie: RechnungHistorieEintrag | null;
-} & DokumentMailAbschluss;
-
-export type DokumentTamErgebnis = {
-  abgelegt: boolean;
-  onedriveId: string;
-  ordnerPfad: string;
-  weitergeleitetAn: string;
 } & DokumentMailAbschluss;

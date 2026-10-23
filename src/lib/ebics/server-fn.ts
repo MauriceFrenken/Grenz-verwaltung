@@ -10,9 +10,13 @@ import {
   microsoftCallerAusJwt,
 } from "@/lib/microsoft/supabase-admin";
 import { loadEbicsKunden } from "@/lib/ebics/kunden";
-import type { EbicsKundeStatusDto } from "@/lib/ebics/types";
+import type {
+  EbicsKundeStatusDto,
+  EbicsUmsaetzeDto,
+} from "@/lib/ebics/types";
+import { GRENZ_GESELLSCHAFT_ID } from "@/lib/grenz";
 
-export type { EbicsKundeStatusDto };
+export type { EbicsKundeStatusDto, EbicsUmsaetzeDto };
 
 function asToken(data: unknown): string {
   if (!data || typeof data !== "object") return "";
@@ -33,7 +37,8 @@ export const ebicsStatusFn = createServerFn({ method: "POST" })
     const { data: rows, error } = await admin
       .from("v_ebics_kunden")
       .select("*")
-      .order("gesellschaft_id");
+      .eq("gesellschaft_id", GRENZ_GESELLSCHAFT_ID)
+      .order("partner_id");
     if (error) throw new Error(error.message);
 
     const kundeIds = (rows ?? []).map((r) => String(r.id));
@@ -132,21 +137,12 @@ export const ebicsStatusFn = createServerFn({ method: "POST" })
   });
 
 export const ebicsInitialisierenFn = createServerFn({ method: "POST" })
-  .validator(
-    (data: unknown) =>
-      data as {
-        supabaseAccessToken: string;
-        gesellschaftId?: string | null;
-      },
-  )
+  .validator((data: unknown) => data as { supabaseAccessToken: string })
   .handler(async ({ data }) => {
     await microsoftCallerAusJwt(asToken(data));
     const admin = createServiceRoleClient();
     const { ebicsInitialisiereKunde } = await import("@/lib/ebics/client");
-    const kunden = await loadEbicsKunden(
-      admin,
-      data.gesellschaftId?.trim() || null,
-    );
+    const kunden = await loadEbicsKunden(admin);
     const briefe: Array<{
       gesellschaftId: string;
       gesellschaftName: string;
@@ -196,21 +192,12 @@ export const ebicsInitialisierenFn = createServerFn({ method: "POST" })
 
 /** INI-Briefe erneut aus gespeicherten Schlüsseln (ohne Bank-Kontakt). */
 export const ebicsIniBriefeHolenFn = createServerFn({ method: "POST" })
-  .validator(
-    (data: unknown) =>
-      data as {
-        supabaseAccessToken: string;
-        gesellschaftId?: string | null;
-      },
-  )
+  .validator((data: unknown) => data as { supabaseAccessToken: string })
   .handler(async ({ data }) => {
     await microsoftCallerAusJwt(asToken(data));
     const admin = createServiceRoleClient();
     const { ebicsIniBriefErzeugen } = await import("@/lib/ebics/client");
-    const kunden = await loadEbicsKunden(
-      admin,
-      data.gesellschaftId?.trim() || null,
-    );
+    const kunden = await loadEbicsKunden(admin);
     const briefe: Array<{
       gesellschaftId: string;
       gesellschaftName: string;
@@ -258,21 +245,12 @@ export const ebicsIniBriefeHolenFn = createServerFn({ method: "POST" })
   });
 
 export const ebicsBankFreischaltungPruefenFn = createServerFn({ method: "POST" })
-  .validator(
-    (data: unknown) =>
-      data as {
-        supabaseAccessToken: string;
-        gesellschaftId?: string | null;
-      },
-  )
+  .validator((data: unknown) => data as { supabaseAccessToken: string })
   .handler(async ({ data }) => {
     await microsoftCallerAusJwt(asToken(data));
     const admin = createServiceRoleClient();
     const { ebicsBankSchluesselHolen } = await import("@/lib/ebics/client");
-    const kunden = await loadEbicsKunden(
-      admin,
-      data.gesellschaftId?.trim() || null,
-    );
+    const kunden = await loadEbicsKunden(admin);
     const ergebnisse: Array<{
       gesellschaftId: string;
       status: "bereit" | "fehler" | "skip";
@@ -322,19 +300,81 @@ export const ebicsBankFreischaltungPruefenFn = createServerFn({ method: "POST" }
     return { ergebnisse };
   });
 
-export const ebicsUmstaetzeHolenFn = createServerFn({ method: "POST" })
-  .validator(
-    (data: unknown) =>
-      data as {
-        supabaseAccessToken: string;
-        laufId: string;
-      },
-  )
+/** Umsätze aller bereiten Zugänge jetzt abrufen (wie der tägliche Cron). */
+export const ebicsUmsaetzeAbrufenFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { supabaseAccessToken: string })
   .handler(async ({ data }) => {
     await microsoftCallerAusJwt(asToken(data));
-    const laufId = data.laufId?.trim();
-    if (!laufId) throw new Error("laufId fehlt");
     const admin = createServiceRoleClient();
-    const { syncEbicsFuerLauf } = await import("@/lib/ebics/sync");
-    return syncEbicsFuerLauf(admin, laufId);
+    const { syncEbicsAlleKonten } = await import("@/lib/ebics/sync");
+    return syncEbicsAlleKonten(admin);
+  });
+
+/** Letzte Buchungen und Kontostände der Konten von Grenz & Co. */
+export const ebicsUmsaetzeLadenFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { supabaseAccessToken: string })
+  .handler(async ({ data }): Promise<EbicsUmsaetzeDto> => {
+    await microsoftCallerAusJwt(asToken(data));
+    const admin = createServiceRoleClient();
+
+    const { data: konten, error: kontenErr } = await admin
+      .from("bankkonten")
+      .select("iban, bezeichnung")
+      .eq("gesellschaft_id", GRENZ_GESELLSCHAFT_ID)
+      .order("iban");
+    if (kontenErr) throw new Error(kontenErr.message);
+    const ibans = (konten ?? []).map((k) => String(k.iban));
+
+    const { data: salden, error: saldenErr } = ibans.length
+      ? await admin
+          .from("kontosalden")
+          .select("iban, stichtag, saldo")
+          .in("iban", ibans)
+          .order("stichtag", { ascending: false })
+      : { data: [], error: null };
+    if (saldenErr) throw new Error(saldenErr.message);
+    const letzterSaldo = new Map<string, { stichtag: string; saldo: number }>();
+    for (const s of salden ?? []) {
+      const iban = String(s.iban);
+      if (!letzterSaldo.has(iban)) {
+        letzterSaldo.set(iban, {
+          stichtag: String(s.stichtag),
+          saldo: Number(s.saldo),
+        });
+      }
+    }
+
+    const { data: buchungen, error: buchungenErr } = ibans.length
+      ? await admin
+          .from("bankbuchungen")
+          .select(
+            "id, konto_iban, buchungsdatum, betrag, auftraggeber_name, verwendungszweck",
+          )
+          .in("konto_iban", ibans)
+          .order("buchungsdatum", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(200)
+      : { data: [], error: null };
+    if (buchungenErr) throw new Error(buchungenErr.message);
+
+    return {
+      konten: (konten ?? []).map((k) => {
+        const iban = String(k.iban);
+        const saldo = letzterSaldo.get(iban);
+        return {
+          iban: ibanFormatiert(iban),
+          bezeichnung: (k.bezeichnung as string | null) ?? null,
+          saldo: saldo?.saldo ?? null,
+          saldoStichtag: saldo?.stichtag ?? null,
+        };
+      }),
+      buchungen: (buchungen ?? []).map((b) => ({
+        id: String(b.id),
+        kontoIban: ibanFormatiert(String(b.konto_iban)),
+        buchungsdatum: String(b.buchungsdatum),
+        betrag: Number(b.betrag),
+        auftraggeberName: (b.auftraggeber_name as string | null) ?? null,
+        verwendungszweck: (b.verwendungszweck as string | null) ?? null,
+      })),
+    };
   });

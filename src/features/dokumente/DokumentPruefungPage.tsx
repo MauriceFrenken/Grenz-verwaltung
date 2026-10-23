@@ -25,21 +25,16 @@ import {
 import { werteZuFelder } from "@/lib/dokument-postfach/client";
 import type { DokumentPosteingangEintrag } from "@/lib/dokument-postfach/typen";
 import { base64ZuFile } from "@/lib/postfach/client";
-import { verwaltungApi } from "@/api/verwaltung";
-import type { Gesellschaft, Objekt } from "@/types";
+import { gesellschaftenApi } from "@/api/gesellschaften";
+import type { Gesellschaft } from "@/types";
 import { cn } from "@/lib/utils";
-import {
-  istTamAusFeldern,
-  istTamGesellschaft,
-  TRADE_ANY_MACHINE_NAME,
-} from "@/lib/trade-any-machine";
 
-import { PdfSourceViewer } from "../transaktionen/expose-import/PdfSourceViewer";
+import { PdfSourceViewer } from "../exposes/expose-import/PdfSourceViewer";
 import {
   extractPdfForChat,
   type ExtractedPdfForChat,
-} from "../transaktionen/expose-import/extractPdfText";
-import { findQuoteInPages } from "../transaktionen/expose-import/quoteLocation";
+} from "../exposes/expose-import/extractPdfText";
+import { findQuoteInPages } from "../exposes/expose-import/quoteLocation";
 import { OrdnerAuswahl } from "./OrdnerAuswahl";
 
 type FeldState = { value: string; quelle: DokumentFeldQuelle | null };
@@ -150,9 +145,7 @@ export function DokumentPruefungPage() {
   const [istRechnung, setIstRechnung] = useState(false);
   const [felder, setFelder] = useState<FelderState>(leereFelder);
   const [gesellschaften, setGesellschaften] = useState<Gesellschaft[]>([]);
-  const [objekte, setObjekte] = useState<Objekt[]>([]);
   const [gesellschaftId, setGesellschaftId] = useState<string>("");
-  const [objektId, setObjektId] = useState<string>("");
   const [ordnerId, setOrdnerId] = useState<string | null>(null);
   const [ordnerPfad, setOrdnerPfad] = useState<string | null>(null);
 
@@ -167,10 +160,6 @@ export function DokumentPruefungPage() {
 
   const objectUrlRef = useRef<string | null>(null);
   const geladenRef = useRef<string | null>(null);
-
-  const gefilterteObjekte = gesellschaftId
-    ? objekte.filter((o) => o.gesellschaftId === gesellschaftId)
-    : [];
 
   const ergebnisUebernehmen = useCallback(
     (
@@ -227,23 +216,20 @@ export function DokumentPruefungPage() {
     void (async () => {
       setLaedtPdf(true);
       try {
-        const [{ eintrag: geladen, anhang }, gs, obj] = await Promise.all([
+        const [{ eintrag: geladen, anhang }, gs] = await Promise.all([
           import("@/lib/dokument-postfach/server-fn").then((m) =>
             m.dokumentPosteingangEintragFn({
               data: { supabaseAccessToken: token, eintragId },
             }),
           ),
-          verwaltungApi.listGesellschaften(),
-          verwaltungApi.listObjekte(),
+          gesellschaftenApi.list(),
         ]);
         if (cancelled) return;
 
         setEintrag(geladen);
         setIstRechnung(geladen.istRechnung ?? false);
-        setGesellschaften(gs.items);
-        setObjekte(obj.items);
+        setGesellschaften(gs);
         setGesellschaftId(geladen.gesellschaftId ?? "");
-        setObjektId(geladen.objektId ?? "");
         setOrdnerId(geladen.ablageOrdnerId);
         setOrdnerPfad(geladen.ablageOrdnerPfad);
 
@@ -310,7 +296,6 @@ export function DokumentPruefungPage() {
           ordnerItemId: ordnerId,
           ordnerPfad,
           gesellschaftId: gesellschaftId || null,
-          objektId: objektId || null,
           felder: felderAlsJson(),
           istRechnung,
         },
@@ -345,7 +330,6 @@ export function DokumentPruefungPage() {
           supabaseAccessToken: token,
           eintragId: eintrag.id,
           gesellschaftId,
-          objektId: objektId || null,
           felder: felderAlsJson(),
         },
       });
@@ -362,43 +346,9 @@ export function DokumentPruefungPage() {
     }
   }
 
-  async function zuTam() {
-    if (!eintrag) return;
-    setSpeichert(true);
-    try {
-      const { dokumentPosteingangZuTamFn } = await import(
-        "@/lib/dokument-postfach/server-fn"
-      );
-      const ergebnis = await dokumentPosteingangZuTamFn({
-        data: {
-          supabaseAccessToken: token,
-          eintragId: eintrag.id,
-          ordnerItemId: ordnerId,
-          ordnerPfad,
-          felder: felderAlsJson(),
-        },
-      });
-      toast.success(
-        ergebnis.mailVerschoben && ergebnis.mailOrdner
-          ? `Zu TAM · Postfach → ${ergebnis.mailOrdner}`
-          : "Zu TAM erledigt.",
-      );
-      await navigate({ to: "/dokumente/pruefordner" });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Weiterleitung fehlgeschlagen.");
-    } finally {
-      setSpeichert(false);
-    }
-  }
-
   const duplikat = eintrag?.duplikatHinweis?.treffer?.length
     ? eintrag.duplikatHinweis
     : null;
-
-  const istTam =
-    istTamAusFeldern(eintrag?.felder ?? null) ||
-    istTamGesellschaft(felder.gesellschaftName?.value) ||
-    istTamGesellschaft(felder.zahlungsempfaenger?.value);
 
   const quelleOeffnen = (id: DokumentKiFeldId) => {
     const quelle = felder[id]?.quelle;
@@ -426,21 +376,7 @@ export function DokumentPruefungPage() {
           ) : null
         }
         aktionen={
-          istTam ? (
-            <Button
-              size="sm"
-              className="bg-primary text-primary-foreground hover:bg-heading"
-              disabled={
-                laedtPdf ||
-                speichert ||
-                eintrag?.status === "abgelegt" ||
-                eintrag?.status === "gebucht"
-              }
-              onClick={() => void zuTam()}
-            >
-              zu TAM
-            </Button>
-          ) : istRechnung ? (
+          istRechnung ? (
             <Button
               size="sm"
               className="bg-primary text-primary-foreground hover:bg-heading"
@@ -553,16 +489,11 @@ export function DokumentPruefungPage() {
 
           <div className="flex flex-col gap-2 border border-hairline bg-surface-muted/40 p-4">
             <span className="label-caps text-text-muted">Zuordnung</span>
-            {istTam ? (
-              <p className="text-sm text-heading">{TRADE_ANY_MACHINE_NAME}</p>
-            ) : (
-              <>
             <Select
               value={gesellschaftId || AUSWAHL_LEER}
               onValueChange={(v) => {
                 const id = v === AUSWAHL_LEER ? "" : v;
                 setGesellschaftId(id);
-                setObjektId("");
                 const gs = gesellschaften.find((g) => g.id === id);
                 if (gs) {
                   setFelder((prev) => ({
@@ -587,38 +518,6 @@ export function DokumentPruefungPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select
-              disabled={!gesellschaftId}
-              value={objektId || AUSWAHL_LEER}
-              onValueChange={(v) => {
-                const id = v === AUSWAHL_LEER ? "" : v;
-                setObjektId(id);
-                const obj = objekte.find((o) => o.id === id);
-                if (obj) {
-                  setFelder((prev) => ({
-                    ...prev,
-                    objektBezeichnung: {
-                      ...prev.objektBezeichnung,
-                      value: obj.bezeichnung,
-                    },
-                  }));
-                }
-              }}
-            >
-              <SelectTrigger data-op-zensur-daten="" className="rounded-none bg-surface">
-                <SelectValue placeholder="Objekt" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={AUSWAHL_LEER}>— Kein Objekt —</SelectItem>
-                {gefilterteObjekte.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.bezeichnung}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-              </>
-            )}
           </div>
 
           {!istRechnung ? (

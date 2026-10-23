@@ -37,10 +37,10 @@ async function loesePfadZuSegmenten(
   let parentId: string | null = null;
 
   for (const teil of teile) {
-    const result = await microsoftOneDriveKinderFn({
+    const result: { items: GraphDriveItem[] } = await microsoftOneDriveKinderFn({
       data: { supabaseAccessToken: token, itemId: parentId },
     });
-    const ordner = result.items.find(
+    const ordner: GraphDriveItem | undefined = result.items.find(
       (i) => i.istOrdner && ordnerNamePasst(i.name, teil),
     );
     if (!ordner) break;

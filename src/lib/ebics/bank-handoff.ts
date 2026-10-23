@@ -1,20 +1,20 @@
 /**
- * EBICS Go-Live / Bank-Übergabe
+ * EBICS Go-Live / Bank-Übergabe (nur Gesellschaft Grenz & Co.)
  *
- * Ablauf (einmalig pro Gesellschaft / Kunden-ID):
+ * Ablauf (einmalig pro EBICS-Zugang):
  * 1. Env `EBICS_MASTER_KEY` setzen (≥16 Zeichen, nur Server / Vercel Env, nie VITE_*).
- * 2. In der App „EBICS initialisieren“ → INI + HIA an die Bank, INI-Briefe erzeugen.
- * 3. Briefe ausdrucken, unterschreiben, an Volksbank im Rheinland / Multivia senden.
- * 4. Nach Freischaltung „Bank-Freischaltung prüfen“ (HPB) → Status „Bereit“.
- * 5. Danach: „Umsätze holen“ auf der Sollstellung oder täglicher Cron.
+ * 2. Zugang aus der EBICS-Vereinbarung der Bank in `ebics_kunden` eintragen
+ *    (Partner-ID, User-ID, Host-ID, URL, Bank, Teilnehmer) und die Konten in
+ *    `ebics_konten` + `bankkonten` — siehe README.
+ * 3. In der App unter EBICS „Initialisieren“ → INI + HIA an die Bank, INI-Briefe erzeugen.
+ * 4. Briefe ausdrucken, unterschreiben und an die Bank senden.
+ * 5. Nach Freischaltung „Freischaltung“ (HPB) → Status „Bereit“.
+ * 6. Danach „Umsätze abrufen“ oder täglicher Cron `/api/cron/ebics-umsaetze`.
  *
  * Ohne Freischaltung der Bank schlagen C53-Abrufe fehl. BPD/Vereinbarung allein reichen nicht.
  */
 
 export const EBICS_BANK_HANDOFF = {
-  hostId: "MULTIVIA",
-  url: "https://ebics.multivia-suite.de/ebicsweb/ebicsweb",
-  userId: "EBICS001",
   auftragsartAbruf: "C53",
   envKey: "EBICS_MASTER_KEY",
 } as const;

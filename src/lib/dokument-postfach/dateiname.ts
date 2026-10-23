@@ -87,8 +87,6 @@ export function baueAblageDateiname(input: {
     }
     const gs = segment(f?.gesellschaftName?.value);
     if (gs && !kiTitel?.toLowerCase().includes(gs.toLowerCase())) teile.push(gs);
-    const obj = segment(f?.objektBezeichnung?.value);
-    if (obj && !kiTitel?.toLowerCase().includes(obj.toLowerCase())) teile.push(obj);
   }
 
   const basis =

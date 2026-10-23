@@ -39,7 +39,6 @@ import {
   holeDokumentPosteingang,
 } from "@/lib/graph-cache";
 import { cn } from "@/lib/utils";
-import { istTamAusFeldern } from "@/lib/trade-any-machine";
 
 const MAX_ANALYSE_RUNDEN = 500;
 /** Pro Server-Runde: bis zu 6 Mails, davon 3 parallel. */
@@ -166,7 +165,6 @@ function findePfadSegmentIndex(
 function ablagePfadKurz(
   pfad: string,
   gesellschaftName: string | null | undefined,
-  objektName: string | null | undefined,
 ): string {
   const teile = pfad
     .split("/")
@@ -191,19 +189,12 @@ function ablagePfadKurz(
     return teile.length <= 3 ? teile.join("/") : mitEllipsis(teile.slice(-3));
   }
 
-  let restStart = gsIdx + 1;
-  const objName = objektName?.trim();
-  if (objName) {
-    const objIdx = findePfadSegmentIndex(teile, objName, restStart);
-    if (objIdx >= 0) restStart = objIdx + 1;
-  }
-
-  const rest = teile.slice(restStart);
+  const rest = teile.slice(gsIdx + 1);
   if (rest.length === 0) {
-    // Nur Gesellschaft/Objekt — letzten relevanten Ordner zeigen
+    // Nur Gesellschaft — letzten relevanten Ordner zeigen
     return mitEllipsis(teile.slice(Math.max(0, teile.length - 2)));
   }
-  // Nach Objekt: Unterordner ab dem Ende; bei sehr langen Resten die letzten 3
+  // Nach der Gesellschaft: Unterordner ab dem Ende; bei sehr langen Resten die letzten 3
   if (rest.length <= 3) return mitEllipsis(rest);
   return mitEllipsis(rest.slice(-3));
 }
@@ -261,11 +252,6 @@ function gesellschaftText(eintrag: DokumentPosteingangEintrag | null): string {
   return eintrag.felder?.gesellschaftName?.value?.trim() || "–";
 }
 
-function objektText(eintrag: DokumentPosteingangEintrag | null): string {
-  if (!eintrag || istAnalyseOffen(eintrag.status)) return "–";
-  return eintrag.felder?.objektBezeichnung?.value?.trim() || "–";
-}
-
 function ablagePfad(eintrag: DokumentPosteingangEintrag | null): string | null {
   if (!eintrag || istAnalyseOffen(eintrag.status)) return null;
   if (eintrag.dokumentTyp === "expose") return null;
@@ -283,11 +269,7 @@ function ablagePfadText(eintrag: DokumentPosteingangEintrag | null): string {
   if (!pfad) return "–";
 
   const gs = gesellschaftText(eintrag);
-  const obj = objektText(eintrag);
-  const gsName = gs !== "–" ? gs : null;
-  const objName = obj !== "–" ? obj : null;
-
-  return ablagePfadKurz(pfad, gsName, objName);
+  return ablagePfadKurz(pfad, gs !== "–" ? gs : null);
 }
 
 function absenderText(eintrag: DokumentPosteingangEintrag): string {
@@ -304,7 +286,6 @@ function absenderTitel(eintrag: DokumentPosteingangEintrag): string | undefined 
 function istBereit(eintrag: DokumentPosteingangEintrag | null): eintrag is DokumentPosteingangEintrag {
   if (!eintrag || eintrag.status !== "analysiert") return false;
   if (eintrag.dokumentTyp === "expose") return true;
-  if (istTamAusFeldern(eintrag.felder)) return true;
   return hatAnalyseWerte(eintrag.felder);
 }
 
@@ -573,8 +554,6 @@ export function PostfachPage() {
             : "";
           if (ergebnis.aktion === "gebucht") {
             toast.success(`Zu DATEV: ${ergebnis.ordnerPfad}${ordnerHinweis}`);
-          } else if (ergebnis.aktion === "tam") {
-            toast.success(`Zu TAM: ${ergebnis.ordnerPfad}${ordnerHinweis}`);
           } else {
             toast.success(`Abgelegt: ${ergebnis.ordnerPfad}${ordnerHinweis}`);
           }
@@ -597,67 +576,12 @@ export function PostfachPage() {
         );
         if (ergebnis.aktion === "gebucht") {
           toast.success(`Zu DATEV: ${ergebnis.ordnerPfad}`);
-        } else if (ergebnis.aktion === "tam") {
-          toast.success(`Zu TAM: ${ergebnis.ordnerPfad}`);
         } else {
           toast.success(`Abgelegt: ${ergebnis.ordnerPfad}`);
         }
       } catch (e) {
         toast.error(
           e instanceof Error ? e.message : "Aktion fehlgeschlagen.",
-          { duration: 12_000 },
-        );
-      } finally {
-        setAktionId(null);
-      }
-    },
-    [token],
-  );
-
-  const zuTam = useCallback(
-    async (eintrag: DokumentPosteingangEintrag) => {
-      setAktionId(eintrag.id);
-      try {
-        const { dokumentPosteingangZuTamFn } = await import(
-          "@/lib/dokument-postfach/server-fn"
-        );
-        const ergebnis = await dokumentPosteingangZuTamFn({
-          data: { supabaseAccessToken: token, eintragId: eintrag.id },
-        });
-
-        if (ergebnis.mailVerschoben) {
-          setEintraege((prev) =>
-            prev.filter(
-              (e) =>
-                !(
-                  e.postfach === ergebnis.postfach &&
-                  e.graphNachrichtId === ergebnis.graphNachrichtId
-                ),
-            ),
-          );
-          toast.success(
-            `Zu TAM: ${ergebnis.ordnerPfad}${
-              ergebnis.mailOrdner ? ` · Postfach → ${ergebnis.mailOrdner}` : ""
-            }`,
-          );
-        } else {
-          setEintraege((prev) =>
-            prev.map((e) =>
-              e.id === eintrag.id
-                ? {
-                    ...e,
-                    status: "abgelegt" as const,
-                    abgelegtAm: new Date().toISOString(),
-                    ablageOrdnerPfad: ergebnis.ordnerPfad,
-                  }
-                : e,
-            ),
-          );
-          toast.success(`Zu TAM: ${ergebnis.ordnerPfad}`);
-        }
-      } catch (e) {
-        toast.error(
-          e instanceof Error ? e.message : "Weiterleitung fehlgeschlagen.",
           { duration: 12_000 },
         );
       } finally {
@@ -785,14 +709,6 @@ export function PostfachPage() {
       ),
     },
     {
-      key: "objekt",
-      header: "Objekt",
-      className: "min-w-[11rem] max-w-[16rem]",
-      render: (e) => (
-        <ZellText text={objektText(e)} className="text-foreground" />
-      ),
-    },
-    {
       key: "ablage",
       header: "Ablage",
       className: "min-w-[12rem] max-w-[18rem]",
@@ -889,7 +805,6 @@ export function PostfachPage() {
         const bereit = istBereit(eintrag);
         const laedtZeile = aktionId === eintrag?.id;
         const istExpose = eintrag?.dokumentTyp === "expose";
-        const istTam = Boolean(eintrag && istTamAusFeldern(eintrag.felder));
 
         if (!bereit || !eintrag) {
           return <span className="block h-8" aria-hidden />;
@@ -910,19 +825,6 @@ export function PostfachPage() {
               }
             >
               Zu Exposés
-            </Button>
-          );
-        }
-
-        if (istTam) {
-          return (
-            <Button
-              size="sm"
-              className="h-8 w-full bg-primary text-primary-foreground hover:bg-heading"
-              disabled={laedtZeile}
-              onClick={() => void zuTam(eintrag)}
-            >
-              zu TAM
             </Button>
           );
         }

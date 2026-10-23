@@ -1329,7 +1329,7 @@ async function graphDriveSimpleUpload(
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": contentType || "application/octet-stream",
     },
-    body: Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength),
+    body: new Uint8Array(bytes),
   });
   const json: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -1385,7 +1385,7 @@ async function graphDriveSessionUpload(
         "Content-Length": String(chunk.byteLength),
         "Content-Range": `bytes ${offset}-${ende - 1}/${total}`,
       },
-      body: Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength),
+      body: new Uint8Array(chunk),
     });
     zuletzt = await res.json().catch(() => ({}));
     if (!res.ok && res.status !== 202) {

@@ -186,7 +186,7 @@ html[data-op-zensur="true"] [data-op-zensur-ausnahme] * {
 }
 
 /* ==========================================================================
- * Steuerung (Management Board): Statusfarben + Markenakzent (Navy).
+ * Statusfarben (ok / warn / bad) und Markenakzent (Navy).
  * ========================================================================== */
 
 @theme inline {

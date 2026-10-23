@@ -68,6 +68,7 @@ export function salesforceOauthDevPlugin(): Plugin {
           "SALESFORCE_CLIENT_ID",
           "SALESFORCE_CLIENT_SECRET",
           "SALESFORCE_LOGIN_URL",
+          "VITE_SALESFORCE_LOGIN_URL",
         ]) {
           if (env[key]) process.env[key] = env[key];
         }

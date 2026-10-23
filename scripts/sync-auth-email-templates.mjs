@@ -1,5 +1,5 @@
 /**
- * Synchronisiert FRENKEN Auth-E-Mail-Templates auf das gehostete Supabase-Projekt.
+ * Synchronisiert die Auth-E-Mail-Templates auf das gehostete Supabase-Projekt.
  *
  * Benötigt:
  *   SUPABASE_ACCESS_TOKEN — https://supabase.com/dashboard/account/tokens
@@ -81,9 +81,9 @@ if (!projectRef) {
 }
 
 const payload = {
-  mailer_subjects_invite: "Einladung zu FRENKEN Verwaltung",
+  mailer_subjects_invite: "Einladung zu Grenz & Co. Verwaltung",
   mailer_templates_invite_content: readTemplate("invite.html"),
-  mailer_subjects_recovery: "Passwort zurücksetzen — FRENKEN Verwaltung",
+  mailer_subjects_recovery: "Passwort zurücksetzen — Grenz & Co. Verwaltung",
   mailer_templates_recovery_content: readTemplate("recovery.html"),
 };
 

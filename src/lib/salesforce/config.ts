@@ -1,29 +1,49 @@
-/** Bevorzugte UI-Domain (Lightning). */
-export const SALESFORCE_LIGHTNING_HOST = "scrmfh25.lightning.force.com";
-export const SALESFORCE_LIGHTNING_URL = `https://${SALESFORCE_LIGHTNING_HOST}`;
+function ohneSlash(url: string | undefined): string {
+  return (url ?? "").trim().replace(/\/$/, "");
+}
 
-/** My Domain — OAuth authorize + token endpoint. */
-export const SALESFORCE_MY_DOMAIN = "scrmfh25.my.salesforce.com";
-export const SALESFORCE_LOGIN_URL = `https://${SALESFORCE_MY_DOMAIN}`;
+/**
+ * My Domain der Salesforce-Org (OAuth authorize + token endpoint), z. B.
+ * https://firma.my.salesforce.com — aus VITE_SALESFORCE_LOGIN_URL.
+ */
+export const SALESFORCE_LOGIN_URL =
+  ohneSlash(
+    typeof import.meta !== "undefined"
+      ? (import.meta as { env?: { VITE_SALESFORCE_LOGIN_URL?: string } }).env
+          ?.VITE_SALESFORCE_LOGIN_URL
+      : undefined,
+  ) || "https://login.salesforce.com";
+
+/** Lightning-Oberfläche der Org — für Links in der UI. */
+export const SALESFORCE_LIGHTNING_URL = SALESFORCE_LOGIN_URL.replace(
+  /\.my\.salesforce\.com$/,
+  ".lightning.force.com",
+);
 
 export const SALESFORCE_PREFERRED_URL = SALESFORCE_LIGHTNING_URL;
 
 /**
- * Feste OAuth-Callback-URL (Vercel Produktion).
- * Diese URL dem Salesforce-Admin als einzige Callback URL senden.
+ * Produktions-Origin der App (VITE_APP_ORIGIN, z. B. https://….vercel.app).
+ * Salesforce erlaubt nur eine feste Callback-URL; Preview-Deployments
+ * melden sich deshalb über die Produktions-Callback-Seite an.
  */
-export const SALESFORCE_OAUTH_CALLBACK_URL =
-  "https://frenken-expose-ai.vercel.app/salesforce/callback";
+export const SALESFORCE_PRODUCTION_ORIGIN = ohneSlash(
+  typeof import.meta !== "undefined"
+    ? (import.meta as { env?: { VITE_APP_ORIGIN?: string } }).env?.VITE_APP_ORIGIN
+    : undefined,
+);
 
-export const SALESFORCE_PRODUCTION_ORIGIN =
-  "https://frenken-expose-ai.vercel.app";
+/** Feste OAuth-Callback-URL — diese dem Salesforce-Admin senden. */
+export const SALESFORCE_OAUTH_CALLBACK_URL = SALESFORCE_PRODUCTION_ORIGIN
+  ? `${SALESFORCE_PRODUCTION_ORIGIN}/salesforce/callback`
+  : "";
 
 export const SALESFORCE_OAUTH_SCOPES = "api refresh_token id";
-export const SALESFORCE_OAUTH_MESSAGE = "frenken.salesforce.oauth";
-export const SALESFORCE_PKCE_STORAGE_PREFIX = "frenken.salesforce.pkce.";
+export const SALESFORCE_OAUTH_MESSAGE = "grenz.salesforce.oauth";
+export const SALESFORCE_PKCE_STORAGE_PREFIX = "grenz.salesforce.pkce.";
 
-const STORAGE_KEY = "frenken.salesforce.session";
-const SESSION_CHANGED_EVENT = "frenken.salesforce.session-changed";
+const STORAGE_KEY = "grenz.salesforce.session";
+const SESSION_CHANGED_EVENT = "grenz.salesforce.session-changed";
 
 /**
  * Access Tokens laufen je nach Org-Policy nach ~2 h ab. Ist der Token älter,
@@ -61,24 +81,29 @@ export function salesforceCallbackPath(): string {
   return "/salesforce/callback";
 }
 
+function eigeneCallbackUrl(): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return `${origin}${salesforceCallbackPath()}`;
+}
+
 /**
- * Redirect-URI für OAuth — immer die Produktions-Callback-URL,
- * damit jeder User auf Vercel sich verbinden kann.
- * Lokal (localhost) bleibt die lokale Callback-Route für Dev.
+ * Redirect-URI für OAuth — die Produktions-Callback-URL, damit jeder User
+ * auf Vercel sich verbinden kann. Lokal (localhost) und ohne VITE_APP_ORIGIN
+ * die Callback-Route der aktuellen Domain.
  */
 export function salesforceCallbackUrl(): string {
   if (typeof window !== "undefined") {
     const origin = window.location.origin;
     if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
-      return `${origin}${salesforceCallbackPath()}`;
+      return eigeneCallbackUrl();
     }
   }
-  return SALESFORCE_OAUTH_CALLBACK_URL;
+  return SALESFORCE_OAUTH_CALLBACK_URL || eigeneCallbackUrl();
 }
 
 /** An den Salesforce-Admin: diese Callback URL eintragen. */
 export function salesforceAdminCallbackUrl(): string {
-  return SALESFORCE_OAUTH_CALLBACK_URL;
+  return SALESFORCE_OAUTH_CALLBACK_URL || eigeneCallbackUrl();
 }
 
 export function salesforceAuthorizeUrl(

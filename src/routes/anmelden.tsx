@@ -12,7 +12,7 @@ export const Route = createFileRoute("/anmelden")({
   }),
   head: () => ({
     meta: [
-      { title: "Anmelden — Grenz & Co. Verwaltung" },
+      { title: "Anmelden — Grenz & Co." },
       { name: "description", content: "Anmeldung bei Grenz & Co. Verwaltung." },
     ],
   }),

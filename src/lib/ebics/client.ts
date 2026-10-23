@@ -15,7 +15,7 @@ import "node-rsa";
 import "node-forge";
 
 import { ebicsMasterKey } from "./config";
-import { renderEbicsIniBrief } from "./ini-brief-de";
+import { renderEbicsIniBrief, type EbicsIniBriefKey } from "./ini-brief-de";
 import type { EbicsKundeRow } from "./kunden";
 import { createDbKeyStorage } from "./key-storage";
 
@@ -103,18 +103,10 @@ function menschenlesbarerFehler(err: unknown): string {
   return msg;
 }
 
-/** Bank-Kundenname aus BPD, wenn ein Zugang mehrere Gesellschaften abdeckt. */
-const EBICS_SAMMEL_FIRMA: Record<string, string> = {
-  MV135500: "Maurice Frenken",
-};
-
 async function firmaNameFuerKunde(
   admin: SupabaseClient,
   kunde: EbicsKundeRow,
 ): Promise<string> {
-  const sammelfirma = EBICS_SAMMEL_FIRMA[kunde.partner_id];
-  if (sammelfirma) return sammelfirma;
-
   const { data } = await admin
     .from("gesellschaften")
     .select("name")
@@ -142,9 +134,10 @@ export async function ebicsIniBriefErzeugen(
     userId: kunde.user_id,
     partnerId: kunde.partner_id,
     firmaName,
-    A006: keys.a(),
-    X002: keys.x(),
-    E002: keys.e(),
+    teilnehmerName: kunde.teilnehmer_name,
+    A006: keys.a() as EbicsIniBriefKey,
+    X002: keys.x() as EbicsIniBriefKey,
+    E002: keys.e() as EbicsIniBriefKey,
   });
   return { iniLetterHtml };
 }

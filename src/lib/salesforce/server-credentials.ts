@@ -46,7 +46,9 @@ function readEnv(name: string): string {
 
 function defaultInstanceUrl(): string {
   return (
-    readEnv("SALESFORCE_LOGIN_URL") || "https://scrmfh25.my.salesforce.com"
+    readEnv("SALESFORCE_LOGIN_URL") ||
+    readEnv("VITE_SALESFORCE_LOGIN_URL") ||
+    "https://login.salesforce.com"
   ).replace(/\/$/, "");
 }
 

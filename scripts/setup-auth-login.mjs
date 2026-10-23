@@ -56,7 +56,7 @@ function initialenAusName(name) {
 
 function zufallsPasswort() {
   const teile = crypto.getRandomValues(new Uint8Array(12));
-  return `Fv-${Buffer.from(teile).toString("base64url")}`;
+  return `Gc-${Buffer.from(teile).toString("base64url")}`;
 }
 
 async function upsertProfile(admin, user, { email, name, initialen, rolle = "op_admin" }) {

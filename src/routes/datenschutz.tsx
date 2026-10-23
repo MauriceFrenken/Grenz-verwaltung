@@ -4,7 +4,7 @@ import { DatenschutzPage } from "@/features/legal/DatenschutzPage";
 export const Route = createFileRoute("/datenschutz")({
   head: () => ({
     meta: [
-      { title: "Datenschutzerklärung — Grenz & Co. Verwaltung" },
+      { title: "Datenschutzerklärung — Grenz & Co." },
       {
         name: "description",
         content: "Datenschutzerklärung zur internen Webanwendung Grenz & Co. Verwaltung.",

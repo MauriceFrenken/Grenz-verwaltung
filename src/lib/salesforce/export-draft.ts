@@ -1,6 +1,6 @@
 import type { ExposeFeldId } from "@/lib/expose-ai";
 
-const DRAFT_PREFIX = "frenken.expose.sf-export.";
+const DRAFT_PREFIX = "grenz.expose.sf-export.";
 const DRAFT_TTL_MS = 1000 * 60 * 60 * 6; // 6 Stunden
 
 export type ExposeSalesforceExportDraft = {

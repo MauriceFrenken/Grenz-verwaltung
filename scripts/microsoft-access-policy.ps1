@@ -1,32 +1,35 @@
 <#
 .SYNOPSIS
-  Beschränkt die Entra-App „Frenken Verwaltung“ auf freigegebene Shared Postfächer.
+  Beschränkt die Entra-App „Grenz & Co. Verwaltung“ auf freigegebene Postfächer.
 
 .DESCRIPTION
   Application-Permission Mail.ReadWrite gilt standardmäßig für ALLE Postfächer.
   Entra kann das nicht eingrenzen — nur Exchange Online Application Access Policy.
 
-  Freigegeben: ankauf@ (Offene Exposés), post@ und m.frenken@ (Dokumente › Postfach).
+  Freigeben: die Postfächer aus MICROSOFT_MAILBOX (Offene Exposés),
+  MICROSOFT_POST_MAILBOX und ggf. MICROSOFT_POST_MAILBOX_ZWEIT (Dokumente › Postfach).
   OneDrive (Files.*) wird von dieser Policy NICHT beschränkt.
+
+.EXAMPLE
+  ./microsoft-access-policy.ps1 -AppId <Client-ID> `
+    -Mailboxes expose@grenz.example,post@grenz.example `
+    -GroupDomain grenz.example -ProbeMailbox chef@grenz.example
 
   Voraussetzungen:
   - Exchange Admin (oder Global Admin)
   - Modul ExchangeOnlineManagement
   - PowerShell 7 empfohlen
-
-.NOTES
-  Client-ID der App: fcacca52-9a81-46f9-b250-9a4b6059b7bb
 #>
 
 param(
-  [string]$AppId = "fcacca52-9a81-46f9-b250-9a4b6059b7bb",
-  [string[]]$Mailboxes = @(
-    "ankauf@frenken-immobilien.com",
-    "post@frenken-immobilien.com",
-    "m.frenken@frenken-immobilien.com"
-  ),
-  [string]$GroupName = "Frenken-Graph-Ankauf-Only",
-  [string]$ProbeMailbox = "m.frenken@frenken-immobilien.com"
+  # Client-ID der Entra-App (MICROSOFT_CLIENT_ID)
+  [Parameter(Mandatory = $true)][string]$AppId,
+  [Parameter(Mandatory = $true)][string[]]$Mailboxes,
+  # Domain für die Adresse der Sicherheitsgruppe, z. B. grenz.example
+  [Parameter(Mandatory = $true)][string]$GroupDomain,
+  [string]$GroupName = "Grenz-Graph-Postfaecher",
+  # Postfach, für das der Zugriff verweigert sein muss (Kontrolltest)
+  [string]$ProbeMailbox = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -41,8 +44,8 @@ if (-not $group) {
   $group = New-DistributionGroup `
     -Name $GroupName `
     -Type Security `
-    -PrimarySmtpAddress ($GroupName.ToLower() + "@frenken-immobilien.com") `
-    -Notes "Mitglieder = Postfächer, die Frenken Verwaltung (Graph App) lesen darf"
+    -PrimarySmtpAddress ($GroupName.ToLower() + "@" + $GroupDomain) `
+    -Notes "Mitglieder = Postfächer, die Grenz & Co. Verwaltung (Graph App) lesen darf"
   Write-Host "    Gruppe angelegt." -ForegroundColor Green
 } else {
   Write-Host "    Gruppe existiert bereits." -ForegroundColor DarkGray
@@ -79,7 +82,7 @@ New-ApplicationAccessPolicy `
   -AppId $AppId `
   -PolicyScopeGroupId $GroupName `
   -AccessRight RestrictAccess `
-  -Description "Frenken Expose Agent: Shared Postfächer ankauf@ und post@"
+  -Description "Grenz & Co. Verwaltung: freigegebene Postfächer"
 
 Write-Host ">>> Tests (Propagation kann bis ~1 Stunde dauern)…" -ForegroundColor Cyan
 Start-Sleep -Seconds 5

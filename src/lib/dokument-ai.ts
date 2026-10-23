@@ -29,7 +29,6 @@ export type DokumentAnalyseFelder = {
   dokumentart?: DokumentFeldQuelle;
   dokumentTitel: DokumentFeldQuelle;
   gesellschaftName: DokumentFeldQuelle;
-  objektBezeichnung: DokumentFeldQuelle;
   ordnerPfad: DokumentFeldQuelle;
   rechnungsnummer: DokumentFeldQuelle;
   rechnungsdatum: DokumentFeldQuelle;
@@ -45,7 +44,6 @@ export type DokumentAnalyseFelder = {
 export const DOKUMENT_KI_FELD_IDS = [
   "dokumentTitel",
   "gesellschaftName",
-  "objektBezeichnung",
   "ordnerPfad",
   "rechnungsnummer",
   "rechnungsdatum",
@@ -66,11 +64,10 @@ export const DOKUMENT_FELD_IDS = DOKUMENT_KI_FELD_IDS;
 
 export const DOKUMENT_ABLAGE_FELDER: DokumentKiFeldId[] = [
   "gesellschaftName",
-  "objektBezeichnung",
   "ordnerPfad",
 ];
 
-/** Nur Rechnungsfelder in der Prüf-UI (Gesellschaft/Objekt stehen unter Zuordnung). */
+/** Nur Rechnungsfelder in der Prüf-UI (Gesellschaft steht unter Zuordnung). */
 export const DOKUMENT_RECHNUNG_UI_FELDER: DokumentKiFeldId[] = [
   "rechnungsnummer",
   "rechnungsdatum",
@@ -84,14 +81,12 @@ export const DOKUMENT_RECHNUNG_UI_FELDER: DokumentKiFeldId[] = [
 
 export const DOKUMENT_RECHNUNG_FELDER: DokumentKiFeldId[] = [
   "gesellschaftName",
-  "objektBezeichnung",
   ...DOKUMENT_RECHNUNG_UI_FELDER,
 ];
 
 export const DOKUMENT_FELD_LABELS: Record<DokumentKiFeldId, string> = {
   dokumentTitel: "Dokumenttitel",
   gesellschaftName: "Gesellschaft",
-  objektBezeichnung: "Objekt",
   ordnerPfad: "Zielordner",
   rechnungsnummer: "Rechnungsnummer",
   rechnungsdatum: "Rechnungsdatum",
@@ -123,7 +118,6 @@ export type OrdnerWahlSchrittRequest = {
   modelContext?: string;
   dokumentTyp: DokumentTyp;
   gesellschaftName: string;
-  objektBezeichnung?: string | null;
   aktuellerPfad: string;
   unterordner: string[];
 };
@@ -156,32 +150,19 @@ export type AnalyzeDokumentResponse = {
 };
 
 const ABLAGESTRUKTUR = `
-Einheitliche Ablagestruktur (Zielordner, OneDrive-Namen können historisch „FRENKEN …“ heißen):
+Ablagestruktur Grenz & Co. (Zielordner in OneDrive):
 
-Oberste Ebene (OneDrive-Roots, exakte Namen können leicht abweichen):
-- FRENKEN Holding … Maurice (nur die Maurice-Variante; nicht andere Holding-Ordner)
-- FRENKEN Immobilien …
-- FRENKEN Investment Management …
-- FRENKEN Capital Management …
-- MTF Capital …
-- SellAnyMachine / TradeAnyMachine
-- Archiv
+Oberste Ebene: ein Ordner je Gesellschaft (exakte Namen können leicht abweichen, z. B. Präfix 01_).
 
 Je Gesellschaft typisch:
 - 01_Geschaeftsfuehrung
 - 02_Finanzen (oder „Finanzen & Steuern“)
 - 03_Vertraege
 - 04_Personal
-- 05_Beteiligungen bzw. 05_Immobilien
 - 99_Archiv
 
-Immobilien (unter 05_Immobilien): Bestand/Ankauf → Objektordner → Kategorie
-  (Stammdaten, Vertraege, Finanzen, Technik, Mieter, Versicherungen, Archiv)
-
 Wichtig:
-- Dokumente mit Objektadresse (z. B. Alt-Pempelfort 7, Düsseldorf) → Immobilien-Root, NICHT Holding.
-- Versicherungen zu Wohngebäuden gehören zur Objekt-Gesellschaft (meist Immobilien), nicht Holding.
-- Holding nur für gruppenweite Themen ohne Objektbezug.
+- Nur Ordner wählen, die eindeutig zum Dokument passen; im Zweifel eine Ebene höher bleiben.
 `.trim();
 
 function getAnthropicKey(): string | null {
@@ -394,10 +375,10 @@ export async function handleAnalyzeDokumentRequest(
     ? `
 Scan-/Bild-Modus (wichtig):
 - Primär den Scan/die Bilder lesen; E-Mail-Betreff und Mail-Text sind zusätzlicher Kontext zur Einordnung.
-- Wenn Betreff/Dateiname/Mail klar eine Gesellschaft nennen (z. B. „Gründung MTF Capital GmbH“) und der Scan dazu passt: genau diese Gesellschaft wählen.
-- Gesellschafter, Notarparteien, Mitunterzeichner oder deren Adressen sind NICHT die Ziel-Gesellschaft und KEIN Stammdaten-Objekt — außer das Dokument betrifft eindeutig genau dieses Objekt.
-- Gründung, Gesellschafterliste, Gesellschaftsvertrag, Handelsregister, Sitzverlegung, Beglaubigung: objektBezeichnung = null, gesellschaftName = die gegründete/betroffene Gesellschaft.
-- Nichts erfinden: keine Straße/Objektadresse setzen, die im Scan nicht klar als Objektbezug steht.
+- Wenn Betreff/Dateiname/Mail klar eine Gesellschaft nennen und der Scan dazu passt: genau diese Gesellschaft wählen.
+- Gesellschafter, Notarparteien oder Mitunterzeichner sind NICHT die Ziel-Gesellschaft.
+- Gründung, Gesellschafterliste, Gesellschaftsvertrag, Handelsregister, Sitzverlegung, Beglaubigung: gesellschaftName = die gegründete/betroffene Gesellschaft.
+- Nichts erfinden: nur übernehmen, was im Scan klar steht.
 - verbatimQuote muss zum gewählten gesellschaftName passen (nicht eine andere Firma zitieren).
 - Abschnitt „ANDERE ANHÄNGE DIESER MAIL“: bei Unsicherheit die sichere Geschwister-Zuordnung übernehmen, wenn der Inhalt nicht klar widerspricht.
 `
@@ -415,20 +396,15 @@ Schritt 1: Klassifiziere den Anhang in genau einen Typ:
 
 Schritt 2a (rechnung): Extrahiere Rechnungsfelder; Gesellschaft aus STAMMDATEN.
 Schritt 2b (dokument): Gesellschaft aus STAMMDATEN — Zielordner wird serverseitig ermittelt.
-Schritt 2c (expose): keine Zuordnung zu Stammdaten-Objekten.
+Schritt 2c (expose): keine weitere Zuordnung — Exposés laufen über den Exposé-Import.
 
 ${ABLAGESTRUKTUR}
 
 Regeln:
-- dokumentTitel: nur für allgemeine Dokumente einen kurzen, präzisen Dateinamen-Titel aus dem Inhalt bilden (z. B. "Nachtrag Wohngebäudeversicherung Alt-Pempelfort 7" oder "Versicherungsbestätigung Alt-Pempelfort 7"). Keine Dateiendung, kein Datum, keine internen IDs erfinden. Für Rechnungen und Exposés null.
-- gesellschaftName = die Grenz-&-Co.-Gesellschaft, DER das Dokument gehört / die betroffen ist (Briefempfänger, Vertragspartner, gegründete Gesellschaft), exakt aus STAMMDATEN. Nicht Absender/Versicherer/Rechnungssteller, nicht bloß ein Gesellschafter oder Notar.
-- Spezifische Marker nutzen (Immobilien, Holding, Investment, Capital, MTF). „Frenken“ allein reicht nicht — Holding nur wenn klar Holding ohne Objektbezug.
-- Objektadresse nur wenn das Dokument dieses Immobilienobjekt betrifft (Straße/Ort als Objektbezug) → zugehörige Objekt-Gesellschaft (meist Immobilien), nicht Holding.
-- Ausnahme: eindeutig an TradeAnyMachine GmbH (TAM) adressiert → gesellschaftName exakt "TradeAnyMachine GmbH" (steht nicht in Stammdaten).
-- objektBezeichnung: nur bei echtem Objektbezug (z. B. „Alt-Pempelfort 7, Düsseldorf“). Bei digitalem Text oft null — Zuordnung läuft dann serverseitig. Keine erfundenen Namen. Keine Gesellschafter-Privat-/Firmenadressen als Objekt.
-- Adressen, Maschinen, Fahrzeuge oder Objekte aus Exposés/Verkaufsunterlagen sind KEINE Stammdaten-Objekte.
+- dokumentTitel: nur für allgemeine Dokumente einen kurzen, präzisen Dateinamen-Titel aus dem Inhalt bilden (z. B. "Maklervertrag Musterstraße 1" oder "Versicherungsbestätigung Betriebshaftpflicht"). Keine Dateiendung, kein Datum, keine internen IDs erfinden. Für Rechnungen und Exposés null.
+- gesellschaftName = die Gesellschaft aus STAMMDATEN, DER das Dokument gehört / die betroffen ist (Briefempfänger, Vertragspartner, gegründete Gesellschaft), exakt aus STAMMDATEN. Nicht Absender/Versicherer/Rechnungssteller, nicht bloß ein Gesellschafter oder Notar.
 - ordnerPfad: immer null lassen (wird separat über OneDrive ermittelt).
-- Bei Rechnungen (Eingangsrechnungen an Grenz & Co.): zahlungsempfaenger = Grenz-&-Co.-Gesellschaft an die gezahlt/adressiert wird, rechnungssteller = Aussteller/Lieferant.
+- Bei Rechnungen (Eingangsrechnungen): zahlungsempfaenger = Gesellschaft aus STAMMDATEN, an die die Rechnung adressiert ist, rechnungssteller = Aussteller/Lieferant.
 - rechnungsbetrag: nur Zahl mit Dezimalpunkt, keine Währung.
 - waehrung: z. B. EUR.
 - Nur Informationen aus Dokument + E-Mail — nichts erfinden. Bei Unsicherheit: value null, konfidenz niedrig.
@@ -441,7 +417,6 @@ Antworte NUR mit JSON:
   "felder": {
     "dokumentTitel": { ${feldSchema()} },
     "gesellschaftName": { ${feldSchema()} },
-    "objektBezeichnung": { ${feldSchema()} },
     "ordnerPfad": { ${feldSchema()} },
     "rechnungsnummer": { ${feldSchema()} },
     "rechnungsdatum": { ${feldSchema()} },
@@ -513,7 +488,7 @@ export async function waehleGesellschaftRootOrdner(
     return { gewaehlterOrdner: input.rootOrdner[0]!, konfidenz: 1 };
   }
 
-  const systemPrompt = `Du ordnest eine Gesellschaft aus den Grenz-&-Co.-Stammdaten dem passenden OneDrive-Oberordner zu.
+  const systemPrompt = `Du ordnest eine Gesellschaft aus den Stammdaten dem passenden OneDrive-Oberordner zu.
 
 ${ABLAGESTRUKTUR}
 
@@ -552,11 +527,7 @@ export async function waehleUnterordnerSchritt(
     return { gewaehlterOrdner: null, konfidenz: 1 };
   }
 
-  const objektZeile = input.objektBezeichnung?.trim()
-    ? input.objektBezeichnung.trim()
-    : "— (nur Gesellschaftsebene, kein Objekt)";
-
-  const systemPrompt = `Du wählst den passenden Unterordner für ein Geschäftsdokument in der Grenz-&-Co.-Ablage.
+  const systemPrompt = `Du wählst den passenden Unterordner für ein Geschäftsdokument in der Ablage von Grenz & Co.
 
 ${ABLAGESTRUKTUR}
 
@@ -564,8 +535,6 @@ Regeln:
 - Wähle genau einen Ordnernamen aus der Liste (exakte Schreibweise) oder null.
 - null = aktueller Pfad ist bereits der richtige Zielordner.
 - Nur tiefer gehen wenn ein Unterordner eindeutig zum Dokument passt.
-- Ohne Objekt: typisch 01_Geschaeftsfuehrung, 02_Finanzen, 03_Vertraege, 04_Personal — nicht unter 05_Immobilien absteigen.
-- Mit Objekt: unter 05_Immobilien → Bestand/Ankauf → IM-… Objektordner → passende Kategorie (01_Stammdaten, 02_Vertraege, 03_Finanzen, …).
 
 Antworte NUR mit JSON:
 {
@@ -580,7 +549,6 @@ Antworte NUR mit JSON:
   const userPrompt = `Dokument: ${input.documentTitle ?? "Dokument"}
 Typ: ${input.dokumentTyp}
 Gesellschaft: ${input.gesellschaftName}
-Objekt: ${objektZeile}
 Aktueller Pfad: ${input.aktuellerPfad}
 
 Verfügbare Unterordner:
@@ -598,7 +566,6 @@ export function hatAnalyseWerte(felder: DokumentAnalyseFelder | null): boolean {
     "dokumentTitel",
     "ordnerPfad",
     "gesellschaftName",
-    "objektBezeichnung",
     "rechnungsnummer",
     "rechnungsbetrag",
   ];

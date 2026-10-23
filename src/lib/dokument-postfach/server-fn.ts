@@ -4,8 +4,6 @@ import { dokumentPosteingangArchivieren } from "./archivieren";
 import { dokumentPosteingangSchnellAusfuehren } from "./ausfuehren";
 import { dokumentPosteingangAblegen } from "./ablegen";
 import { dokumentPosteingangBuchen } from "./buchen";
-import { ablageDatenwirkungPruefen } from "./ablage-datenwirkung";
-import { postfachDatenwirkungPruefen } from "./datenwirkung";
 import { dokumentPosteingangEintragLaden } from "./eintrag";
 import {
   dokumentRechnungsfreigabeLaden,
@@ -19,7 +17,6 @@ import {
   dokumentPosteingangSynchronisieren,
 } from "./sync";
 import { dokumentPosteingangZuExposesVerschieben } from "./verschieben";
-import { dokumentPosteingangZuTam } from "./zu-tam";
 import type { DokumentFreigabeStatus } from "./typen";
 
 export const dokumentPosteingangLadenFn = createServerFn({ method: "POST" })
@@ -58,7 +55,6 @@ export const dokumentPosteingangAblegenFn = createServerFn({ method: "POST" })
         ordnerItemId: string;
         ordnerPfad: string;
         gesellschaftId?: string | null;
-        objektId?: string | null;
         felder?: unknown;
         istRechnung?: boolean;
       },
@@ -80,7 +76,6 @@ export const dokumentPosteingangBuchenFn = createServerFn({ method: "POST" })
         ordnerItemId?: string | null;
         ordnerPfad?: string | null;
         gesellschaftId?: string | null;
-        objektId?: string | null;
         felder?: unknown;
       },
   )
@@ -125,25 +120,6 @@ export const dokumentPosteingangArchivierenFn = createServerFn({
   )
   .handler(async ({ data }) => dokumentPosteingangArchivieren(data));
 
-export const dokumentPosteingangZuTamFn = createServerFn({ method: "POST" })
-  .validator(
-    (data: unknown) =>
-      data as {
-        supabaseAccessToken: string;
-        eintragId: string;
-        ordnerItemId?: string | null;
-        ordnerPfad?: string | null;
-        felder?: unknown;
-      },
-  )
-  .handler(async ({ data }) =>
-    dokumentPosteingangZuTam({
-      ...data,
-      felder: data.felder as
-        import("@/lib/dokument-ai").DokumentAnalyseFelder | null | undefined,
-    }),
-  );
-
 export const dokumentRechnungsfreigabeLadenFn = createServerFn({
   method: "POST",
 })
@@ -168,19 +144,3 @@ export const dokumentRechnungsfreigabeVerschiebenFn = createServerFn({
       },
   )
   .handler(async ({ data }) => dokumentRechnungsfreigabeVerschieben(data));
-
-/** Datenqualität: Postfach auf Mails mit Auswirkung auf die Zahlen prüfen */
-export const postfachDatenwirkungPruefenFn = createServerFn({
-  method: "POST",
-})
-  .validator(
-    (data: unknown) => data as { supabaseAccessToken: string; max?: number },
-  )
-  .handler(async ({ data }) => postfachDatenwirkungPruefen(data));
-
-/** Datenqualität: neue Dateien der OneDrive-Ablage auf Auswirkungen prüfen */
-export const ablageDatenwirkungPruefenFn = createServerFn({
-  method: "POST",
-})
-  .validator((data: unknown) => data as { supabaseAccessToken: string })
-  .handler(async ({ data }) => ablageDatenwirkungPruefen(data));

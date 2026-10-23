@@ -1,11 +1,6 @@
 import {
   MICROSOFT_ABLAGE_ROOT_AUSSCHLUSS,
-  MICROSOFT_ABLAGE_ROOT_MUSTER,
   MICROSOFT_ABLEGEN_KATEGORIE,
-  MICROSOFT_DOKUMENT_POSTEINGANG_SEIT,
-  MICROSOFT_ONEDRIVE_USER,
-  MICROSOFT_POST_MAILBOX,
-  MICROSOFT_POST_MAILBOX_ZWEIT,
 } from "./config";
 import {
   graphAnhangBinary,
@@ -34,25 +29,36 @@ function readEnv(name: string): string {
   return (process.env[name] ?? "").trim();
 }
 
-/** OneDrive-UPN für Dokumentenablage (Env überschreibt Default). */
+/** Pflicht-Env (kleingeschrieben) — ohne Wert eine klare Fehlermeldung. */
+function pflichtEnv(name: string, zweck: string): string {
+  const wert = readEnv(name).toLowerCase();
+  if (!wert) {
+    throw new Error(`${name} ist nicht gesetzt (${zweck}).`);
+  }
+  return wert;
+}
+
+/** OneDrive-UPN für Dokumente › Dokumentenablage. */
 export function microsoftOneDriveUser(): string {
-  return (
-    readEnv("MICROSOFT_ONEDRIVE_USER") || MICROSOFT_ONEDRIVE_USER
-  ).trim().toLowerCase();
+  return pflichtEnv("MICROSOFT_ONEDRIVE_USER", "OneDrive der Dokumentenablage");
 }
 
 /** Shared Postfach für Dokumente › Postfach. */
 export function microsoftPostMailbox(): string {
-  return (
-    readEnv("MICROSOFT_POST_MAILBOX") || MICROSOFT_POST_MAILBOX
-  ).trim().toLowerCase();
+  return pflichtEnv("MICROSOFT_POST_MAILBOX", "Postfach für Dokumente › Postfach");
 }
 
-/** Zweites Postfach für Dokumente › Postfach. */
+/** Optionales zweites Postfach für Dokumente › Postfach. */
 export function microsoftPostMailboxZweit(): string {
-  return (
-    readEnv("MICROSOFT_POST_MAILBOX_ZWEIT") || MICROSOFT_POST_MAILBOX_ZWEIT
-  ).trim().toLowerCase();
+  return readEnv("MICROSOFT_POST_MAILBOX_ZWEIT").toLowerCase();
+}
+
+/**
+ * Postfach, in dem die Outlook-Kategorie „ablegen“ ausgewertet wird:
+ * das zweite Postfach, sonst das Haupt-Postfach.
+ */
+export function microsoftAblegenKategoriePostfach(): string {
+  return microsoftPostMailboxZweit() || microsoftPostMailbox();
 }
 
 export type DokumentPosteingangQuelle = {
@@ -64,9 +70,8 @@ export type DokumentPosteingangQuelle = {
 export function microsoftDokumentPosteingangQuellen(): DokumentPosteingangQuelle[] {
   const primaer = microsoftPostMailbox();
   const zweit = microsoftPostMailboxZweit();
-  const seit =
-    readEnv("MICROSOFT_DOKUMENT_POSTEINGANG_SEIT") ||
-    MICROSOFT_DOKUMENT_POSTEINGANG_SEIT;
+  // Optional: aus dem zweiten Postfach nur Mails ab diesem Datum (ISO)
+  const seit = readEnv("MICROSOFT_DOKUMENT_POSTEINGANG_SEIT") || undefined;
 
   const quellen: DokumentPosteingangQuelle[] = [{ postfach: primaer }];
   if (zweit && zweit !== primaer) {
@@ -87,11 +92,19 @@ function dokumentPosteingangSortieren(
   });
 }
 
-/** Root-Filter: nur Gesellschaftsordner laut Kundenliste. */
+/**
+ * Root-Filter der Ablage. Mit MICROSOFT_ABLAGE_ROOT_ORDNER (kommagetrennte
+ * Ordnernamen) nur diese Ordner, sonst alle außer OneDrive-Systemordnern.
+ */
 export function istAblageRootOrdner(name: string): boolean {
   const n = name.trim();
   if (MICROSOFT_ABLAGE_ROOT_AUSSCHLUSS.some((m) => m.test(n))) return false;
-  return MICROSOFT_ABLAGE_ROOT_MUSTER.some((muster) => muster.test(n));
+  const erlaubt = readEnv("MICROSOFT_ABLAGE_ROOT_ORDNER")
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+  if (erlaubt.length === 0) return true;
+  return erlaubt.includes(n.toLowerCase());
 }
 
 export async function microsoftOneDriveKinderLesen(input: {
@@ -169,14 +182,13 @@ export function ablegenKategorieNachrichtSchluessel(
 }
 
 /**
- * Alle Inbox-Mails mit Kategorie „ablegen“ im m.frenken-Postfach
+ * Alle Inbox-Mails mit Kategorie „ablegen“ im Kategorie-Postfach
  * (paginiert, ohne Top-N- und ohne Alters-Cutoff).
  */
 export async function microsoftAblegenKategorieMailsLesen(): Promise<
   DokumentPosteingangNachricht[]
 > {
-  const postfach = microsoftPostMailboxZweit();
-  if (!postfach) return [];
+  const postfach = microsoftAblegenKategoriePostfach();
 
   const { accessToken } = await microsoftAccessToken();
   const liste = await graphPosteingangNachrichtenMitKategorie(

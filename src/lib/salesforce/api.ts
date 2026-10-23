@@ -138,27 +138,20 @@ export async function salesforceApiJson<T>(
 
   if (!res.ok) {
     let message = `Salesforce API-Fehler (${res.status})`;
-    if (
-      Array.isArray(data) &&
-      data[0] &&
-      "message" in data[0] &&
-      data[0].message
-    ) {
-      message = data[0].message;
+    const fehler = data as
+      | { message?: string }[]
+      | { error?: string; error_description?: string }
+      | null;
+    if (Array.isArray(fehler) && fehler[0]?.message) {
+      message = fehler[0].message;
+    } else if (fehler && !Array.isArray(fehler) && fehler.error_description) {
+      message = fehler.error_description;
     } else if (
-      data &&
-      !Array.isArray(data) &&
-      "error_description" in data &&
-      data.error_description
+      fehler &&
+      !Array.isArray(fehler) &&
+      typeof fehler.error === "string"
     ) {
-      message = data.error_description;
-    } else if (
-      data &&
-      !Array.isArray(data) &&
-      "error" in data &&
-      typeof data.error === "string"
-    ) {
-      message = data.error;
+      message = fehler.error;
     }
     throw new Error(message);
   }

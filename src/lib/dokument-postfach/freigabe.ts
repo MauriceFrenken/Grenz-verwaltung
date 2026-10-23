@@ -111,7 +111,6 @@ export async function dokumentRechnungsfreigabeVerschieben(input: {
         supabaseAccessToken: input.supabaseAccessToken,
         eintragId: id,
         gesellschaftId: row.gesellschaft_id,
-        objektId: row.objekt_id,
         felder: row.felder,
       });
       // Nach Buchung + Mail-Abschluss ist der Eintrag oft gelöscht — vom Board entfernen

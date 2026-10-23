@@ -1,21 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CockpitSeite } from "@/modules/cockpit/CockpitSeite";
-import { BoardRahmen } from "@/modules/shell/BoardRahmen";
+import { UebersichtPage } from "@/features/uebersicht/UebersichtPage";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Cockpit — Grenz & Co." },
-      {
-        name: "description",
-        content:
-          "Liquidität, Darlehen, Immobilien, Baumaschinen und offene Prüffälle von Grenz & Co.",
-      },
-    ],
-  }),
-  component: () => (
-    <BoardRahmen>
-      <CockpitSeite />
-    </BoardRahmen>
-  ),
+  head: () => ({ meta: [{ title: "Übersicht — Grenz & Co." }] }),
+  component: UebersichtPage,
 });

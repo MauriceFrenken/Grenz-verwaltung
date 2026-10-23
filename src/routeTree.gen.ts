@@ -11,31 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnmeldenRouteImport } from './routes/anmelden'
-import { Route as BoardRouteImport } from './routes/board'
 import { Route as DatenschutzRouteImport } from './routes/datenschutz'
 import { Route as DokumenteRouteImport } from './routes/dokumente'
+import { Route as EbicsRouteImport } from './routes/ebics'
 import { Route as EinladungRouteImport } from './routes/einladung'
 import { Route as EinstellungenRouteImport } from './routes/einstellungen'
+import { Route as ExposesRouteImport } from './routes/exposes'
 import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as TransaktionenRouteImport } from './routes/transaktionen'
-import { Route as VerwaltungRouteImport } from './routes/verwaltung'
-import { Route as BoardIndexRouteImport } from './routes/board.index'
-import { Route as BoardAblageRouteImport } from './routes/board.ablage'
-import { Route as BoardAufteilerRouteImport } from './routes/board.aufteiler'
-import { Route as BoardBaumaschinenRouteImport } from './routes/board.baumaschinen'
-import { Route as BoardCashflowRouteImport } from './routes/board.cashflow'
-import { Route as BoardDarlehenRouteImport } from './routes/board.darlehen'
-import { Route as BoardDatenRouteImport } from './routes/board.daten'
-import { Route as BoardDesignRouteImport } from './routes/board.design'
-import { Route as BoardImmobilienRouteImport } from './routes/board.immobilien'
-import { Route as BoardLiquiditaetRouteImport } from './routes/board.liquiditaet'
-import { Route as BoardMietenRouteImport } from './routes/board.mieten'
-import { Route as BoardPipelineRouteImport } from './routes/board.pipeline'
-import { Route as BoardPrueflisteRouteImport } from './routes/board.pruefliste'
-import { Route as BoardRundeRouteImport } from './routes/board.runde'
-import { Route as BoardTransaktionenRouteImport } from './routes/board.transaktionen'
 import { Route as DokumenteIndexRouteImport } from './routes/dokumente.index'
 import { Route as DokumenteAblageRouteImport } from './routes/dokumente.ablage'
 import { Route as DokumentePruefordnerRouteImport } from './routes/dokumente.pruefordner'
@@ -45,31 +29,15 @@ import { Route as EinstellungenIndexRouteImport } from './routes/einstellungen.i
 import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
 import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
 import { Route as EinstellungenIntegrationenRouteImport } from './routes/einstellungen.integrationen'
+import { Route as ExposesIndexRouteImport } from './routes/exposes.index'
+import { Route as ExposesImportRouteImport } from './routes/exposes.import'
 import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
-import { Route as TransaktionenIndexRouteImport } from './routes/transaktionen.index'
-import { Route as TransaktionenExposeImportRouteImport } from './routes/transaktionen.expose-import'
-import { Route as TransaktionenListeRouteImport } from './routes/transaktionen.liste'
-import { Route as VerwaltungIndexRouteImport } from './routes/verwaltung.index'
-import { Route as VerwaltungDarlehenRouteImport } from './routes/verwaltung.darlehen'
-import { Route as VerwaltungEbicsRouteImport } from './routes/verwaltung.ebics'
-import { Route as VerwaltungEinheitenRouteImport } from './routes/verwaltung.einheiten'
-import { Route as VerwaltungGesellschaftenRouteImport } from './routes/verwaltung.gesellschaften'
-import { Route as VerwaltungMieterRouteImport } from './routes/verwaltung.mieter'
-import { Route as VerwaltungMietverhaeltnisseRouteImport } from './routes/verwaltung.mietverhaeltnisse'
-import { Route as VerwaltungNebenkostenRouteImport } from './routes/verwaltung.nebenkosten'
-import { Route as VerwaltungObjekteRouteImport } from './routes/verwaltung.objekte'
-import { Route as VerwaltungSollstellungRouteImport } from './routes/verwaltung.sollstellung'
-import { Route as VerwaltungZahlungenRouteImport } from './routes/verwaltung.zahlungen'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
 import { Route as ApiCronPostfachAnalyseRouteImport } from './routes/api.cron.postfach-analyse'
-import { Route as TransaktionenExposeImportIndexRouteImport } from './routes/transaktionen.expose-import.index'
-import { Route as TransaktionenExposeImportSalesforceRouteImport } from './routes/transaktionen.expose-import.salesforce'
-import { Route as VerwaltungObjekteIndexRouteImport } from './routes/verwaltung.objekte.index'
-import { Route as VerwaltungObjekteIdRouteImport } from './routes/verwaltung.objekte.$id'
-import { Route as VerwaltungSollstellungIndexRouteImport } from './routes/verwaltung.sollstellung.index'
-import { Route as VerwaltungSollstellungIdRouteImport } from './routes/verwaltung.sollstellung.$id'
+import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.index'
+import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -79,11 +47,6 @@ const IndexRoute = IndexRouteImport.update({
 const AnmeldenRoute = AnmeldenRouteImport.update({
   id: '/anmelden',
   path: '/anmelden',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BoardRoute = BoardRouteImport.update({
-  id: '/board',
-  path: '/board',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DatenschutzRoute = DatenschutzRouteImport.update({
@@ -96,6 +59,11 @@ const DokumenteRoute = DokumenteRouteImport.update({
   path: '/dokumente',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EbicsRoute = EbicsRouteImport.update({
+  id: '/ebics',
+  path: '/ebics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EinladungRoute = EinladungRouteImport.update({
   id: '/einladung',
   path: '/einladung',
@@ -104,6 +72,11 @@ const EinladungRoute = EinladungRouteImport.update({
 const EinstellungenRoute = EinstellungenRouteImport.update({
   id: '/einstellungen',
   path: '/einstellungen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExposesRoute = ExposesRouteImport.update({
+  id: '/exposes',
+  path: '/exposes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImpressumRoute = ImpressumRouteImport.update({
@@ -120,91 +93,6 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
-} as any)
-const TransaktionenRoute = TransaktionenRouteImport.update({
-  id: '/transaktionen',
-  path: '/transaktionen',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const VerwaltungRoute = VerwaltungRouteImport.update({
-  id: '/verwaltung',
-  path: '/verwaltung',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BoardIndexRoute = BoardIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardAblageRoute = BoardAblageRouteImport.update({
-  id: '/ablage',
-  path: '/ablage',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardAufteilerRoute = BoardAufteilerRouteImport.update({
-  id: '/aufteiler',
-  path: '/aufteiler',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardBaumaschinenRoute = BoardBaumaschinenRouteImport.update({
-  id: '/baumaschinen',
-  path: '/baumaschinen',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardCashflowRoute = BoardCashflowRouteImport.update({
-  id: '/cashflow',
-  path: '/cashflow',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardDarlehenRoute = BoardDarlehenRouteImport.update({
-  id: '/darlehen',
-  path: '/darlehen',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardDatenRoute = BoardDatenRouteImport.update({
-  id: '/daten',
-  path: '/daten',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardDesignRoute = BoardDesignRouteImport.update({
-  id: '/design',
-  path: '/design',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardImmobilienRoute = BoardImmobilienRouteImport.update({
-  id: '/immobilien',
-  path: '/immobilien',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardLiquiditaetRoute = BoardLiquiditaetRouteImport.update({
-  id: '/liquiditaet',
-  path: '/liquiditaet',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardMietenRoute = BoardMietenRouteImport.update({
-  id: '/mieten',
-  path: '/mieten',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardPipelineRoute = BoardPipelineRouteImport.update({
-  id: '/pipeline',
-  path: '/pipeline',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardPrueflisteRoute = BoardPrueflisteRouteImport.update({
-  id: '/pruefliste',
-  path: '/pruefliste',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardRundeRoute = BoardRundeRouteImport.update({
-  id: '/runde',
-  path: '/runde',
-  getParentRoute: () => BoardRoute,
-} as any)
-const BoardTransaktionenRoute = BoardTransaktionenRouteImport.update({
-  id: '/transaktionen',
-  path: '/transaktionen',
-  getParentRoute: () => BoardRoute,
 } as any)
 const DokumenteIndexRoute = DokumenteIndexRouteImport.update({
   id: '/',
@@ -253,6 +141,16 @@ const EinstellungenIntegrationenRoute =
     path: '/integrationen',
     getParentRoute: () => EinstellungenRoute,
   } as any)
+const ExposesIndexRoute = ExposesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ExposesRoute,
+} as any)
+const ExposesImportRoute = ExposesImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => ExposesRoute,
+} as any)
 const MicrosoftCallbackRoute = MicrosoftCallbackRouteImport.update({
   id: '/microsoft/callback',
   path: '/microsoft/callback',
@@ -262,79 +160,6 @@ const SalesforceCallbackRoute = SalesforceCallbackRouteImport.update({
   id: '/salesforce/callback',
   path: '/salesforce/callback',
   getParentRoute: () => rootRouteImport,
-} as any)
-const TransaktionenIndexRoute = TransaktionenIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => TransaktionenRoute,
-} as any)
-const TransaktionenExposeImportRoute =
-  TransaktionenExposeImportRouteImport.update({
-    id: '/expose-import',
-    path: '/expose-import',
-    getParentRoute: () => TransaktionenRoute,
-  } as any)
-const TransaktionenListeRoute = TransaktionenListeRouteImport.update({
-  id: '/liste',
-  path: '/liste',
-  getParentRoute: () => TransaktionenRoute,
-} as any)
-const VerwaltungIndexRoute = VerwaltungIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => VerwaltungRoute,
-} as any)
-const VerwaltungDarlehenRoute = VerwaltungDarlehenRouteImport.update({
-  id: '/darlehen',
-  path: '/darlehen',
-  getParentRoute: () => VerwaltungRoute,
-} as any)
-const VerwaltungEbicsRoute = VerwaltungEbicsRouteImport.update({
-  id: '/ebics',
-  path: '/ebics',
-  getParentRoute: () => VerwaltungRoute,
-} as any)
-const VerwaltungEinheitenRoute = VerwaltungEinheitenRouteImport.update({
-  id: '/einheiten',
-  path: '/einheiten',
-  getParentRoute: () => VerwaltungRoute,
-} as any)
-const VerwaltungGesellschaftenRoute =
-  VerwaltungGesellschaftenRouteImport.update({
-    id: '/gesellschaften',
-    path: '/gesellschaften',
-    getParentRoute: () => VerwaltungRoute,
-  } as any)
-const VerwaltungMieterRoute = VerwaltungMieterRouteImport.update({
-  id: '/mieter',
-  path: '/mieter',
-  getParentRoute: () => VerwaltungRoute,
-} as any)
-const VerwaltungMietverhaeltnisseRoute =
-  VerwaltungMietverhaeltnisseRouteImport.update({
-    id: '/mietverhaeltnisse',
-    path: '/mietverhaeltnisse',
-    getParentRoute: () => VerwaltungRoute,
-  } as any)
-const VerwaltungNebenkostenRoute = VerwaltungNebenkostenRouteImport.update({
-  id: '/nebenkosten',
-  path: '/nebenkosten',
-  getParentRoute: () => VerwaltungRoute,
-} as any)
-const VerwaltungObjekteRoute = VerwaltungObjekteRouteImport.update({
-  id: '/objekte',
-  path: '/objekte',
-  getParentRoute: () => VerwaltungRoute,
-} as any)
-const VerwaltungSollstellungRoute = VerwaltungSollstellungRouteImport.update({
-  id: '/sollstellung',
-  path: '/sollstellung',
-  getParentRoute: () => VerwaltungRoute,
-} as any)
-const VerwaltungZahlungenRoute = VerwaltungZahlungenRouteImport.update({
-  id: '/zahlungen',
-  path: '/zahlungen',
-  getParentRoute: () => VerwaltungRoute,
 } as any)
 const ApiCronEbicsUmsaetzeRoute = ApiCronEbicsUmsaetzeRouteImport.update({
   id: '/api/cron/ebics-umsaetze',
@@ -351,68 +176,29 @@ const ApiCronPostfachAnalyseRoute = ApiCronPostfachAnalyseRouteImport.update({
   path: '/api/cron/postfach-analyse',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TransaktionenExposeImportIndexRoute =
-  TransaktionenExposeImportIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => TransaktionenExposeImportRoute,
-  } as any)
-const TransaktionenExposeImportSalesforceRoute =
-  TransaktionenExposeImportSalesforceRouteImport.update({
-    id: '/salesforce',
-    path: '/salesforce',
-    getParentRoute: () => TransaktionenExposeImportRoute,
-  } as any)
-const VerwaltungObjekteIndexRoute = VerwaltungObjekteIndexRouteImport.update({
+const ExposesImportIndexRoute = ExposesImportIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => VerwaltungObjekteRoute,
+  getParentRoute: () => ExposesImportRoute,
 } as any)
-const VerwaltungObjekteIdRoute = VerwaltungObjekteIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => VerwaltungObjekteRoute,
+const ExposesImportSalesforceRoute = ExposesImportSalesforceRouteImport.update({
+  id: '/salesforce',
+  path: '/salesforce',
+  getParentRoute: () => ExposesImportRoute,
 } as any)
-const VerwaltungSollstellungIndexRoute =
-  VerwaltungSollstellungIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => VerwaltungSollstellungRoute,
-  } as any)
-const VerwaltungSollstellungIdRoute =
-  VerwaltungSollstellungIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => VerwaltungSollstellungRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
-  '/board': typeof BoardRouteWithChildren
   '/datenschutz': typeof DatenschutzRoute
   '/dokumente': typeof DokumenteRouteWithChildren
+  '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
+  '/exposes': typeof ExposesRouteWithChildren
   '/impressum': typeof ImpressumRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/transaktionen': typeof TransaktionenRouteWithChildren
-  '/verwaltung': typeof VerwaltungRouteWithChildren
-  '/board/ablage': typeof BoardAblageRoute
-  '/board/aufteiler': typeof BoardAufteilerRoute
-  '/board/baumaschinen': typeof BoardBaumaschinenRoute
-  '/board/cashflow': typeof BoardCashflowRoute
-  '/board/darlehen': typeof BoardDarlehenRoute
-  '/board/daten': typeof BoardDatenRoute
-  '/board/design': typeof BoardDesignRoute
-  '/board/immobilien': typeof BoardImmobilienRoute
-  '/board/liquiditaet': typeof BoardLiquiditaetRoute
-  '/board/mieten': typeof BoardMietenRoute
-  '/board/pipeline': typeof BoardPipelineRoute
-  '/board/pruefliste': typeof BoardPrueflisteRoute
-  '/board/runde': typeof BoardRundeRoute
-  '/board/transaktionen': typeof BoardTransaktionenRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
   '/dokumente/pruefung': typeof DokumentePruefungRoute
@@ -420,57 +206,27 @@ export interface FileRoutesByFullPath {
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/exposes/import': typeof ExposesImportRouteWithChildren
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
-  '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
-  '/transaktionen/liste': typeof TransaktionenListeRoute
-  '/verwaltung/darlehen': typeof VerwaltungDarlehenRoute
-  '/verwaltung/ebics': typeof VerwaltungEbicsRoute
-  '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
-  '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
-  '/verwaltung/mieter': typeof VerwaltungMieterRoute
-  '/verwaltung/mietverhaeltnisse': typeof VerwaltungMietverhaeltnisseRoute
-  '/verwaltung/nebenkosten': typeof VerwaltungNebenkostenRoute
-  '/verwaltung/objekte': typeof VerwaltungObjekteRouteWithChildren
-  '/verwaltung/sollstellung': typeof VerwaltungSollstellungRouteWithChildren
-  '/verwaltung/zahlungen': typeof VerwaltungZahlungenRoute
-  '/board/': typeof BoardIndexRoute
   '/dokumente/': typeof DokumenteIndexRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
-  '/transaktionen/': typeof TransaktionenIndexRoute
-  '/verwaltung/': typeof VerwaltungIndexRoute
+  '/exposes/': typeof ExposesIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
-  '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
-  '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
-  '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
-  '/transaktionen/expose-import/': typeof TransaktionenExposeImportIndexRoute
-  '/verwaltung/objekte/': typeof VerwaltungObjekteIndexRoute
-  '/verwaltung/sollstellung/': typeof VerwaltungSollstellungIndexRoute
+  '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/exposes/import/': typeof ExposesImportIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
   '/datenschutz': typeof DatenschutzRoute
+  '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
   '/impressum': typeof ImpressumRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/board/ablage': typeof BoardAblageRoute
-  '/board/aufteiler': typeof BoardAufteilerRoute
-  '/board/baumaschinen': typeof BoardBaumaschinenRoute
-  '/board/cashflow': typeof BoardCashflowRoute
-  '/board/darlehen': typeof BoardDarlehenRoute
-  '/board/daten': typeof BoardDatenRoute
-  '/board/design': typeof BoardDesignRoute
-  '/board/immobilien': typeof BoardImmobilienRoute
-  '/board/liquiditaet': typeof BoardLiquiditaetRoute
-  '/board/mieten': typeof BoardMietenRoute
-  '/board/pipeline': typeof BoardPipelineRoute
-  '/board/pruefliste': typeof BoardPrueflisteRoute
-  '/board/runde': typeof BoardRundeRoute
-  '/board/transaktionen': typeof BoardTransaktionenRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
   '/dokumente/pruefung': typeof DokumentePruefungRoute
@@ -480,58 +236,28 @@ export interface FileRoutesByTo {
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
-  '/transaktionen/liste': typeof TransaktionenListeRoute
-  '/verwaltung/darlehen': typeof VerwaltungDarlehenRoute
-  '/verwaltung/ebics': typeof VerwaltungEbicsRoute
-  '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
-  '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
-  '/verwaltung/mieter': typeof VerwaltungMieterRoute
-  '/verwaltung/mietverhaeltnisse': typeof VerwaltungMietverhaeltnisseRoute
-  '/verwaltung/nebenkosten': typeof VerwaltungNebenkostenRoute
-  '/verwaltung/zahlungen': typeof VerwaltungZahlungenRoute
-  '/board': typeof BoardIndexRoute
   '/dokumente': typeof DokumenteIndexRoute
   '/einstellungen': typeof EinstellungenIndexRoute
-  '/transaktionen': typeof TransaktionenIndexRoute
-  '/verwaltung': typeof VerwaltungIndexRoute
+  '/exposes': typeof ExposesIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
-  '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
-  '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
-  '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
-  '/transaktionen/expose-import': typeof TransaktionenExposeImportIndexRoute
-  '/verwaltung/objekte': typeof VerwaltungObjekteIndexRoute
-  '/verwaltung/sollstellung': typeof VerwaltungSollstellungIndexRoute
+  '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/exposes/import': typeof ExposesImportIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
-  '/board': typeof BoardRouteWithChildren
   '/datenschutz': typeof DatenschutzRoute
   '/dokumente': typeof DokumenteRouteWithChildren
+  '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
+  '/exposes': typeof ExposesRouteWithChildren
   '/impressum': typeof ImpressumRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/transaktionen': typeof TransaktionenRouteWithChildren
-  '/verwaltung': typeof VerwaltungRouteWithChildren
-  '/board/ablage': typeof BoardAblageRoute
-  '/board/aufteiler': typeof BoardAufteilerRoute
-  '/board/baumaschinen': typeof BoardBaumaschinenRoute
-  '/board/cashflow': typeof BoardCashflowRoute
-  '/board/darlehen': typeof BoardDarlehenRoute
-  '/board/daten': typeof BoardDatenRoute
-  '/board/design': typeof BoardDesignRoute
-  '/board/immobilien': typeof BoardImmobilienRoute
-  '/board/liquiditaet': typeof BoardLiquiditaetRoute
-  '/board/mieten': typeof BoardMietenRoute
-  '/board/pipeline': typeof BoardPipelineRoute
-  '/board/pruefliste': typeof BoardPrueflisteRoute
-  '/board/runde': typeof BoardRundeRoute
-  '/board/transaktionen': typeof BoardTransaktionenRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
   '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
   '/dokumente/pruefung': typeof DokumentePruefungRoute
@@ -539,64 +265,32 @@ export interface FileRoutesById {
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/exposes/import': typeof ExposesImportRouteWithChildren
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
-  '/transaktionen/expose-import': typeof TransaktionenExposeImportRouteWithChildren
-  '/transaktionen/liste': typeof TransaktionenListeRoute
-  '/verwaltung/darlehen': typeof VerwaltungDarlehenRoute
-  '/verwaltung/ebics': typeof VerwaltungEbicsRoute
-  '/verwaltung/einheiten': typeof VerwaltungEinheitenRoute
-  '/verwaltung/gesellschaften': typeof VerwaltungGesellschaftenRoute
-  '/verwaltung/mieter': typeof VerwaltungMieterRoute
-  '/verwaltung/mietverhaeltnisse': typeof VerwaltungMietverhaeltnisseRoute
-  '/verwaltung/nebenkosten': typeof VerwaltungNebenkostenRoute
-  '/verwaltung/objekte': typeof VerwaltungObjekteRouteWithChildren
-  '/verwaltung/sollstellung': typeof VerwaltungSollstellungRouteWithChildren
-  '/verwaltung/zahlungen': typeof VerwaltungZahlungenRoute
-  '/board/': typeof BoardIndexRoute
   '/dokumente/': typeof DokumenteIndexRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
-  '/transaktionen/': typeof TransaktionenIndexRoute
-  '/verwaltung/': typeof VerwaltungIndexRoute
+  '/exposes/': typeof ExposesIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
-  '/transaktionen/expose-import/salesforce': typeof TransaktionenExposeImportSalesforceRoute
-  '/verwaltung/objekte/$id': typeof VerwaltungObjekteIdRoute
-  '/verwaltung/sollstellung/$id': typeof VerwaltungSollstellungIdRoute
-  '/transaktionen/expose-import/': typeof TransaktionenExposeImportIndexRoute
-  '/verwaltung/objekte/': typeof VerwaltungObjekteIndexRoute
-  '/verwaltung/sollstellung/': typeof VerwaltungSollstellungIndexRoute
+  '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/exposes/import/': typeof ExposesImportIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/anmelden'
-    | '/board'
     | '/datenschutz'
     | '/dokumente'
+    | '/ebics'
     | '/einladung'
     | '/einstellungen'
+    | '/exposes'
     | '/impressum'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
-    | '/transaktionen'
-    | '/verwaltung'
-    | '/board/ablage'
-    | '/board/aufteiler'
-    | '/board/baumaschinen'
-    | '/board/cashflow'
-    | '/board/darlehen'
-    | '/board/daten'
-    | '/board/design'
-    | '/board/immobilien'
-    | '/board/liquiditaet'
-    | '/board/mieten'
-    | '/board/pipeline'
-    | '/board/pruefliste'
-    | '/board/runde'
-    | '/board/transaktionen'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
     | '/dokumente/pruefung'
@@ -604,57 +298,27 @@ export interface FileRouteTypes {
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/exposes/import'
     | '/microsoft/callback'
     | '/salesforce/callback'
-    | '/transaktionen/expose-import'
-    | '/transaktionen/liste'
-    | '/verwaltung/darlehen'
-    | '/verwaltung/ebics'
-    | '/verwaltung/einheiten'
-    | '/verwaltung/gesellschaften'
-    | '/verwaltung/mieter'
-    | '/verwaltung/mietverhaeltnisse'
-    | '/verwaltung/nebenkosten'
-    | '/verwaltung/objekte'
-    | '/verwaltung/sollstellung'
-    | '/verwaltung/zahlungen'
-    | '/board/'
     | '/dokumente/'
     | '/einstellungen/'
-    | '/transaktionen/'
-    | '/verwaltung/'
+    | '/exposes/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/postfach-analyse'
-    | '/transaktionen/expose-import/salesforce'
-    | '/verwaltung/objekte/$id'
-    | '/verwaltung/sollstellung/$id'
-    | '/transaktionen/expose-import/'
-    | '/verwaltung/objekte/'
-    | '/verwaltung/sollstellung/'
+    | '/exposes/import/salesforce'
+    | '/exposes/import/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/anmelden'
     | '/datenschutz'
+    | '/ebics'
     | '/einladung'
     | '/impressum'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
-    | '/board/ablage'
-    | '/board/aufteiler'
-    | '/board/baumaschinen'
-    | '/board/cashflow'
-    | '/board/darlehen'
-    | '/board/daten'
-    | '/board/design'
-    | '/board/immobilien'
-    | '/board/liquiditaet'
-    | '/board/mieten'
-    | '/board/pipeline'
-    | '/board/pruefliste'
-    | '/board/runde'
-    | '/board/transaktionen'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
     | '/dokumente/pruefung'
@@ -664,57 +328,27 @@ export interface FileRouteTypes {
     | '/einstellungen/integrationen'
     | '/microsoft/callback'
     | '/salesforce/callback'
-    | '/transaktionen/liste'
-    | '/verwaltung/darlehen'
-    | '/verwaltung/ebics'
-    | '/verwaltung/einheiten'
-    | '/verwaltung/gesellschaften'
-    | '/verwaltung/mieter'
-    | '/verwaltung/mietverhaeltnisse'
-    | '/verwaltung/nebenkosten'
-    | '/verwaltung/zahlungen'
-    | '/board'
     | '/dokumente'
     | '/einstellungen'
-    | '/transaktionen'
-    | '/verwaltung'
+    | '/exposes'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/postfach-analyse'
-    | '/transaktionen/expose-import/salesforce'
-    | '/verwaltung/objekte/$id'
-    | '/verwaltung/sollstellung/$id'
-    | '/transaktionen/expose-import'
-    | '/verwaltung/objekte'
-    | '/verwaltung/sollstellung'
+    | '/exposes/import/salesforce'
+    | '/exposes/import'
   id:
     | '__root__'
     | '/'
     | '/anmelden'
-    | '/board'
     | '/datenschutz'
     | '/dokumente'
+    | '/ebics'
     | '/einladung'
     | '/einstellungen'
+    | '/exposes'
     | '/impressum'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
-    | '/transaktionen'
-    | '/verwaltung'
-    | '/board/ablage'
-    | '/board/aufteiler'
-    | '/board/baumaschinen'
-    | '/board/cashflow'
-    | '/board/darlehen'
-    | '/board/daten'
-    | '/board/design'
-    | '/board/immobilien'
-    | '/board/liquiditaet'
-    | '/board/mieten'
-    | '/board/pipeline'
-    | '/board/pruefliste'
-    | '/board/runde'
-    | '/board/transaktionen'
     | '/dokumente/ablage'
     | '/dokumente/pruefordner'
     | '/dokumente/pruefung'
@@ -722,49 +356,31 @@ export interface FileRouteTypes {
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/exposes/import'
     | '/microsoft/callback'
     | '/salesforce/callback'
-    | '/transaktionen/expose-import'
-    | '/transaktionen/liste'
-    | '/verwaltung/darlehen'
-    | '/verwaltung/ebics'
-    | '/verwaltung/einheiten'
-    | '/verwaltung/gesellschaften'
-    | '/verwaltung/mieter'
-    | '/verwaltung/mietverhaeltnisse'
-    | '/verwaltung/nebenkosten'
-    | '/verwaltung/objekte'
-    | '/verwaltung/sollstellung'
-    | '/verwaltung/zahlungen'
-    | '/board/'
     | '/dokumente/'
     | '/einstellungen/'
-    | '/transaktionen/'
-    | '/verwaltung/'
+    | '/exposes/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/postfach-analyse'
-    | '/transaktionen/expose-import/salesforce'
-    | '/verwaltung/objekte/$id'
-    | '/verwaltung/sollstellung/$id'
-    | '/transaktionen/expose-import/'
-    | '/verwaltung/objekte/'
-    | '/verwaltung/sollstellung/'
+    | '/exposes/import/salesforce'
+    | '/exposes/import/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnmeldenRoute: typeof AnmeldenRoute
-  BoardRoute: typeof BoardRouteWithChildren
   DatenschutzRoute: typeof DatenschutzRoute
   DokumenteRoute: typeof DokumenteRouteWithChildren
+  EbicsRoute: typeof EbicsRoute
   EinladungRoute: typeof EinladungRoute
   EinstellungenRoute: typeof EinstellungenRouteWithChildren
+  ExposesRoute: typeof ExposesRouteWithChildren
   ImpressumRoute: typeof ImpressumRoute
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  TransaktionenRoute: typeof TransaktionenRouteWithChildren
-  VerwaltungRoute: typeof VerwaltungRouteWithChildren
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
@@ -788,13 +404,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnmeldenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/board': {
-      id: '/board'
-      path: '/board'
-      fullPath: '/board'
-      preLoaderRoute: typeof BoardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/datenschutz': {
       id: '/datenschutz'
       path: '/datenschutz'
@@ -809,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DokumenteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ebics': {
+      id: '/ebics'
+      path: '/ebics'
+      fullPath: '/ebics'
+      preLoaderRoute: typeof EbicsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/einladung': {
       id: '/einladung'
       path: '/einladung'
@@ -821,6 +437,13 @@ declare module '@tanstack/react-router' {
       path: '/einstellungen'
       fullPath: '/einstellungen'
       preLoaderRoute: typeof EinstellungenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exposes': {
+      id: '/exposes'
+      path: '/exposes'
+      fullPath: '/exposes'
+      preLoaderRoute: typeof ExposesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/impressum': {
@@ -843,125 +466,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/transaktionen': {
-      id: '/transaktionen'
-      path: '/transaktionen'
-      fullPath: '/transaktionen'
-      preLoaderRoute: typeof TransaktionenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/verwaltung': {
-      id: '/verwaltung'
-      path: '/verwaltung'
-      fullPath: '/verwaltung'
-      preLoaderRoute: typeof VerwaltungRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/board/': {
-      id: '/board/'
-      path: '/'
-      fullPath: '/board/'
-      preLoaderRoute: typeof BoardIndexRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/ablage': {
-      id: '/board/ablage'
-      path: '/ablage'
-      fullPath: '/board/ablage'
-      preLoaderRoute: typeof BoardAblageRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/aufteiler': {
-      id: '/board/aufteiler'
-      path: '/aufteiler'
-      fullPath: '/board/aufteiler'
-      preLoaderRoute: typeof BoardAufteilerRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/baumaschinen': {
-      id: '/board/baumaschinen'
-      path: '/baumaschinen'
-      fullPath: '/board/baumaschinen'
-      preLoaderRoute: typeof BoardBaumaschinenRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/cashflow': {
-      id: '/board/cashflow'
-      path: '/cashflow'
-      fullPath: '/board/cashflow'
-      preLoaderRoute: typeof BoardCashflowRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/darlehen': {
-      id: '/board/darlehen'
-      path: '/darlehen'
-      fullPath: '/board/darlehen'
-      preLoaderRoute: typeof BoardDarlehenRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/daten': {
-      id: '/board/daten'
-      path: '/daten'
-      fullPath: '/board/daten'
-      preLoaderRoute: typeof BoardDatenRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/design': {
-      id: '/board/design'
-      path: '/design'
-      fullPath: '/board/design'
-      preLoaderRoute: typeof BoardDesignRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/immobilien': {
-      id: '/board/immobilien'
-      path: '/immobilien'
-      fullPath: '/board/immobilien'
-      preLoaderRoute: typeof BoardImmobilienRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/liquiditaet': {
-      id: '/board/liquiditaet'
-      path: '/liquiditaet'
-      fullPath: '/board/liquiditaet'
-      preLoaderRoute: typeof BoardLiquiditaetRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/mieten': {
-      id: '/board/mieten'
-      path: '/mieten'
-      fullPath: '/board/mieten'
-      preLoaderRoute: typeof BoardMietenRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/pipeline': {
-      id: '/board/pipeline'
-      path: '/pipeline'
-      fullPath: '/board/pipeline'
-      preLoaderRoute: typeof BoardPipelineRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/pruefliste': {
-      id: '/board/pruefliste'
-      path: '/pruefliste'
-      fullPath: '/board/pruefliste'
-      preLoaderRoute: typeof BoardPrueflisteRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/runde': {
-      id: '/board/runde'
-      path: '/runde'
-      fullPath: '/board/runde'
-      preLoaderRoute: typeof BoardRundeRouteImport
-      parentRoute: typeof BoardRoute
-    }
-    '/board/transaktionen': {
-      id: '/board/transaktionen'
-      path: '/transaktionen'
-      fullPath: '/board/transaktionen'
-      preLoaderRoute: typeof BoardTransaktionenRouteImport
-      parentRoute: typeof BoardRoute
     }
     '/dokumente/': {
       id: '/dokumente/'
@@ -1026,6 +530,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EinstellungenIntegrationenRouteImport
       parentRoute: typeof EinstellungenRoute
     }
+    '/exposes/': {
+      id: '/exposes/'
+      path: '/'
+      fullPath: '/exposes/'
+      preLoaderRoute: typeof ExposesIndexRouteImport
+      parentRoute: typeof ExposesRoute
+    }
+    '/exposes/import': {
+      id: '/exposes/import'
+      path: '/import'
+      fullPath: '/exposes/import'
+      preLoaderRoute: typeof ExposesImportRouteImport
+      parentRoute: typeof ExposesRoute
+    }
     '/microsoft/callback': {
       id: '/microsoft/callback'
       path: '/microsoft/callback'
@@ -1039,104 +557,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/salesforce/callback'
       preLoaderRoute: typeof SalesforceCallbackRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/transaktionen/': {
-      id: '/transaktionen/'
-      path: '/'
-      fullPath: '/transaktionen/'
-      preLoaderRoute: typeof TransaktionenIndexRouteImport
-      parentRoute: typeof TransaktionenRoute
-    }
-    '/transaktionen/expose-import': {
-      id: '/transaktionen/expose-import'
-      path: '/expose-import'
-      fullPath: '/transaktionen/expose-import'
-      preLoaderRoute: typeof TransaktionenExposeImportRouteImport
-      parentRoute: typeof TransaktionenRoute
-    }
-    '/transaktionen/liste': {
-      id: '/transaktionen/liste'
-      path: '/liste'
-      fullPath: '/transaktionen/liste'
-      preLoaderRoute: typeof TransaktionenListeRouteImport
-      parentRoute: typeof TransaktionenRoute
-    }
-    '/verwaltung/': {
-      id: '/verwaltung/'
-      path: '/'
-      fullPath: '/verwaltung/'
-      preLoaderRoute: typeof VerwaltungIndexRouteImport
-      parentRoute: typeof VerwaltungRoute
-    }
-    '/verwaltung/darlehen': {
-      id: '/verwaltung/darlehen'
-      path: '/darlehen'
-      fullPath: '/verwaltung/darlehen'
-      preLoaderRoute: typeof VerwaltungDarlehenRouteImport
-      parentRoute: typeof VerwaltungRoute
-    }
-    '/verwaltung/ebics': {
-      id: '/verwaltung/ebics'
-      path: '/ebics'
-      fullPath: '/verwaltung/ebics'
-      preLoaderRoute: typeof VerwaltungEbicsRouteImport
-      parentRoute: typeof VerwaltungRoute
-    }
-    '/verwaltung/einheiten': {
-      id: '/verwaltung/einheiten'
-      path: '/einheiten'
-      fullPath: '/verwaltung/einheiten'
-      preLoaderRoute: typeof VerwaltungEinheitenRouteImport
-      parentRoute: typeof VerwaltungRoute
-    }
-    '/verwaltung/gesellschaften': {
-      id: '/verwaltung/gesellschaften'
-      path: '/gesellschaften'
-      fullPath: '/verwaltung/gesellschaften'
-      preLoaderRoute: typeof VerwaltungGesellschaftenRouteImport
-      parentRoute: typeof VerwaltungRoute
-    }
-    '/verwaltung/mieter': {
-      id: '/verwaltung/mieter'
-      path: '/mieter'
-      fullPath: '/verwaltung/mieter'
-      preLoaderRoute: typeof VerwaltungMieterRouteImport
-      parentRoute: typeof VerwaltungRoute
-    }
-    '/verwaltung/mietverhaeltnisse': {
-      id: '/verwaltung/mietverhaeltnisse'
-      path: '/mietverhaeltnisse'
-      fullPath: '/verwaltung/mietverhaeltnisse'
-      preLoaderRoute: typeof VerwaltungMietverhaeltnisseRouteImport
-      parentRoute: typeof VerwaltungRoute
-    }
-    '/verwaltung/nebenkosten': {
-      id: '/verwaltung/nebenkosten'
-      path: '/nebenkosten'
-      fullPath: '/verwaltung/nebenkosten'
-      preLoaderRoute: typeof VerwaltungNebenkostenRouteImport
-      parentRoute: typeof VerwaltungRoute
-    }
-    '/verwaltung/objekte': {
-      id: '/verwaltung/objekte'
-      path: '/objekte'
-      fullPath: '/verwaltung/objekte'
-      preLoaderRoute: typeof VerwaltungObjekteRouteImport
-      parentRoute: typeof VerwaltungRoute
-    }
-    '/verwaltung/sollstellung': {
-      id: '/verwaltung/sollstellung'
-      path: '/sollstellung'
-      fullPath: '/verwaltung/sollstellung'
-      preLoaderRoute: typeof VerwaltungSollstellungRouteImport
-      parentRoute: typeof VerwaltungRoute
-    }
-    '/verwaltung/zahlungen': {
-      id: '/verwaltung/zahlungen'
-      path: '/zahlungen'
-      fullPath: '/verwaltung/zahlungen'
-      preLoaderRoute: typeof VerwaltungZahlungenRouteImport
-      parentRoute: typeof VerwaltungRoute
     }
     '/api/cron/ebics-umsaetze': {
       id: '/api/cron/ebics-umsaetze'
@@ -1159,88 +579,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronPostfachAnalyseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/transaktionen/expose-import/': {
-      id: '/transaktionen/expose-import/'
+    '/exposes/import/': {
+      id: '/exposes/import/'
       path: '/'
-      fullPath: '/transaktionen/expose-import/'
-      preLoaderRoute: typeof TransaktionenExposeImportIndexRouteImport
-      parentRoute: typeof TransaktionenExposeImportRoute
+      fullPath: '/exposes/import/'
+      preLoaderRoute: typeof ExposesImportIndexRouteImport
+      parentRoute: typeof ExposesImportRoute
     }
-    '/transaktionen/expose-import/salesforce': {
-      id: '/transaktionen/expose-import/salesforce'
+    '/exposes/import/salesforce': {
+      id: '/exposes/import/salesforce'
       path: '/salesforce'
-      fullPath: '/transaktionen/expose-import/salesforce'
-      preLoaderRoute: typeof TransaktionenExposeImportSalesforceRouteImport
-      parentRoute: typeof TransaktionenExposeImportRoute
-    }
-    '/verwaltung/objekte/': {
-      id: '/verwaltung/objekte/'
-      path: '/'
-      fullPath: '/verwaltung/objekte/'
-      preLoaderRoute: typeof VerwaltungObjekteIndexRouteImport
-      parentRoute: typeof VerwaltungObjekteRoute
-    }
-    '/verwaltung/objekte/$id': {
-      id: '/verwaltung/objekte/$id'
-      path: '/$id'
-      fullPath: '/verwaltung/objekte/$id'
-      preLoaderRoute: typeof VerwaltungObjekteIdRouteImport
-      parentRoute: typeof VerwaltungObjekteRoute
-    }
-    '/verwaltung/sollstellung/': {
-      id: '/verwaltung/sollstellung/'
-      path: '/'
-      fullPath: '/verwaltung/sollstellung/'
-      preLoaderRoute: typeof VerwaltungSollstellungIndexRouteImport
-      parentRoute: typeof VerwaltungSollstellungRoute
-    }
-    '/verwaltung/sollstellung/$id': {
-      id: '/verwaltung/sollstellung/$id'
-      path: '/$id'
-      fullPath: '/verwaltung/sollstellung/$id'
-      preLoaderRoute: typeof VerwaltungSollstellungIdRouteImport
-      parentRoute: typeof VerwaltungSollstellungRoute
+      fullPath: '/exposes/import/salesforce'
+      preLoaderRoute: typeof ExposesImportSalesforceRouteImport
+      parentRoute: typeof ExposesImportRoute
     }
   }
 }
-
-interface BoardRouteChildren {
-  BoardAblageRoute: typeof BoardAblageRoute
-  BoardAufteilerRoute: typeof BoardAufteilerRoute
-  BoardBaumaschinenRoute: typeof BoardBaumaschinenRoute
-  BoardCashflowRoute: typeof BoardCashflowRoute
-  BoardDarlehenRoute: typeof BoardDarlehenRoute
-  BoardDatenRoute: typeof BoardDatenRoute
-  BoardDesignRoute: typeof BoardDesignRoute
-  BoardImmobilienRoute: typeof BoardImmobilienRoute
-  BoardLiquiditaetRoute: typeof BoardLiquiditaetRoute
-  BoardMietenRoute: typeof BoardMietenRoute
-  BoardPipelineRoute: typeof BoardPipelineRoute
-  BoardPrueflisteRoute: typeof BoardPrueflisteRoute
-  BoardRundeRoute: typeof BoardRundeRoute
-  BoardTransaktionenRoute: typeof BoardTransaktionenRoute
-  BoardIndexRoute: typeof BoardIndexRoute
-}
-
-const BoardRouteChildren: BoardRouteChildren = {
-  BoardAblageRoute: BoardAblageRoute,
-  BoardAufteilerRoute: BoardAufteilerRoute,
-  BoardBaumaschinenRoute: BoardBaumaschinenRoute,
-  BoardCashflowRoute: BoardCashflowRoute,
-  BoardDarlehenRoute: BoardDarlehenRoute,
-  BoardDatenRoute: BoardDatenRoute,
-  BoardDesignRoute: BoardDesignRoute,
-  BoardImmobilienRoute: BoardImmobilienRoute,
-  BoardLiquiditaetRoute: BoardLiquiditaetRoute,
-  BoardMietenRoute: BoardMietenRoute,
-  BoardPipelineRoute: BoardPipelineRoute,
-  BoardPrueflisteRoute: BoardPrueflisteRoute,
-  BoardRundeRoute: BoardRundeRoute,
-  BoardTransaktionenRoute: BoardTransaktionenRoute,
-  BoardIndexRoute: BoardIndexRoute,
-}
-
-const BoardRouteWithChildren = BoardRoute._addFileChildren(BoardRouteChildren)
 
 interface DokumenteRouteChildren {
   DokumenteAblageRoute: typeof DokumenteAblageRoute
@@ -1280,113 +634,45 @@ const EinstellungenRouteWithChildren = EinstellungenRoute._addFileChildren(
   EinstellungenRouteChildren,
 )
 
-interface TransaktionenExposeImportRouteChildren {
-  TransaktionenExposeImportSalesforceRoute: typeof TransaktionenExposeImportSalesforceRoute
-  TransaktionenExposeImportIndexRoute: typeof TransaktionenExposeImportIndexRoute
+interface ExposesImportRouteChildren {
+  ExposesImportSalesforceRoute: typeof ExposesImportSalesforceRoute
+  ExposesImportIndexRoute: typeof ExposesImportIndexRoute
 }
 
-const TransaktionenExposeImportRouteChildren: TransaktionenExposeImportRouteChildren =
-  {
-    TransaktionenExposeImportSalesforceRoute:
-      TransaktionenExposeImportSalesforceRoute,
-    TransaktionenExposeImportIndexRoute: TransaktionenExposeImportIndexRoute,
-  }
-
-const TransaktionenExposeImportRouteWithChildren =
-  TransaktionenExposeImportRoute._addFileChildren(
-    TransaktionenExposeImportRouteChildren,
-  )
-
-interface TransaktionenRouteChildren {
-  TransaktionenExposeImportRoute: typeof TransaktionenExposeImportRouteWithChildren
-  TransaktionenListeRoute: typeof TransaktionenListeRoute
-  TransaktionenIndexRoute: typeof TransaktionenIndexRoute
+const ExposesImportRouteChildren: ExposesImportRouteChildren = {
+  ExposesImportSalesforceRoute: ExposesImportSalesforceRoute,
+  ExposesImportIndexRoute: ExposesImportIndexRoute,
 }
 
-const TransaktionenRouteChildren: TransaktionenRouteChildren = {
-  TransaktionenExposeImportRoute: TransaktionenExposeImportRouteWithChildren,
-  TransaktionenListeRoute: TransaktionenListeRoute,
-  TransaktionenIndexRoute: TransaktionenIndexRoute,
-}
-
-const TransaktionenRouteWithChildren = TransaktionenRoute._addFileChildren(
-  TransaktionenRouteChildren,
+const ExposesImportRouteWithChildren = ExposesImportRoute._addFileChildren(
+  ExposesImportRouteChildren,
 )
 
-interface VerwaltungObjekteRouteChildren {
-  VerwaltungObjekteIdRoute: typeof VerwaltungObjekteIdRoute
-  VerwaltungObjekteIndexRoute: typeof VerwaltungObjekteIndexRoute
+interface ExposesRouteChildren {
+  ExposesImportRoute: typeof ExposesImportRouteWithChildren
+  ExposesIndexRoute: typeof ExposesIndexRoute
 }
 
-const VerwaltungObjekteRouteChildren: VerwaltungObjekteRouteChildren = {
-  VerwaltungObjekteIdRoute: VerwaltungObjekteIdRoute,
-  VerwaltungObjekteIndexRoute: VerwaltungObjekteIndexRoute,
+const ExposesRouteChildren: ExposesRouteChildren = {
+  ExposesImportRoute: ExposesImportRouteWithChildren,
+  ExposesIndexRoute: ExposesIndexRoute,
 }
 
-const VerwaltungObjekteRouteWithChildren =
-  VerwaltungObjekteRoute._addFileChildren(VerwaltungObjekteRouteChildren)
-
-interface VerwaltungSollstellungRouteChildren {
-  VerwaltungSollstellungIdRoute: typeof VerwaltungSollstellungIdRoute
-  VerwaltungSollstellungIndexRoute: typeof VerwaltungSollstellungIndexRoute
-}
-
-const VerwaltungSollstellungRouteChildren: VerwaltungSollstellungRouteChildren =
-  {
-    VerwaltungSollstellungIdRoute: VerwaltungSollstellungIdRoute,
-    VerwaltungSollstellungIndexRoute: VerwaltungSollstellungIndexRoute,
-  }
-
-const VerwaltungSollstellungRouteWithChildren =
-  VerwaltungSollstellungRoute._addFileChildren(
-    VerwaltungSollstellungRouteChildren,
-  )
-
-interface VerwaltungRouteChildren {
-  VerwaltungDarlehenRoute: typeof VerwaltungDarlehenRoute
-  VerwaltungEbicsRoute: typeof VerwaltungEbicsRoute
-  VerwaltungEinheitenRoute: typeof VerwaltungEinheitenRoute
-  VerwaltungGesellschaftenRoute: typeof VerwaltungGesellschaftenRoute
-  VerwaltungMieterRoute: typeof VerwaltungMieterRoute
-  VerwaltungMietverhaeltnisseRoute: typeof VerwaltungMietverhaeltnisseRoute
-  VerwaltungNebenkostenRoute: typeof VerwaltungNebenkostenRoute
-  VerwaltungObjekteRoute: typeof VerwaltungObjekteRouteWithChildren
-  VerwaltungSollstellungRoute: typeof VerwaltungSollstellungRouteWithChildren
-  VerwaltungZahlungenRoute: typeof VerwaltungZahlungenRoute
-  VerwaltungIndexRoute: typeof VerwaltungIndexRoute
-}
-
-const VerwaltungRouteChildren: VerwaltungRouteChildren = {
-  VerwaltungDarlehenRoute: VerwaltungDarlehenRoute,
-  VerwaltungEbicsRoute: VerwaltungEbicsRoute,
-  VerwaltungEinheitenRoute: VerwaltungEinheitenRoute,
-  VerwaltungGesellschaftenRoute: VerwaltungGesellschaftenRoute,
-  VerwaltungMieterRoute: VerwaltungMieterRoute,
-  VerwaltungMietverhaeltnisseRoute: VerwaltungMietverhaeltnisseRoute,
-  VerwaltungNebenkostenRoute: VerwaltungNebenkostenRoute,
-  VerwaltungObjekteRoute: VerwaltungObjekteRouteWithChildren,
-  VerwaltungSollstellungRoute: VerwaltungSollstellungRouteWithChildren,
-  VerwaltungZahlungenRoute: VerwaltungZahlungenRoute,
-  VerwaltungIndexRoute: VerwaltungIndexRoute,
-}
-
-const VerwaltungRouteWithChildren = VerwaltungRoute._addFileChildren(
-  VerwaltungRouteChildren,
-)
+const ExposesRouteWithChildren =
+  ExposesRoute._addFileChildren(ExposesRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnmeldenRoute: AnmeldenRoute,
-  BoardRoute: BoardRouteWithChildren,
   DatenschutzRoute: DatenschutzRoute,
   DokumenteRoute: DokumenteRouteWithChildren,
+  EbicsRoute: EbicsRoute,
   EinladungRoute: EinladungRoute,
   EinstellungenRoute: EinstellungenRouteWithChildren,
+  ExposesRoute: ExposesRouteWithChildren,
   ImpressumRoute: ImpressumRoute,
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
-  TransaktionenRoute: TransaktionenRouteWithChildren,
-  VerwaltungRoute: VerwaltungRouteWithChildren,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,

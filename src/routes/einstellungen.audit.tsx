@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AuditTeaser } from "@/features/teaser";
+import { AuditPage } from "@/features/einstellungen/AuditPage";
 
 export const Route = createFileRoute("/einstellungen/audit")({
-  head: () => ({ meta: [{ title: "Audit-Trail — Grenz & Co. Verwaltung" }] }),
-  component: AuditTeaser,
+  head: () => ({ meta: [{ title: "Audit-Trail — Grenz & Co." }] }),
+  component: AuditPage,
 });

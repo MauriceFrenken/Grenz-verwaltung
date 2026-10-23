@@ -1,7 +1,6 @@
 /**
  * Mail aus Dokument-Postfach zu anderem Postfach verschieben. Server-only.
  */
-import { MICROSOFT_DEFAULT_MAILBOX } from "@/lib/microsoft/config";
 import {
   graphNachrichtKopieren,
   graphNachrichtLoeschen,
@@ -9,6 +8,7 @@ import {
 } from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
 import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
+import { microsoftPostfach } from "@/lib/microsoft/token-exchange";
 
 import { leseEintrag, loescheEintraegeFuerNachricht } from "./store";
 
@@ -22,7 +22,7 @@ export async function dokumentPosteingangZuExposesVerschieben(input: {
   if (!id) throw new Error("eintragId ist erforderlich.");
 
   const row = await leseEintrag(id);
-  const zielPostfach = MICROSOFT_DEFAULT_MAILBOX;
+  const zielPostfach = microsoftPostfach();
 
   const { accessToken } = await microsoftAccessToken();
   const zielOrdnerId = await graphPosteingangOrdnerId(accessToken, zielPostfach);

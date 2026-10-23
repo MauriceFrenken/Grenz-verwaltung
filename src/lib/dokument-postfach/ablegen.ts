@@ -17,7 +17,6 @@ export async function dokumentPosteingangAblegen(input: {
   ordnerItemId: string;
   ordnerPfad: string;
   gesellschaftId?: string | null;
-  objektId?: string | null;
   felder?: DokumentAnalyseFelder | null;
   istRechnung?: boolean;
 }): Promise<DokumentAblegenErgebnis> {
@@ -42,7 +41,6 @@ export async function dokumentPosteingangAblegen(input: {
   }
 
   const gesellschaftId = input.gesellschaftId ?? row.gesellschaft_id;
-  const objektId = input.objektId ?? row.objekt_id;
 
   const gsName =
     felder.gesellschaftName?.value?.trim() ||
@@ -68,7 +66,6 @@ export async function dokumentPosteingangAblegen(input: {
   await speicherePruefung(id, {
     felder,
     gesellschaftId,
-    objektId,
     ablageOrdnerId: ordnerId,
     ablageOrdnerPfad: input.ordnerPfad.trim(),
     istRechnung: input.istRechnung ?? row.ist_rechnung ?? false,
@@ -91,7 +88,6 @@ export async function dokumentPosteingangAblegen(input: {
     ordnerId,
     felder,
     gesellschaftId,
-    objektId,
     ablageDateiname: dateiname,
   });
 

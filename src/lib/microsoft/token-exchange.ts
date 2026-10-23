@@ -1,4 +1,4 @@
-import { MICROSOFT_APP_SCOPE, MICROSOFT_DEFAULT_MAILBOX } from "./config";
+import { MICROSOFT_APP_SCOPE } from "./config";
 
 export type MicrosoftTokenSet = {
   accessToken: string;
@@ -26,9 +26,13 @@ export function microsoftServerTenantId(): string {
   return readEnv("MICROSOFT_TENANT_ID") || readEnv("VITE_MICROSOFT_TENANT_ID") || "organizations";
 }
 
-/** Ankauf-Postfach für Offene Exposés (muss zur Access Policy passen). */
+/** Exposé-Postfach für Offene Exposés (muss zur Access Policy passen). */
 export function microsoftPostfach(): string {
-  return (readEnv("MICROSOFT_MAILBOX") || MICROSOFT_DEFAULT_MAILBOX).trim().toLowerCase();
+  const postfach = readEnv("MICROSOFT_MAILBOX").toLowerCase();
+  if (!postfach) {
+    throw new Error("MICROSOFT_MAILBOX ist nicht gesetzt (Postfach für Exposés).");
+  }
+  return postfach;
 }
 
 export function microsoftAzureIstKonfiguriert(): boolean {

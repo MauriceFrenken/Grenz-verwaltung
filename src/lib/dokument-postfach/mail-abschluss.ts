@@ -8,11 +8,6 @@ import {
 } from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
 import { createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
-import {
-  istTamAusFeldern,
-  istTamGesellschaft,
-  TRADE_ANY_MACHINE_NAME,
-} from "@/lib/trade-any-machine";
 
 import {
   istEintragErledigt,
@@ -28,7 +23,7 @@ async function gesellschaftNameAusId(
   if (!gesellschaftId?.trim()) return null;
   const admin = createServiceRoleClient();
   const { data, error } = await admin
-    .from("v_gesellschaften")
+    .from("gesellschaften")
     .select("name")
     .eq("id", gesellschaftId)
     .maybeSingle();
@@ -39,7 +34,6 @@ async function gesellschaftNameAusId(
 }
 
 function nameAusFeldern(row: DokumentPosteingangRow): string | null {
-  if (istTamAusFeldern(row.felder)) return TRADE_ANY_MACHINE_NAME;
   const ausFeld = row.felder?.gesellschaftName?.value?.trim();
   return ausFeld || null;
 }
@@ -52,20 +46,10 @@ export async function ermittleMailOrdnerName(
   const kandidaten = bevorzugt ? [bevorzugt, ...rows] : rows;
 
   for (const row of kandidaten) {
-    if (istTamAusFeldern(row.felder)) return TRADE_ANY_MACHINE_NAME;
-  }
-
-  for (const row of kandidaten) {
     const ausId = await gesellschaftNameAusId(row.gesellschaft_id);
-    if (ausId) {
-      if (istTamGesellschaft(ausId)) return TRADE_ANY_MACHINE_NAME;
-      return ausId;
-    }
+    if (ausId) return ausId;
     const ausFeld = nameAusFeldern(row);
-    if (ausFeld) {
-      if (istTamGesellschaft(ausFeld)) return TRADE_ANY_MACHINE_NAME;
-      return ausFeld;
-    }
+    if (ausFeld) return ausFeld;
   }
 
   throw new Error(

@@ -22,7 +22,9 @@ export async function exchangeSalesforceAuthorizationCode(
   const clientId = readEnv("SALESFORCE_CLIENT_ID") || readEnv("VITE_SALESFORCE_CLIENT_ID");
   const clientSecret = readEnv("SALESFORCE_CLIENT_SECRET");
   const loginUrl = (
-    readEnv("SALESFORCE_LOGIN_URL") || "https://scrmfh25.my.salesforce.com"
+    readEnv("SALESFORCE_LOGIN_URL") ||
+    readEnv("VITE_SALESFORCE_LOGIN_URL") ||
+    "https://login.salesforce.com"
   ).replace(/\/$/, "");
 
   if (!clientId) {
@@ -77,7 +79,9 @@ export async function refreshSalesforceAccessToken(
   const clientId = readEnv("SALESFORCE_CLIENT_ID") || readEnv("VITE_SALESFORCE_CLIENT_ID");
   const clientSecret = readEnv("SALESFORCE_CLIENT_SECRET");
   const loginUrl = (
-    readEnv("SALESFORCE_LOGIN_URL") || "https://scrmfh25.my.salesforce.com"
+    readEnv("SALESFORCE_LOGIN_URL") ||
+    readEnv("VITE_SALESFORCE_LOGIN_URL") ||
+    "https://login.salesforce.com"
   ).replace(/\/$/, "");
 
   if (!clientId) {
