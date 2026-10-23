@@ -3,17 +3,24 @@ import { toast } from "sonner";
 
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { euroKurz, prozent, zahl1 } from "@/features/kennzahlen/hilfen";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
-import type { KartenObjekt } from "@/lib/expose-karte/server-fn";
+import type {
+  KartenObjekt,
+  VergleichErgebnis,
+} from "@/lib/expose-karte/server-fn";
 import { formatDate, formatInt } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /* Leaflet kommt zur Laufzeit vom CDN, damit kein Build-Abhängigkeit nötig ist. */
-const LEAFLET_JS = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
-const LEAFLET_CSS = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
+const LEAFLET_JS =
+  "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+const LEAFLET_CSS =
+  "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
 
 /* Feste Kategorienfarben wie in der Exposé-Auswertung (--viz-1 … --viz-5). */
 const FARBEN = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"];
@@ -37,7 +44,11 @@ type Leaflet = {
   map: (el: HTMLElement, opt?: object) => LMap;
   tileLayer: (url: string, opt: object) => { addTo: (m: LMap) => void };
   circleMarker: (c: [number, number], opt: object) => LMarker;
-  layerGroup: () => { addTo: (m: LMap) => unknown; clearLayers: () => void; addLayer: (l: unknown) => void };
+  layerGroup: () => {
+    addTo: (m: LMap) => unknown;
+    clearLayers: () => void;
+    addLayer: (l: unknown) => void;
+  };
 };
 
 let leafletLaden: Promise<Leaflet> | null = null;
@@ -54,7 +65,8 @@ function ladeLeaflet(): Promise<Leaflet> {
       const js = document.createElement("script");
       js.src = LEAFLET_JS;
       js.async = true;
-      js.onload = () => (w.L ? resolve(w.L) : reject(new Error("Leaflet fehlt")));
+      js.onload = () =>
+        w.L ? resolve(w.L) : reject(new Error("Leaflet fehlt"));
       js.onerror = () => {
         leafletLaden = null;
         reject(new Error("Kartenbibliothek konnte nicht geladen werden."));
@@ -115,9 +127,16 @@ export function ExposeKartePage() {
   const [art, setArt] = useState<string>("alle");
   const [suche, setSuche] = useState("");
   const [auswahl, setAuswahl] = useState<string | null>(null);
+  const [projektText, setProjektText] = useState("");
+  const [vergleich, setVergleich] = useState<VergleichErgebnis | null>(null);
+  const [sucht, setSucht] = useState(false);
 
   const kartenEl = useRef<HTMLDivElement>(null);
-  const karte = useRef<{ L: Leaflet; map: LMap; ebene: ReturnType<Leaflet["layerGroup"]> } | null>(null);
+  const karte = useRef<{
+    L: Leaflet;
+    map: LMap;
+    ebene: ReturnType<Leaflet["layerGroup"]>;
+  } | null>(null);
   const marker = useRef(new Map<string, LMarker>());
   const ersterZuschnitt = useRef(true);
 
@@ -127,9 +146,12 @@ export function ExposeKartePage() {
     let aktiv = true;
     void (async () => {
       try {
-        const { exposeKarteLadenFn } = await import("@/lib/expose-karte/server-fn");
+        const { exposeKarteLadenFn } =
+          await import("@/lib/expose-karte/server-fn");
         for (let runde = 0; runde < 20 && aktiv; runde++) {
-          const d = await exposeKarteLadenFn({ data: { supabaseAccessToken: token } });
+          const d = await exposeKarteLadenFn({
+            data: { supabaseAccessToken: token },
+          });
           if (!aktiv) return;
           setObjekte(d.objekte);
           setOffen(d.offen);
@@ -150,7 +172,10 @@ export function ExposeKartePage() {
     void ladeLeaflet()
       .then((L) => {
         if (abbruch || !kartenEl.current || karte.current) return;
-        const map = L.map(kartenEl.current, { scrollWheelZoom: true }).setView([51.0, 7.0], 8);
+        const map = L.map(kartenEl.current, { scrollWheelZoom: true }).setView(
+          [51.0, 7.0],
+          8,
+        );
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
           attribution: "© OpenStreetMap-Mitwirkende",
@@ -181,7 +206,19 @@ export function ExposeKartePage() {
     return i >= 0 && i < FARBEN.length ? FARBEN[i] : FARBE_SONST;
   };
 
+  const vergleichInfo = useMemo(
+    () => new Map((vergleich?.treffer ?? []).map((t) => [t.id, t])),
+    [vergleich],
+  );
+
   const sichtbar = useMemo(() => {
+    if (vergleich) {
+      const nachId = new Map((objekte ?? []).map((o) => [o.id, o]));
+      return vergleich.treffer.flatMap((t) => {
+        const o = nachId.get(t.id);
+        return o ? [o] : [];
+      });
+    }
     const q = suche.trim().toLowerCase();
     return (objekte ?? []).filter(
       (o) =>
@@ -193,7 +230,7 @@ export function ExposeKartePage() {
             .filter(Boolean)
             .some((t) => t!.toLowerCase().includes(q))),
     );
-  }, [objekte, art, suche]);
+  }, [objekte, art, suche, vergleich]);
 
   const ohneLage = (objekte ?? []).filter((o) => o.lat === null).length;
 
@@ -203,8 +240,29 @@ export function ExposeKartePage() {
     if (!k) return;
     k.ebene.clearLayers();
     marker.current.clear();
+    const projekt = vergleich?.projekt;
+    const punkte: Array<[number, number]> = [];
+    if (projekt?.lat != null && projekt.lng != null) {
+      const p = k.L.circleMarker([projekt.lat, projekt.lng], {
+        radius: 11,
+        color: "#ffffff",
+        weight: 3,
+        fillColor: "#1a2b4b",
+        fillOpacity: 1,
+      }).bindPopup(
+        `<div style="font-size:12px"><b>Ihr Projekt</b><br>${esc(
+          [projekt.strasse, projekt.plz, projekt.ort]
+            .filter(Boolean)
+            .join(", "),
+        )}</div>`,
+      );
+      k.ebene.addLayer(p);
+      punkte.push([projekt.lat, projekt.lng]);
+    }
     for (const o of sichtbar) {
-      const m = k.L.circleMarker([o.lat!, o.lng!], {
+      if (o.lat === null || o.lng === null) continue;
+      punkte.push([o.lat, o.lng]);
+      const m = k.L.circleMarker([o.lat, o.lng], {
         radius: 8,
         color: "#ffffff",
         weight: 1.5,
@@ -216,16 +274,36 @@ export function ExposeKartePage() {
       k.ebene.addLayer(m);
       marker.current.set(o.id, m);
     }
-    if (sichtbar.length > 0 && (ersterZuschnitt.current || art !== "alle" || suche)) {
-      k.map.fitBounds(
-        sichtbar.map((o) => [o.lat!, o.lng!] as [number, number]),
-        { padding: [30, 30], maxZoom: 14 },
-      );
+    if (
+      punkte.length > 0 &&
+      (ersterZuschnitt.current || art !== "alle" || suche || vergleich)
+    ) {
+      k.map.fitBounds(punkte, { padding: [30, 30], maxZoom: 14 });
       ersterZuschnitt.current = false;
     }
     // farbeVon hängt nur an arten, das in sichtbar schon steckt
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sichtbar]);
+  }, [sichtbar, vergleich]);
+
+  const vergleichSuchen = async () => {
+    if (!projektText.trim() || !token) return;
+    setSucht(true);
+    try {
+      const { exposeVergleichSuchenFn } =
+        await import("@/lib/expose-karte/server-fn");
+      const e = await exposeVergleichSuchenFn({
+        data: { supabaseAccessToken: token, text: projektText },
+      });
+      setVergleich(e);
+      setAuswahl(null);
+      if (e.treffer.length === 0)
+        toast.info("Keine passenden Vergleichsobjekte gefunden.");
+    } catch (err) {
+      toast.error(apiFehlermeldung(err));
+    } finally {
+      setSucht(false);
+    }
+  };
 
   const zeige = (o: KartenObjekt) => {
     const k = karte.current;
@@ -243,7 +321,72 @@ export function ExposeKartePage() {
       />
       <PageWrapper>
         <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-2">
+          <section className="flex flex-col gap-3 rounded-lg border border-hairline bg-surface p-4">
+            <div>
+              <h2 className="text-sm font-semibold text-heading">
+                Vergleichsobjekte für ein Projekt
+              </h2>
+              <p className="text-xs text-text-muted">
+                Beschreibe das Objekt deines Kunden, z. B. „MFH in Neuss, Am
+                Baldhof 12, 14 WE, ca. 950 m², Baujahr 1965, IST-Miete 92 T€ p.
+                a., Preisvorstellung 2,1 Mio“. Die KI sucht passende Exposés
+                heraus.
+              </p>
+            </div>
+            <Textarea
+              value={projektText}
+              onChange={(e) => setProjektText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  void vergleichSuchen();
+                }
+              }}
+              rows={3}
+              placeholder="Projekt beschreiben…"
+              className="text-sm"
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void vergleichSuchen()}
+                disabled={sucht || !projektText.trim() || objekte === null}
+              >
+                {sucht
+                  ? "Suche Vergleichsobjekte…"
+                  : "Vergleichsobjekte suchen"}
+              </Button>
+              {vergleich ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setVergleich(null)}
+                >
+                  Alle Exposés zeigen
+                </Button>
+              ) : null}
+            </div>
+            {vergleich ? (
+              <div className="rounded-md bg-surface-muted p-3 text-sm text-heading">
+                <p className="mb-1 text-xs text-text-muted">
+                  {vergleich.treffer.length} Vergleichsobjekte
+                  {vergleich.projekt.lat === null
+                    ? " · Lage des Projekts nicht gefunden, Entfernungen fehlen"
+                    : ""}
+                </p>
+                <p className="whitespace-pre-line">{vergleich.einschaetzung}</p>
+              </div>
+            ) : null}
+          </section>
+
+          <div
+            className={cn(
+              "flex flex-wrap items-center gap-2",
+              vergleich && "pointer-events-none opacity-40",
+            )}
+          >
             <button
               type="button"
               onClick={() => setArt("alle")}
@@ -292,7 +435,9 @@ export function ExposeKartePage() {
               <div className="border-b border-hairline px-4 py-3 text-xs text-text-muted">
                 {objekte === null
                   ? "Lädt…"
-                  : `${sichtbar.length} Objekte auf der Karte`}
+                  : vergleich
+                    ? `${sichtbar.length} Vergleichsobjekte`
+                    : `${sichtbar.length} Objekte auf der Karte`}
                 {offen > 0 ? ` · ${offen} Adressen werden noch gesucht…` : ""}
                 {ohneLage > 0 && offen === 0
                   ? ` · ${ohneLage} ohne erkennbare Adresse`
@@ -314,7 +459,9 @@ export function ExposeKartePage() {
                           className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                           style={{ backgroundColor: farbeVon(o.objektart) }}
                         />
-                        <span className="truncate">{o.adresse ?? "Adresse unbekannt"}</span>
+                        <span className="truncate">
+                          {o.adresse ?? "Adresse unbekannt"}
+                        </span>
                       </span>
                       <span className="text-xs text-text-muted">
                         {[o.plz, o.stadt].filter(Boolean).join(" ")}
@@ -323,7 +470,9 @@ export function ExposeKartePage() {
                       <span className="text-xs tabular-nums text-text-muted">
                         {[
                           o.einheiten ? `${formatInt(o.einheiten)} WE` : null,
-                          o.flaeche ? `${formatInt(Math.round(o.flaeche))} m²` : null,
+                          o.flaeche
+                            ? `${formatInt(Math.round(o.flaeche))} m²`
+                            : null,
                           o.miete ? `${euroKurz(o.miete)} p. a.` : null,
                           o.preis ? `KP ${euroKurz(o.preis)}` : null,
                           o.faktor ? `${zahl1(o.faktor)}-fach` : null,
@@ -331,6 +480,14 @@ export function ExposeKartePage() {
                           .filter(Boolean)
                           .join(" · ") || "Keine Eckdaten"}
                       </span>
+                      {vergleichInfo.get(o.id) ? (
+                        <span className="text-xs text-heading">
+                          {vergleichInfo.get(o.id)!.km !== null
+                            ? `${zahl1(vergleichInfo.get(o.id)!.km!)} km · `
+                            : ""}
+                          {vergleichInfo.get(o.id)!.begruendung}
+                        </span>
+                      ) : null}
                     </button>
                   </li>
                 ))}
@@ -338,8 +495,9 @@ export function ExposeKartePage() {
             </div>
           </div>
           <p className="text-xs text-text-muted">
-            Werte wie im Exposé angegeben. Blasse, gestrichelte Punkte: nur der Ort war
-            erkennbar, die Lage ist ungefähr. Kartendaten © OpenStreetMap.
+            Werte wie im Exposé angegeben. Blasse, gestrichelte Punkte: nur der
+            Ort war erkennbar, die Lage ist ungefähr. Kartendaten ©
+            OpenStreetMap.
           </p>
         </div>
       </PageWrapper>
