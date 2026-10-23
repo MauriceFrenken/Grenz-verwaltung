@@ -20,6 +20,10 @@ export type MicrosoftIntegrationRow = MicrosoftIntegrationStatus & {
   graphUserId: string | null;
 };
 
+/** Tokens liegen in Supabase Vault (token_secret_id), nie im Klartext in der Tabelle. */
+const SPALTEN =
+  "id, status, konto_email, tenant_id, graph_user_id, scopes, token_secret_id, token_laeuft_ab_am, verbunden_am, letzte_pruefung_am, letzter_fehler";
+
 type DbRow = {
   id: string;
   status: MicrosoftIntegrationStatus["status"];
@@ -27,8 +31,7 @@ type DbRow = {
   tenant_id: string | null;
   graph_user_id: string | null;
   scopes: string | null;
-  access_token: string | null;
-  refresh_token: string | null;
+  token_secret_id: string | null;
   token_laeuft_ab_am: string | null;
   verbunden_am: string | null;
   letzte_pruefung_am: string | null;
@@ -48,11 +51,34 @@ function mapStatus(row: DbRow | null): MicrosoftIntegrationStatus {
   };
 }
 
-function mapRow(row: DbRow): MicrosoftIntegrationRow {
+type Admin = ReturnType<typeof createServiceRoleClient>;
+
+async function leseTokens(
+  admin: Admin,
+): Promise<{ access_token: string | null; refresh_token: string | null } | null> {
+  const { data, error } = await admin.rpc("integration_token_lesen", { p_id: MICROSOFT_INTEGRATION_ID });
+  if (error) throw error;
+  const zeilen = (data ?? []) as { access_token: string | null; refresh_token: string | null }[];
+  return zeilen[0] ?? null;
+}
+
+async function speichereTokens(admin: Admin, tokens: MicrosoftTokenSet): Promise<void> {
+  const { error } = await admin.rpc("integration_token_speichern", {
+    p_id: MICROSOFT_INTEGRATION_ID,
+    p_access_token: tokens.accessToken,
+    p_refresh_token: tokens.refreshToken,
+  });
+  if (error) throw error;
+}
+
+function mapRow(
+  row: DbRow,
+  tokens: { access_token: string | null; refresh_token: string | null } | null,
+): MicrosoftIntegrationRow {
   return {
     ...mapStatus(row),
-    accessToken: row.access_token,
-    refreshToken: row.refresh_token,
+    accessToken: tokens?.access_token ?? null,
+    refreshToken: tokens?.refresh_token ?? null,
     tokenLaeuftAbAm: row.token_laeuft_ab_am,
     graphUserId: row.graph_user_id,
   };
@@ -62,9 +88,7 @@ export async function leseMicrosoftStatus(): Promise<MicrosoftIntegrationStatus>
   const admin = createServiceRoleClient();
   const { data, error } = await admin
     .from("app_integrationen")
-    .select(
-      "id, status, konto_email, tenant_id, graph_user_id, scopes, access_token, refresh_token, token_laeuft_ab_am, verbunden_am, letzte_pruefung_am, letzter_fehler",
-    )
+    .select(SPALTEN)
     .eq("id", MICROSOFT_INTEGRATION_ID)
     .maybeSingle();
 
@@ -76,15 +100,14 @@ export async function leseMicrosoftRow(): Promise<MicrosoftIntegrationRow | null
   const admin = createServiceRoleClient();
   const { data, error } = await admin
     .from("app_integrationen")
-    .select(
-      "id, status, konto_email, tenant_id, graph_user_id, scopes, access_token, refresh_token, token_laeuft_ab_am, verbunden_am, letzte_pruefung_am, letzter_fehler",
-    )
+    .select(SPALTEN)
     .eq("id", MICROSOFT_INTEGRATION_ID)
     .maybeSingle();
 
   if (error) throw error;
   if (!data) return null;
-  return mapRow(data as DbRow);
+  const row = data as DbRow;
+  return mapRow(row, row.token_secret_id ? await leseTokens(admin) : null);
 }
 
 export async function speichereMicrosoftVerbindung(input: {
@@ -108,8 +131,6 @@ export async function speichereMicrosoftVerbindung(input: {
         tenant_id: input.tenantId,
         graph_user_id: input.graphUserId,
         scopes: input.tokens.scope,
-        access_token: input.tokens.accessToken,
-        refresh_token: input.tokens.refreshToken,
         token_laeuft_ab_am: laeuftAb,
         verbunden_am: jetzt,
         verbunden_von: input.verbundenVon,
@@ -118,12 +139,11 @@ export async function speichereMicrosoftVerbindung(input: {
       },
       { onConflict: "id" },
     )
-    .select(
-      "id, status, konto_email, tenant_id, graph_user_id, scopes, access_token, refresh_token, token_laeuft_ab_am, verbunden_am, letzte_pruefung_am, letzter_fehler",
-    )
+    .select(SPALTEN)
     .single();
 
   if (error) throw error;
+  await speichereTokens(admin, input.tokens);
   return mapStatus(data as DbRow);
 }
 
@@ -133,8 +153,6 @@ export async function aktualisiereMicrosoftTokens(tokens: MicrosoftTokenSet): Pr
   const { error } = await admin
     .from("app_integrationen")
     .update({
-      access_token: tokens.accessToken,
-      refresh_token: tokens.refreshToken,
       token_laeuft_ab_am: laeuftAb,
       scopes: tokens.scope,
       status: "verbunden",
@@ -142,6 +160,7 @@ export async function aktualisiereMicrosoftTokens(tokens: MicrosoftTokenSet): Pr
     })
     .eq("id", MICROSOFT_INTEGRATION_ID);
   if (error) throw error;
+  await speichereTokens(admin, tokens);
 }
 
 export async function markiereMicrosoftFehler(message: string): Promise<MicrosoftIntegrationStatus> {
@@ -154,9 +173,7 @@ export async function markiereMicrosoftFehler(message: string): Promise<Microsof
       letzte_pruefung_am: new Date().toISOString(),
     })
     .eq("id", MICROSOFT_INTEGRATION_ID)
-    .select(
-      "id, status, konto_email, tenant_id, graph_user_id, scopes, access_token, refresh_token, token_laeuft_ab_am, verbunden_am, letzte_pruefung_am, letzter_fehler",
-    )
+    .select(SPALTEN)
     .single();
   if (error) throw error;
   return mapStatus(data as DbRow);
@@ -177,6 +194,8 @@ export async function markiereMicrosoftPruefungOk(): Promise<void> {
 
 export async function loescheMicrosoftVerbindung(): Promise<MicrosoftIntegrationStatus> {
   const admin = createServiceRoleClient();
+  const { error: tokenFehler } = await admin.rpc("integration_token_loeschen", { p_id: MICROSOFT_INTEGRATION_ID });
+  if (tokenFehler) throw tokenFehler;
   const { data, error } = await admin
     .from("app_integrationen")
     .update({
@@ -185,8 +204,6 @@ export async function loescheMicrosoftVerbindung(): Promise<MicrosoftIntegration
       tenant_id: null,
       graph_user_id: null,
       scopes: null,
-      access_token: null,
-      refresh_token: null,
       token_laeuft_ab_am: null,
       verbunden_am: null,
       verbunden_von: null,
@@ -194,9 +211,7 @@ export async function loescheMicrosoftVerbindung(): Promise<MicrosoftIntegration
       letzter_fehler: null,
     })
     .eq("id", MICROSOFT_INTEGRATION_ID)
-    .select(
-      "id, status, konto_email, tenant_id, graph_user_id, scopes, access_token, refresh_token, token_laeuft_ab_am, verbunden_am, letzte_pruefung_am, letzter_fehler",
-    )
+    .select(SPALTEN)
     .single();
   if (error) throw error;
   return mapStatus(data as DbRow);
