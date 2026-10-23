@@ -10,9 +10,6 @@ import { useUiStore } from "@/store/ui";
 import { NAVIGATION, type NavSection } from "./navigation";
 
 const GRAPH_PREFETCH_PFADE = new Set([
-  "/dokumente/ablage",
-  "/dokumente/pruefordner",
-  "/dokumente/rechnungsfreigabe",
   "/exposes",
 ]);
 

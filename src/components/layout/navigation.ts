@@ -1,9 +1,6 @@
 import {
   ChartColumn,
-  ClipboardCheck,
-  Columns3,
   FileText,
-  FolderOpen,
   Inbox,
   Landmark,
   Plug,
@@ -35,18 +32,6 @@ export const NAVIGATION: NavSection[] = [
       { to: "/exposes", label: "Offene Exposés", icon: Inbox },
       { to: "/exposes/import", label: "Exposé-Import", icon: FileText },
       { to: "/exposes/auswertung", label: "Exposé-Auswertung", icon: ChartColumn },
-    ],
-  },
-  {
-    label: "Dokumente",
-    items: [
-      { to: "/dokumente/pruefordner", label: "Postfach", icon: ClipboardCheck },
-      { to: "/dokumente/ablage", label: "Dokumentenablage", icon: FolderOpen },
-      {
-        to: "/dokumente/rechnungsfreigabe",
-        label: "Rechnungsfreigabe",
-        icon: Columns3,
-      },
     ],
   },
   {

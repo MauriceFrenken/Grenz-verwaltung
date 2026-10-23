@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnmeldenRouteImport } from './routes/anmelden'
 import { Route as DatenschutzRouteImport } from './routes/datenschutz'
-import { Route as DokumenteRouteImport } from './routes/dokumente'
 import { Route as EbicsRouteImport } from './routes/ebics'
 import { Route as EinladungRouteImport } from './routes/einladung'
 import { Route as EinstellungenRouteImport } from './routes/einstellungen'
@@ -21,22 +20,17 @@ import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as KennzahlenRouteImport } from './routes/kennzahlen'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as DokumenteIndexRouteImport } from './routes/dokumente.index'
-import { Route as DokumenteAblageRouteImport } from './routes/dokumente.ablage'
-import { Route as DokumentePruefordnerRouteImport } from './routes/dokumente.pruefordner'
-import { Route as DokumentePruefungRouteImport } from './routes/dokumente.pruefung'
-import { Route as DokumenteRechnungsfreigabeRouteImport } from './routes/dokumente.rechnungsfreigabe'
 import { Route as EinstellungenIndexRouteImport } from './routes/einstellungen.index'
 import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
 import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
 import { Route as EinstellungenIntegrationenRouteImport } from './routes/einstellungen.integrationen'
 import { Route as ExposesIndexRouteImport } from './routes/exposes.index'
+import { Route as ExposesAuswertungRouteImport } from './routes/exposes.auswertung'
 import { Route as ExposesImportRouteImport } from './routes/exposes.import'
 import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
-import { Route as ApiCronPostfachAnalyseRouteImport } from './routes/api.cron.postfach-analyse'
 import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.index'
 import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
 
@@ -53,11 +47,6 @@ const AnmeldenRoute = AnmeldenRouteImport.update({
 const DatenschutzRoute = DatenschutzRouteImport.update({
   id: '/datenschutz',
   path: '/datenschutz',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DokumenteRoute = DokumenteRouteImport.update({
-  id: '/dokumente',
-  path: '/dokumente',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EbicsRoute = EbicsRouteImport.update({
@@ -100,32 +89,6 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DokumenteIndexRoute = DokumenteIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DokumenteRoute,
-} as any)
-const DokumenteAblageRoute = DokumenteAblageRouteImport.update({
-  id: '/ablage',
-  path: '/ablage',
-  getParentRoute: () => DokumenteRoute,
-} as any)
-const DokumentePruefordnerRoute = DokumentePruefordnerRouteImport.update({
-  id: '/pruefordner',
-  path: '/pruefordner',
-  getParentRoute: () => DokumenteRoute,
-} as any)
-const DokumentePruefungRoute = DokumentePruefungRouteImport.update({
-  id: '/pruefung',
-  path: '/pruefung',
-  getParentRoute: () => DokumenteRoute,
-} as any)
-const DokumenteRechnungsfreigabeRoute =
-  DokumenteRechnungsfreigabeRouteImport.update({
-    id: '/rechnungsfreigabe',
-    path: '/rechnungsfreigabe',
-    getParentRoute: () => DokumenteRoute,
-  } as any)
 const EinstellungenIndexRoute = EinstellungenIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -150,6 +113,11 @@ const EinstellungenIntegrationenRoute =
 const ExposesIndexRoute = ExposesIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => ExposesRoute,
+} as any)
+const ExposesAuswertungRoute = ExposesAuswertungRouteImport.update({
+  id: '/auswertung',
+  path: '/auswertung',
   getParentRoute: () => ExposesRoute,
 } as any)
 const ExposesImportRoute = ExposesImportRouteImport.update({
@@ -177,11 +145,6 @@ const ApiCronExposeAnalyseRoute = ApiCronExposeAnalyseRouteImport.update({
   path: '/api/cron/expose-analyse',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCronPostfachAnalyseRoute = ApiCronPostfachAnalyseRouteImport.update({
-  id: '/api/cron/postfach-analyse',
-  path: '/api/cron/postfach-analyse',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ExposesImportIndexRoute = ExposesImportIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -197,7 +160,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
   '/datenschutz': typeof DatenschutzRoute
-  '/dokumente': typeof DokumenteRouteWithChildren
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
@@ -206,22 +168,17 @@ export interface FileRoutesByFullPath {
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/dokumente/ablage': typeof DokumenteAblageRoute
-  '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
-  '/dokumente/pruefung': typeof DokumentePruefungRoute
-  '/dokumente/rechnungsfreigabe': typeof DokumenteRechnungsfreigabeRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
-  '/dokumente/': typeof DokumenteIndexRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
-  '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
 }
@@ -235,21 +192,16 @@ export interface FileRoutesByTo {
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/dokumente/ablage': typeof DokumenteAblageRoute
-  '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
-  '/dokumente/pruefung': typeof DokumentePruefungRoute
-  '/dokumente/rechnungsfreigabe': typeof DokumenteRechnungsfreigabeRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
-  '/dokumente': typeof DokumenteIndexRoute
   '/einstellungen': typeof EinstellungenIndexRoute
   '/exposes': typeof ExposesIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
-  '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import': typeof ExposesImportIndexRoute
 }
@@ -258,7 +210,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
   '/datenschutz': typeof DatenschutzRoute
-  '/dokumente': typeof DokumenteRouteWithChildren
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
@@ -267,22 +218,17 @@ export interface FileRoutesById {
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/dokumente/ablage': typeof DokumenteAblageRoute
-  '/dokumente/pruefordner': typeof DokumentePruefordnerRoute
-  '/dokumente/pruefung': typeof DokumentePruefungRoute
-  '/dokumente/rechnungsfreigabe': typeof DokumenteRechnungsfreigabeRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
-  '/dokumente/': typeof DokumenteIndexRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
-  '/api/cron/postfach-analyse': typeof ApiCronPostfachAnalyseRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
 }
@@ -292,7 +238,6 @@ export interface FileRouteTypes {
     | '/'
     | '/anmelden'
     | '/datenschutz'
-    | '/dokumente'
     | '/ebics'
     | '/einladung'
     | '/einstellungen'
@@ -301,22 +246,17 @@ export interface FileRouteTypes {
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
-    | '/dokumente/ablage'
-    | '/dokumente/pruefordner'
-    | '/dokumente/pruefung'
-    | '/dokumente/rechnungsfreigabe'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/exposes/auswertung'
     | '/exposes/import'
     | '/microsoft/callback'
     | '/salesforce/callback'
-    | '/dokumente/'
     | '/einstellungen/'
     | '/exposes/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
-    | '/api/cron/postfach-analyse'
     | '/exposes/import/salesforce'
     | '/exposes/import/'
   fileRoutesByTo: FileRoutesByTo
@@ -330,21 +270,16 @@ export interface FileRouteTypes {
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
-    | '/dokumente/ablage'
-    | '/dokumente/pruefordner'
-    | '/dokumente/pruefung'
-    | '/dokumente/rechnungsfreigabe'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/exposes/auswertung'
     | '/microsoft/callback'
     | '/salesforce/callback'
-    | '/dokumente'
     | '/einstellungen'
     | '/exposes'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
-    | '/api/cron/postfach-analyse'
     | '/exposes/import/salesforce'
     | '/exposes/import'
   id:
@@ -352,7 +287,6 @@ export interface FileRouteTypes {
     | '/'
     | '/anmelden'
     | '/datenschutz'
-    | '/dokumente'
     | '/ebics'
     | '/einladung'
     | '/einstellungen'
@@ -361,22 +295,17 @@ export interface FileRouteTypes {
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
-    | '/dokumente/ablage'
-    | '/dokumente/pruefordner'
-    | '/dokumente/pruefung'
-    | '/dokumente/rechnungsfreigabe'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/exposes/auswertung'
     | '/exposes/import'
     | '/microsoft/callback'
     | '/salesforce/callback'
-    | '/dokumente/'
     | '/einstellungen/'
     | '/exposes/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
-    | '/api/cron/postfach-analyse'
     | '/exposes/import/salesforce'
     | '/exposes/import/'
   fileRoutesById: FileRoutesById
@@ -385,7 +314,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnmeldenRoute: typeof AnmeldenRoute
   DatenschutzRoute: typeof DatenschutzRoute
-  DokumenteRoute: typeof DokumenteRouteWithChildren
   EbicsRoute: typeof EbicsRoute
   EinladungRoute: typeof EinladungRoute
   EinstellungenRoute: typeof EinstellungenRouteWithChildren
@@ -398,7 +326,6 @@ export interface RootRouteChildren {
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
-  ApiCronPostfachAnalyseRoute: typeof ApiCronPostfachAnalyseRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -422,13 +349,6 @@ declare module '@tanstack/react-router' {
       path: '/datenschutz'
       fullPath: '/datenschutz'
       preLoaderRoute: typeof DatenschutzRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dokumente': {
-      id: '/dokumente'
-      path: '/dokumente'
-      fullPath: '/dokumente'
-      preLoaderRoute: typeof DokumenteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ebics': {
@@ -487,41 +407,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dokumente/': {
-      id: '/dokumente/'
-      path: '/'
-      fullPath: '/dokumente/'
-      preLoaderRoute: typeof DokumenteIndexRouteImport
-      parentRoute: typeof DokumenteRoute
-    }
-    '/dokumente/ablage': {
-      id: '/dokumente/ablage'
-      path: '/ablage'
-      fullPath: '/dokumente/ablage'
-      preLoaderRoute: typeof DokumenteAblageRouteImport
-      parentRoute: typeof DokumenteRoute
-    }
-    '/dokumente/pruefordner': {
-      id: '/dokumente/pruefordner'
-      path: '/pruefordner'
-      fullPath: '/dokumente/pruefordner'
-      preLoaderRoute: typeof DokumentePruefordnerRouteImport
-      parentRoute: typeof DokumenteRoute
-    }
-    '/dokumente/pruefung': {
-      id: '/dokumente/pruefung'
-      path: '/pruefung'
-      fullPath: '/dokumente/pruefung'
-      preLoaderRoute: typeof DokumentePruefungRouteImport
-      parentRoute: typeof DokumenteRoute
-    }
-    '/dokumente/rechnungsfreigabe': {
-      id: '/dokumente/rechnungsfreigabe'
-      path: '/rechnungsfreigabe'
-      fullPath: '/dokumente/rechnungsfreigabe'
-      preLoaderRoute: typeof DokumenteRechnungsfreigabeRouteImport
-      parentRoute: typeof DokumenteRoute
-    }
     '/einstellungen/': {
       id: '/einstellungen/'
       path: '/'
@@ -555,6 +440,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/exposes/'
       preLoaderRoute: typeof ExposesIndexRouteImport
+      parentRoute: typeof ExposesRoute
+    }
+    '/exposes/auswertung': {
+      id: '/exposes/auswertung'
+      path: '/auswertung'
+      fullPath: '/exposes/auswertung'
+      preLoaderRoute: typeof ExposesAuswertungRouteImport
       parentRoute: typeof ExposesRoute
     }
     '/exposes/import': {
@@ -592,13 +484,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronExposeAnalyseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cron/postfach-analyse': {
-      id: '/api/cron/postfach-analyse'
-      path: '/api/cron/postfach-analyse'
-      fullPath: '/api/cron/postfach-analyse'
-      preLoaderRoute: typeof ApiCronPostfachAnalyseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/exposes/import/': {
       id: '/exposes/import/'
       path: '/'
@@ -615,26 +500,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-
-interface DokumenteRouteChildren {
-  DokumenteAblageRoute: typeof DokumenteAblageRoute
-  DokumentePruefordnerRoute: typeof DokumentePruefordnerRoute
-  DokumentePruefungRoute: typeof DokumentePruefungRoute
-  DokumenteRechnungsfreigabeRoute: typeof DokumenteRechnungsfreigabeRoute
-  DokumenteIndexRoute: typeof DokumenteIndexRoute
-}
-
-const DokumenteRouteChildren: DokumenteRouteChildren = {
-  DokumenteAblageRoute: DokumenteAblageRoute,
-  DokumentePruefordnerRoute: DokumentePruefordnerRoute,
-  DokumentePruefungRoute: DokumentePruefungRoute,
-  DokumenteRechnungsfreigabeRoute: DokumenteRechnungsfreigabeRoute,
-  DokumenteIndexRoute: DokumenteIndexRoute,
-}
-
-const DokumenteRouteWithChildren = DokumenteRoute._addFileChildren(
-  DokumenteRouteChildren,
-)
 
 interface EinstellungenRouteChildren {
   EinstellungenAuditRoute: typeof EinstellungenAuditRoute
@@ -669,11 +534,13 @@ const ExposesImportRouteWithChildren = ExposesImportRoute._addFileChildren(
 )
 
 interface ExposesRouteChildren {
+  ExposesAuswertungRoute: typeof ExposesAuswertungRoute
   ExposesImportRoute: typeof ExposesImportRouteWithChildren
   ExposesIndexRoute: typeof ExposesIndexRoute
 }
 
 const ExposesRouteChildren: ExposesRouteChildren = {
+  ExposesAuswertungRoute: ExposesAuswertungRoute,
   ExposesImportRoute: ExposesImportRouteWithChildren,
   ExposesIndexRoute: ExposesIndexRoute,
 }
@@ -685,7 +552,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnmeldenRoute: AnmeldenRoute,
   DatenschutzRoute: DatenschutzRoute,
-  DokumenteRoute: DokumenteRouteWithChildren,
   EbicsRoute: EbicsRoute,
   EinladungRoute: EinladungRoute,
   EinstellungenRoute: EinstellungenRouteWithChildren,
@@ -698,18 +564,7 @@ const rootRouteChildren: RootRouteChildren = {
   SalesforceCallbackRoute: SalesforceCallbackRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
-  ApiCronPostfachAnalyseRoute: ApiCronPostfachAnalyseRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

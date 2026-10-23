@@ -141,30 +141,6 @@ export function prefetchGraphRoute(
 ): void {
   if (!token || !userId) return;
 
-  if (pathname.startsWith("/dokumente/ablage")) {
-    void queryClient.prefetchQuery({
-      queryKey: graphKeys.ablage(userId, null),
-      queryFn: () => holeAblageKinder(token, null),
-    });
-    return;
-  }
-  if (pathname.startsWith("/dokumente/pruefordner")) {
-    void queryClient.prefetchQuery({
-      queryKey: graphKeys.dokumentPosteingang(userId),
-      queryFn: () =>
-        holeDokumentPosteingang(token, (snap) => {
-          queryClient.setQueryData(graphKeys.dokumentPosteingang(userId), snap);
-        }),
-    });
-    return;
-  }
-  if (pathname.startsWith("/dokumente/rechnungsfreigabe")) {
-    void queryClient.prefetchQuery({
-      queryKey: graphKeys.rechnungsfreigabe(userId),
-      queryFn: () => holeRechnungsfreigabe(token),
-    });
-    return;
-  }
   if (pathname === "/exposes" || pathname === "/exposes/") {
     void queryClient.prefetchQuery({
       queryKey: graphKeys.exposePostfach(userId),
