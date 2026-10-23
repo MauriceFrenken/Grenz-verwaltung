@@ -1,10 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git:*)",
-      "Bash(npm:*)",
-      "mcp__Supabase__*",
-      "mcp__Vercel__*"
+      "{
+  "permissions": {
+    "allow": [
+      "Bash", "Edit", "Write", "WebFetch",
+      "mcp__Supabase__*", "mcp__Vercel__*", "mcp__github__*",
+      "mcp__Salesforce__soqlQuery", "mcp__Salesforce__find",
+      "mcp__Salesforce__getObjectSchema", "mcp__Salesforce__getUserInfo",
+      "mcp__Salesforce__getRelatedRecords", "mcp__Salesforce__listRecentSobjectRecords"
+    ]
+  }
+}
     ]
   }
 }
