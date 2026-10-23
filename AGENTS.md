@@ -23,12 +23,12 @@ Clientseitig gibt es **kein** Rollen-/Rechte-Matrix-System. Alle authentifiziert
 - Einmalig: Zugang in `ebics_kunden` eintragen (README) → **EBICS** → Initialisieren → INI-Briefe an die Bank → nach Freischaltung **Freischaltung** → danach **Umsätze abrufen** / Cron `/api/cron/ebics-umsaetze`.
 - Details: `src/lib/ebics/bank-handoff.ts`.
 
-**Git / Vercel:** Commits und Pushes auf `main` immer mit Author **und** Committer `BitBenByte <233641966+BitBenByte@users.noreply.github.com>` (sonst blockiert Vercel Deployment). Env für den Commit setzen, nicht `git config` ändern:
+**Git / Vercel:** Commits und Pushes auf `main` immer mit Author **und** Committer `MauriceFrenken <338118561+MauriceFrenken@users.noreply.github.com>` (Repo `MauriceFrenken/Grenz-verwaltung`, Vercel Hobby: sonst blockiert Vercel das Deployment). Env für den Commit setzen, nicht `git config` ändern:
 
 ```bash
-GIT_AUTHOR_NAME="BitBenByte" \
-GIT_AUTHOR_EMAIL="233641966+BitBenByte@users.noreply.github.com" \
-GIT_COMMITTER_NAME="BitBenByte" \
-GIT_COMMITTER_EMAIL="233641966+BitBenByte@users.noreply.github.com" \
+GIT_AUTHOR_NAME="MauriceFrenken" \
+GIT_AUTHOR_EMAIL="338118561+MauriceFrenken@users.noreply.github.com" \
+GIT_COMMITTER_NAME="MauriceFrenken" \
+GIT_COMMITTER_EMAIL="338118561+MauriceFrenken@users.noreply.github.com" \
 git commit ...
 ```
