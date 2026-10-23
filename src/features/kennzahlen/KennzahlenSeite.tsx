@@ -4,19 +4,17 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { ExposeMarktTab } from "./ExposeMarktTab";
 import { FinanzenTab } from "./FinanzenTab";
 import { MaklerTab } from "./MaklerTab";
 
 const REITER = [
   { id: "finanzen", label: "Finanzen" },
   { id: "makler", label: "Maklergeschäft" },
-  { id: "exposes", label: "Exposé-Markt" },
 ] as const;
 
 type ReiterId = (typeof REITER)[number]["id"];
 
-/** Kennzahlen des Maklerunternehmens: Finanzen, Vertrieb, Ankaufsmarkt. */
+/** Kennzahlen des Maklerunternehmens: Finanzen und Vertrieb. */
 export function KennzahlenSeite() {
   const [reiter, setReiter] = useState<ReiterId>("finanzen");
 
@@ -40,9 +38,6 @@ export function KennzahlenSeite() {
           </TabsContent>
           <TabsContent value="makler" className="mt-4">
             <MaklerTab />
-          </TabsContent>
-          <TabsContent value="exposes" className="mt-4">
-            <ExposeMarktTab />
           </TabsContent>
         </Tabs>
       </PageWrapper>

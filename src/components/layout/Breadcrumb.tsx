@@ -6,6 +6,7 @@ const LABELS: Record<string, string> = {
   "/exposes": "Offene Exposés",
   "/exposes/import": "Exposé-Import",
   "/exposes/import/salesforce": "Salesforce-Export",
+  "/exposes/auswertung": "Exposé-Auswertung",
   "/dokumente": "Dokumente",
   "/dokumente/ablage": "Dokumentenablage",
   "/dokumente/pruefordner": "Postfach",

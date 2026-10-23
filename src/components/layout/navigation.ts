@@ -34,6 +34,7 @@ export const NAVIGATION: NavSection[] = [
     items: [
       { to: "/exposes", label: "Offene Exposés", icon: Inbox },
       { to: "/exposes/import", label: "Exposé-Import", icon: FileText },
+      { to: "/exposes/auswertung", label: "Exposé-Auswertung", icon: ChartColumn },
     ],
   },
   {
