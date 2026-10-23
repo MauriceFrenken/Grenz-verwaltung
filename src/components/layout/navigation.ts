@@ -1,4 +1,5 @@
 import {
+  ChartColumn,
   ClipboardCheck,
   Columns3,
   FileText,
@@ -24,6 +25,10 @@ export interface NavSection {
 
 /** Bereiche der Seitenleiste — auch Grundlage der Übersichtsseite. */
 export const NAVIGATION: NavSection[] = [
+  {
+    label: "Steuerung",
+    items: [{ to: "/kennzahlen", label: "Kennzahlen", icon: ChartColumn }],
+  },
   {
     label: "Exposés",
     items: [
