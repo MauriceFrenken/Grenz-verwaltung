@@ -164,28 +164,37 @@ export async function exchangeSalesforceCodeClient(input: {
 
 /** Popup: Login auf Salesforce → Callback auf unserer Domain → Tokens. */
 export async function salesforceLoginPopup(): Promise<SalesforceSession> {
+  // Fenster sofort im Klick öffnen: Nach einem await (PKCE) wertet Safari
+  // window.open nicht mehr als Nutzeraktion und blockiert das Popup.
+  const popup = window.open(
+    "about:blank",
+    "salesforce-oauth",
+    "width=520,height=720,menubar=no,toolbar=no,status=no",
+  );
+
+  if (!popup) {
+    throw new Error(
+      "Popup wurde blockiert. Bitte Popups für diese Seite erlauben.",
+    );
+  }
+
   const nonce = crypto.randomUUID();
   const state = buildOauthState(nonce, window.location.origin);
-  const { verifier, challenge } = await createPkce();
+  let verifier: string;
+  let challenge: string;
+  try {
+    ({ verifier, challenge } = await createPkce());
+  } catch (e) {
+    popup.close();
+    throw e;
+  }
   const redirectUri = salesforceCallbackUrl();
 
   // Fallback für den Fall, dass die Callback-Seite den Austausch selbst
   // erledigen muss (Popup blockiert → Weiterleitung im selben Tab).
   pkceSpeichern(state, verifier);
 
-  const url = salesforceAuthorizeUrl(state, challenge, redirectUri);
-  const popup = window.open(
-    url,
-    "salesforce-oauth",
-    "width=520,height=720,menubar=no,toolbar=no,status=no",
-  );
-
-  if (!popup) {
-    pkceLoeschen(state);
-    throw new Error(
-      "Popup wurde blockiert. Bitte Popups für diese Seite erlauben.",
-    );
-  }
+  popup.location.href = salesforceAuthorizeUrl(state, challenge, redirectUri);
 
   type Antwort =
     | { kind: "code"; code: string }
