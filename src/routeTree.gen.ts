@@ -18,6 +18,7 @@ import { Route as EinladungRouteImport } from './routes/einladung'
 import { Route as EinstellungenRouteImport } from './routes/einstellungen'
 import { Route as ExposesRouteImport } from './routes/exposes'
 import { Route as ImpressumRouteImport } from './routes/impressum'
+import { Route as KennzahlenRouteImport } from './routes/kennzahlen'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as DokumenteIndexRouteImport } from './routes/dokumente.index'
@@ -82,6 +83,11 @@ const ExposesRoute = ExposesRouteImport.update({
 const ImpressumRoute = ImpressumRouteImport.update({
   id: '/impressum',
   path: '/impressum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KennzahlenRoute = KennzahlenRouteImport.update({
+  id: '/kennzahlen',
+  path: '/kennzahlen',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PasswortZuruecksetzenRoute = PasswortZuruecksetzenRouteImport.update({
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/einstellungen': typeof EinstellungenRouteWithChildren
   '/exposes': typeof ExposesRouteWithChildren
   '/impressum': typeof ImpressumRoute
+  '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
@@ -225,6 +232,7 @@ export interface FileRoutesByTo {
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
   '/impressum': typeof ImpressumRoute
+  '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
@@ -256,6 +264,7 @@ export interface FileRoutesById {
   '/einstellungen': typeof EinstellungenRouteWithChildren
   '/exposes': typeof ExposesRouteWithChildren
   '/impressum': typeof ImpressumRoute
+  '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dokumente/ablage': typeof DokumenteAblageRoute
@@ -289,6 +298,7 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/exposes'
     | '/impressum'
+    | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
     | '/dokumente/ablage'
@@ -317,6 +327,7 @@ export interface FileRouteTypes {
     | '/ebics'
     | '/einladung'
     | '/impressum'
+    | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
     | '/dokumente/ablage'
@@ -347,6 +358,7 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/exposes'
     | '/impressum'
+    | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
     | '/dokumente/ablage'
@@ -379,6 +391,7 @@ export interface RootRouteChildren {
   EinstellungenRoute: typeof EinstellungenRouteWithChildren
   ExposesRoute: typeof ExposesRouteWithChildren
   ImpressumRoute: typeof ImpressumRoute
+  KennzahlenRoute: typeof KennzahlenRoute
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
@@ -451,6 +464,13 @@ declare module '@tanstack/react-router' {
       path: '/impressum'
       fullPath: '/impressum'
       preLoaderRoute: typeof ImpressumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kennzahlen': {
+      id: '/kennzahlen'
+      path: '/kennzahlen'
+      fullPath: '/kennzahlen'
+      preLoaderRoute: typeof KennzahlenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/passwort-zuruecksetzen': {
@@ -671,6 +691,7 @@ const rootRouteChildren: RootRouteChildren = {
   EinstellungenRoute: EinstellungenRouteWithChildren,
   ExposesRoute: ExposesRouteWithChildren,
   ImpressumRoute: ImpressumRoute,
+  KennzahlenRoute: KennzahlenRoute,
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
