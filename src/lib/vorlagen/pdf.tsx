@@ -16,7 +16,13 @@ import {
 
 import logoWeiss from "@/assets/grenz-co-logo-weiss.png?inline";
 
-import type { Block, DesignVorlage, DokumentInhalt, SchriftArt } from "./typen";
+import type {
+  Block,
+  DesignVorlage,
+  DokumentInhalt,
+  Quelle,
+  SchriftArt,
+} from "./typen";
 
 function schrift(art: SchriftArt, fett = false): string {
   if (art === "serif") return fett ? "Times-Bold" : "Times-Roman";
@@ -47,7 +53,8 @@ function stile(v: DesignVorlage) {
       fontSize: 9.5,
       color: f.text,
     },
-    inhalt: { lineHeight: 1.45 },
+    // lineHeight nur zusammen mit fontSize am selben Stil: react-pdf rechnet den Faktor sonst mit 18 pt.
+    inhalt: {},
     deckblatt: {
       padding: 0,
       fontFamily: schrift(text),
@@ -121,7 +128,7 @@ function stile(v: DesignVorlage) {
       backgroundColor: f.akzent,
       marginBottom: 8,
     },
-    absatz: { marginBottom: 6 },
+    absatz: { marginBottom: 6, fontSize: 9.5, lineHeight: 1.45 },
     quelleNr: { fontSize: 6.5, color: f.akzent },
     kennzahlen: { flexDirection: "row", flexWrap: "wrap", marginBottom: 6 },
     kennzahl: {
@@ -145,7 +152,7 @@ function stile(v: DesignVorlage) {
       color: f.primaer,
       backgroundColor: f.flaeche,
     },
-    tabZelle: { flex: 1, paddingHorizontal: 3 },
+    tabZelle: { flex: 1, paddingHorizontal: 3, fontSize: 9, lineHeight: 1.3 },
     listePunkt: { flexDirection: "row", marginBottom: 3 },
     balkenZeile: {
       flexDirection: "row",
@@ -167,6 +174,7 @@ function stile(v: DesignVorlage) {
       padding: 6,
       marginBottom: 6,
       fontSize: 8.5,
+      lineHeight: 1.35,
     },
     hinweis: {
       borderLeftWidth: 2,
@@ -175,8 +183,9 @@ function stile(v: DesignVorlage) {
       padding: 6,
       marginBottom: 6,
       fontSize: 8.5,
+      lineHeight: 1.35,
     },
-    quellen: { fontSize: 7, color: f.textHell },
+    quellen: { fontSize: 7, color: f.textHell, lineHeight: 1.35 },
   });
 }
 
@@ -230,7 +239,8 @@ function BlockPdf({
       );
     case "tabelle":
       return (
-        <View style={s.tabelle}>
+        // Kurze Tabellen bleiben zusammen, lange dürfen umbrechen (Kopf wiederholt sich).
+        <View style={s.tabelle} wrap={block.zeilen.length > 8}>
           <View style={[s.tabZeile, s.tabKopf]} fixed>
             {block.kopf.map((k, i) => (
               <Text
@@ -238,6 +248,7 @@ function BlockPdf({
                 style={[
                   s.tabZelle,
                   {
+                    flex: spaltenBreite(block.kopf.length, i),
                     textAlign:
                       block.ausrichtung?.[i] === "rechts" ? "right" : "left",
                   },
@@ -255,6 +266,7 @@ function BlockPdf({
                   style={[
                     s.tabZelle,
                     {
+                      flex: spaltenBreite(block.kopf.length, i),
                       textAlign:
                         block.ausrichtung?.[i] === "rechts" ? "right" : "left",
                     },
@@ -305,6 +317,32 @@ function BlockPdf({
     case "hinweis":
       return <Text style={s.hinweis}>{block.text}</Text>;
   }
+}
+
+/** Blöcke, die mit ihrer Überschrift auf eine Seite passen und zusammenbleiben sollen. */
+function kompakt(block: Block | undefined): boolean {
+  if (!block) return false;
+  switch (block.art) {
+    case "tabelle":
+      return block.zeilen.length <= 8;
+    case "balken":
+      return block.eintraege.length <= 12;
+    case "liste":
+      return block.punkte.length <= 8;
+    case "absatz":
+      return block.text.length <= 1200;
+    default:
+      return true;
+  }
+}
+
+function quelleText(q: Quelle): string {
+  return `${q.bezeichnung}${q.seite ? `, S. ${q.seite}` : ""}${q.zitat ? `: „${q.zitat}“` : ""}`;
+}
+
+/** Erste Spalte (meist Bezeichnung oder Name) breiter, wenn die Tabelle drei oder mehr Spalten hat. */
+function spaltenBreite(spalten: number, index: number): number {
+  return spalten >= 3 && index === 0 ? 2 : 1;
 }
 
 export function DokumentPdf({
@@ -378,11 +416,23 @@ export function DokumentPdf({
         <View style={s.inhalt}>
           {inhalt.abschnitte.map((a) => (
             <View key={a.id} style={s.abschnitt}>
-              <View wrap={false}>
+              {/* Überschrift nie allein am Seitenende: mit dem ersten Block zusammenhalten, wenn er kurz ist. */}
+              <View
+                wrap={false}
+                minPresenceAhead={kompakt(a.bloecke[0]) ? undefined : 70}
+              >
                 <Text style={s.abschnittTitel}>{a.titel}</Text>
                 <View style={s.abschnittLinie} />
+                {kompakt(a.bloecke[0]) ? (
+                  <BlockPdf
+                    block={a.bloecke[0]!}
+                    s={s}
+                    nummern={nummern}
+                    akzent={d.farben.akzent}
+                  />
+                ) : null}
               </View>
-              {a.bloecke.map((b, i) => (
+              {a.bloecke.slice(kompakt(a.bloecke[0]) ? 1 : 0).map((b, i) => (
                 <BlockPdf
                   key={i}
                   block={b}
@@ -396,13 +446,18 @@ export function DokumentPdf({
 
           {inhalt.quellen.length ? (
             <View style={s.abschnitt} break={inhalt.quellen.length > 12}>
-              <Text style={s.abschnittTitel}>Quellen</Text>
-              <View style={s.abschnittLinie} />
-              {inhalt.quellen.map((q, i) => (
+              <View wrap={false}>
+                <Text style={s.abschnittTitel}>Quellen</Text>
+                <View style={s.abschnittLinie} />
+                {inhalt.quellen.slice(0, 2).map((q, i) => (
+                  <Text key={q.id} style={s.quellen}>
+                    [{i + 1}] {quelleText(q)}
+                  </Text>
+                ))}
+              </View>
+              {inhalt.quellen.slice(2).map((q, i) => (
                 <Text key={q.id} style={s.quellen}>
-                  [{i + 1}] {q.bezeichnung}
-                  {q.seite ? `, S. ${q.seite}` : ""}
-                  {q.zitat ? `: „${q.zitat}“` : ""}
+                  [{i + 3}] {quelleText(q)}
                 </Text>
               ))}
             </View>
@@ -422,5 +477,7 @@ export async function dokumentAlsPdf(
   vorlage: DesignVorlage,
   logo?: string | null,
 ): Promise<Buffer> {
-  return renderToBuffer(<DokumentPdf inhalt={inhalt} vorlage={vorlage} logo={logo} />);
+  return renderToBuffer(
+    <DokumentPdf inhalt={inhalt} vorlage={vorlage} logo={logo} />,
+  );
 }

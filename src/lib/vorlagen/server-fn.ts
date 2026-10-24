@@ -2,22 +2,46 @@
 
 import { createServerFn } from "@tanstack/react-start";
 
-import { createServiceRoleClient, pruefeAufrufer, tokenAus } from "@/lib/server/aufrufer";
+import {
+  createServiceRoleClient,
+  pruefeAufrufer,
+  tokenAus,
+} from "@/lib/server/aufrufer";
 
-import { dokumentAlsDownload, type DateiErgebnis, type DateiFormat } from "./export";
+import {
+  dokumentAlsDownload,
+  type DateiErgebnis,
+  type DateiFormat,
+} from "./export";
 import { ladeVorlage } from "./laden";
 import { musterInhalt } from "./muster";
 import { STANDARD_ABSCHNITTE } from "./standard";
-import type { AbschnittDefinition, DesignDefinition, DesignVorlage, DokumentTyp } from "./typen";
+import type {
+  AbschnittDefinition,
+  DesignDefinition,
+  DesignVorlage,
+  DokumentTyp,
+} from "./typen";
 
-const TYPEN: DokumentTyp[] = ["allgemein", "expose", "teaser", "eigentuemer_report", "bewertung"];
+const TYPEN: DokumentTyp[] = [
+  "allgemein",
+  "expose",
+  "teaser",
+  "eigentuemer_report",
+  "bewertung",
+];
 
 function typAus(wert: unknown): DokumentTyp {
-  return TYPEN.includes(wert as DokumentTyp) ? (wert as DokumentTyp) : "allgemein";
+  return TYPEN.includes(wert as DokumentTyp)
+    ? (wert as DokumentTyp)
+    : "allgemein";
 }
 
 export const vorlageLadenFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => ({ supabaseAccessToken: tokenAus(data), typ: typAus((data as { typ?: unknown })?.typ) }))
+  .validator((data: unknown) => ({
+    supabaseAccessToken: tokenAus(data),
+    typ: typAus((data as { typ?: unknown })?.typ),
+  }))
   .handler(async ({ data }): Promise<DesignVorlage> => {
     await pruefeAufrufer(data.supabaseAccessToken);
     return ladeVorlage(createServiceRoleClient(), data.typ);
@@ -44,15 +68,25 @@ export const vorlageSpeichernFn = createServerFn({ method: "POST" })
       abschnitte: Array.isArray(d.abschnitte)
         ? d.abschnitte
             .filter((a) => a && typeof a.id === "string")
-            .map((a) => ({ id: a.id, titel: String(a.titel ?? "").slice(0, 80), sichtbar: Boolean(a.sichtbar) }))
+            .map((a) => ({
+              id: a.id,
+              titel: String(a.titel ?? "").slice(0, 80),
+              sichtbar: Boolean(a.sichtbar),
+            }))
         : [],
     };
   })
   .handler(async ({ data }): Promise<DesignVorlage> => {
-    const aufrufer = await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
+    const aufrufer = await pruefeAufrufer(
+      data.supabaseAccessToken,
+      "schreiben",
+    );
     const admin = createServiceRoleClient();
 
-    const speichere = async (typ: DokumentTyp, felder: Record<string, unknown>) => {
+    const speichere = async (
+      typ: DokumentTyp,
+      felder: Record<string, unknown>,
+    ) => {
       const { data: vorhanden, error } = await admin
         .from("design_vorlagen")
         .select("id, version")
@@ -98,11 +132,14 @@ export const vorlageLogoHochladenFn = createServerFn({ method: "POST" })
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
     const endung = /\.jpe?g$/i.test(data.dateiname) ? "jpg" : "png";
     const datei = Buffer.from(data.base64, "base64");
-    if (!datei.length || datei.length > 3 * 1024 * 1024) throw new Error("Logo fehlt oder ist größer als 3 MB.");
+    if (!datei.length || datei.length > 3 * 1024 * 1024)
+      throw new Error("Logo fehlt oder ist größer als 3 MB.");
     const pfad = `logo/${Date.now()}.${endung}`;
     const { error } = await createServiceRoleClient()
       .storage.from("vorlagen")
-      .upload(pfad, datei, { contentType: endung === "jpg" ? "image/jpeg" : "image/png" });
+      .upload(pfad, datei, {
+        contentType: endung === "jpg" ? "image/jpeg" : "image/png",
+      });
     if (error) throw new Error(error.message);
     return { pfad };
   });
@@ -111,9 +148,15 @@ export const vorlageMusterFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => ({
     supabaseAccessToken: tokenAus(data),
     typ: typAus((data as { typ?: unknown })?.typ),
-    format: ((data as { format?: unknown })?.format === "pptx" ? "pptx" : "pdf") as DateiFormat,
+    format: ((data as { format?: unknown })?.format === "pptx"
+      ? "pptx"
+      : "pdf") as DateiFormat,
   }))
   .handler(async ({ data }): Promise<DateiErgebnis> => {
     await pruefeAufrufer(data.supabaseAccessToken);
-    return dokumentAlsDownload(createServiceRoleClient(), { ...musterInhalt(), typ: data.typ }, data.format);
+    return dokumentAlsDownload(
+      createServiceRoleClient(),
+      { ...musterInhalt(), typ: data.typ },
+      data.format,
+    );
   });

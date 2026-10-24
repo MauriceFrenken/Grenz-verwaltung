@@ -28,7 +28,10 @@ export async function dokumentErzeugen(
 ): Promise<{ datei: Buffer; dateiname: string; mime: string }> {
   const vorlage = await ladeVorlage(admin, inhalt.typ);
   const logo = await ladeLogo(admin, vorlage);
-  const geordnet: DokumentInhalt = { ...inhalt, abschnitte: abschnitteNachVorlage(inhalt.abschnitte, vorlage) };
+  const geordnet: DokumentInhalt = {
+    ...inhalt,
+    abschnitte: abschnitteNachVorlage(inhalt.abschnitte, vorlage),
+  };
   if (format === "pptx") {
     const { dokumentAlsPptx } = await import("./pptx");
     return {
@@ -50,6 +53,10 @@ export async function dokumentAlsDownload(
   inhalt: DokumentInhalt,
   format: DateiFormat,
 ): Promise<DateiErgebnis> {
-  const { datei, dateiname, mime } = await dokumentErzeugen(admin, inhalt, format);
+  const { datei, dateiname, mime } = await dokumentErzeugen(
+    admin,
+    inhalt,
+    format,
+  );
   return { dateiname, mime, base64: datei.toString("base64") };
 }

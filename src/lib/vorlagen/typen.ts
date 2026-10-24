@@ -4,7 +4,13 @@
  * aus derselben Definition.
  */
 
-export type DokumentTyp = "allgemein" | "expose" | "teaser" | "pitch" | "eigentuemer_report" | "bewertung";
+export type DokumentTyp =
+  | "allgemein"
+  | "expose"
+  | "teaser"
+  | "pitch"
+  | "eigentuemer_report"
+  | "bewertung";
 
 /** In PDF und PPTX ohne eigene Schriftdateien verfügbar. */
 export type SchriftArt = "serif" | "sans";
@@ -54,7 +60,13 @@ export type DesignVorlage = {
 /** Beleg für eine Aussage. Ohne Quelle wird keine Aussage erzeugt (Masterplan, harte Regel). */
 export type Quelle = {
   id: string;
-  art: "feld" | "dokument" | "aktivitaet" | "eingabe" | "berechnung" | "marktdaten";
+  art:
+    | "feld"
+    | "dokument"
+    | "aktivitaet"
+    | "eingabe"
+    | "berechnung"
+    | "marktdaten";
   bezeichnung: string;
   /** Salesforce-Id, Tabellenzeile oder Dateipfad. */
   verweis?: string;
@@ -64,8 +76,16 @@ export type Quelle = {
 
 export type Block =
   | { art: "absatz"; text: string; quellen?: string[] }
-  | { art: "kennzahlen"; eintraege: { label: string; wert: string; quellen?: string[] }[] }
-  | { art: "tabelle"; kopf: string[]; zeilen: string[][]; ausrichtung?: ("links" | "rechts")[] }
+  | {
+      art: "kennzahlen";
+      eintraege: { label: string; wert: string; quellen?: string[] }[];
+    }
+  | {
+      art: "tabelle";
+      kopf: string[];
+      zeilen: string[][];
+      ausrichtung?: ("links" | "rechts")[];
+    }
   | { art: "liste"; punkte: string[] }
   | { art: "balken"; eintraege: { label: string; wert: number }[] }
   | { art: "luecke"; text: string }

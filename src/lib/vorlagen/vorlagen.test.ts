@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { musterInhalt as muster } from "./muster";
-import { abschnitteNachVorlage, standardVorlage, vorlageZusammenfuehren } from "./standard";
+import {
+  abschnitteNachVorlage,
+  standardVorlage,
+  vorlageZusammenfuehren,
+} from "./standard";
 
 describe("Vorlage", () => {
   it("legt gespeicherte Werte über den Standard und behält neue Standardabschnitte", () => {
@@ -15,7 +19,11 @@ describe("Vorlage", () => {
     });
     expect(v.design.farben.akzent).toBe("#ff0000");
     expect(v.design.farben.primaer).toBe("#1a2b4b");
-    expect(v.abschnitte.map((a) => a.id).slice(0, 3)).toEqual(["marktfeedback", "funnel", "ueberblick"]);
+    expect(v.abschnitte.map((a) => a.id).slice(0, 3)).toEqual([
+      "marktfeedback",
+      "funnel",
+      "ueberblick",
+    ]);
   });
 
   it("ordnet Inhalte nach Vorlage und blendet aus", () => {
@@ -33,7 +41,10 @@ describe("Vorlage", () => {
       ],
       v,
     );
-    expect(inhalt.map((a) => `${a.id}:${a.titel}`)).toEqual(["angebote:Kaufangebote", "ueberblick:Überblick"]);
+    expect(inhalt.map((a) => `${a.id}:${a.titel}`)).toEqual([
+      "angebote:Kaufangebote",
+      "ueberblick:Überblick",
+    ]);
   });
 });
 

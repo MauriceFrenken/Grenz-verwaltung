@@ -37,7 +37,7 @@ function Kennzahl({ label, wert }: { label: string; wert: string }) {
 
 export function FunnelBalken({ funnel }: { funnel: Funnel }) {
   const stufen: [string, number][] = [
-    ["Angesprochen", funnel.angesprochen],
+    ["Ausgewählt", funnel.angesprochen],
     ["Angeschrieben", funnel.angeschrieben],
     ["Rückmeldung", funnel.geantwortet],
     ["Interesse", funnel.interesse],

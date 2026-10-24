@@ -5,7 +5,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { vorlageZusammenfuehren } from "./standard";
 import type { DesignVorlage, DokumentTyp } from "./typen";
 
-export async function ladeVorlage(admin: SupabaseClient, typ: DokumentTyp): Promise<DesignVorlage> {
+export async function ladeVorlage(
+  admin: SupabaseClient,
+  typ: DokumentTyp,
+): Promise<DesignVorlage> {
   const { data, error } = await admin
     .from("design_vorlagen")
     .select("id, name, typ, design, abschnitte, version")
@@ -19,12 +22,18 @@ export async function ladeVorlage(admin: SupabaseClient, typ: DokumentTyp): Prom
 }
 
 /** Logo aus dem Bucket „vorlagen“ als Data-URI für PDF/PPTX, sonst null (eingebautes Logo). */
-export async function ladeLogo(admin: SupabaseClient, vorlage: DesignVorlage): Promise<string | null> {
+export async function ladeLogo(
+  admin: SupabaseClient,
+  vorlage: DesignVorlage,
+): Promise<string | null> {
   const pfad = vorlage.design.logoPfad;
   if (!pfad) return null;
   const { data, error } = await admin.storage.from("vorlagen").download(pfad);
   if (error || !data) return null;
   const buf = Buffer.from(await data.arrayBuffer());
-  const typ = pfad.toLowerCase().endsWith(".jpg") || pfad.toLowerCase().endsWith(".jpeg") ? "image/jpeg" : "image/png";
+  const typ =
+    pfad.toLowerCase().endsWith(".jpg") || pfad.toLowerCase().endsWith(".jpeg")
+      ? "image/jpeg"
+      : "image/png";
   return `data:${typ};base64,${buf.toString("base64")}`;
 }

@@ -182,7 +182,7 @@ export async function ladeMandatRohdaten(
         admin
           .from("sf_aktivitaeten")
           .select(
-            "sf_id, sf_typ, art, betreff, datum, status, who_sf_id, kampagne_sf_id, sf_daten",
+            "sf_id, sf_typ, art, betreff, datum, status, who_sf_id, what_sf_id, kampagne_sf_id, sf_daten",
           )
           .eq("mandat_sf_id", sfId)
           .order("sf_id")
@@ -193,7 +193,7 @@ export async function ladeMandatRohdaten(
             admin
               .from("sf_aktivitaeten")
               .select(
-                "sf_id, sf_typ, art, betreff, datum, status, who_sf_id, kampagne_sf_id, sf_daten",
+                "sf_id, sf_typ, art, betreff, datum, status, who_sf_id, what_sf_id, kampagne_sf_id, sf_daten",
               )
               .in("kampagne_sf_id", kampagnenIds)
               .order("sf_id")
@@ -229,14 +229,17 @@ export async function ladeMandatRohdaten(
     if (id) kontaktIds.add(id as string);
   const namen = new Map<string, string>();
   const emails = new Map<string, string>();
+  const accountJeKontakt = new Map<string, string>();
   const ids = [...kontaktIds];
   for (let i = 0; i < ids.length; i += 300) {
     const { data, error: en } = await admin
       .from("sf_kontakte")
-      .select("sf_id, name, firma, email")
+      .select("sf_id, name, firma, email, account_sf_id")
       .in("sf_id", ids.slice(i, i + 300));
     if (en) throw new Error(en.message);
     for (const k of data ?? []) {
+      if (k.account_sf_id)
+        accountJeKontakt.set(k.sf_id as string, k.account_sf_id as string);
       namen.set(
         k.sf_id as string,
         k.firma ? `${k.name} (${k.firma})` : (k.name as string),
@@ -274,7 +277,12 @@ export async function ladeMandatRohdaten(
     },
     objekt,
     kampagnen: (kampagnen ?? []) as KampagneZeile[],
-    mitglieder,
+    mitglieder: mitglieder.map((x) => ({
+      ...x,
+      account_sf_id: x.kontakt_sf_id
+        ? (accountJeKontakt.get(x.kontakt_sf_id) ?? null)
+        : null,
+    })),
     aktivitaeten,
     deals: deals.map((d) => ({
       ...d,

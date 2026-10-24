@@ -4,9 +4,15 @@ import {
   aktivitaetenJeWoche,
   berechneFunnel,
   berechneReportKennzahlen,
+  aktivitaetsVerlauf,
+  dealStufe,
+  funnelSatz,
   funnelStufe,
+  phaseText,
   reportDokument,
   sammleAngebote,
+  type AktivitaetZeile,
+  type DealZeile,
   type MitgliedZeile,
 } from "./report";
 
@@ -63,6 +69,74 @@ describe("berechneFunnel", () => {
       kaufangebot: 1,
       absagen: 1,
     });
+  });
+});
+
+describe("berechneFunnel mit Interessenten-Deals", () => {
+  // Nachgebildet nach Bilker Allee 112: Kampagnenstatus blieb auf „Gesendet“,
+  // der Käufer lief über einen Deal mit anderem Ansprechpartner derselben Firma.
+  const deal = (extra: Partial<DealZeile>): DealZeile => ({
+    sf_id: "006K",
+    name: "Opp. Käufer",
+    phase: "Invoice Paid",
+    betrag: 2_060_000,
+    abschluss_am: "2026-07-29",
+    kontakt_sf_id: "003Kaeufer",
+    account_sf_id: "001Firma",
+    ...extra,
+  });
+
+  it("hebt die Firma auf Kaufangebot und zählt sie nur einmal", () => {
+    const f = berechneFunnel(
+      [
+        m("1", "Gesendet", { account_sf_id: "001Firma" }),
+        m("2", "Absage", { account_sf_id: "001Firma", geantwortet: true }),
+        m("3", "Gesendet"),
+      ],
+      [deal({})],
+    );
+    expect(f).toEqual({
+      angesprochen: 2,
+      angeschrieben: 2,
+      geantwortet: 1,
+      interesse: 1,
+      besichtigung: 1,
+      kaufangebot: 1,
+      // Absage eines Ansprechpartners zählt nicht, solange die Firma im Deal ist
+      absagen: 0,
+    });
+  });
+
+  it("erkennt Besichtigung über Aktivitäten am Deal, verlorene Deals sind Absagen", () => {
+    const aktivitaeten: AktivitaetZeile[] = [
+      {
+        sf_id: "00T1",
+        sf_typ: "Task",
+        art: "Aufgabe",
+        betreff: "Besichtigung am 23.04.",
+        datum: "2026-04-24T09:00:00Z",
+        what_sf_id: "006B",
+      },
+    ];
+    const besichtigt = deal({
+      sf_id: "006B",
+      phase: "Data Room",
+      betrag: null,
+      account_sf_id: "001B",
+    });
+    const verloren = deal({
+      sf_id: "006C",
+      phase: "Closed Lost",
+      betrag: null,
+      account_sf_id: "001C",
+    });
+    expect(dealStufe(besichtigt, aktivitaeten)).toBe("besichtigung");
+    expect(dealStufe(verloren, aktivitaeten)).toBe("interesse");
+    const f = berechneFunnel([], [besichtigt, verloren], aktivitaeten);
+    expect(f.interesse).toBe(2);
+    expect(f.besichtigung).toBe(1);
+    expect(f.kaufangebot).toBe(0);
+    expect(f.absagen).toBe(1);
   });
 });
 
@@ -227,5 +301,73 @@ describe("reportDokument", () => {
     expect(
       reportDokument(k, {}, { freigegeben: true }).stempel,
     ).toBeUndefined();
+  });
+});
+
+describe("Texte im Bericht", () => {
+  it("fasst lange Zeiträume je Monat zusammen", () => {
+    const akt = (id: string, datum: string): AktivitaetZeile => ({
+      sf_id: id,
+      sf_typ: "Task",
+      art: "E-Mail",
+      betreff: "x",
+      datum,
+    });
+    const liste = [
+      akt("1", "2026-03-01T10:00:00Z"),
+      akt("2", "2026-04-09T10:00:00Z"),
+      akt("3", "2026-04-30T10:00:00Z"),
+      akt("4", "2026-07-29T10:00:00Z"),
+    ];
+    const lang = berechneReportKennzahlen({
+      von: "2026-03-01",
+      bis: "2026-07-31",
+      mandat: {
+        sfId: "a06X",
+        name: "M-1",
+        status: null,
+        angebotspreis: null,
+        objekt: null,
+        adresse: null,
+      },
+      kampagnen: [],
+      mitglieder: [],
+      aktivitaeten: liste,
+      deals: [],
+      namen: new Map(),
+    });
+    expect(aktivitaetsVerlauf(lang.aktivitaeten)).toEqual([
+      { label: "März 2026", wert: 1 },
+      { label: "April 2026", wert: 2 },
+      { label: "Mai 2026", wert: 0 },
+      { label: "Juni 2026", wert: 0 },
+      { label: "Juli 2026", wert: 1 },
+    ]);
+    const kurz = {
+      ...lang.aktivitaeten,
+      jeWoche: lang.aktivitaeten.jeWoche.slice(0, 3),
+    };
+    expect(aktivitaetsVerlauf(kurz)[0].label).toBe("Woche ab 23.02.2026");
+  });
+
+  it("schreibt den Funnel-Satz nur aus Zahlen", () => {
+    expect(
+      funnelSatz(
+        {
+          angesprochen: 34,
+          angeschrieben: 27,
+          geantwortet: 3,
+          interesse: 1,
+          besichtigung: 1,
+          kaufangebot: 1,
+          absagen: 2,
+        },
+        1,
+      ),
+    ).toBe(
+      "Seit Beginn der Vermarktung wurden 27 Investoren in 1 Kampagne angeschrieben. 7 weitere sind ausgewählt, aber noch nicht angeschrieben. 1 Interessent hat konkretes Interesse gezeigt, 1 besichtigt und 1 ein Kaufangebot abgegeben. 2 Absagen liegen vor.",
+    );
+    expect(phaseText("Invoice Paid")).toBe("Beurkundet");
+    expect(phaseText("Closed Lost")).toBe("Abgesagt");
   });
 });

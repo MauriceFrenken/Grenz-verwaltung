@@ -14,6 +14,8 @@ export type MitgliedZeile = {
   sf_id: string;
   kampagne_sf_id: string;
   kontakt_sf_id: string | null;
+  /** Account des Kontakts (aus sf_kontakte), damit eine Firma im Funnel einmal zählt. */
+  account_sf_id?: string | null;
   status: string | null;
   geantwortet: boolean | null;
   erstmals_geantwortet_am: string | null;
@@ -28,6 +30,7 @@ export type AktivitaetZeile = {
   datum: string | null;
   status?: string | null;
   who_sf_id?: string | null;
+  what_sf_id?: string | null;
   kampagne_sf_id?: string | null;
   sf_daten?: Record<string, unknown> | null;
 };
@@ -130,18 +133,86 @@ const REIHENFOLGE: FunnelStufe[] = [
   "kaufangebot",
 ];
 
-/** Kumulierter Funnel: wer eine Stufe erreicht hat, zählt auch in allen davor. Je Kontakt nur einmal. */
-export function berechneFunnel(mitglieder: MitgliedZeile[]): Funnel {
-  const besteJeKontakt = new Map<string, { stufe: number; absage: boolean }>();
-  for (const m of mitglieder) {
-    const schluessel = m.kontakt_sf_id ?? m.sf_id;
-    const stufe = REIHENFOLGE.indexOf(funnelStufe(m));
-    const bisher = besteJeKontakt.get(schluessel);
-    besteJeKontakt.set(schluessel, {
+const BESICHTIGUNG_BETREFF = /besichtig|begehung/i;
+const DEAL_VERLOREN = new Set(["closed lost"]);
+
+/**
+ * Höchste Stufe eines Interessenten-Deals (Opportunity „Real_Estate_Broker“ am Objekt).
+ * Ein Deal heißt: der Interessent hat Interesse gezeigt. Eine Aktivität am Deal mit
+ * „Besichtigung“ oder „Begehung“ im Betreff zählt als Besichtigung, ein Betrag oder ein
+ * beurkundeter Kaufpreis als Kaufangebot.
+ */
+export function dealStufe(
+  d: DealZeile,
+  aktivitaeten: AktivitaetZeile[],
+): FunnelStufe {
+  const kaufpreis = zahl(d.sf_daten?.Beurkundeter_Kaufpreis_in__c) ?? 0;
+  if ((d.betrag ?? 0) > 0 || kaufpreis > 0) return "kaufangebot";
+  if (
+    aktivitaeten.some(
+      (a) =>
+        a.what_sf_id === d.sf_id && BESICHTIGUNG_BETREFF.test(a.betreff ?? ""),
+    )
+  )
+    return "besichtigung";
+  return "interesse";
+}
+
+/**
+ * Kumulierter Funnel: wer eine Stufe erreicht hat, zählt auch in allen davor.
+ * Gezählt wird je Interessent (Account, sonst Kontakt), also eine Firma einmal, auch wenn
+ * mehrere Ansprechpartner angeschrieben wurden. Interessenten-Deals heben die Stufe an:
+ * Kampagnenstatus werden in der Praxis nach dem Erstkontakt oft nicht weiter gepflegt.
+ */
+export function berechneFunnel(
+  mitglieder: MitgliedZeile[],
+  deals: DealZeile[] = [],
+  aktivitaeten: AktivitaetZeile[] = [],
+): Funnel {
+  const besteJeInteressent = new Map<
+    string,
+    { stufe: number; absage: boolean; offenerDeal: boolean }
+  >();
+  const merke = (
+    schluessel: string,
+    stufe: number,
+    absage: boolean,
+    offenerDeal = false,
+  ) => {
+    const bisher = besteJeInteressent.get(schluessel);
+    besteJeInteressent.set(schluessel, {
       stufe: Math.max(stufe, bisher?.stufe ?? -1),
-      absage: (bisher?.absage ?? false) || istAbsage(m),
+      absage: (bisher?.absage ?? false) || absage,
+      offenerDeal: (bisher?.offenerDeal ?? false) || offenerDeal,
     });
+  };
+  // Kontakt → Interessent, damit Deals mit Kontakt ohne Account dieselbe Firma treffen.
+  const interessentJeKontakt = new Map<string, string>();
+  for (const m of mitglieder)
+    if (m.kontakt_sf_id && m.account_sf_id)
+      interessentJeKontakt.set(m.kontakt_sf_id, m.account_sf_id);
+
+  for (const m of mitglieder)
+    merke(
+      m.account_sf_id ?? m.kontakt_sf_id ?? m.sf_id,
+      REIHENFOLGE.indexOf(funnelStufe(m)),
+      istAbsage(m),
+    );
+  for (const d of deals) {
+    const schluessel =
+      d.account_sf_id ??
+      (d.kontakt_sf_id
+        ? (interessentJeKontakt.get(d.kontakt_sf_id) ?? d.kontakt_sf_id)
+        : d.sf_id);
+    const verloren = DEAL_VERLOREN.has((d.phase ?? "").trim().toLowerCase());
+    merke(
+      schluessel,
+      REIHENFOLGE.indexOf(dealStufe(d, aktivitaeten)),
+      verloren,
+      !verloren,
+    );
   }
+
   const f: Funnel = {
     angesprochen: 0,
     angeschrieben: 0,
@@ -151,14 +222,15 @@ export function berechneFunnel(mitglieder: MitgliedZeile[]): Funnel {
     kaufangebot: 0,
     absagen: 0,
   };
-  for (const { stufe, absage } of besteJeKontakt.values()) {
+  for (const { stufe, absage, offenerDeal } of besteJeInteressent.values()) {
     f.angesprochen += 1;
     if (stufe >= 1) f.angeschrieben += 1;
     if (stufe >= 2) f.geantwortet += 1;
     if (stufe >= 3) f.interesse += 1;
     if (stufe >= 4) f.besichtigung += 1;
     if (stufe >= 5) f.kaufangebot += 1;
-    if (absage) f.absagen += 1;
+    // Eine Absage eines Ansprechpartners zählt nicht, wenn die Firma weiter im Deal ist.
+    if (absage && !offenerDeal) f.absagen += 1;
   }
   return f;
 }
@@ -192,6 +264,28 @@ export function aktivitaetenJeWoche(
   return [...zaehler.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([woche, anzahl]) => ({ woche, anzahl }));
+}
+
+/** Aktivitäten je Kalendermonat (JJJJ-MM) im Zeitraum, leere Monate mit 0. */
+export function aktivitaetenJeMonat(
+  aktivitaeten: AktivitaetZeile[],
+  von: string,
+  bis: string,
+): { monat: string; anzahl: number }[] {
+  const zaehler = new Map<string, number>();
+  for (
+    let d = new Date(`${von.slice(0, 7)}-01T00:00:00Z`);
+    d.toISOString().slice(0, 7) <= bis.slice(0, 7);
+    d.setUTCMonth(d.getUTCMonth() + 1)
+  )
+    zaehler.set(d.toISOString().slice(0, 7), 0);
+  for (const a of imZeitraum(aktivitaeten, von, bis)) {
+    const m = a.datum!.slice(0, 7);
+    zaehler.set(m, (zaehler.get(m) ?? 0) + 1);
+  }
+  return [...zaehler.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([monat, anzahl]) => ({ monat, anzahl }));
 }
 
 export function imZeitraum<T extends { datum: string | null }>(
@@ -293,6 +387,8 @@ export type ReportKennzahlen = {
     gesamt: number;
     zeitraum: number;
     jeWoche: WochenWert[];
+    /** Ab 25.10.2026 eingefroren; ältere Reports haben nur jeWoche. */
+    jeMonat?: { monat: string; anzahl: number }[];
     nachArt: { art: string; anzahl: number }[];
   };
   angebote: Angebot[];
@@ -337,11 +433,12 @@ export function berechneReportKennzahlen(e: ReportEingabe): ReportKennzahlen {
       typ: k.typ,
       mitglieder: mitgliederJeKampagne.get(k.sf_id) ?? k.anzahl_mitglieder ?? 0,
     })),
-    funnel: berechneFunnel(e.mitglieder),
+    funnel: berechneFunnel(e.mitglieder, e.deals, e.aktivitaeten),
     aktivitaeten: {
       gesamt: e.aktivitaeten.length,
       zeitraum: imZr.length,
       jeWoche: aktivitaetenJeWoche(e.aktivitaeten, e.von, e.bis),
+      jeMonat: aktivitaetenJeMonat(e.aktivitaeten, e.von, e.bis),
       nachArt: aktivitaetenNachArt(imZr),
     },
     angebote: sammleAngebote(e.deals, e.mitglieder, e.namen),
@@ -373,6 +470,79 @@ function datumKurz(iso: string): string {
   return `${t}.${m}.${j}`;
 }
 
+/** Salesforce-Phasen der Interessenten-Deals in Worte für den Eigentümer. */
+const PHASE_TEXT: Record<string, string> = {
+  "initial interest": "Erstes Interesse",
+  "data room": "Datenraum",
+  "closed lost": "Abgesagt",
+  "invoice paid": "Beurkundet",
+  "closed won": "Beurkundet",
+};
+
+export function phaseText(phase: string | null): string {
+  if (!phase) return "";
+  return PHASE_TEXT[phase.trim().toLowerCase()] ?? phase;
+}
+
+const MONATE = [
+  "Januar",
+  "Februar",
+  "März",
+  "April",
+  "Mai",
+  "Juni",
+  "Juli",
+  "August",
+  "September",
+  "Oktober",
+  "November",
+  "Dezember",
+];
+
+/**
+ * Verlauf für das Dokument: bis 12 Wochen je Woche, darüber je Monat
+ * (sonst wird der Bericht bei langen Zeiträumen unlesbar lang).
+ */
+export function aktivitaetsVerlauf(
+  a: ReportKennzahlen["aktivitaeten"],
+): { label: string; wert: number }[] {
+  if (a.jeWoche.length <= 12 || !a.jeMonat)
+    return a.jeWoche.map((w) => ({
+      label: `Woche ab ${datumKurz(w.woche)}`,
+      wert: w.anzahl,
+    }));
+  return a.jeMonat.map((m) => ({
+    label: `${MONATE[Number(m.monat.slice(5, 7)) - 1]} ${m.monat.slice(0, 4)}`,
+    wert: m.anzahl,
+  }));
+}
+
+function anzahl(n: number, einzahl: string, mehrzahl: string): string {
+  return `${n} ${n === 1 ? einzahl : mehrzahl}`;
+}
+
+/** Zusammenfassung des Funnels in einem Satz, nur aus den gezählten Werten. */
+export function funnelSatz(f: Funnel, kampagnen: number): string {
+  const saetze = [
+    `Seit Beginn der Vermarktung wurden ${anzahl(f.angeschrieben, "Investor", "Investoren")} in ${anzahl(kampagnen, "Kampagne", "Kampagnen")} angeschrieben.`,
+  ];
+  const vorgemerkt = f.angesprochen - f.angeschrieben;
+  if (vorgemerkt > 0)
+    saetze.push(
+      `${anzahl(vorgemerkt, "weiterer ist", "weitere sind")} ausgewählt, aber noch nicht angeschrieben.`,
+    );
+  if (f.interesse > 0)
+    saetze.push(
+      `${anzahl(f.interesse, "Interessent hat", "Interessenten haben")} konkretes Interesse gezeigt, ${f.besichtigung} besichtigt und ${f.kaufangebot} ein Kaufangebot abgegeben.`,
+    );
+  saetze.push(
+    f.absagen === 0
+      ? "Absagen liegen nicht vor."
+      : `${anzahl(f.absagen, "Absage liegt", "Absagen liegen")} vor.`,
+  );
+  return saetze.join(" ");
+}
+
 /** Baut das Dokument (PDF/PPTX) aus eingefrorenen Zahlen und den bearbeiteten Texten. */
 export function reportDokument(
   k: ReportKennzahlen,
@@ -401,7 +571,7 @@ export function reportDokument(
   const berechnung = q({
     id: "berechnung-funnel",
     art: "berechnung",
-    bezeichnung: `Auswertung der Kampagnenmitglieder, Stand ${datumKurz(k.stand)}`,
+    bezeichnung: `Auswertung der Kampagnenmitglieder und Interessenten-Deals in Salesforce, Stand ${datumKurz(k.stand)}`,
   });
 
   const abschnitte: InhaltAbschnitt[] = [];
@@ -427,8 +597,8 @@ export function reportDokument(
         wert: `${datumKurz(k.zeitraum.von)} bis ${datumKurz(k.zeitraum.bis)}`,
       },
       {
-        label: "Angesprochene Investoren",
-        wert: String(k.funnel.angesprochen),
+        label: "Angeschriebene Investoren",
+        wert: String(k.funnel.angeschrieben),
         quellen: [berechnung],
       },
       {
@@ -463,7 +633,7 @@ export function reportDokument(
           {
             art: "balken",
             eintraege: [
-              { label: "Angesprochen", wert: f.angesprochen },
+              { label: "Ausgewählt", wert: f.angesprochen },
               { label: "Angeschrieben", wert: f.angeschrieben },
               { label: "Rückmeldung", wert: f.geantwortet },
               { label: "Interesse", wert: f.interesse },
@@ -473,7 +643,7 @@ export function reportDokument(
           },
           {
             art: "absatz",
-            text: `Seit Beginn der Vermarktung wurden ${f.angesprochen} ${f.angesprochen === 1 ? "Investor" : "Investoren"} in ${k.kampagnen.length} Kampagne(n) angesprochen. ${f.absagen} haben abgesagt.`,
+            text: funnelSatz(f, k.kampagnen.length),
             quellen: [berechnung, ...kampagnenQuellen],
           },
         ]
@@ -501,10 +671,7 @@ export function reportDokument(
           },
           {
             art: "balken",
-            eintraege: k.aktivitaeten.jeWoche.map((w) => ({
-              label: `Woche ab ${datumKurz(w.woche)}`,
-              wert: w.anzahl,
-            })),
+            eintraege: aktivitaetsVerlauf(k.aktivitaeten),
           },
         ]
       : [
@@ -527,7 +694,7 @@ export function reportDokument(
             zeilen: k.angebote.map((a) => [
               a.bieter,
               euro(a.betrag),
-              a.phase ?? "",
+              phaseText(a.phase),
             ]),
           },
           {

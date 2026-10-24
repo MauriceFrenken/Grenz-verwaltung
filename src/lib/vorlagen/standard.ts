@@ -1,4 +1,9 @@
-import type { AbschnittDefinition, DesignDefinition, DesignVorlage, DokumentTyp } from "./typen";
+import type {
+  AbschnittDefinition,
+  DesignDefinition,
+  DesignVorlage,
+  DokumentTyp,
+} from "./typen";
 
 /**
  * Grenz-Standarddesign, abgeleitet aus der App (Navy, Gold, Garamond/Source Sans) und dem Impressum.
@@ -24,7 +29,8 @@ export const GRENZ_DESIGN: DesignDefinition = {
     web: "grenz-co.de",
     register: "Amtsgericht Köln, HRB 121912, Geschäftsführer: Sebastian Grenz",
   },
-  fusszeile: "Grenz & Co. Immobilienberatungs-GmbH · Friesenplatz 1 · 50672 Köln · grenz-co.de",
+  fusszeile:
+    "Grenz & Co. Immobilienberatungs-GmbH · Friesenplatz 1 · 50672 Köln · grenz-co.de",
   disclaimer:
     "Grenz & Co. hat dieses Exposé im Auftrag des Verkäufers erstellt. Es dient rein informatorischen Zwecken und soll dem Empfänger eine Übersicht über die wesentlichen Rahmendaten des Objekts geben. Das Exposé erhebt keinerlei Anspruch auf Vollständigkeit. Die zugrundeliegenden Informationen wurden Grenz & Co. vom Verkäufer und/oder von Dritten zur Verfügung gestellt. Die Vollständigkeit sowie die Richtigkeit dieser Informationen wurde von Grenz & Co. nicht überprüft; sie können jederzeit geändert bzw. aktualisiert werden. Eine Haftung von Grenz & Co. für direkte oder indirekte Schäden des Empfängers aufgrund von Fehlerhaftigkeiten oder Unvollständigkeiten der in diesem Exposé enthaltenen Informationen ist ausgeschlossen. Grenz & Co. und der Verkäufer sind nicht dazu verpflichtet, Kaufinteressenten weitere Informationen zur Verfügung zu stellen. Ein Anspruch auf Erwerb des Objekts oder auf die Durchführung von Verkaufsverhandlungen besteht nicht. Kaufinteressenten wird empfohlen, eine eigene Ankaufsprüfung und Analyse über das zum Verkauf stehende Objekt durchzuführen und in diesem Zusammenhang professionelle Berater hinzuzuziehen.",
   provisionshinweis:
@@ -55,8 +61,8 @@ export const STANDARD_ABSCHNITTE: Record<DokumentTyp, AbschnittDefinition[]> = {
   pitch: [],
   eigentuemer_report: [
     { id: "ueberblick", titel: "Überblick", sichtbar: true },
-    { id: "funnel", titel: "Kampagnen-Funnel", sichtbar: true },
-    { id: "aktivitaeten", titel: "Aktivitäten je Woche", sichtbar: true },
+    { id: "funnel", titel: "Vermarktungsverlauf", sichtbar: true },
+    { id: "aktivitaeten", titel: "Aktivitäten im Zeitraum", sichtbar: true },
     { id: "angebote", titel: "Angebote", sichtbar: true },
     { id: "marktfeedback", titel: "Marktfeedback", sichtbar: true },
     { id: "naechste_schritte", titel: "Nächste Schritte", sichtbar: true },
@@ -84,7 +90,13 @@ export function standardVorlage(typ: DokumentTyp): DesignVorlage {
 /** Gespeicherte Teile über den Standard legen, damit neue Felder nie fehlen. */
 export function vorlageZusammenfuehren(
   typ: DokumentTyp,
-  gespeichert: { id?: string | null; name?: string; design?: unknown; abschnitte?: unknown; version?: number } | null,
+  gespeichert: {
+    id?: string | null;
+    name?: string;
+    design?: unknown;
+    abschnitte?: unknown;
+    version?: number;
+  } | null,
   allgemein?: { design?: unknown } | null,
 ): DesignVorlage {
   const basis = standardVorlage(typ);
@@ -93,8 +105,16 @@ export function vorlageZusammenfuehren(
     ...((gespeichert?.design as Partial<DesignDefinition>) ?? {}),
   };
   // Alte Platzhalter („[… übernehmen]“) aus gespeicherten Vorlagen durch die Grenz-Texte ersetzen.
-  for (const k of ["disclaimer", "provisionshinweis", "widerrufsbelehrung"] as const) {
-    if (typeof designQuelle[k] === "string" && /\[[^\]]*übernehmen\]/.test(designQuelle[k]!)) delete designQuelle[k];
+  for (const k of [
+    "disclaimer",
+    "provisionshinweis",
+    "widerrufsbelehrung",
+  ] as const) {
+    if (
+      typeof designQuelle[k] === "string" &&
+      /\[[^\]]*übernehmen\]/.test(designQuelle[k]!)
+    )
+      delete designQuelle[k];
   }
   const design: DesignDefinition = {
     ...basis.design,
@@ -109,7 +129,9 @@ export function vorlageZusammenfuehren(
   // Reihenfolge und Sichtbarkeit aus der Vorlage, unbekannte Standardabschnitte hinten anhängen.
   const bekannt = new Set(gespeicherteAbschnitte.map((a) => a.id));
   const abschnitte = [
-    ...gespeicherteAbschnitte.filter((a) => basis.abschnitte.some((b) => b.id === a.id)),
+    ...gespeicherteAbschnitte.filter((a) =>
+      basis.abschnitte.some((b) => b.id === a.id),
+    ),
     ...basis.abschnitte.filter((b) => !bekannt.has(b.id)),
   ];
   return {
