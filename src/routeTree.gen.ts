@@ -29,6 +29,7 @@ import { Route as ExposesIndexRouteImport } from './routes/exposes.index'
 import { Route as ExposesAuswertungRouteImport } from './routes/exposes.auswertung'
 import { Route as ExposesImportRouteImport } from './routes/exposes.import'
 import { Route as ExposesKarteRouteImport } from './routes/exposes.karte'
+import { Route as MandateIndexRouteImport } from './routes/mandate.index'
 import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
@@ -36,6 +37,8 @@ import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expo
 import { Route as ApiCronSalesforceSyncRouteImport } from './routes/api.cron.salesforce-sync'
 import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.index'
 import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
+import { Route as MandateSfIdIndexRouteImport } from './routes/mandate.$sfId.index'
+import { Route as MandateSfIdReportIdRouteImport } from './routes/mandate.$sfId.report.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -138,6 +141,11 @@ const ExposesKarteRoute = ExposesKarteRouteImport.update({
   path: '/karte',
   getParentRoute: () => ExposesRoute,
 } as any)
+const MandateIndexRoute = MandateIndexRouteImport.update({
+  id: '/mandate/',
+  path: '/mandate/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MicrosoftCallbackRoute = MicrosoftCallbackRouteImport.update({
   id: '/microsoft/callback',
   path: '/microsoft/callback',
@@ -173,6 +181,16 @@ const ExposesImportSalesforceRoute = ExposesImportSalesforceRouteImport.update({
   path: '/salesforce',
   getParentRoute: () => ExposesImportRoute,
 } as any)
+const MandateSfIdIndexRoute = MandateSfIdIndexRouteImport.update({
+  id: '/mandate/$sfId/',
+  path: '/mandate/$sfId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MandateSfIdReportIdRoute = MandateSfIdReportIdRouteImport.update({
+  id: '/mandate/$sfId/report/$id',
+  path: '/mandate/$sfId/report/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -197,11 +215,14 @@ export interface FileRoutesByFullPath {
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
+  '/mandate/': typeof MandateIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
+  '/mandate/$sfId/': typeof MandateSfIdIndexRoute
+  '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -223,11 +244,14 @@ export interface FileRoutesByTo {
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/einstellungen': typeof EinstellungenIndexRoute
   '/exposes': typeof ExposesIndexRoute
+  '/mandate': typeof MandateIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import': typeof ExposesImportIndexRoute
+  '/mandate/$sfId': typeof MandateSfIdIndexRoute
+  '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -253,11 +277,14 @@ export interface FileRoutesById {
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
+  '/mandate/': typeof MandateIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
+  '/mandate/$sfId/': typeof MandateSfIdIndexRoute
+  '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -284,11 +311,14 @@ export interface FileRouteTypes {
     | '/salesforce/callback'
     | '/einstellungen/'
     | '/exposes/'
+    | '/mandate/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/exposes/import/'
+    | '/mandate/$sfId/'
+    | '/mandate/$sfId/report/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -310,11 +340,14 @@ export interface FileRouteTypes {
     | '/salesforce/callback'
     | '/einstellungen'
     | '/exposes'
+    | '/mandate'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/exposes/import'
+    | '/mandate/$sfId'
+    | '/mandate/$sfId/report/$id'
   id:
     | '__root__'
     | '/'
@@ -339,11 +372,14 @@ export interface FileRouteTypes {
     | '/salesforce/callback'
     | '/einstellungen/'
     | '/exposes/'
+    | '/mandate/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/exposes/import/'
+    | '/mandate/$sfId/'
+    | '/mandate/$sfId/report/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -360,9 +396,12 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
+  MandateIndexRoute: typeof MandateIndexRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
   ApiCronSalesforceSyncRoute: typeof ApiCronSalesforceSyncRoute
+  MandateSfIdIndexRoute: typeof MandateSfIdIndexRoute
+  MandateSfIdReportIdRoute: typeof MandateSfIdReportIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -507,6 +546,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExposesKarteRouteImport
       parentRoute: typeof ExposesRoute
     }
+    '/mandate/': {
+      id: '/mandate/'
+      path: '/mandate'
+      fullPath: '/mandate/'
+      preLoaderRoute: typeof MandateIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/microsoft/callback': {
       id: '/microsoft/callback'
       path: '/microsoft/callback'
@@ -555,6 +601,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/exposes/import/salesforce'
       preLoaderRoute: typeof ExposesImportSalesforceRouteImport
       parentRoute: typeof ExposesImportRoute
+    }
+    '/mandate/$sfId/': {
+      id: '/mandate/$sfId/'
+      path: '/mandate/$sfId'
+      fullPath: '/mandate/$sfId/'
+      preLoaderRoute: typeof MandateSfIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mandate/$sfId/report/$id': {
+      id: '/mandate/$sfId/report/$id'
+      path: '/mandate/$sfId/report/$id'
+      fullPath: '/mandate/$sfId/report/$id'
+      preLoaderRoute: typeof MandateSfIdReportIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -624,9 +684,12 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
+  MandateIndexRoute: MandateIndexRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
   ApiCronSalesforceSyncRoute: ApiCronSalesforceSyncRoute,
+  MandateSfIdIndexRoute: MandateSfIdIndexRoute,
+  MandateSfIdReportIdRoute: MandateSfIdReportIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

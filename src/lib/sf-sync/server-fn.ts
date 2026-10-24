@@ -4,10 +4,9 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { createServiceRoleClient, pruefeAufrufer, tokenAus } from "@/lib/server/aufrufer";
 
-import { resolveVerifiedSalesforceCredentials } from "@/lib/salesforce/server-credentials";
-
-import { jwtZugangKonfiguriert, mitSfZugang } from "./jwt";
+import { jwtZugangKonfiguriert } from "./jwt";
 import type { SyncErgebnis } from "./sync";
+import { mitSfZugangOderSitzung, sfSitzungAus } from "./zugang";
 
 export type SyncStandZeile = {
   sfObjekt: string;
@@ -49,18 +48,11 @@ export const salesforceSyncStartenFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => ({
     supabaseAccessToken: tokenAus(data),
     voll: Boolean((data as { voll?: unknown } | null)?.voll),
-    sfSitzung: ((data as { sfSitzung?: unknown } | null)?.sfSitzung ?? null) as SfSitzung | null,
+    sfSitzung: sfSitzungAus(data),
   }))
   .handler(async ({ data }): Promise<SyncErgebnis[]> => {
     await pruefeAufrufer(data.supabaseAccessToken, "admin");
     const { salesforceSyncAusfuehren } = await import("./sync");
     const lauf = () => salesforceSyncAusfuehren(createServiceRoleClient(), { voll: data.voll });
-    // Ohne Connected App: mit der Salesforce-Sitzung des Nutzers (Exposé-Import-Login).
-    if (!jwtZugangKonfiguriert() && data.sfSitzung?.accessToken) {
-      const creds = await resolveVerifiedSalesforceCredentials(data.sfSitzung);
-      return mitSfZugang({ accessToken: creds.accessToken, instanceUrl: creds.instanceUrl, quelle: "sitzung" }, lauf);
-    }
-    return lauf();
+    return mitSfZugangOderSitzung(data.sfSitzung, lauf);
   });
-
-type SfSitzung = { accessToken?: string; instanceUrl?: string; refreshToken?: string };

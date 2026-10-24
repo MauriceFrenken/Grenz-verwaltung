@@ -1,4 +1,5 @@
 import {
+  Briefcase,
   ChartColumn,
   FileText,
   Inbox,
@@ -27,6 +28,10 @@ export const NAVIGATION: NavSection[] = [
   {
     label: "Steuerung",
     items: [{ to: "/kennzahlen", label: "Kennzahlen", icon: ChartColumn }],
+  },
+  {
+    label: "Vermarktung",
+    items: [{ to: "/mandate", label: "Mandate", icon: Briefcase }],
   },
   {
     label: "Exposés",
