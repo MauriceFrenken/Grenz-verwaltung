@@ -313,7 +313,7 @@ export const kampagneAusMatchingFn = createServerFn({ method: "POST" })
       .from("sf_kampagnen")
       .select("sf_id")
       .eq("mandat_sf_id", data.mandatSfId)
-      .eq("typ", "Vermarktung")
+      .ilike("name", "Vermarktung%")
       .order("start_am", { ascending: false, nullsFirst: false })
       .limit(1);
     const bestehend = (vorhandene?.[0]?.sf_id as string | undefined) ?? null;
@@ -322,7 +322,8 @@ export const kampagneAusMatchingFn = createServerFn({ method: "POST" })
         bestehend ??
         (await sfCreate(admin, "Campaign", {
           Name: data.name,
-          Type: "Vermarktung",
+          // Grenz führt Vermarktungskampagnen mit Typ „Event“ und Name „Vermarktung …“ (geprüft 24.10.2026).
+          Type: "Event",
           Status: "Planned",
           IsActive: true,
           Real_Estate__c: m.real_estate_sf_id,
