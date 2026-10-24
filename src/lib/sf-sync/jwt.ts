@@ -5,6 +5,7 @@
  * Fallback für den Übergang: SALESFORCE_REFRESH_TOKEN bzw. SALESFORCE_ACCESS_TOKEN.
  */
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createSign } from "node:crypto";
 
 import { resolveSalesforceCredentials } from "@/lib/salesforce/server-credentials";
@@ -12,7 +13,7 @@ import { resolveSalesforceCredentials } from "@/lib/salesforce/server-credential
 export type SfServerZugang = {
   accessToken: string;
   instanceUrl: string;
-  quelle: "jwt" | "env";
+  quelle: "jwt" | "env" | "sitzung";
 };
 
 function readEnv(name: string): string {
@@ -62,6 +63,16 @@ export function erzeugeJwtAssertion(input: {
 
 let cache: (SfServerZugang & { gueltigBis: number }) | null = null;
 
+/**
+ * Zugang für einen einzelnen Aufruf vorgeben, z. B. die Salesforce-Sitzung des
+ * angemeldeten Nutzers, solange die Connected App noch fehlt.
+ */
+const vorgabe = new AsyncLocalStorage<SfServerZugang>();
+
+export function mitSfZugang<T>(zugang: SfServerZugang, lauf: () => Promise<T>): Promise<T> {
+  return vorgabe.run(zugang, lauf);
+}
+
 export function sfZugangCacheLeeren(): void {
   cache = null;
 }
@@ -103,6 +114,8 @@ async function jwtToken(): Promise<SfServerZugang> {
 
 /** Gültiger Server-Zugang, 30 Minuten zwischengespeichert. */
 export async function sfServerZugang(optionen: { erneuern?: boolean } = {}): Promise<SfServerZugang> {
+  const vorgegeben = vorgabe.getStore();
+  if (vorgegeben) return vorgegeben;
   if (!optionen.erneuern && cache && cache.gueltigBis > Date.now()) return cache;
 
   let zugang: SfServerZugang;

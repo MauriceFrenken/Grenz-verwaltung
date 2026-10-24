@@ -49,7 +49,9 @@ export function SalesforceSyncKarte({ token }: { token: string }) {
     setLaeuft(voll ? "voll" : "inkrementell");
     try {
       const { salesforceSyncStartenFn } = await import("@/lib/sf-sync/server-fn");
-      const ergebnisse = await salesforceSyncStartenFn({ data: { supabaseAccessToken: token, voll } });
+      const { salesforceSessionHintFrisch } = await import("@/lib/salesforce/api");
+      const sfSitzung = await salesforceSessionHintFrisch();
+      const ergebnisse = await salesforceSyncStartenFn({ data: { supabaseAccessToken: token, voll, sfSitzung } });
       const fehler = ergebnisse.filter((e) => e.fehler);
       const summe = ergebnisse.reduce((s, e) => s + e.geholt, 0);
       if (fehler.length) {
@@ -70,7 +72,7 @@ export function SalesforceSyncKarte({ token }: { token: string }) {
       ? "Connected App (JWT)"
       : status?.zugang === "uebergang"
         ? "Übergang: Refresh Token aus der Umgebung"
-        : "Nicht eingerichtet (SF_CLIENT_ID, SF_USERNAME, SF_PRIVATE_KEY fehlen)";
+        : "Connected App fehlt: Abruf mit deiner Salesforce-Anmeldung aus dem Exposé-Import";
 
   return (
     <article className="flex flex-col gap-4 border border-hairline bg-surface p-5">
@@ -108,7 +110,7 @@ export function SalesforceSyncKarte({ token }: { token: string }) {
         <Button
           size="sm"
           className="bg-foreground text-background hover:bg-heading"
-          disabled={laeuft !== null || status?.zugang === "fehlt"}
+          disabled={laeuft !== null}
           onClick={() => void starten(false)}
         >
           {laeuft === "inkrementell" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
@@ -118,7 +120,7 @@ export function SalesforceSyncKarte({ token }: { token: string }) {
           size="sm"
           variant="outline"
           className="border-foreground text-foreground"
-          disabled={laeuft !== null || status?.zugang === "fehlt"}
+          disabled={laeuft !== null}
           onClick={() => void starten(true)}
         >
           {laeuft === "voll" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
