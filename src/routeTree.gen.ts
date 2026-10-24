@@ -38,6 +38,7 @@ import { Route as ApiCronSalesforceSyncRouteImport } from './routes/api.cron.sal
 import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.index'
 import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
 import { Route as MandateSfIdIndexRouteImport } from './routes/mandate.$sfId.index'
+import { Route as MandateSfIdDokumentIdRouteImport } from './routes/mandate.$sfId.dokument.$id'
 import { Route as MandateSfIdReportIdRouteImport } from './routes/mandate.$sfId.report.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -186,6 +187,11 @@ const MandateSfIdIndexRoute = MandateSfIdIndexRouteImport.update({
   path: '/mandate/$sfId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MandateSfIdDokumentIdRoute = MandateSfIdDokumentIdRouteImport.update({
+  id: '/mandate/$sfId/dokument/$id',
+  path: '/mandate/$sfId/dokument/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MandateSfIdReportIdRoute = MandateSfIdReportIdRouteImport.update({
   id: '/mandate/$sfId/report/$id',
   path: '/mandate/$sfId/report/$id',
@@ -222,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
+  '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
 export interface FileRoutesByTo {
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import': typeof ExposesImportIndexRoute
   '/mandate/$sfId': typeof MandateSfIdIndexRoute
+  '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
 export interface FileRoutesById {
@@ -284,6 +292,7 @@ export interface FileRoutesById {
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
+  '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
 export interface FileRouteTypes {
@@ -318,6 +327,7 @@ export interface FileRouteTypes {
     | '/exposes/import/salesforce'
     | '/exposes/import/'
     | '/mandate/$sfId/'
+    | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -347,6 +357,7 @@ export interface FileRouteTypes {
     | '/exposes/import/salesforce'
     | '/exposes/import'
     | '/mandate/$sfId'
+    | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   id:
     | '__root__'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/exposes/import/salesforce'
     | '/exposes/import/'
     | '/mandate/$sfId/'
+    | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   fileRoutesById: FileRoutesById
 }
@@ -401,6 +413,7 @@ export interface RootRouteChildren {
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
   ApiCronSalesforceSyncRoute: typeof ApiCronSalesforceSyncRoute
   MandateSfIdIndexRoute: typeof MandateSfIdIndexRoute
+  MandateSfIdDokumentIdRoute: typeof MandateSfIdDokumentIdRoute
   MandateSfIdReportIdRoute: typeof MandateSfIdReportIdRoute
 }
 
@@ -609,6 +622,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MandateSfIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mandate/$sfId/dokument/$id': {
+      id: '/mandate/$sfId/dokument/$id'
+      path: '/mandate/$sfId/dokument/$id'
+      fullPath: '/mandate/$sfId/dokument/$id'
+      preLoaderRoute: typeof MandateSfIdDokumentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mandate/$sfId/report/$id': {
       id: '/mandate/$sfId/report/$id'
       path: '/mandate/$sfId/report/$id'
@@ -689,6 +709,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
   ApiCronSalesforceSyncRoute: ApiCronSalesforceSyncRoute,
   MandateSfIdIndexRoute: MandateSfIdIndexRoute,
+  MandateSfIdDokumentIdRoute: MandateSfIdDokumentIdRoute,
   MandateSfIdReportIdRoute: MandateSfIdReportIdRoute,
 }
 export const routeTree = rootRouteImport

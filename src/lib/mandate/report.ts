@@ -352,7 +352,7 @@ export function reportDokument(
           },
           {
             art: "absatz",
-            text: `Seit Beginn der Vermarktung wurden ${f.angesprochen} Investoren in ${k.kampagnen.length} Kampagne(n) angesprochen. ${f.absagen} haben abgesagt.`,
+            text: `Seit Beginn der Vermarktung wurden ${f.angesprochen} ${f.angesprochen === 1 ? "Investor" : "Investoren"} in ${k.kampagnen.length} Kampagne(n) angesprochen. ${f.absagen} haben abgesagt.`,
             quellen: [berechnung, ...kampagnenQuellen],
           },
         ]

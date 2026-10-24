@@ -12,6 +12,8 @@ import { formatDate, formatEuro, formatFlaeche } from "@/lib/format";
 import type { Funnel } from "@/lib/mandate/report";
 import type { MandatDetail } from "@/lib/mandate/server-fn";
 
+import { DokumenteKarte } from "./DokumenteKarte";
+
 const STATUS_TEXT: Record<string, string> = { entwurf: "Entwurf", freigegeben: "Freigegeben", versendet: "Versendet" };
 
 function tagVor(n: number): string {
@@ -193,6 +195,8 @@ export function MandatDetailPage({ sfId }: { sfId: string }) {
                 </table>
               </div>
             </section>
+
+            <DokumenteKarte token={token} sfId={sfId} />
 
             <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
               <h2 className="text-sm font-semibold text-heading">Vermarktungsberichte</h2>
