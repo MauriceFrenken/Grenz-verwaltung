@@ -19,6 +19,13 @@ const STATUS = [
   "Verloren",
 ];
 
+/** Mandat ruht: letzte Aktivität älter als 30 Tage. */
+function ruhtSeit(datum: string | null): boolean {
+  return (
+    datum != null && Date.now() - new Date(datum).getTime() > 30 * 86_400_000
+  );
+}
+
 export function MandateListePage() {
   const { session } = useAuth();
   const token = session?.access_token ?? "";
@@ -110,6 +117,8 @@ export function MandateListePage() {
                   <th className="px-3 py-2 text-right">Provision</th>
                   <th className="px-3 py-2">Beauftragt</th>
                   <th className="px-3 py-2 text-right">Kampagnen</th>
+                  <th className="px-3 py-2 text-right">Interessenten</th>
+                  <th className="px-3 py-2">Letzte Aktivität</th>
                   <th className="px-3 py-2">Letzter Bericht</th>
                 </tr>
               </thead>
@@ -150,6 +159,23 @@ export function MandateListePage() {
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {m.kampagnen}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {m.interessenten
+                        ? `${m.interessentenOffen} offen / ${m.interessenten}`
+                        : "0"}
+                    </td>
+                    <td
+                      className={`px-3 py-2 ${ruhtSeit(m.letzteAktivitaet) ? "text-[#b4541a]" : ""}`}
+                      title={
+                        ruhtSeit(m.letzteAktivitaet)
+                          ? "Seit über 30 Tagen keine Aktivität in Salesforce"
+                          : undefined
+                      }
+                    >
+                      {m.letzteAktivitaet
+                        ? formatDate(m.letzteAktivitaet)
+                        : "keine"}
                     </td>
                     <td className="px-3 py-2">
                       {m.letzterReport

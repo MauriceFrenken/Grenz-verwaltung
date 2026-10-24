@@ -40,6 +40,10 @@ export type MandatListenEintrag = {
   objektart: string | null;
   ort: string | null;
   kampagnen: number;
+  /** Interessenten-Deals am Objekt, offene (nicht abgesagt) davon. */
+  interessenten: number;
+  interessentenOffen: number;
+  letzteAktivitaet: string | null;
   letzterReport: string | null;
   sfGeaendertAm: string | null;
 };
@@ -56,11 +60,12 @@ export async function ladeMandatsliste(
       .order("sf_geaendert_am", { ascending: false, nullsFirst: false })
       .range(a, b),
   );
-  const [objekte, kampagnen, reports] = await Promise.all([
+  const [objekte, kampagnen, reports, deals, aktivitaeten] = await Promise.all([
     alleZeilen<Record<string, unknown>>((a, b) =>
       admin
         .from("sf_real_estate")
         .select("sf_id, name, objektart, ort")
+        .order("sf_id")
         .range(a, b),
     ),
     alleZeilen<Record<string, unknown>>((a, b) =>
@@ -68,6 +73,7 @@ export async function ladeMandatsliste(
         .from("sf_kampagnen")
         .select("mandat_sf_id")
         .not("mandat_sf_id", "is", null)
+        .order("sf_id")
         .range(a, b),
     ),
     alleZeilen<Record<string, unknown>>((a, b) =>
@@ -77,7 +83,39 @@ export async function ladeMandatsliste(
         .order("created_at", { ascending: false })
         .range(a, b),
     ),
+    alleZeilen<Record<string, unknown>>((a, b) =>
+      admin
+        .from("sf_deals")
+        .select("mandat_sf_id, phase")
+        .not("mandat_sf_id", "is", null)
+        .order("sf_id")
+        .range(a, b),
+    ),
+    alleZeilen<Record<string, unknown>>((a, b) =>
+      admin
+        .from("sf_aktivitaeten")
+        .select("mandat_sf_id, datum")
+        .not("mandat_sf_id", "is", null)
+        .not("datum", "is", null)
+        .order("sf_id")
+        .range(a, b),
+    ),
   ]);
+  const interessenten = new Map<string, { alle: number; offen: number }>();
+  for (const d of deals) {
+    const id = String(d.mandat_sf_id);
+    const x = interessenten.get(id) ?? { alle: 0, offen: 0 };
+    x.alle += 1;
+    if (String(d.phase ?? "").toLowerCase() !== "closed lost") x.offen += 1;
+    interessenten.set(id, x);
+  }
+  const letzteAktivitaet = new Map<string, string>();
+  for (const a of aktivitaeten) {
+    const id = String(a.mandat_sf_id);
+    const datum = String(a.datum);
+    if (datum > (letzteAktivitaet.get(id) ?? ""))
+      letzteAktivitaet.set(id, datum);
+  }
   const objektJeId = new Map(objekte.map((o) => [String(o.sf_id), o]));
   const kampagnenJeMandat = new Map<string, number>();
   for (const k of kampagnen)
@@ -107,6 +145,9 @@ export async function ladeMandatsliste(
       objektart: (o?.objektart as string) ?? null,
       ort: (o?.ort as string) ?? null,
       kampagnen: kampagnenJeMandat.get(String(m.sf_id)) ?? 0,
+      interessenten: interessenten.get(String(m.sf_id))?.alle ?? 0,
+      interessentenOffen: interessenten.get(String(m.sf_id))?.offen ?? 0,
+      letzteAktivitaet: letzteAktivitaet.get(String(m.sf_id)) ?? null,
       letzterReport: letzterReport.get(String(m.sf_id)) ?? null,
       sfGeaendertAm: (m.sf_geaendert_am as string) ?? null,
     };
