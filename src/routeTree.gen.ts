@@ -24,6 +24,7 @@ import { Route as EinstellungenIndexRouteImport } from './routes/einstellungen.i
 import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
 import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
 import { Route as EinstellungenIntegrationenRouteImport } from './routes/einstellungen.integrationen'
+import { Route as EinstellungenVorlagenRouteImport } from './routes/einstellungen.vorlagen'
 import { Route as ExposesIndexRouteImport } from './routes/exposes.index'
 import { Route as ExposesAuswertungRouteImport } from './routes/exposes.auswertung'
 import { Route as ExposesImportRouteImport } from './routes/exposes.import'
@@ -112,6 +113,11 @@ const EinstellungenIntegrationenRoute =
     path: '/integrationen',
     getParentRoute: () => EinstellungenRoute,
   } as any)
+const EinstellungenVorlagenRoute = EinstellungenVorlagenRouteImport.update({
+  id: '/vorlagen',
+  path: '/vorlagen',
+  getParentRoute: () => EinstellungenRoute,
+} as any)
 const ExposesIndexRoute = ExposesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -183,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/einstellungen/vorlagen': typeof EinstellungenVorlagenRoute
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/exposes/karte': typeof ExposesKarteRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/einstellungen/vorlagen': typeof EinstellungenVorlagenRoute
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/einstellungen/vorlagen': typeof EinstellungenVorlagenRoute
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/exposes/karte': typeof ExposesKarteRoute
@@ -267,6 +276,7 @@ export interface FileRouteTypes {
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/einstellungen/vorlagen'
     | '/exposes/auswertung'
     | '/exposes/import'
     | '/exposes/karte'
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/einstellungen/vorlagen'
     | '/exposes/auswertung'
     | '/exposes/karte'
     | '/microsoft/callback'
@@ -320,6 +331,7 @@ export interface FileRouteTypes {
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/einstellungen/vorlagen'
     | '/exposes/auswertung'
     | '/exposes/import'
     | '/exposes/karte'
@@ -460,6 +472,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EinstellungenIntegrationenRouteImport
       parentRoute: typeof EinstellungenRoute
     }
+    '/einstellungen/vorlagen': {
+      id: '/einstellungen/vorlagen'
+      path: '/vorlagen'
+      fullPath: '/einstellungen/vorlagen'
+      preLoaderRoute: typeof EinstellungenVorlagenRouteImport
+      parentRoute: typeof EinstellungenRoute
+    }
     '/exposes/': {
       id: '/exposes/'
       path: '/'
@@ -544,6 +563,7 @@ interface EinstellungenRouteChildren {
   EinstellungenAuditRoute: typeof EinstellungenAuditRoute
   EinstellungenBenutzerRoute: typeof EinstellungenBenutzerRoute
   EinstellungenIntegrationenRoute: typeof EinstellungenIntegrationenRoute
+  EinstellungenVorlagenRoute: typeof EinstellungenVorlagenRoute
   EinstellungenIndexRoute: typeof EinstellungenIndexRoute
 }
 
@@ -551,6 +571,7 @@ const EinstellungenRouteChildren: EinstellungenRouteChildren = {
   EinstellungenAuditRoute: EinstellungenAuditRoute,
   EinstellungenBenutzerRoute: EinstellungenBenutzerRoute,
   EinstellungenIntegrationenRoute: EinstellungenIntegrationenRoute,
+  EinstellungenVorlagenRoute: EinstellungenVorlagenRoute,
   EinstellungenIndexRoute: EinstellungenIndexRoute,
 }
 

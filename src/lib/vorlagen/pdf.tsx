@@ -310,9 +310,11 @@ function BlockPdf({
 export function DokumentPdf({
   inhalt,
   vorlage,
+  logo,
 }: {
   inhalt: DokumentInhalt;
   vorlage: DesignVorlage;
+  logo?: string | null;
 }) {
   const s = stile(vorlage);
   const d = vorlage.design;
@@ -326,7 +328,7 @@ export function DokumentPdf({
     >
       <Page size={d.seitenformat} style={s.deckblatt}>
         <View style={s.deckInnen}>
-          <Image src={logoWeiss} style={s.logo} />
+          <Image src={logo ?? logoWeiss} style={s.logo} />
           <View>
             <View style={s.deckLinie} />
             <Text style={s.deckTitel}>{inhalt.titel}</Text>
@@ -418,6 +420,7 @@ export function DokumentPdf({
 export async function dokumentAlsPdf(
   inhalt: DokumentInhalt,
   vorlage: DesignVorlage,
+  logo?: string | null,
 ): Promise<Buffer> {
-  return renderToBuffer(<DokumentPdf inhalt={inhalt} vorlage={vorlage} />);
+  return renderToBuffer(<DokumentPdf inhalt={inhalt} vorlage={vorlage} logo={logo} />);
 }

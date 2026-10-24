@@ -30,7 +30,11 @@ function blockText(b: Block): string[] {
   }
 }
 
-export async function dokumentAlsPptx(inhalt: DokumentInhalt, vorlage: DesignVorlage): Promise<Buffer> {
+export async function dokumentAlsPptx(
+  inhalt: DokumentInhalt,
+  vorlage: DesignVorlage,
+  logo?: string | null,
+): Promise<Buffer> {
   const d = vorlage.design;
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
@@ -51,7 +55,7 @@ export async function dokumentAlsPptx(inhalt: DokumentInhalt, vorlage: DesignVor
 
   const deck = pptx.addSlide();
   deck.background = { color: farbe(d.farben.primaer) };
-  deck.addImage({ data: logoWeiss, x: 0.8, y: 0.7, w: 2.6, h: 0.75 });
+  deck.addImage({ data: logo ?? logoWeiss, x: 0.8, y: 0.7, w: 2.6, h: 0.75 });
   deck.addShape(pptx.ShapeType.rect, { x: 0.8, y: 3.0, w: 0.8, h: 0.05, fill: { color: farbe(d.farben.akzent) } });
   deck.addText(inhalt.titel, { x: 0.8, y: 3.2, w: 11.5, h: 1.2, fontSize: 36, color: "FFFFFF", fontFace: titelSchrift });
   if (inhalt.untertitel) {
