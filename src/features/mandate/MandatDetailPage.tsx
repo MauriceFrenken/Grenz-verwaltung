@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { FilePlus2, Loader2, Users } from "lucide-react";
+import { Calculator, FilePlus2, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageWrapper } from "@/components/layout/PageWrapper";
@@ -133,6 +133,12 @@ export function MandatDetailPage({ sfId }: { sfId: string }) {
               <Link to="/mandate/$sfId/matching" params={{ sfId }}>
                 <Users className="h-4 w-4" />
                 Käufer-Matching
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/mandate/$sfId/bewertung" params={{ sfId }}>
+                <Calculator className="h-4 w-4" />
+                Bewertung
               </Link>
             </Button>
             <Button

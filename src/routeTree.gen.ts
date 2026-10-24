@@ -38,6 +38,7 @@ import { Route as ApiCronSalesforceSyncRouteImport } from './routes/api.cron.sal
 import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.index'
 import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
 import { Route as MandateSfIdIndexRouteImport } from './routes/mandate.$sfId.index'
+import { Route as MandateSfIdBewertungRouteImport } from './routes/mandate.$sfId.bewertung'
 import { Route as MandateSfIdMatchingRouteImport } from './routes/mandate.$sfId.matching'
 import { Route as MandateSfIdDokumentIdRouteImport } from './routes/mandate.$sfId.dokument.$id'
 import { Route as MandateSfIdReportIdRouteImport } from './routes/mandate.$sfId.report.$id'
@@ -188,6 +189,11 @@ const MandateSfIdIndexRoute = MandateSfIdIndexRouteImport.update({
   path: '/mandate/$sfId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MandateSfIdBewertungRoute = MandateSfIdBewertungRouteImport.update({
+  id: '/mandate/$sfId/bewertung',
+  path: '/mandate/$sfId/bewertung',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MandateSfIdMatchingRoute = MandateSfIdMatchingRouteImport.update({
   id: '/mandate/$sfId/matching',
   path: '/mandate/$sfId/matching',
@@ -232,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
@@ -263,6 +270,7 @@ export interface FileRoutesByTo {
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/exposes/import': typeof ExposesImportIndexRoute
   '/mandate/$sfId': typeof MandateSfIdIndexRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
@@ -334,6 +343,7 @@ export interface FileRouteTypes {
     | '/api/cron/expose-analyse'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
+    | '/mandate/$sfId/bewertung'
     | '/mandate/$sfId/matching'
     | '/exposes/import/'
     | '/mandate/$sfId/'
@@ -365,6 +375,7 @@ export interface FileRouteTypes {
     | '/api/cron/expose-analyse'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
+    | '/mandate/$sfId/bewertung'
     | '/mandate/$sfId/matching'
     | '/exposes/import'
     | '/mandate/$sfId'
@@ -399,6 +410,7 @@ export interface FileRouteTypes {
     | '/api/cron/expose-analyse'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
+    | '/mandate/$sfId/bewertung'
     | '/mandate/$sfId/matching'
     | '/exposes/import/'
     | '/mandate/$sfId/'
@@ -424,6 +436,7 @@ export interface RootRouteChildren {
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
   ApiCronSalesforceSyncRoute: typeof ApiCronSalesforceSyncRoute
+  MandateSfIdBewertungRoute: typeof MandateSfIdBewertungRoute
   MandateSfIdMatchingRoute: typeof MandateSfIdMatchingRoute
   MandateSfIdIndexRoute: typeof MandateSfIdIndexRoute
   MandateSfIdDokumentIdRoute: typeof MandateSfIdDokumentIdRoute
@@ -635,6 +648,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MandateSfIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mandate/$sfId/bewertung': {
+      id: '/mandate/$sfId/bewertung'
+      path: '/mandate/$sfId/bewertung'
+      fullPath: '/mandate/$sfId/bewertung'
+      preLoaderRoute: typeof MandateSfIdBewertungRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mandate/$sfId/matching': {
       id: '/mandate/$sfId/matching'
       path: '/mandate/$sfId/matching'
@@ -728,6 +748,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
   ApiCronSalesforceSyncRoute: ApiCronSalesforceSyncRoute,
+  MandateSfIdBewertungRoute: MandateSfIdBewertungRoute,
   MandateSfIdMatchingRoute: MandateSfIdMatchingRoute,
   MandateSfIdIndexRoute: MandateSfIdIndexRoute,
   MandateSfIdDokumentIdRoute: MandateSfIdDokumentIdRoute,
