@@ -56,6 +56,7 @@ export const STANDARD_ABSCHNITTE: Record<DokumentTyp, AbschnittDefinition[]> = {
     { id: "eckdaten", titel: "Eckdaten", sichtbar: true },
     { id: "objekt", titel: "Objekt", sichtbar: true },
     { id: "investment", titel: "Investment-Summary", sichtbar: true },
+    { id: "energie", titel: "Energieausweis", sichtbar: true },
     { id: "rechtliches", titel: "Hinweise", sichtbar: true },
   ],
   pitch: [],

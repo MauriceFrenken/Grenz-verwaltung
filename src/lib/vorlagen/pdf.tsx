@@ -356,7 +356,10 @@ export function DokumentPdf({
 }) {
   const s = stile(vorlage);
   const d = vorlage.design;
-  const nummern = new Map(inhalt.quellen.map((q, i) => [q.id, i + 1]));
+  const drucken = inhalt.quellenDrucken !== false;
+  const nummern = new Map(
+    drucken ? inhalt.quellen.map((q, i) => [q.id, i + 1]) : [],
+  );
 
   return (
     <Document
@@ -444,7 +447,7 @@ export function DokumentPdf({
             </View>
           ))}
 
-          {inhalt.quellen.length ? (
+          {drucken && inhalt.quellen.length ? (
             <View style={s.abschnitt} break={inhalt.quellen.length > 12}>
               <View wrap={false}>
                 <Text style={s.abschnittTitel}>Quellen</Text>

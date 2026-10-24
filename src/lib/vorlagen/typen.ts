@@ -107,4 +107,9 @@ export type DokumentInhalt = {
   quellen: Quelle[];
   /** Status-Stempel auf jeder Seite, z. B. „Entwurf“. */
   stempel?: string;
+  /**
+   * Quellenverweise drucken (Standard). Freigegebene Exposés und Teaser gehen an Käufer:
+   * dort bleiben die Belege im Entwurf gespeichert, werden aber nicht gedruckt.
+   */
+  quellenDrucken?: boolean;
 };

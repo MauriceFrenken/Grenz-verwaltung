@@ -26,6 +26,7 @@ export const FELDER = [
   { id: "einheiten", label: "Einheiten", gruppe: "flaechen" },
   { id: "wohnflaeche", label: "Wohnfläche (m²)", gruppe: "flaechen" },
   { id: "gewerbeflaeche", label: "Gewerbefläche (m²)", gruppe: "flaechen" },
+  { id: "mietflaeche", label: "Mietfläche gesamt (m²)", gruppe: "flaechen" },
   { id: "grundstueck", label: "Grundstück (m²)", gruppe: "flaechen" },
   { id: "stellplaetze", label: "Stellplätze", gruppe: "flaechen" },
   {
@@ -153,7 +154,15 @@ export function vorbelegungAusSalesforce(
     const sfDaten = (objekt.sf_daten ?? {}) as Record<string, unknown>;
     setze(
       "lage_ort",
-      [objekt.ort, sfDaten.Stadtbezirk__c].filter(Boolean).join(", ") || null,
+      [
+        objekt.ort,
+        // „Stadtbezirk 3“ sagt Käufern nichts; nur echte Namen übernehmen.
+        /^stadtbezirk\s*\d+$/i.test(String(sfDaten.Stadtbezirk__c ?? "").trim())
+          ? null
+          : sfDaten.Stadtbezirk__c,
+      ]
+        .filter(Boolean)
+        .join(", ") || null,
       q("City__c"),
     );
     setze(
@@ -173,6 +182,7 @@ export function vorbelegungAusSalesforce(
       zahlText(objekt.gewerbeflaeche_m2),
       q("Gewerbefl_che__c"),
     );
+    setze("mietflaeche", zahlText(objekt.mietflaeche_m2), q("Renable_Area__c"));
     setze(
       "grundstueck",
       zahlText(objekt.grundstuecksflaeche_m2),
@@ -193,11 +203,13 @@ export function vorbelegungAusSalesforce(
       (objekt.heizungsart as string) ?? null,
       q("Type_of_heating__c"),
     );
-    setze(
-      "energieausweis_art",
-      (objekt.energieausweis as string) ?? null,
-      q("Energy_certificate__c"),
-    );
+    // Energy_certificate__c enthält die Effizienzklasse (A bis H), nicht die Ausweisart
+    // (geprüft 24.10.2026). Andere Werte werden nicht übernommen.
+    const klasse = String(objekt.energieausweis ?? "")
+      .trim()
+      .toUpperCase();
+    if (/^(A\+|[A-H])$/.test(klasse))
+      setze("effizienzklasse", klasse, q("Energy_certificate__c"));
   }
   return f;
 }
@@ -274,18 +286,17 @@ export function pruefePflichtangaben(
   feld("kaufpreis");
   feld("provision", "Pflicht für die Provisionsvereinbarung mit dem Käufer.");
 
-  const wohn = f.wohnflaeche?.wert?.trim();
-  const gewerbe = f.gewerbeflaeche?.wert?.trim();
+  const flaechen = (["wohnflaeche", "gewerbeflaeche", "mietflaeche"] as const)
+    .map((id) => f[id])
+    .filter((w) => w?.wert?.trim());
   punkte.push({
     id: "flaechen",
-    label: "Wohn- oder Gewerbefläche",
-    status:
-      !wohn && !gewerbe
-        ? "fehlt"
-        : (wohn && !f.wohnflaeche?.quelle) ||
-            (gewerbe && !f.gewerbeflaeche?.quelle)
-          ? "ohne_quelle"
-          : "ok",
+    label: "Wohn-, Gewerbe- oder Mietfläche",
+    status: !flaechen.length
+      ? "fehlt"
+      : flaechen.some((w) => !w!.quelle)
+        ? "ohne_quelle"
+        : "ok",
   });
   feld("ist_miete", "Für Anlageobjekte: Ist-Miete laut Mieterliste.");
 
@@ -448,6 +459,7 @@ export function exposeDokument(
           eintraege: liste([
             kennzahl("wohnflaeche", "Wohnfläche", m2),
             kennzahl("gewerbeflaeche", "Gewerbefläche", m2),
+            kennzahl("mietflaeche", "Mietfläche gesamt", m2),
             kennzahl("grundstueck", "Grundstück", m2),
             kennzahl("stellplaetze"),
             kennzahl("ist_miete", "Ist-Nettokaltmiete p. a.", euroText),
@@ -457,7 +469,10 @@ export function exposeDokument(
         ...liste([luecke("ist_miete")]),
       ],
     });
+  }
 
+  // Energieausweis auch im Teaser: GEG § 87 gilt für jede Anzeige.
+  {
     const energie = liste([
       kennzahl("energieausweis_art", "Energieausweis"),
       kennzahl("energiekennwert", "Endenergiekennwert", (w) =>
@@ -572,6 +587,8 @@ export function exposeDokument(
     abschnitte,
     quellen,
     stempel: optionen.freigegeben ? undefined : "ENTWURF",
+    // Käufer sehen keine internen Salesforce-Verweise; im Entwurf dienen sie der Prüfung.
+    quellenDrucken: !optionen.freigegeben,
   };
 }
 

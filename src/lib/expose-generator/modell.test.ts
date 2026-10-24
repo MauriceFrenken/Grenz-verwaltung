@@ -66,6 +66,27 @@ describe("vorbelegungAusSalesforce", () => {
     expect(f.kaufpreis).toBeUndefined(); // 0 = nicht gepflegt
     expect(JSON.stringify(f)).not.toContain("2,5 Mio");
   });
+
+  it("liest Energy_certificate__c als Effizienzklasse und nimmt die Mietfläche (echte Daten Bilker Allee 112)", () => {
+    const f = vorbelegungAusSalesforce(
+      { sf_id: "a06B", angebotspreis: 2175000 },
+      {
+        sf_id: "a01B",
+        name: "Bilker Allee 112",
+        objektart: "Mehrfamilienhaus",
+        energieausweis: "E",
+        mietflaeche_m2: 676,
+      },
+    );
+    expect(f.effizienzklasse?.wert).toBe("E");
+    expect(f.energieausweis_art).toBeUndefined();
+    expect(f.mietflaeche?.wert).toBe("676");
+    const unklar = vorbelegungAusSalesforce(
+      { sf_id: "a06C" },
+      { sf_id: "a01C", energieausweis: "Verbrauchsausweis" },
+    );
+    expect(unklar.effizienzklasse).toBeUndefined();
+  });
 });
 
 describe("pruefePflichtangaben", () => {
