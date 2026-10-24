@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import type { MicrosoftStatusPayload } from "@/lib/microsoft/connect";
 
+import { SalesforceSyncKarte } from "./SalesforceSyncKarte";
+
 function formatDatum(iso: string | null): string {
   if (!iso) return "–";
   try {
@@ -117,7 +119,7 @@ export function IntegrationenPage() {
     <>
       <PageHeader titel="Integrationen" />
       <PageWrapper>
-        <div className="max-w-3xl">
+        <div className="flex max-w-3xl flex-col gap-6">
           <article className="flex flex-col gap-5 border border-hairline bg-surface p-5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -190,6 +192,7 @@ export function IntegrationenPage() {
               </Button>
             </div>
           </article>
+          <SalesforceSyncKarte token={token} />
         </div>
       </PageWrapper>
     </>

@@ -32,6 +32,7 @@ import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callba
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
+import { Route as ApiCronSalesforceSyncRouteImport } from './routes/api.cron.salesforce-sync'
 import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.index'
 import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
 
@@ -151,6 +152,11 @@ const ApiCronExposeAnalyseRoute = ApiCronExposeAnalyseRouteImport.update({
   path: '/api/cron/expose-analyse',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronSalesforceSyncRoute = ApiCronSalesforceSyncRouteImport.update({
+  id: '/api/cron/salesforce-sync',
+  path: '/api/cron/salesforce-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExposesImportIndexRoute = ExposesImportIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/exposes/': typeof ExposesIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
 }
@@ -210,6 +217,7 @@ export interface FileRoutesByTo {
   '/exposes': typeof ExposesIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import': typeof ExposesImportIndexRoute
 }
@@ -238,6 +246,7 @@ export interface FileRoutesById {
   '/exposes/': typeof ExposesIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
 }
@@ -267,6 +276,7 @@ export interface FileRouteTypes {
     | '/exposes/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/exposes/import/'
   fileRoutesByTo: FileRoutesByTo
@@ -291,6 +301,7 @@ export interface FileRouteTypes {
     | '/exposes'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/exposes/import'
   id:
@@ -318,6 +329,7 @@ export interface FileRouteTypes {
     | '/exposes/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/exposes/import/'
   fileRoutesById: FileRoutesById
@@ -338,6 +350,7 @@ export interface RootRouteChildren {
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
+  ApiCronSalesforceSyncRoute: typeof ApiCronSalesforceSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -503,6 +516,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronExposeAnalyseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/salesforce-sync': {
+      id: '/api/cron/salesforce-sync'
+      path: '/api/cron/salesforce-sync'
+      fullPath: '/api/cron/salesforce-sync'
+      preLoaderRoute: typeof ApiCronSalesforceSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/exposes/import/': {
       id: '/exposes/import/'
       path: '/'
@@ -585,7 +605,18 @@ const rootRouteChildren: RootRouteChildren = {
   SalesforceCallbackRoute: SalesforceCallbackRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
+  ApiCronSalesforceSyncRoute: ApiCronSalesforceSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
