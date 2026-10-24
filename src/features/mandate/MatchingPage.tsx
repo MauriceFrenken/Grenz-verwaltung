@@ -96,7 +96,7 @@ export function MatchingPage({ sfId }: { sfId: string }) {
         },
       });
       toast.success(
-        `Kampagne angelegt, ${r.mitglieder} Mitglieder${r.fehler.length ? `, ${r.fehler.length} Fehler: ${r.fehler[0]}` : ""}.`,
+        `${r.neuAngelegt ? "Kampagne angelegt" : "Bestehende Vermarktungskampagne ergänzt"}, ${r.mitglieder} Mitglieder${r.fehler.length ? `, ${r.fehler.length} Fehler: ${r.fehler[0]}` : ""}.`,
         {
           duration: 12_000,
         },
@@ -110,6 +110,39 @@ export function MatchingPage({ sfId }: { sfId: string }) {
           : "Kampagne konnte nicht angelegt werden.",
         { duration: 14_000 },
       );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const poolUebernehmen = async (poolId: string, name: string) => {
+    if (
+      !window.confirm(
+        `${name} als Kontakt in Salesforce anlegen (Owner Sebastian Grenz)?`,
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const { poolNachSalesforceFn } = await import("@/lib/matching/server-fn");
+      const { salesforceSessionHintFrisch } =
+        await import("@/lib/salesforce/api");
+      const sfSitzung = await salesforceSessionHintFrisch();
+      const { kontaktSfId } = await poolNachSalesforceFn({
+        data: {
+          supabaseAccessToken: token,
+          poolId,
+          bestaetigt: true,
+          sfSitzung,
+        },
+      });
+      setAuswahl((a) => new Set([...a, kontaktSfId]));
+      toast.success(
+        `${name} in Salesforce angelegt und für die Kampagne ausgewählt.`,
+      );
+      await laden();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Übernahme fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
@@ -297,9 +330,9 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                 Kampagne in Salesforce anlegen
               </h2>
               <p className="text-xs text-text-subtle">
-                Legt eine Kampagne „Vermarktung“ am Objekt an und fügt die{" "}
-                {auswahl.size} ausgewählten Kontakte mit Status „Geplante
-                Ansprache“ hinzu. Es wird nichts versendet.
+                Nutzt die bestehende Vermarktungskampagne am Objekt oder legt
+                eine an und fügt die {auswahl.size} ausgewählten Kontakte mit
+                Status „Geplante Ansprache“ hinzu. Es wird nichts versendet.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Input
@@ -332,12 +365,25 @@ export function MatchingPage({ sfId }: { sfId: string }) {
               {dto.recherche.length ? (
                 <ul className="text-sm">
                   {dto.recherche.map((r) => (
-                    <li key={r.id}>
-                      {r.name}
-                      {r.firma ? `, ${r.firma}` : ""}{" "}
-                      <span className="text-text-subtle">
-                        ({r.ort}, Quelle {r.quelle})
+                    <li
+                      key={r.id}
+                      className="flex items-center gap-3 border-t border-hairline py-1"
+                    >
+                      <span className="flex-1">
+                        {r.name}
+                        {r.firma ? `, ${r.firma}` : ""}{" "}
+                        <span className="text-text-subtle">
+                          ({r.ort}, Quelle {r.quelle}, noch nie kontaktiert)
+                        </span>
                       </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => void poolUebernehmen(r.id, r.name)}
+                      >
+                        Nach Salesforce übernehmen
+                      </Button>
                     </li>
                   ))}
                 </ul>

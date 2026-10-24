@@ -258,6 +258,7 @@ async function statusWerteSicherstellen(kampagneSfId: string): Promise<void> {
 
 export type KampagneErgebnis = {
   kampagneSfId: string;
+  neuAngelegt: boolean;
   mitglieder: number;
   fehler: string[];
 };
@@ -307,14 +308,25 @@ export const kampagneAusMatchingFn = createServerFn({ method: "POST" })
       throw new Error("Das Mandat hat kein verknüpftes Objekt in Salesforce.");
     const { sfCreate, sfCreateMehrere } =
       await import("@/lib/sf-sync/schreiben");
+    // Masterplan: Kampagne „Vermarktung …“ nur anlegen, falls am Objekt noch keine existiert.
+    const { data: vorhandene } = await admin
+      .from("sf_kampagnen")
+      .select("sf_id")
+      .eq("mandat_sf_id", data.mandatSfId)
+      .eq("typ", "Vermarktung")
+      .order("start_am", { ascending: false, nullsFirst: false })
+      .limit(1);
+    const bestehend = (vorhandene?.[0]?.sf_id as string | undefined) ?? null;
     return mitSfZugangOderSitzung(data.sfSitzung, async () => {
-      const kampagneSfId: string = await sfCreate(admin, "Campaign", {
-        Name: data.name,
-        Type: "Vermarktung",
-        Status: "Planned",
-        IsActive: true,
-        Real_Estate__c: m.real_estate_sf_id,
-      });
+      const kampagneSfId: string =
+        bestehend ??
+        (await sfCreate(admin, "Campaign", {
+          Name: data.name,
+          Type: "Vermarktung",
+          Status: "Planned",
+          IsActive: true,
+          Real_Estate__c: m.real_estate_sf_id,
+        }));
       await statusWerteSicherstellen(kampagneSfId);
       const { ids, fehler } = await sfCreateMehrere(
         admin,
@@ -325,6 +337,69 @@ export const kampagneAusMatchingFn = createServerFn({ method: "POST" })
           Status: "Geplante Ansprache",
         })),
       );
-      return { kampagneSfId, mitglieder: ids.length, fehler };
+      return {
+        kampagneSfId,
+        neuAngelegt: !bestehend,
+        mitglieder: ids.length,
+        fehler,
+      };
     });
+  });
+
+/**
+ * Kontakt aus dem Recherche-Pool nach Bestätigung als Contact in Salesforce anlegen (Owner Sebastian)
+ * und im Pool als übernommen markieren. Erst danach kann er Kampagnenmitglied werden.
+ */
+export const poolNachSalesforceFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => {
+    const d = (data ?? {}) as { poolId?: unknown; bestaetigt?: unknown };
+    return {
+      supabaseAccessToken: tokenAus(data),
+      poolId: text(d.poolId, 40),
+      bestaetigt: d.bestaetigt === true,
+      sfSitzung: sfSitzungAus(data),
+    };
+  })
+  .handler(async ({ data }): Promise<{ kontaktSfId: string }> => {
+    const aufrufer = await pruefeAufrufer(
+      data.supabaseAccessToken,
+      "schreiben",
+    );
+    if (!data.bestaetigt)
+      throw new Error("Der Schritt muss in der App bestätigt werden.");
+    const admin = createServiceRoleClient();
+    const { data: p, error } = await admin
+      .from("recherche_pool")
+      .select("*")
+      .eq("id", data.poolId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!p) throw new Error("Eintrag nicht gefunden.");
+    if (p.sf_id) return { kontaktSfId: String(p.sf_id) };
+    const teile = String(p.name).trim().split(/\s+/);
+    const nachname = teile.length > 1 ? teile.pop()! : teile[0];
+    const { sfCreate } = await import("@/lib/sf-sync/schreiben");
+    const { SEBASTIAN_SF_USER_ID } = await import("@/lib/sf-sync/config");
+    const kontaktSfId = await mitSfZugangOderSitzung(data.sfSitzung, () =>
+      sfCreate(admin, "Contact", {
+        FirstName:
+          teile.length && teile[0] !== nachname ? teile.join(" ") : undefined,
+        LastName: nachname,
+        Email: p.email ?? undefined,
+        Phone: p.telefon ?? undefined,
+        MailingCity: p.ort ?? undefined,
+        Description: `Aus Recherche-Pool übernommen (Quelle ${p.quelle}${p.firma ? `, Firma ${p.firma}` : ""}).`,
+        OwnerId: SEBASTIAN_SF_USER_ID,
+      }),
+    );
+    await admin
+      .from("recherche_pool")
+      .update({
+        sf_id: kontaktSfId,
+        uebernommen_am: new Date().toISOString(),
+        uebernommen_von: aufrufer.userId === "cron" ? null : aufrufer.userId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.poolId);
+    return { kontaktSfId };
   });

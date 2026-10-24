@@ -326,6 +326,35 @@ export function BewertungPage({ sfId }: { sfId: string }) {
 
                 <section className="flex flex-col gap-2 border border-hairline bg-surface p-5">
                   <h2 className="text-sm font-semibold text-heading">
+                    Marktdaten zum Standort
+                  </h2>
+                  {vorschau?.marktdaten.length ? (
+                    <table className="w-full text-sm">
+                      <tbody>
+                        {vorschau.marktdaten.map((m, i) => (
+                          <tr key={i} className="border-t border-hairline">
+                            <td className="py-1">{m.art}</td>
+                            <td className="py-1 text-right tabular-nums">
+                              {zahl(m.wert, 2)} {m.einheit}
+                            </td>
+                            <td className="py-1 text-text-subtle">
+                              Quelle {m.quelle.toUpperCase().replace("_", " ")},
+                              Stichtag {formatDate(m.stichtag)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="text-sm text-text-muted">
+                      Noch keine Marktdaten (IMV, BORIS NRW, Kaufpreissammlung)
+                      zu diesem Standort importiert.
+                    </p>
+                  )}
+                </section>
+
+                <section className="flex flex-col gap-2 border border-hairline bg-surface p-5">
+                  <h2 className="text-sm font-semibold text-heading">
                     Vergleichsobjekte ({e.vergleiche.length}, nach Entfernung)
                   </h2>
                   <div className="max-h-96 overflow-y-auto">

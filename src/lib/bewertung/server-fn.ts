@@ -47,6 +47,7 @@ export type BewertungVorschau = {
   parameter: BewertungsParameter;
   ergebnis: BewertungsErgebnis;
   darfAbschlag: boolean;
+  marktdaten: MarktdatenZeile[];
 };
 
 async function objektAusMandat(
@@ -99,7 +100,7 @@ async function vergleichsdaten(admin: SupabaseClient): Promise<Vergleich[]> {
     if (!data || data.length < 1000) break;
   }
   const n = (v: unknown) => zahlOderNull(v);
-  return zeilen.map((z) => ({
+  const exposeUndObjekte: Vergleich[] = zeilen.map((z) => ({
     quelleId: String(z.quelle_id),
     quelle: String(z.quelle),
     preisart: z.preisart === "kauf" ? "kauf" : "angebot",
@@ -117,6 +118,107 @@ async function vergleichsdaten(admin: SupabaseClient): Promise<Vergleich[]> {
     jahresmiete: n(z.jahresnettokaltmiete),
     lat: (z.geo_lat as number) ?? null,
     lng: (z.geo_lng as number) ?? null,
+  }));
+  return [...exposeUndObjekte, ...(await grenzDeals(admin))];
+}
+
+/**
+ * Eigene Abschlüsse: gewonnene Grenz-Deals mit beurkundetem Kaufpreis (sonst Betrag),
+ * Objektdaten über Mandat und Real Estate.
+ */
+async function grenzDeals(admin: SupabaseClient): Promise<Vergleich[]> {
+  const { data: deals, error } = await admin
+    .from("sf_deals")
+    .select("sf_id, name, betrag, abschluss_am, mandat_sf_id, sf_daten")
+    .not("mandat_sf_id", "is", null);
+  if (error) throw new Error(error.message);
+  const gewonnen = (deals ?? []).filter(
+    (d) => (d.sf_daten as Record<string, unknown>)?.IsWon === true,
+  );
+  if (!gewonnen.length) return [];
+  const mandatIds = [...new Set(gewonnen.map((d) => String(d.mandat_sf_id)))];
+  const { data: mandate } = await admin
+    .from("sf_mandate")
+    .select("sf_id, real_estate_sf_id")
+    .in("sf_id", mandatIds);
+  const reIds = (mandate ?? [])
+    .map((m) => m.real_estate_sf_id)
+    .filter(Boolean) as string[];
+  const { data: objekte } = reIds.length
+    ? await admin.from("sf_real_estate").select("*").in("sf_id", reIds)
+    : { data: [] };
+  const reJeMandat = new Map(
+    (mandate ?? []).map((m) => [String(m.sf_id), String(m.real_estate_sf_id)]),
+  );
+  const objektJeId = new Map(
+    (objekte ?? []).map((o) => [String(o.sf_id), o as Record<string, unknown>]),
+  );
+  const n = (v: unknown) => zahlOderNull(v);
+  return gewonnen.flatMap((d) => {
+    const o = objektJeId.get(reJeMandat.get(String(d.mandat_sf_id)) ?? "");
+    const preis =
+      n(
+        (d.sf_daten as Record<string, unknown>)?.Beurkundeter_Kaufpreis_in__c,
+      ) ?? n(d.betrag);
+    if (!preis) return [];
+    return [
+      {
+        quelleId: String(d.sf_id),
+        quelle: "salesforce_deal",
+        preisart: "kauf" as const,
+        stichtag: (d.abschluss_am as string) ?? null,
+        adresse: (o?.strasse as string) ?? null,
+        plz: (o?.plz as string) ?? null,
+        ort: (o?.ort as string) ?? null,
+        objektart: (o?.objektart as string) ?? null,
+        baujahr: n(o?.baujahr),
+        einheiten: n(o?.einheiten),
+        flaeche:
+          n(o?.mietflaeche_m2) ??
+          ((n(o?.wohnflaeche_m2) ?? 0) + (n(o?.gewerbeflaeche_m2) ?? 0) ||
+            null),
+        kaufpreis: preis,
+        jahresmiete: n(o?.jahresnettokaltmiete),
+        lat: (o?.geo_lat as number) ?? null,
+        lng: (o?.geo_lng as number) ?? null,
+      },
+    ];
+  });
+}
+
+export type MarktdatenZeile = {
+  quelle: string;
+  art: string;
+  wert: number;
+  einheit: string;
+  stichtag: string;
+  lage: string | null;
+  objektart: string | null;
+};
+
+/** Marktdaten (IMV, BORIS NRW, Kaufpreissammlung) zur PLZ oder zum Ort, immer mit Quelle und Stichtag. */
+async function marktdatenFuer(
+  admin: SupabaseClient,
+  plz: string | null,
+  ort: string | null,
+): Promise<MarktdatenZeile[]> {
+  if (!plz && !ort) return [];
+  let q = admin
+    .from("marktdaten")
+    .select("quelle, art, wert, einheit, stichtag, lage, objektart, plz, ort");
+  q = plz ? q.eq("plz", plz) : q.ilike("ort", ort!);
+  const { data, error } = await q
+    .order("stichtag", { ascending: false })
+    .limit(20);
+  if (error) return [];
+  return (data ?? []).map((r) => ({
+    quelle: String(r.quelle),
+    art: String(r.art),
+    wert: Number(r.wert),
+    einheit: String(r.einheit),
+    stichtag: String(r.stichtag),
+    lage: (r.lage as string) ?? null,
+    objektart: (r.objektart as string) ?? null,
   }));
 }
 
@@ -209,11 +311,13 @@ async function berechne(
       data.parameter.abschlagProzent != null ? nutzerName : null,
   };
   const ergebnis = bewerte(objekt, await vergleichsdaten(admin), parameter);
+  const marktdaten = await marktdatenFuer(admin, objekt.plz, objekt.ort);
   return {
     objekt,
     parameter,
     ergebnis,
     darfAbschlag,
+    marktdaten,
     nutzerName,
     userId: aufrufer.userId,
   };
@@ -222,8 +326,9 @@ async function berechne(
 export const bewertungVorschauFn = createServerFn({ method: "POST" })
   .validator(eingabeAus)
   .handler(async ({ data }): Promise<BewertungVorschau> => {
-    const { objekt, parameter, ergebnis, darfAbschlag } = await berechne(data);
-    return { objekt, parameter, ergebnis, darfAbschlag };
+    const { objekt, parameter, ergebnis, darfAbschlag, marktdaten } =
+      await berechne(data);
+    return { objekt, parameter, ergebnis, darfAbschlag, marktdaten };
   });
 
 export type BewertungZeile = {
