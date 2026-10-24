@@ -25,6 +25,17 @@ function ScoreBalken({ wert, gedimmt }: { wert: number; gedimmt?: boolean }) {
   );
 }
 
+function reaktionenText(r: { deals: number; rueckmeldungen: number }) {
+  return [
+    r.deals ? `${r.deals} ${r.deals === 1 ? "Deal" : "Deals"} bei Grenz` : "",
+    r.rueckmeldungen
+      ? `${r.rueckmeldungen} ${r.rueckmeldungen === 1 ? "Rückmeldung" : "Rückmeldungen"}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 export function MatchingPage({ sfId }: { sfId: string }) {
   const { session } = useAuth();
   const token = session?.access_token ?? "";
@@ -297,6 +308,11 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                               : !t.kontaktSfId
                                 ? "kein Hauptkontakt"
                                 : ""}
+                          {t.reaktionen.deals || t.reaktionen.rueckmeldungen ? (
+                            <span className="block text-text-subtle">
+                              {reaktionenText(t.reaktionen)}
+                            </span>
+                          ) : null}
                         </td>
                       </tr>
                       {offen === t.profilSfId ? (

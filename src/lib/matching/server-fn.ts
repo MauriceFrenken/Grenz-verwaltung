@@ -11,6 +11,7 @@ import {
   pruefeAufrufer,
   tokenAus,
 } from "@/lib/server/aufrufer";
+import { GRENZ_DEAL_RECORD_TYPE } from "@/lib/sf-sync/config";
 import { mitSfZugangOderSitzung, sfSitzungAus } from "@/lib/sf-sync/zugang";
 
 import {
@@ -35,6 +36,8 @@ export type MatchTreffer = MatchErgebnis & {
   email: string | null;
   /** Kontakt ist schon Mitglied einer Kampagne dieses Mandats. */
   bereitsAngesprochen: boolean;
+  /** Bisherige Reaktionen bei Grenz: Interessenten-Deals und Rückmeldungen auf Kampagnen. */
+  reaktionen: { deals: number; rueckmeldungen: number };
 };
 
 export type RechercheTreffer = {
@@ -66,6 +69,59 @@ async function alle<T>(
     ergebnis.push(...(data ?? []));
     if (!data || data.length < 1000) return ergebnis;
   }
+}
+
+/**
+ * Wie oft hat der Investor eines Profils bei Grenz schon reagiert? Interessenten-Deals
+ * (über Kontakt oder Account) und Rückmeldungen auf Kampagnen außer Absagen.
+ */
+async function reaktionenJeProfil(
+  admin: ReturnType<typeof createServiceRoleClient>,
+  profile: ProfilZeile[],
+): Promise<Map<string, { deals: number; rueckmeldungen: number }>> {
+  const [deals, antworten] = await Promise.all([
+    alle<{ kontakt_sf_id: string | null; account_sf_id: string | null }>(
+      (a, b) =>
+        admin
+          .from("sf_deals")
+          .select("kontakt_sf_id, account_sf_id")
+          .eq("record_type", GRENZ_DEAL_RECORD_TYPE)
+          .order("sf_id")
+          .range(a, b),
+    ),
+    alle<{ kontakt_sf_id: string | null; status: string | null }>((a, b) =>
+      admin
+        .from("sf_kampagnen_mitglieder")
+        .select("kontakt_sf_id, status")
+        .eq("geantwortet", true)
+        .order("sf_id")
+        .range(a, b),
+    ),
+  ]);
+  const dealsJe = new Map<string, number>();
+  for (const d of deals)
+    for (const id of new Set([d.kontakt_sf_id, d.account_sf_id]))
+      if (id) dealsJe.set(id, (dealsJe.get(id) ?? 0) + 1);
+  const antwortenJe = new Map<string, number>();
+  for (const x of antworten)
+    if (x.kontakt_sf_id && (x.status ?? "").toLowerCase() !== "absage")
+      antwortenJe.set(
+        x.kontakt_sf_id,
+        (antwortenJe.get(x.kontakt_sf_id) ?? 0) + 1,
+      );
+  const ergebnis = new Map<string, { deals: number; rueckmeldungen: number }>();
+  for (const p of profile) {
+    const deals = Math.max(
+      p.kontakt_sf_id ? (dealsJe.get(p.kontakt_sf_id) ?? 0) : 0,
+      p.account_sf_id ? (dealsJe.get(p.account_sf_id) ?? 0) : 0,
+    );
+    const rueckmeldungen = p.kontakt_sf_id
+      ? (antwortenJe.get(p.kontakt_sf_id) ?? 0)
+      : 0;
+    if (deals || rueckmeldungen)
+      ergebnis.set(p.sf_id, { deals, rueckmeldungen });
+  }
+  return ergebnis;
 }
 
 export const matchingFn = createServerFn({ method: "POST" })
@@ -121,7 +177,11 @@ export const matchingFn = createServerFn({ method: "POST" })
         .order("sf_id")
         .range(a, b),
     );
-    const ergebnis = rangliste(objekt, profile).slice(0, 300);
+    const reaktionen = await reaktionenJeProfil(admin, profile);
+    const summe = new Map(
+      [...reaktionen].map(([id, r]) => [id, r.deals * 3 + r.rueckmeldungen]),
+    );
+    const ergebnis = rangliste(objekt, profile, summe).slice(0, 300);
     const profilJeId = new Map(profile.map((p) => [p.sf_id, p]));
 
     const kontaktIds = new Set<string>();
@@ -186,6 +246,7 @@ export const matchingFn = createServerFn({ method: "POST" })
         bereitsAngesprochen: Boolean(
           p.kontakt_sf_id && angesprochen.has(p.kontakt_sf_id),
         ),
+        reaktionen: reaktionen.get(p.sf_id) ?? { deals: 0, rueckmeldungen: 0 },
       };
     });
 

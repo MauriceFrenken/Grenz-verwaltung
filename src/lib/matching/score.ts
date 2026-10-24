@@ -379,17 +379,24 @@ export function bewerteProfil(
   };
 }
 
-/** Sortiert: Ausschlüsse nach hinten, dann Score, dann Abdeckung. */
+/**
+ * Sortiert: Ausschlüsse nach hinten, dann Score, dann bisherige Reaktionen des Investors
+ * bei Grenz (Deals, Rückmeldungen; wer schon reagiert hat, kauft eher), dann Abdeckung.
+ */
 export function rangliste(
   objekt: ObjektMerkmale,
   profile: ProfilZeile[],
+  reaktionenJeProfil: Map<string, number> = new Map(),
 ): MatchErgebnis[] {
+  const reaktionen = (e: MatchErgebnis) =>
+    reaktionenJeProfil.get(e.profilSfId) ?? 0;
   return profile
     .map((p) => bewerteProfil(objekt, p))
     .sort(
       (a, b) =>
         Number(a.ausschluss) - Number(b.ausschluss) ||
         b.score - a.score ||
+        reaktionen(b) - reaktionen(a) ||
         b.abdeckung - a.abdeckung,
     );
 }

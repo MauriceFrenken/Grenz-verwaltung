@@ -25,6 +25,10 @@ function betrag(wert: unknown): number | null {
   return n && n > 0 ? n : null;
 }
 
+function plausibel(wert: number | null, min: number, max: number): number | null {
+  return wert != null && wert >= min && wert <= max ? wert : null;
+}
+
 function datum(wert: unknown): string | null {
   const t = text(wert);
   return t ? t.slice(0, 10) : null;
@@ -135,9 +139,10 @@ export function mappeAnkaufsprofil(r: SfRoh): Zeile {
     nutzungsarten: liste(r.Nutzungsarten__c),
     regionen: regionenAusProfil(r),
     // Felder heißen „_Mio“, die Werte stehen aber in Euro (geprüft 24.10.2026).
-    volumen_min: betrag(r.Objektvolumen_Min_Mio__c),
-    volumen_max: betrag(r.Objektvolumen_Max_Mio__c),
-    faktor_max: betrag(r.Multiplikator_bis_fach__c),
+    // Unplausible Werte (z. B. 100.000 € Höchstvolumen, Faktor 2) zählen als nicht gepflegt.
+    volumen_min: plausibel(betrag(r.Objektvolumen_Min_Mio__c), 250_000, 2_000_000_000),
+    volumen_max: plausibel(betrag(r.Objektvolumen_Max_Mio__c), 250_000, 2_000_000_000),
+    faktor_max: plausibel(betrag(r.Multiplikator_bis_fach__c), 5, 80),
     einheiten_min: betrag(r.AnzahlEinheitenMin__c),
     baujahr_ab: betrag(r.BaujahrAb__c),
     baujahr_bis: betrag(r.BaujahrBis__c),

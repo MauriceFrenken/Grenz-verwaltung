@@ -77,6 +77,16 @@ describe("Ankaufsprofil", () => {
     expect(z).toMatchObject({ volumen_min: 500000, volumen_max: 3000000, faktor_max: 22, einheiten_min: 8 });
   });
 
+  it("verwirft unplausible Volumen und Faktoren (echte Fälle IP-00002, IP-00006)", () => {
+    const z = mappeAnkaufsprofil({
+      Id: "a08Q",
+      Objektvolumen_Min_Mio__c: 50000,
+      Objektvolumen_Max_Mio__c: 100000,
+      Multiplikator_bis_fach__c: 2,
+    });
+    expect(z).toMatchObject({ volumen_min: null, volumen_max: null, faktor_max: null });
+  });
+
   it("liste entfernt Duplikate ohne Rücksicht auf Groß-/Kleinschreibung", () => {
     expect(liste(" a ; A,b\n\nb ")).toEqual(["a", "b"]);
     expect(liste(null)).toEqual([]);

@@ -96,4 +96,18 @@ describe("rangliste", () => {
     ]);
     expect(r.map((x) => x.profilSfId)).toEqual(["b", "a"]);
   });
+
+  it("zieht bei gleichem Score Investoren mit Reaktionen vor", () => {
+    const gleich = { nutzungsarten: ["Wohnen"], regionen: ["Düsseldorf"] };
+    const r = rangliste(
+      objekt,
+      [
+        // c hat mehr Angaben (Abdeckung), b hat bei Grenz schon reagiert
+        profil({ sf_id: "c", ...gleich, einheiten_min: 5 }),
+        profil({ sf_id: "b", ...gleich }),
+      ],
+      new Map([["b", 4]]),
+    );
+    expect(r.map((x) => x.profilSfId)).toEqual(["b", "c"]);
+  });
 });
