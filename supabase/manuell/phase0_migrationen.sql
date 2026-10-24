@@ -148,8 +148,46 @@ drop trigger if exists bankbuchungen_mieten_zuordnen on public.bankbuchungen;
 drop trigger if exists objekte_mietkonto on public.objekte;
 
 -- Verweise bleibender Tabellen auf Sollstellungsläufe.
+-- v_bankauszuege zeigt lauf_id; ohne die Spalte neu anlegen.
+drop view if exists public.v_sollstellung_laeufe;
+drop view if exists public.v_bankauszuege;
 alter table public.bankauszuege drop column if exists lauf_id;
+create view public.v_bankauszuege with (security_invoker = true) as
+  select ba.id, ba.gesellschaft_id, g.name as gesellschaft_name, g.kuerzel as gesellschaft_kuerzel,
+         ba.dateiname, ba.zeitraum_von, ba.zeitraum_bis, ba.anzahl_buchungen, ba.created_at
+  from public.bankauszuege ba
+  join public.gesellschaften g on g.id = ba.gesellschaft_id;
 alter table public.ebics_abrufe drop column if exists lauf_id;
+
+-- v_objekte und v_gesellschaften rechnen über v_einheiten. Einheiten sind leer und werden entfernt,
+-- daher ohne Einheiten-Bezug neu anlegen; Spalten bleiben gleich (Werte 0 bzw. null wie bisher).
+drop view if exists public.v_gesellschaften;
+drop view if exists public.v_objekte;
+create view public.v_objekte with (security_invoker = on) as
+  select o.id, o.gesellschaft_id, g.name as gesellschaft_name, o.bezeichnung, o.strasse, o.plz, o.ort, o.land,
+         o.status, o.bemerkung,
+         0::bigint as einheiten_gesamt, 0::bigint as einheiten_wohnen, 0::bigint as einheiten_stellplatz,
+         0::bigint as einheiten_vermietet, 0::bigint as einheiten_leer,
+         0::numeric as wohnflaeche_m2, 0::numeric as kaltmiete, 0::numeric as kaltmiete_jahr,
+         null::numeric as miete_pro_m2_wohnen,
+         o.created_at, o.updated_at
+  from public.objekte o
+  join public.gesellschaften g on g.id = o.gesellschaft_id;
+create view public.v_gesellschaften with (security_invoker = on) as
+  select g.id, g.name, g.kuerzel, g.datev_postfach, g.datev_postfach_bezeichnung, g.bemerkung,
+         coalesce(k.objekte_liste, ''::text) as objekte_liste,
+         coalesce(k.anzahl_objekte, 0::bigint) as anzahl_objekte,
+         coalesce(k.anzahl_einheiten, 0::numeric) as anzahl_einheiten,
+         coalesce(k.kaltmiete, 0::numeric) as kaltmiete,
+         coalesce(k.kaltmiete, 0::numeric) * 12::numeric as kaltmiete_jahr,
+         g.created_at, g.updated_at
+  from public.gesellschaften g
+  left join lateral (
+    select count(*) as anzahl_objekte, sum(o.einheiten_gesamt) as anzahl_einheiten, sum(o.kaltmiete) as kaltmiete,
+           string_agg(o.bezeichnung || case when o.ort <> ''::text then ', '::text || o.ort else ''::text end, '; '::text order by o.id) as objekte_liste
+    from public.v_objekte o
+    where o.gesellschaft_id = g.id
+  ) k on true;
 
 -- Views
 drop view if exists
