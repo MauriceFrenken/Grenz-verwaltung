@@ -38,6 +38,7 @@ import { Route as ApiCronSalesforceSyncRouteImport } from './routes/api.cron.sal
 import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.index'
 import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
 import { Route as MandateSfIdIndexRouteImport } from './routes/mandate.$sfId.index'
+import { Route as MandateSfIdMatchingRouteImport } from './routes/mandate.$sfId.matching'
 import { Route as MandateSfIdDokumentIdRouteImport } from './routes/mandate.$sfId.dokument.$id'
 import { Route as MandateSfIdReportIdRouteImport } from './routes/mandate.$sfId.report.$id'
 
@@ -187,6 +188,11 @@ const MandateSfIdIndexRoute = MandateSfIdIndexRouteImport.update({
   path: '/mandate/$sfId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MandateSfIdMatchingRoute = MandateSfIdMatchingRouteImport.update({
+  id: '/mandate/$sfId/matching',
+  path: '/mandate/$sfId/matching',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MandateSfIdDokumentIdRoute = MandateSfIdDokumentIdRouteImport.update({
   id: '/mandate/$sfId/dokument/$id',
   path: '/mandate/$sfId/dokument/$id',
@@ -226,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
@@ -256,6 +263,7 @@ export interface FileRoutesByTo {
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/exposes/import': typeof ExposesImportIndexRoute
   '/mandate/$sfId': typeof MandateSfIdIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
@@ -290,6 +298,7 @@ export interface FileRoutesById {
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
@@ -325,6 +334,7 @@ export interface FileRouteTypes {
     | '/api/cron/expose-analyse'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
+    | '/mandate/$sfId/matching'
     | '/exposes/import/'
     | '/mandate/$sfId/'
     | '/mandate/$sfId/dokument/$id'
@@ -355,6 +365,7 @@ export interface FileRouteTypes {
     | '/api/cron/expose-analyse'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
+    | '/mandate/$sfId/matching'
     | '/exposes/import'
     | '/mandate/$sfId'
     | '/mandate/$sfId/dokument/$id'
@@ -388,6 +399,7 @@ export interface FileRouteTypes {
     | '/api/cron/expose-analyse'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
+    | '/mandate/$sfId/matching'
     | '/exposes/import/'
     | '/mandate/$sfId/'
     | '/mandate/$sfId/dokument/$id'
@@ -412,6 +424,7 @@ export interface RootRouteChildren {
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
   ApiCronSalesforceSyncRoute: typeof ApiCronSalesforceSyncRoute
+  MandateSfIdMatchingRoute: typeof MandateSfIdMatchingRoute
   MandateSfIdIndexRoute: typeof MandateSfIdIndexRoute
   MandateSfIdDokumentIdRoute: typeof MandateSfIdDokumentIdRoute
   MandateSfIdReportIdRoute: typeof MandateSfIdReportIdRoute
@@ -622,6 +635,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MandateSfIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mandate/$sfId/matching': {
+      id: '/mandate/$sfId/matching'
+      path: '/mandate/$sfId/matching'
+      fullPath: '/mandate/$sfId/matching'
+      preLoaderRoute: typeof MandateSfIdMatchingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mandate/$sfId/dokument/$id': {
       id: '/mandate/$sfId/dokument/$id'
       path: '/mandate/$sfId/dokument/$id'
@@ -708,6 +728,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
   ApiCronSalesforceSyncRoute: ApiCronSalesforceSyncRoute,
+  MandateSfIdMatchingRoute: MandateSfIdMatchingRoute,
   MandateSfIdIndexRoute: MandateSfIdIndexRoute,
   MandateSfIdDokumentIdRoute: MandateSfIdDokumentIdRoute,
   MandateSfIdReportIdRoute: MandateSfIdReportIdRoute,

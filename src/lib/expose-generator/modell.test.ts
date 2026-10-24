@@ -9,18 +9,27 @@ import {
   type ExposeInhalt,
 } from "./modell";
 
-const DESIGN_OK = { disclaimer: "Alle Angaben ohne Gewähr.", provisionshinweis: "Provision 3,57 %.", widerrufsbelehrung: "Widerruf …" };
+const DESIGN_OK = {
+  disclaimer: "Alle Angaben ohne Gewähr.",
+  provisionshinweis: "Provision 3,57 %.",
+  widerrufsbelehrung: "Widerruf …",
+};
 const DESIGN_PLATZHALTER = {
   disclaimer: "[Haftungsausschluss aus Grenz-Exposé-Vorlage übernehmen]",
   provisionshinweis: "[Provisionshinweis]",
   widerrufsbelehrung: "[Widerruf]",
 };
 
-const q = (id: string) => ({ id, art: "eingabe" as const, bezeichnung: "Eingabe Test" });
+const q = (id: string) => ({
+  id,
+  art: "eingabe" as const,
+  bezeichnung: "Eingabe Test",
+});
 
 function vollstaendig(): ExposeInhalt {
   const i = leererInhalt();
-  const setze = (id: keyof ExposeInhalt["felder"], wert: string) => (i.felder[id] = { wert, quelle: q(`e:${id}`) });
+  const setze = (id: keyof ExposeInhalt["felder"], wert: string) =>
+    (i.felder[id] = { wert, quelle: q(`e:${id}`) });
   setze("adresse", "Friesenplatz 1, 50672 Köln");
   setze("lage_ort", "Köln, Innenstadt");
   setze("objektart", "Mehrfamilienhaus");
@@ -90,18 +99,24 @@ describe("pruefePflichtangaben", () => {
 
 describe("exposeDokument", () => {
   it("Teaser ohne Adresse, mit Faktor als Berechnung und Lücken statt erfundener Texte", () => {
-    const d = exposeDokument("teaser", vollstaendig(), DESIGN_OK, { titel: "Teaser", freigegeben: false });
+    const d = exposeDokument("teaser", vollstaendig(), DESIGN_OK, {
+      titel: "Teaser",
+      freigegeben: false,
+    });
     const json = JSON.stringify(d);
     expect(json).not.toContain("Friesenplatz");
     expect(json).toContain("20-fach");
-    expect(d.abschnitte.find((a) => a.id === "objekt")?.bloecke[0].art).toBe("luecke");
+    expect(d.abschnitte.find((a) => a.id === "objekt")?.bloecke[0].art).toBe(
+      "luecke",
+    );
     expect(d.stempel).toBe("ENTWURF");
   });
 });
 
 describe("zitatAufSeite", () => {
   it("findet Zitate nur auf der angegebenen Seite", () => {
-    const text = "<<<PAGE 1>>>\nEnergieausweis\n<<<PAGE 2>>>\nEndenergieverbrauch   132 kWh";
+    const text =
+      "<<<PAGE 1>>>\nEnergieausweis\n<<<PAGE 2>>>\nEndenergieverbrauch   132 kWh";
     expect(zitatAufSeite(text, 2, "Endenergieverbrauch 132 kWh")).toBe(true);
     expect(zitatAufSeite(text, 1, "132 kWh")).toBe(false);
   });
@@ -115,12 +130,21 @@ describe("Energieausweis liegt nicht vor", () => {
     delete i.felder.energietraeger;
     delete i.felder.effizienzklasse;
     expect(pruefePflichtangaben("expose", i, DESIGN_OK).ok).toBe(true);
-    const d = exposeDokument("expose", i, DESIGN_OK, { titel: "x", freigegeben: true });
-    expect(JSON.stringify(d.abschnitte.find((a) => a.id === "energie"))).toContain("lag uns der Energieausweis nicht vor");
+    const d = exposeDokument("expose", i, DESIGN_OK, {
+      titel: "x",
+      freigegeben: true,
+    });
+    expect(
+      JSON.stringify(d.abschnitte.find((a) => a.id === "energie")),
+    ).toContain("lag uns der Energieausweis nicht vor");
   });
 
   it("erkennt alte Platzhalter mitten im Text", async () => {
     const { istPlatzhalter } = await import("./modell");
-    expect(istPlatzhalter("Alle Angaben ohne Gewähr. [Text aus Grenz-Exposé-Vorlage übernehmen]")).toBe(true);
+    expect(
+      istPlatzhalter(
+        "Alle Angaben ohne Gewähr. [Text aus Grenz-Exposé-Vorlage übernehmen]",
+      ),
+    ).toBe(true);
   });
 });

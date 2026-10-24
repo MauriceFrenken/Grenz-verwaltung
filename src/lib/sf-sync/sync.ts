@@ -361,38 +361,44 @@ export async function salesforceSyncAusfuehren(
 }
 
 /** Nach einem Schreibvorgang: einen Datensatz sofort neu in den Cache holen. */
-export async function sfDatensatzNeuHolen(admin: SupabaseClient, objekt: SfSyncObjekt, sfId: string): Promise<void> {
-  if (objekt === "Search_Location__c") return;
-  const felder = FELDER[objekt];
-  const [r] = await perIds(objekt, felder, [sfId]);
-  if (!r) {
-    await admin.from(TABELLE[objekt]).delete().eq("sf_id", sfId);
-    return;
+function mappeEinzeln(objekt: Exclude<SfSyncObjekt, "Search_Location__c">, r: SfRoh, kontext: MandatsBezug) {
+  switch (objekt) {
+    case "Mandate__c":
+      return mappeMandat(r);
+    case "Real_Estate__c":
+      return mappeRealEstate(r);
+    case "Opportunity":
+      return mappeDeal(r, kontext);
+    case "Campaign":
+      return mappeKampagne(r, kontext);
+    case "CampaignMember":
+      return mappeKampagnenMitglied(r);
+    case "Investorprofile__c":
+      return mappeAnkaufsprofil(r);
+    case "Task":
+    case "Event":
+    case "EmailMessage":
+      return mappeAktivitaet(r, objekt, kontext);
+    case "Contact":
+    case "Account":
+    case "Lead":
+      return mappeKontakt(r, objekt);
   }
+}
+
+export async function sfDatensatzNeuHolen(admin: SupabaseClient, objekt: SfSyncObjekt, sfId: string): Promise<void> {
+  await sfDatensaetzeNeuHolen(admin, objekt, [sfId]);
+}
+
+/** Datensätze nach einem Schreibvorgang sofort neu in den Cache holen; gelöschte entfernen. */
+export async function sfDatensaetzeNeuHolen(admin: SupabaseClient, objekt: SfSyncObjekt, sfIds: string[]): Promise<void> {
+  if (objekt === "Search_Location__c" || !sfIds.length) return;
+  const records: SfRoh[] = [];
+  for (const teil of inHaeppchen(sfIds, 200)) records.push(...(await perIds(objekt, FELDER[objekt], teil)));
+  const gefunden = new Set(records.map((r) => r.Id));
+  const fehlend = sfIds.filter((id) => !gefunden.has(id));
+  if (fehlend.length) await admin.from(TABELLE[objekt]).delete().in("sf_id", fehlend);
+  if (!records.length) return;
   const kontext = await mandatsBezug(admin);
-  const zeile = (() => {
-    switch (objekt) {
-      case "Mandate__c":
-        return mappeMandat(r);
-      case "Real_Estate__c":
-        return mappeRealEstate(r);
-      case "Opportunity":
-        return mappeDeal(r, kontext);
-      case "Campaign":
-        return mappeKampagne(r, kontext);
-      case "CampaignMember":
-        return mappeKampagnenMitglied(r);
-      case "Investorprofile__c":
-        return mappeAnkaufsprofil(r);
-      case "Task":
-      case "Event":
-      case "EmailMessage":
-        return mappeAktivitaet(r, objekt, kontext);
-      case "Contact":
-      case "Account":
-      case "Lead":
-        return mappeKontakt(r, objekt);
-    }
-  })();
-  await upsert(admin, TABELLE[objekt], [zeile]);
+  await upsert(admin, TABELLE[objekt], records.map((r) => mappeEinzeln(objekt, r, kontext)));
 }

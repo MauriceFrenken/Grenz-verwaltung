@@ -16,7 +16,13 @@ const STATUS_TEXT: Record<string, string> = {
 };
 
 /** Exposés und Teaser eines Mandats: anlegen, öffnen, neue Version. */
-export function DokumenteKarte({ token, sfId }: { token: string; sfId: string }) {
+export function DokumenteKarte({
+  token,
+  sfId,
+}: {
+  token: string;
+  sfId: string;
+}) {
   const navigate = useNavigate();
   const [liste, setListe] = useState<EntwurfZeile[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -25,9 +31,17 @@ export function DokumenteKarte({ token, sfId }: { token: string; sfId: string })
     if (!token) return;
     try {
       const { entwuerfeFn } = await import("@/lib/expose-generator/server-fn");
-      setListe(await entwuerfeFn({ data: { supabaseAccessToken: token, mandatSfId: sfId } }));
+      setListe(
+        await entwuerfeFn({
+          data: { supabaseAccessToken: token, mandatSfId: sfId },
+        }),
+      );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Exposés konnten nicht geladen werden.");
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : "Exposés konnten nicht geladen werden.",
+      );
       setListe([]);
     }
   }, [token, sfId]);
@@ -39,11 +53,21 @@ export function DokumenteKarte({ token, sfId }: { token: string; sfId: string })
   const anlegen = async (typ: "expose" | "teaser", vorlageId?: string) => {
     setBusy(vorlageId ?? typ);
     try {
-      const { entwurfAnlegenFn } = await import("@/lib/expose-generator/server-fn");
-      const { id } = await entwurfAnlegenFn({ data: { supabaseAccessToken: token, mandatSfId: sfId, typ, vorlageId } });
-      await navigate({ to: "/mandate/$sfId/dokument/$id", params: { sfId, id } });
+      const { entwurfAnlegenFn } =
+        await import("@/lib/expose-generator/server-fn");
+      const { id } = await entwurfAnlegenFn({
+        data: { supabaseAccessToken: token, mandatSfId: sfId, typ, vorlageId },
+      });
+      await navigate({
+        to: "/mandate/$sfId/dokument/$id",
+        params: { sfId, id },
+      });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Entwurf konnte nicht angelegt werden.");
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : "Entwurf konnte nicht angelegt werden.",
+      );
     } finally {
       setBusy(null);
     }
@@ -52,14 +76,33 @@ export function DokumenteKarte({ token, sfId }: { token: string; sfId: string })
   return (
     <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-heading">Exposé und Teaser</h2>
+        <h2 className="text-sm font-semibold text-heading">
+          Exposé und Teaser
+        </h2>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => void anlegen("teaser")} disabled={!!busy}>
-            {busy === "teaser" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void anlegen("teaser")}
+            disabled={!!busy}
+          >
+            {busy === "teaser" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FilePlus2 className="h-4 w-4" />
+            )}
             Teaser anlegen
           </Button>
-          <Button size="sm" onClick={() => void anlegen("expose")} disabled={!!busy}>
-            {busy === "expose" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />}
+          <Button
+            size="sm"
+            onClick={() => void anlegen("expose")}
+            disabled={!!busy}
+          >
+            {busy === "expose" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FilePlus2 className="h-4 w-4" />
+            )}
             Exposé anlegen
           </Button>
         </div>
@@ -72,16 +115,29 @@ export function DokumenteKarte({ token, sfId }: { token: string; sfId: string })
             {liste.map((d) => (
               <tr key={d.id} className="border-t border-hairline">
                 <td className="py-2 pr-3">
-                  <Link to="/mandate/$sfId/dokument/$id" params={{ sfId, id: d.id }} className="font-medium text-heading hover:underline">
+                  <Link
+                    to="/mandate/$sfId/dokument/$id"
+                    params={{ sfId, id: d.id }}
+                    className="font-medium text-heading hover:underline"
+                  >
                     {d.titel}
                   </Link>
                   <span className="text-text-subtle"> · v{d.version}</span>
                 </td>
-                <td className="py-2 pr-3">{STATUS_TEXT[d.status] ?? d.status}</td>
-                <td className="py-2 pr-3 text-text-subtle">{formatDate(d.updatedAt)}</td>
+                <td className="py-2 pr-3">
+                  {STATUS_TEXT[d.status] ?? d.status}
+                </td>
+                <td className="py-2 pr-3 text-text-subtle">
+                  {formatDate(d.updatedAt)}
+                </td>
                 <td className="py-2 text-right">
                   {d.status !== "entwurf" ? (
-                    <Button size="sm" variant="ghost" onClick={() => void anlegen(d.typ, d.id)} disabled={!!busy}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void anlegen(d.typ, d.id)}
+                      disabled={!!busy}
+                    >
                       Neue Version
                     </Button>
                   ) : null}
@@ -92,7 +148,8 @@ export function DokumenteKarte({ token, sfId }: { token: string; sfId: string })
         </table>
       ) : (
         <p className="text-sm text-text-muted">
-          Noch kein Entwurf. Angaben werden aus Salesforce vorbelegt; Unterlagen (Energieausweis, Mieterliste) liest die KI mit Seitenbeleg aus.
+          Noch kein Entwurf. Angaben werden aus Salesforce vorbelegt; Unterlagen
+          (Energieausweis, Mieterliste) liest die KI mit Seitenbeleg aus.
         </p>
       )}
     </section>

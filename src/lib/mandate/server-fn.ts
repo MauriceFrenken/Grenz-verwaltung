@@ -6,12 +6,26 @@
 
 import { createServerFn } from "@tanstack/react-start";
 
-import { createServiceRoleClient, pruefeAufrufer, tokenAus } from "@/lib/server/aufrufer";
+import {
+  createServiceRoleClient,
+  pruefeAufrufer,
+  tokenAus,
+} from "@/lib/server/aufrufer";
 import { mitSfZugangOderSitzung, sfSitzungAus } from "@/lib/sf-sync/zugang";
 import type { DateiErgebnis, DateiFormat } from "@/lib/vorlagen/export";
 
-import { ladeMandatRohdaten, ladeMandatsliste, type MandatListenEintrag, type MandatRohdaten } from "./daten";
-import { berechneReportKennzahlen, reportDokument, type ReportKennzahlen, type ReportTexte } from "./report";
+import {
+  ladeMandatRohdaten,
+  ladeMandatsliste,
+  type MandatListenEintrag,
+  type MandatRohdaten,
+} from "./daten";
+import {
+  berechneReportKennzahlen,
+  reportDokument,
+  type ReportKennzahlen,
+  type ReportTexte,
+} from "./report";
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -117,7 +131,11 @@ export const mandatDetailFn = createServerFn({ method: "POST" })
             jahresmiete: n(o.jahresnettokaltmiete),
           }
         : null,
-      vorschau: berechneReportKennzahlen({ ...roh, von: data.von, bis: data.bis }),
+      vorschau: berechneReportKennzahlen({
+        ...roh,
+        von: data.von,
+        bis: data.bis,
+      }),
       reports: (reports ?? []).map(reportZeile),
     };
   });
@@ -144,7 +162,11 @@ async function ladeReport(id: string): Promise<ReportVoll> {
     .eq("sf_id", r.mandat_sf_id)
     .maybeSingle();
   const { data: k } = m?.eigentuemer_kontakt_sf_id
-    ? await admin.from("sf_kontakte").select("email").eq("sf_id", m.eigentuemer_kontakt_sf_id).maybeSingle()
+    ? await admin
+        .from("sf_kontakte")
+        .select("email")
+        .eq("sf_id", m.eigentuemer_kontakt_sf_id)
+        .maybeSingle()
     : { data: null };
   return {
     ...reportZeile(r),
@@ -166,11 +188,18 @@ export const reportAnlegenFn = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }): Promise<{ id: string }> => {
-    const aufrufer = await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
+    const aufrufer = await pruefeAufrufer(
+      data.supabaseAccessToken,
+      "schreiben",
+    );
     if (data.von > data.bis) throw new Error("Der Zeitraum ist ungültig.");
     const admin = createServiceRoleClient();
     const roh = await ladeMandatRohdaten(admin, data.sfId);
-    const kennzahlen = berechneReportKennzahlen({ ...roh, von: data.von, bis: data.bis });
+    const kennzahlen = berechneReportKennzahlen({
+      ...roh,
+      von: data.von,
+      bis: data.bis,
+    });
     const { data: neu, error } = await admin
       .from("eigentuemer_reports")
       .insert({
@@ -190,7 +219,10 @@ export const reportAnlegenFn = createServerFn({ method: "POST" })
   });
 
 export const reportLadenFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => ({ supabaseAccessToken: tokenAus(data), id: text((data as { id?: unknown })?.id, 40) }))
+  .validator((data: unknown) => ({
+    supabaseAccessToken: tokenAus(data),
+    id: text((data as { id?: unknown })?.id, 40),
+  }))
   .handler(async ({ data }): Promise<ReportVoll> => {
     await pruefeAufrufer(data.supabaseAccessToken);
     return ladeReport(data.id);
@@ -198,7 +230,8 @@ export const reportLadenFn = createServerFn({ method: "POST" })
 
 function texteAus(wert: unknown): ReportTexte {
   const t = (wert ?? {}) as Record<string, unknown>;
-  const liste = (v: unknown) => (Array.isArray(v) ? v.map((x) => text(x, 600)).filter((x) => x.trim()) : []);
+  const liste = (v: unknown) =>
+    Array.isArray(v) ? v.map((x) => text(x, 600)).filter((x) => x.trim()) : [];
   return {
     einleitung: text(t.einleitung, 3000),
     kommentar: text(t.kommentar, 3000),
@@ -208,7 +241,9 @@ function texteAus(wert: unknown): ReportTexte {
       ? t.marktfeedback
           .map((a: { text?: unknown; quellen?: unknown }) => ({
             text: text(a?.text, 800),
-            quellen: Array.isArray(a?.quellen) ? a.quellen.map((q) => text(q, 18)).filter(Boolean) : [],
+            quellen: Array.isArray(a?.quellen)
+              ? a.quellen.map((q) => text(q, 18)).filter(Boolean)
+              : [],
           }))
           .filter((a) => a.text.trim())
           .slice(0, 12)
@@ -226,7 +261,10 @@ export const reportTexteSpeichernFn = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<ReportVoll> => {
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
     const vorher = await ladeReport(data.id);
-    if (vorher.status === "versendet") throw new Error("Ein versendeter Report kann nicht mehr geändert werden.");
+    if (vorher.status === "versendet")
+      throw new Error(
+        "Ein versendeter Report kann nicht mehr geändert werden.",
+      );
     const { error } = await createServiceRoleClient()
       .from("eigentuemer_reports")
       .update({
@@ -243,36 +281,65 @@ export const reportTexteSpeichernFn = createServerFn({ method: "POST" })
 
 /** KI-Entwurf für das Marktfeedback. Ergebnis wird als Entwurf vorgeschlagen, nicht gespeichert. */
 export const reportMarktfeedbackFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => ({ supabaseAccessToken: tokenAus(data), id: text((data as { id?: unknown })?.id, 40) }))
-  .handler(async ({ data }): Promise<Pick<ReportTexte, "marktfeedback" | "marktfeedbackLuecken">> => {
-    await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
-    const report = await ladeReport(data.id);
-    const admin = createServiceRoleClient();
-    const roh = await ladeMandatRohdaten(admin, report.mandatSfId);
-    const { imZeitraum } = await import("./report");
-    const { marktfeedbackEntwurf } = await import("./marktfeedback-ki");
-    return marktfeedbackEntwurf({
-      objekt: roh.mandat.objekt ?? roh.mandat.name,
-      aktivitaeten: imZeitraum(roh.aktivitaeten, report.zeitraumVon, report.zeitraumBis).filter((a) =>
-        report.kennzahlen.aktivitaetsListe.some((x) => x.sfId === a.sf_id),
-      ),
-      mitglieder: roh.mitglieder,
-    });
-  });
+  .validator((data: unknown) => ({
+    supabaseAccessToken: tokenAus(data),
+    id: text((data as { id?: unknown })?.id, 40),
+  }))
+  .handler(
+    async ({
+      data,
+    }): Promise<
+      Pick<ReportTexte, "marktfeedback" | "marktfeedbackLuecken">
+    > => {
+      await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
+      const report = await ladeReport(data.id);
+      const admin = createServiceRoleClient();
+      const roh = await ladeMandatRohdaten(admin, report.mandatSfId);
+      const { imZeitraum } = await import("./report");
+      const { marktfeedbackEntwurf } = await import("./marktfeedback-ki");
+      return marktfeedbackEntwurf({
+        objekt: roh.mandat.objekt ?? roh.mandat.name,
+        aktivitaeten: imZeitraum(
+          roh.aktivitaeten,
+          report.zeitraumVon,
+          report.zeitraumBis,
+        ).filter((a) =>
+          report.kennzahlen.aktivitaetsListe.some((x) => x.sfId === a.sf_id),
+        ),
+        mitglieder: roh.mitglieder,
+      });
+    },
+  );
 
 export const reportFreigebenFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => ({ supabaseAccessToken: tokenAus(data), id: text((data as { id?: unknown })?.id, 40) }))
+  .validator((data: unknown) => ({
+    supabaseAccessToken: tokenAus(data),
+    id: text((data as { id?: unknown })?.id, 40),
+  }))
   .handler(async ({ data }): Promise<ReportVoll> => {
-    const aufrufer = await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
-    if (aufrufer.userId === "cron") throw new Error("Freigeben kann nur ein Nutzer.");
+    const aufrufer = await pruefeAufrufer(
+      data.supabaseAccessToken,
+      "schreiben",
+    );
+    if (aufrufer.userId === "cron")
+      throw new Error("Freigeben kann nur ein Nutzer.");
     const report = await ladeReport(data.id);
     if (report.status !== "entwurf") return report;
     const admin = createServiceRoleClient();
     const { dokumentErzeugen } = await import("@/lib/vorlagen/export");
-    const inhalt = reportDokument(report.kennzahlen, report.texte, { titel: report.titel ?? undefined, freigegeben: true });
-    const { datei, dateiname, mime } = await dokumentErzeugen(admin, inhalt, "pdf");
+    const inhalt = reportDokument(report.kennzahlen, report.texte, {
+      titel: report.titel ?? undefined,
+      freigegeben: true,
+    });
+    const { datei, dateiname, mime } = await dokumentErzeugen(
+      admin,
+      inhalt,
+      "pdf",
+    );
     const pfad = `eigentuemer-reports/${report.mandatSfId}/${report.id}/${dateiname}`;
-    const { error: e1 } = await admin.storage.from("dokumente").upload(pfad, datei, { contentType: mime, upsert: true });
+    const { error: e1 } = await admin.storage
+      .from("dokumente")
+      .upload(pfad, datei, { contentType: mime, upsert: true });
     if (e1) throw new Error(e1.message);
     const { error } = await admin
       .from("eigentuemer_reports")
@@ -293,7 +360,9 @@ export const reportDateiFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => ({
     supabaseAccessToken: tokenAus(data),
     id: text((data as { id?: unknown })?.id, 40),
-    format: ((data as { format?: unknown })?.format === "pptx" ? "pptx" : "pdf") as DateiFormat,
+    format: ((data as { format?: unknown })?.format === "pptx"
+      ? "pptx"
+      : "pdf") as DateiFormat,
   }))
   .handler(async ({ data }): Promise<DateiErgebnis> => {
     await pruefeAufrufer(data.supabaseAccessToken);
@@ -312,7 +381,11 @@ export const reportDateiFn = createServerFn({ method: "POST" })
  */
 export const reportVersandProtokollierenFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => {
-    const d = (data ?? {}) as { id?: unknown; empfaenger?: unknown; bestaetigt?: unknown };
+    const d = (data ?? {}) as {
+      id?: unknown;
+      empfaenger?: unknown;
+      bestaetigt?: unknown;
+    };
     return {
       supabaseAccessToken: tokenAus(data),
       id: text(d.id, 40),
@@ -323,10 +396,14 @@ export const reportVersandProtokollierenFn = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<ReportVoll> => {
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
-    if (!data.bestaetigt) throw new Error("Der Schritt muss in der App bestätigt werden.");
+    if (!data.bestaetigt)
+      throw new Error("Der Schritt muss in der App bestätigt werden.");
     if (!data.empfaenger) throw new Error("Bitte den Empfänger angeben.");
     const report = await ladeReport(data.id);
-    if (report.status !== "freigegeben") throw new Error("Nur freigegebene Reports können als versendet protokolliert werden.");
+    if (report.status !== "freigegeben")
+      throw new Error(
+        "Nur freigegebene Reports können als versendet protokolliert werden.",
+      );
     const admin = createServiceRoleClient();
     const { data: m } = await admin
       .from("sf_mandate")
@@ -339,7 +416,9 @@ export const reportVersandProtokollierenFn = createServerFn({ method: "POST" })
       sfCreate(admin, "Task", {
         Subject: `Vermarktungsbericht versendet (${zeitraum})`,
         WhatId: report.mandatSfId,
-        ...(m?.eigentuemer_kontakt_sf_id ? { WhoId: m.eigentuemer_kontakt_sf_id } : {}),
+        ...(m?.eigentuemer_kontakt_sf_id
+          ? { WhoId: m.eigentuemer_kontakt_sf_id }
+          : {}),
         Status: "Completed",
         ActivityDate: heute(),
         Description: `Vermarktungsbericht für den Zeitraum ${zeitraum} an ${data.empfaenger} versendet. Erstellt in der Grenz & Co. App.`,

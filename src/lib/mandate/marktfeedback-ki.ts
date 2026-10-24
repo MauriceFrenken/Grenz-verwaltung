@@ -53,13 +53,25 @@ export type MarktfeedbackEingabe = {
   mitglieder: MitgliedZeile[];
 };
 
-export function marktfeedbackKontext(e: MarktfeedbackEingabe): { text: string; ids: Set<string> } {
+export function marktfeedbackKontext(e: MarktfeedbackEingabe): {
+  text: string;
+  ids: Set<string>;
+} {
   const ids = new Set<string>();
-  const zeilen: string[] = [`Objekt: ${e.objekt}`, "", "Aktivitäten (neueste zuerst):"];
-  const akt = [...e.aktivitaeten].sort((a, b) => (b.datum ?? "").localeCompare(a.datum ?? "")).slice(0, 150);
+  const zeilen: string[] = [
+    `Objekt: ${e.objekt}`,
+    "",
+    "Aktivitäten (neueste zuerst):",
+  ];
+  const akt = [...e.aktivitaeten]
+    .sort((a, b) => (b.datum ?? "").localeCompare(a.datum ?? ""))
+    .slice(0, 150);
   for (const a of akt) {
     ids.add(a.sf_id);
-    const beschreibung = kuerzen(a.sf_daten?.Description ?? a.sf_daten?.TextBody, 600);
+    const beschreibung = kuerzen(
+      a.sf_daten?.Description ?? a.sf_daten?.TextBody,
+      600,
+    );
     zeilen.push(
       `[${a.sf_id}] ${a.datum?.slice(0, 10) ?? "ohne Datum"} ${a.art ?? ""}: ${kuerzen(a.betreff, 160)}${beschreibung ? ` | ${beschreibung}` : ""}`,
     );
@@ -70,16 +82,26 @@ export function marktfeedbackKontext(e: MarktfeedbackEingabe): { text: string; i
     if (!m.status && !notiz) continue;
     if (/^geplant/i.test(m.status ?? "")) continue;
     ids.add(m.sf_id);
-    zeilen.push(`[${m.sf_id}] Status ${m.status ?? "unbekannt"}${notiz ? ` | Notiz: ${notiz}` : ""}`);
+    zeilen.push(
+      `[${m.sf_id}] Status ${m.status ?? "unbekannt"}${notiz ? ` | Notiz: ${notiz}` : ""}`,
+    );
   }
   return { text: zeilen.join("\n"), ids };
 }
 
-export async function marktfeedbackEntwurf(e: MarktfeedbackEingabe): Promise<Pick<ReportTexte, "marktfeedback" | "marktfeedbackLuecken">> {
-  if (!process.env.ANTHROPIC_API_KEY?.trim()) throw new Error("ANTHROPIC_API_KEY ist nicht konfiguriert.");
+export async function marktfeedbackEntwurf(
+  e: MarktfeedbackEingabe,
+): Promise<Pick<ReportTexte, "marktfeedback" | "marktfeedbackLuecken">> {
+  if (!process.env.ANTHROPIC_API_KEY?.trim())
+    throw new Error("ANTHROPIC_API_KEY ist nicht konfiguriert.");
   const { text, ids } = marktfeedbackKontext(e);
   if (!ids.size) {
-    return { marktfeedback: [], marktfeedbackLuecken: ["Keine Aktivitäten oder Rückmeldungen in Salesforce, aus denen sich Marktfeedback ableiten lässt."] };
+    return {
+      marktfeedback: [],
+      marktfeedbackLuecken: [
+        "Keine Aktivitäten oder Rückmeldungen in Salesforce, aus denen sich Marktfeedback ableiten lässt.",
+      ],
+    };
   }
 
   const client = new Anthropic();
@@ -87,21 +109,40 @@ export async function marktfeedbackEntwurf(e: MarktfeedbackEingabe): Promise<Pic
     model: MODELL,
     max_tokens: 4000,
     system: SYSTEM,
-    output_config: { effort: "medium", format: { type: "json_schema", schema: SCHEMA } },
-    messages: [{ role: "user", content: `<daten>\n${text}\n</daten>\n\nSchreibe das Marktfeedback als JSON.` }],
+    output_config: {
+      effort: "medium",
+      format: { type: "json_schema", schema: SCHEMA },
+    },
+    messages: [
+      {
+        role: "user",
+        content: `<daten>\n${text}\n</daten>\n\nSchreibe das Marktfeedback als JSON.`,
+      },
+    ],
   });
-  if (antwort.stop_reason === "refusal") throw new Error("Die KI hat den Entwurf abgelehnt. Bitte Marktfeedback von Hand erfassen.");
-  if (antwort.stop_reason === "max_tokens") throw new Error("Der KI-Entwurf war zu lang und wurde abgebrochen. Bitte erneut versuchen.");
+  if (antwort.stop_reason === "refusal")
+    throw new Error(
+      "Die KI hat den Entwurf abgelehnt. Bitte Marktfeedback von Hand erfassen.",
+    );
+  if (antwort.stop_reason === "max_tokens")
+    throw new Error(
+      "Der KI-Entwurf war zu lang und wurde abgebrochen. Bitte erneut versuchen.",
+    );
   const block = antwort.content.find((b) => b.type === "text");
-  if (!block || block.type !== "text") throw new Error("Die KI hat keinen Text geliefert.");
+  if (!block || block.type !== "text")
+    throw new Error("Die KI hat keinen Text geliefert.");
 
-  const roh = JSON.parse(block.text) as { aussagen: { text: string; quellen: string[] }[]; luecken: string[] };
+  const roh = JSON.parse(block.text) as {
+    aussagen: { text: string; quellen: string[] }[];
+    luecken: string[];
+  };
   const ohneStriche = (s: string) => s.replace(/\s*[–—]\s*/g, ", ");
   const marktfeedback: { text: string; quellen: string[] }[] = [];
   const luecken = roh.luecken.map(ohneStriche);
   for (const a of roh.aussagen) {
     const belege = a.quellen.filter((id) => ids.has(id));
-    if (belege.length) marktfeedback.push({ text: ohneStriche(a.text), quellen: belege });
+    if (belege.length)
+      marktfeedback.push({ text: ohneStriche(a.text), quellen: belege });
     else luecken.push(`Ohne Beleg verworfen: ${ohneStriche(a.text)}`);
   }
   return { marktfeedback, marktfeedbackLuecken: luecken };

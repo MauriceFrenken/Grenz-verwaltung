@@ -22,22 +22,34 @@ import {
 const MODELL = "claude-opus-5-5";
 
 function client(): Anthropic {
-  if (!process.env.ANTHROPIC_API_KEY?.trim()) throw new Error("ANTHROPIC_API_KEY ist nicht konfiguriert.");
+  if (!process.env.ANTHROPIC_API_KEY?.trim())
+    throw new Error("ANTHROPIC_API_KEY ist nicht konfiguriert.");
   return new Anthropic();
 }
 
-async function jsonAntwort<T>(params: { system: string; text: string; schema: Record<string, unknown>; maxTokens: number }): Promise<T> {
+async function jsonAntwort<T>(params: {
+  system: string;
+  text: string;
+  schema: Record<string, unknown>;
+  maxTokens: number;
+}): Promise<T> {
   const antwort = await client().messages.create({
     model: MODELL,
     max_tokens: params.maxTokens,
     system: params.system,
-    output_config: { effort: "medium", format: { type: "json_schema", schema: params.schema } },
+    output_config: {
+      effort: "medium",
+      format: { type: "json_schema", schema: params.schema },
+    },
     messages: [{ role: "user", content: params.text }],
   });
-  if (antwort.stop_reason === "refusal") throw new Error("Die KI hat die Anfrage abgelehnt.");
-  if (antwort.stop_reason === "max_tokens") throw new Error("Die KI-Antwort war zu lang. Bitte erneut versuchen.");
+  if (antwort.stop_reason === "refusal")
+    throw new Error("Die KI hat die Anfrage abgelehnt.");
+  if (antwort.stop_reason === "max_tokens")
+    throw new Error("Die KI-Antwort war zu lang. Bitte erneut versuchen.");
   const block = antwort.content.find((b) => b.type === "text");
-  if (!block || block.type !== "text") throw new Error("Die KI hat keinen Text geliefert.");
+  if (!block || block.type !== "text")
+    throw new Error("Die KI hat keinen Text geliefert.");
   return JSON.parse(block.text) as T;
 }
 
@@ -46,7 +58,9 @@ const ohneStriche = (s: string) => s.replace(/\s*[–—]\s*/g, ", ").trim();
 export type FeldVorschlag = { feld: FeldId; wert: string; quelle: Quelle };
 
 /** Liest Pflichtangaben (Energieausweis, Flächen, Mieten …) mit Seite und Zitat aus einer Unterlage. */
-export async function unterlageAuswerten(unterlage: Unterlage): Promise<{ vorschlaege: FeldVorschlag[]; verworfen: number }> {
+export async function unterlageAuswerten(
+  unterlage: Unterlage,
+): Promise<{ vorschlaege: FeldVorschlag[]; verworfen: number }> {
   const schema = {
     type: "object",
     properties: {
@@ -69,7 +83,9 @@ export async function unterlageAuswerten(unterlage: Unterlage): Promise<{ vorsch
     additionalProperties: false,
   };
   const feldliste = FELDER.map((f) => `${f.id}: ${f.label}`).join("\n");
-  const roh = await jsonAntwort<{ angaben: { feld: FeldId; wert: string; seite: number; zitat: string }[] }>({
+  const roh = await jsonAntwort<{
+    angaben: { feld: FeldId; wert: string; seite: number; zitat: string }[];
+  }>({
     system: `Du liest Objektunterlagen (Energieausweis, Mieterliste, Flächenaufstellung, Grundbuch, Exposé) für ein Maklerhaus.
 Extrahiere nur Angaben, die wörtlich in der Unterlage stehen. Für jede Angabe: Feld, Wert (knapp, deutsche Schreibweise), Seitennummer aus der Markierung <<<PAGE n>>> und ein wörtliches Zitat von 3 bis 20 Wörtern aus genau dieser Seite, das den Wert belegt.
 Summen (z. B. Jahresmiete aus einer Mieterliste) nur, wenn die Summe selbst in der Unterlage steht. Nichts schätzen, nichts berechnen. Felder ohne Beleg weglassen.
@@ -82,7 +98,11 @@ ${feldliste}`,
   const vorschlaege: FeldVorschlag[] = [];
   let verworfen = 0;
   for (const a of roh.angaben) {
-    if (!FELD_IDS.includes(a.feld) || !a.wert.trim() || !zitatAufSeite(unterlage.text, a.seite, a.zitat)) {
+    if (
+      !FELD_IDS.includes(a.feld) ||
+      !a.wert.trim() ||
+      !zitatAufSeite(unterlage.text, a.seite, a.zitat)
+    ) {
       verworfen += 1;
       continue;
     }
@@ -111,13 +131,22 @@ const ABSCHNITTE: TextAbschnitt[] = ["objekt", "lage", "investment"];
 export async function texteEntwerfen(
   typ: ExposeTyp,
   inhalt: ExposeInhalt,
-): Promise<{ texte: Partial<Record<TextAbschnitt, Aussage[]>>; belege: Quelle[]; luecken: string[] }> {
-  const belegteFelder = (Object.entries(inhalt.felder) as [FeldId, ExposeInhalt["felder"][FeldId]][]).filter(
-    ([, w]) => w?.wert && w.quelle,
-  );
-  const felderText = belegteFelder.map(([id, w]) => `feld:${id} = ${w!.wert}`).join("\n");
+): Promise<{
+  texte: Partial<Record<TextAbschnitt, Aussage[]>>;
+  belege: Quelle[];
+  luecken: string[];
+}> {
+  const belegteFelder = (
+    Object.entries(inhalt.felder) as [FeldId, ExposeInhalt["felder"][FeldId]][]
+  ).filter(([, w]) => w?.wert && w.quelle);
+  const felderText = belegteFelder
+    .map(([id, w]) => `feld:${id} = ${w!.wert}`)
+    .join("\n");
   const unterlagenText = inhalt.unterlagen
-    .map((u) => `<unterlage id="${u.id}" name="${u.name}">\n${u.text.slice(0, 60_000)}\n</unterlage>`)
+    .map(
+      (u) =>
+        `<unterlage id="${u.id}" name="${u.name}">\n${u.text.slice(0, 60_000)}\n</unterlage>`,
+    )
     .join("\n\n");
   const schema = {
     type: "object",
@@ -127,14 +156,21 @@ export async function texteEntwerfen(
         items: {
           type: "object",
           properties: {
-            abschnitt: { type: "string", enum: typ === "teaser" ? ["objekt", "investment"] : ABSCHNITTE },
+            abschnitt: {
+              type: "string",
+              enum: typ === "teaser" ? ["objekt", "investment"] : ABSCHNITTE,
+            },
             text: { type: "string" },
             felder: { type: "array", items: { type: "string" } },
             zitate: {
               type: "array",
               items: {
                 type: "object",
-                properties: { unterlage: { type: "string" }, seite: { type: "integer" }, zitat: { type: "string" } },
+                properties: {
+                  unterlage: { type: "string" },
+                  seite: { type: "integer" },
+                  zitat: { type: "string" },
+                },
                 required: ["unterlage", "seite", "zitat"],
                 additionalProperties: false,
               },
@@ -151,7 +187,12 @@ export async function texteEntwerfen(
   };
 
   const roh = await jsonAntwort<{
-    aussagen: { abschnitt: TextAbschnitt; text: string; felder: string[]; zitate: { unterlage: string; seite: number; zitat: string }[] }[];
+    aussagen: {
+      abschnitt: TextAbschnitt;
+      text: string;
+      felder: string[];
+      zitate: { unterlage: string; seite: number; zitat: string }[];
+    }[];
     luecken: string[];
   }>({
     system: `Du schreibst für das Maklerhaus Grenz & Co. (Köln) Texte für ein${typ === "teaser" ? "en anonymisierten Teaser" : " Exposé"} an professionelle Investoren.
@@ -176,14 +217,24 @@ ${typ === "teaser" ? "- Teaser: keine Adresse, keine Hausnummer, keine Namen von
       const u = inhalt.unterlagen.find((x) => x.id === z.unterlage);
       if (!u || !zitatAufSeite(u.text, z.seite, z.zitat)) continue;
       const id = `dok:${u.id}:${z.seite}:${belege.length}`;
-      belege.push({ id, art: "dokument", bezeichnung: u.name, verweis: u.id, seite: z.seite, zitat: z.zitat.trim() });
+      belege.push({
+        id,
+        art: "dokument",
+        bezeichnung: u.name,
+        verweis: u.id,
+        seite: z.seite,
+        zitat: z.zitat.trim(),
+      });
       ids.push(id);
     }
     if (!ids.length) {
       luecken.push(`Ohne Beleg verworfen: ${ohneStriche(a.text)}`);
       continue;
     }
-    (texte[a.abschnitt] ??= []).push({ text: ohneStriche(a.text), quellen: ids });
+    (texte[a.abschnitt] ??= []).push({
+      text: ohneStriche(a.text),
+      quellen: ids,
+    });
   }
   return { texte, belege, luecken };
 }
