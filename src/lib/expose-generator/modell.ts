@@ -118,6 +118,14 @@ export function istWohngebaeude(objektart: string | undefined): boolean {
   return /wohn|mehrfamilien|mfh|wgh|apartment|eigentumswohnung/i.test(objektart ?? "");
 }
 
+/** Liegt zum Zeitpunkt der Anzeige kein Energieausweis vor, entfallen die Pflichtangaben (Hinweis im Dokument). */
+export function energieausweisFehlt(art: string | undefined): boolean {
+  return /liegt\s+(noch\s+)?nicht\s+vor|nicht\s+vorhanden|kein(er)?\s+energieausweis/i.test(art ?? "");
+}
+
+export const ENERGIEAUSWEIS_FEHLT_TEXT =
+  "Zum Zeitpunkt der Erstellung des Exposés lag uns der Energieausweis nicht vor. Der Verkäufer ist verpflichtet, Kaufinteressenten den Energieausweis spätestens bei der Besichtigung vorzulegen und bei Abschluss des Kaufvertrages zu übergeben (§ 80 GEG).";
+
 export type PruefPunkt = {
   id: string;
   label: string;
@@ -129,7 +137,7 @@ export type Pruefung = { ok: boolean; punkte: PruefPunkt[]; geprueftAm: string }
 
 /** Platzhalter aus der Standardvorlage, solange die Texte aus der Grenz-Vorlage fehlen. */
 export function istPlatzhalter(text: string | undefined): boolean {
-  return !text || !text.trim() || /^\[.*\]$/s.test(text.trim());
+  return !text || !text.trim() || /^\[.*\]$/s.test(text.trim()) || /\[[^\]]*übernehmen\]/.test(text);
 }
 
 /**
@@ -172,11 +180,13 @@ export function pruefePflichtangaben(
   feld("ist_miete", "Für Anlageobjekte: Ist-Miete laut Mieterliste.");
 
   const geg = "GEG § 87: Pflichtangabe in Immobilienanzeigen.";
-  feld("energieausweis_art", geg);
-  feld("energiekennwert", geg);
-  feld("energietraeger", geg);
-  feld("energieausweis_baujahr", geg);
-  if (istWohngebaeude(f.objektart?.wert)) feld("effizienzklasse", geg);
+  feld("energieausweis_art", `${geg} Liegt keiner vor: „liegt nicht vor“ eintragen.`);
+  if (!energieausweisFehlt(f.energieausweis_art?.wert)) {
+    feld("energiekennwert", geg);
+    feld("energietraeger", geg);
+    feld("energieausweis_baujahr", geg);
+    if (istWohngebaeude(f.objektart?.wert)) feld("effizienzklasse", geg);
+  }
 
   const texte: [string, string | undefined][] = [
     ["Haftungshinweis", design.disclaimer],
@@ -315,10 +325,12 @@ export function exposeDokument(
     abschnitte.push({
       id: "energie",
       titel: "Energieausweis",
-      bloecke: [
-        { art: "kennzahlen", eintraege: energie },
-        ...liste([luecke("energieausweis_art"), luecke("energiekennwert"), luecke("energietraeger")]),
-      ],
+      bloecke: energieausweisFehlt(f.energieausweis_art?.wert)
+        ? [{ art: "hinweis", text: ENERGIEAUSWEIS_FEHLT_TEXT }, ...(energie.length > 1 ? [{ art: "kennzahlen" as const, eintraege: energie.slice(1) }] : [])]
+        : [
+            { art: "kennzahlen", eintraege: energie },
+            ...liste([luecke("energieausweis_art"), luecke("energiekennwert"), luecke("energietraeger")]),
+          ],
     });
   }
 

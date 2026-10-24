@@ -106,3 +106,21 @@ describe("zitatAufSeite", () => {
     expect(zitatAufSeite(text, 1, "132 kWh")).toBe(false);
   });
 });
+
+describe("Energieausweis liegt nicht vor", () => {
+  it("entbindet von den übrigen GEG-Angaben und setzt den Hinweis", () => {
+    const i = vollstaendig();
+    i.felder.energieausweis_art = { wert: "liegt nicht vor", quelle: q("e") };
+    delete i.felder.energiekennwert;
+    delete i.felder.energietraeger;
+    delete i.felder.effizienzklasse;
+    expect(pruefePflichtangaben("expose", i, DESIGN_OK).ok).toBe(true);
+    const d = exposeDokument("expose", i, DESIGN_OK, { titel: "x", freigegeben: true });
+    expect(JSON.stringify(d.abschnitte.find((a) => a.id === "energie"))).toContain("lag uns der Energieausweis nicht vor");
+  });
+
+  it("erkennt alte Platzhalter mitten im Text", async () => {
+    const { istPlatzhalter } = await import("./modell");
+    expect(istPlatzhalter("Alle Angaben ohne Gewähr. [Text aus Grenz-Exposé-Vorlage übernehmen]")).toBe(true);
+  });
+});
