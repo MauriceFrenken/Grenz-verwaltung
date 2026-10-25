@@ -38,6 +38,8 @@ const EBICS_BUNDLE = [
 export default defineConfig({
   plugins: [exposeAiDevPlugin(), salesforceOauthDevPlugin(), microsoftOauthDevPlugin()],
   vite: {
+    // Grenz-Vorlagen der KI-Tools (src/lib/ki-tools/vorlagen) als ?inline-Assets.
+    assetsInclude: ["**/*.pptx", "**/*.xlsx"],
     server: {
       port: 8080,
       strictPort: true,

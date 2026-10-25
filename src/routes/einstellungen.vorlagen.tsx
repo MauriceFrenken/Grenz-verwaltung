@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { VorlagenPage } from "@/features/einstellungen/VorlagenPage";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/** Design-Vorlagen sind aus der Seitenleiste entfernt; die Grenz-Vorlagen stecken in den KI-Tools. */
 export const Route = createFileRoute("/einstellungen/vorlagen")({
-  head: () => ({ meta: [{ title: "Design-Vorlagen — Grenz & Co." }] }),
-  component: VorlagenPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/tools" });
+  },
 });

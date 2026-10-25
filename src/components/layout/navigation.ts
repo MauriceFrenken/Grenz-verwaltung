@@ -4,7 +4,6 @@ import {
   Inbox,
   LayoutDashboard,
   MapPin,
-  Palette,
   Plug,
   Radar,
   ScrollText,
@@ -13,6 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { KI_TOOLS } from "@/lib/ki-tools/tools";
 import type { NavZaehler } from "@/lib/navigation/server-fn";
 
 export type BadgeTon = "emerald" | "amber" | "violet";
@@ -24,6 +24,8 @@ export interface NavItem {
   /** Zähler aus navZaehlerFn, der als Badge erscheint. */
   badge?: keyof NavZaehler;
   badgeTon?: BadgeTon;
+  /** Lange Bezeichnung zweizeilig statt abgeschnitten. */
+  umbruch?: boolean;
 }
 
 export interface NavSection {
@@ -33,7 +35,8 @@ export interface NavSection {
 
 /**
  * Seitenleiste nach dem Vorbild von admin.buyanymachine.com:
- * Hauptmenü, dann die Käuferseite (Vermarktung) und die Verkäuferseite (Akquise), dann System.
+ * Hauptmenü, dann die Käuferseite (Vermarktung) und die Verkäuferseite (Akquise), dann die KI-Tools
+ * (Register in src/lib/ki-tools/tools.ts) und System.
  */
 export const NAVIGATION: NavSection[] = [
   {
@@ -83,6 +86,15 @@ export const NAVIGATION: NavSection[] = [
     ],
   },
   {
+    label: "Tools",
+    items: KI_TOOLS.map((t) => ({
+      to: t.pfad,
+      label: t.label,
+      icon: t.icon,
+      umbruch: true,
+    })),
+  },
+  {
     label: "System",
     items: [
       { to: "/einstellungen/benutzer", label: "Benutzer", icon: UserCog },
@@ -90,11 +102,6 @@ export const NAVIGATION: NavSection[] = [
         to: "/einstellungen/integrationen",
         label: "Integrationen",
         icon: Plug,
-      },
-      {
-        to: "/einstellungen/vorlagen",
-        label: "Design-Vorlagen",
-        icon: Palette,
       },
       { to: "/einstellungen/audit", label: "Audit-Trail", icon: ScrollText },
     ],
