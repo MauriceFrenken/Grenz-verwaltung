@@ -48,6 +48,8 @@ import { Route as MandateSfIdExposesRouteImport } from './routes/mandate.$sfId.e
 import { Route as MandateSfIdInteressentenRouteImport } from './routes/mandate.$sfId.interessenten'
 import { Route as MandateSfIdMatchingRouteImport } from './routes/mandate.$sfId.matching'
 import { Route as MandateSfIdReportsRouteImport } from './routes/mandate.$sfId.reports'
+import { Route as ToolsMarktberichtIndexRouteImport } from './routes/tools.marktbericht.index'
+import { Route as ToolsMarktberichtIdRouteImport } from './routes/tools.marktbericht.$id'
 import { Route as MandateSfIdDokumentIdRouteImport } from './routes/mandate.$sfId.dokument.$id'
 import { Route as MandateSfIdReportIdRouteImport } from './routes/mandate.$sfId.report.$id'
 
@@ -248,6 +250,16 @@ const MandateSfIdReportsRoute = MandateSfIdReportsRouteImport.update({
   path: '/mandate/$sfId/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsMarktberichtIndexRoute = ToolsMarktberichtIndexRouteImport.update({
+  id: '/tools/marktbericht/',
+  path: '/tools/marktbericht/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsMarktberichtIdRoute = ToolsMarktberichtIdRouteImport.update({
+  id: '/tools/marktbericht/$id',
+  path: '/tools/marktbericht/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MandateSfIdDokumentIdRoute = MandateSfIdDokumentIdRouteImport.update({
   id: '/mandate/$sfId/dokument/$id',
   path: '/mandate/$sfId/dokument/$id',
@@ -297,8 +309,10 @@ export interface FileRoutesByFullPath {
   '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
+  '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
+  '/tools/marktbericht/': typeof ToolsMarktberichtIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
@@ -337,8 +351,10 @@ export interface FileRoutesByTo {
   '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
+  '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
   '/exposes/import': typeof ExposesImportIndexRoute
   '/mandate/$sfId': typeof MandateSfIdIndexRoute
+  '/tools/marktbericht': typeof ToolsMarktberichtIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
@@ -381,8 +397,10 @@ export interface FileRoutesById {
   '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
+  '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
+  '/tools/marktbericht/': typeof ToolsMarktberichtIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
@@ -426,8 +444,10 @@ export interface FileRouteTypes {
     | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
+    | '/tools/marktbericht/$id'
     | '/exposes/import/'
     | '/mandate/$sfId/'
+    | '/tools/marktbericht/'
     | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -466,8 +486,10 @@ export interface FileRouteTypes {
     | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
+    | '/tools/marktbericht/$id'
     | '/exposes/import'
     | '/mandate/$sfId'
+    | '/tools/marktbericht'
     | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   id:
@@ -509,8 +531,10 @@ export interface FileRouteTypes {
     | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
+    | '/tools/marktbericht/$id'
     | '/exposes/import/'
     | '/mandate/$sfId/'
+    | '/tools/marktbericht/'
     | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   fileRoutesById: FileRoutesById
@@ -543,7 +567,9 @@ export interface RootRouteChildren {
   MandateSfIdInteressentenRoute: typeof MandateSfIdInteressentenRoute
   MandateSfIdMatchingRoute: typeof MandateSfIdMatchingRoute
   MandateSfIdReportsRoute: typeof MandateSfIdReportsRoute
+  ToolsMarktberichtIdRoute: typeof ToolsMarktberichtIdRoute
   MandateSfIdIndexRoute: typeof MandateSfIdIndexRoute
+  ToolsMarktberichtIndexRoute: typeof ToolsMarktberichtIndexRoute
   MandateSfIdDokumentIdRoute: typeof MandateSfIdDokumentIdRoute
   MandateSfIdReportIdRoute: typeof MandateSfIdReportIdRoute
 }
@@ -823,6 +849,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MandateSfIdReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/marktbericht/': {
+      id: '/tools/marktbericht/'
+      path: '/tools/marktbericht'
+      fullPath: '/tools/marktbericht/'
+      preLoaderRoute: typeof ToolsMarktberichtIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/marktbericht/$id': {
+      id: '/tools/marktbericht/$id'
+      path: '/tools/marktbericht/$id'
+      fullPath: '/tools/marktbericht/$id'
+      preLoaderRoute: typeof ToolsMarktberichtIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mandate/$sfId/dokument/$id': {
       id: '/mandate/$sfId/dokument/$id'
       path: '/mandate/$sfId/dokument/$id'
@@ -919,7 +959,9 @@ const rootRouteChildren: RootRouteChildren = {
   MandateSfIdInteressentenRoute: MandateSfIdInteressentenRoute,
   MandateSfIdMatchingRoute: MandateSfIdMatchingRoute,
   MandateSfIdReportsRoute: MandateSfIdReportsRoute,
+  ToolsMarktberichtIdRoute: ToolsMarktberichtIdRoute,
   MandateSfIdIndexRoute: MandateSfIdIndexRoute,
+  ToolsMarktberichtIndexRoute: ToolsMarktberichtIndexRoute,
   MandateSfIdDokumentIdRoute: MandateSfIdDokumentIdRoute,
   MandateSfIdReportIdRoute: MandateSfIdReportIdRoute,
 }
