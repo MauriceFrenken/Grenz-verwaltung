@@ -6,7 +6,7 @@ import {
   quantil,
   type BewertungsObjekt,
   type Vergleich,
-} from "./rechnen";
+} from "./vergleiche";
 
 const KOELN = { lat: 50.9375, lng: 6.9603 };
 

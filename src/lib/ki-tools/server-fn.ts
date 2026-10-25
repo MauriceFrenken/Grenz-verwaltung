@@ -111,8 +111,8 @@ async function interneVergleiche(
   objekt: Objekt | undefined,
   o: EinschaetzungObjekt,
 ) {
-  const { vergleichsdaten } = await import("@/lib/bewertung/server-fn");
-  const { bewerte } = await import("@/lib/bewertung/rechnen");
+  const { vergleichsdaten } = await import("./vergleiche-server");
+  const { bewerte } = await import("./vergleiche");
   const { geocodeExpose } = await import("@/lib/expose-karte/geocode");
   const admin = createServiceRoleClient();
   const geo = objekt?.strasse.wert

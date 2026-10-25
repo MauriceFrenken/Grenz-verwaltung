@@ -1,5 +1,5 @@
 /**
- * Indikative Bewertung (Masterplan 4.4): Faktor- und Vergleichswertverfahren aus Vergleichsdaten.
+ * Vergleichswerte für die Marktpreisanalyse (früher Bewertungsmodul): Faktor- und Vergleichswertverfahren.
  * Angebotspreise (Forderungen aus eingegangenen Exposés) und Kaufpreise werden getrennt geführt.
  * Ein Abschlag von Angebots- auf Kaufpreisniveau wird nur angewendet, wenn ein Nutzer ihn setzt.
  * Kein Gutachten. Reine Funktionen, testbar.
