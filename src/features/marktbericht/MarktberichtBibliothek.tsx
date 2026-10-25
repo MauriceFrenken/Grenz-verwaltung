@@ -36,7 +36,10 @@ function laufText(r: {
   ausgelesen: number;
   gesperrt: number;
   fehler: number;
+  kiAusfall?: string;
 }): string {
+  if (r.kiAusfall)
+    return `KI gerade nicht verfügbar (${r.kiAusfall.slice(0, 120)}). Der nächste Lauf versucht es automatisch erneut`;
   const teile = [
     `${r.neueDokumente} neue Berichte gefunden`,
     `${r.ausgelesen} ausgelesen`,
