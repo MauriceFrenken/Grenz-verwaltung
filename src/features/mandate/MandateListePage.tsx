@@ -166,7 +166,7 @@ export function MandateListePage() {
                         : "0"}
                     </td>
                     <td
-                      className={`px-3 py-2 ${ruhtSeit(m.letzteAktivitaet) ? "text-[#b4541a]" : ""}`}
+                      className={`px-3 py-2 ${ruhtSeit(m.letzteAktivitaet) ? "text-warn" : ""}`}
                       title={
                         ruhtSeit(m.letzteAktivitaet)
                           ? "Seit über 30 Tagen keine Aktivität in Salesforce"

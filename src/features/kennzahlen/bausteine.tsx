@@ -20,11 +20,11 @@ export function Kachel({
   ton?: "gut" | "schlecht";
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-hairline bg-surface p-4">
+    <div className="flex flex-col gap-1 border border-hairline border-l-[3px] border-l-[var(--gc-hellblau)] bg-surface p-4">
       <span className="label-caps text-text-muted">{titel}</span>
       <span
         className={cn(
-          "text-2xl font-semibold tabular-nums text-heading",
+          "text-[1.75rem] font-light leading-tight tabular-nums text-heading",
           ton === "gut" && "text-chart-2",
           ton === "schlecht" && "text-danger",
         )}
@@ -59,12 +59,14 @@ export function Karte({
   return (
     <section
       className={cn(
-        "flex min-w-0 flex-col gap-3 rounded-lg border border-hairline bg-surface p-4",
+        "flex min-w-0 flex-col gap-3 border border-hairline bg-surface p-4",
         className,
       )}
     >
       <div>
-        <h2 className="text-sm font-semibold text-heading">{titel}</h2>
+        <h2 className="text-[13px] font-medium uppercase tracking-[0.06em] text-heading">
+          {titel}
+        </h2>
         {hinweis ? <p className="text-xs text-text-muted">{hinweis}</p> : null}
       </div>
       {children}

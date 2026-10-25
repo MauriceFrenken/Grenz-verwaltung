@@ -373,7 +373,7 @@ export function ExposeEditorPage({ sfId, id }: { sfId: string; id: string }) {
                 </p>
               )}
               {vorschlaege.length ? (
-                <div className="flex flex-col gap-2 border border-[#c4922a] p-3">
+                <div className="flex flex-col gap-2 border border-l-[3px] border-hairline border-l-[var(--gc-hellblau)] p-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-semibold text-heading">
                       Gefundene Angaben ({vorschlaege.length})

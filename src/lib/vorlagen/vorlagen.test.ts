@@ -18,7 +18,7 @@ describe("Vorlage", () => {
       ],
     });
     expect(v.design.farben.akzent).toBe("#ff0000");
-    expect(v.design.farben.primaer).toBe("#1a2b4b");
+    expect(v.design.farben.primaer).toBe("#233567");
     expect(v.abschnitte.map((a) => a.id).slice(0, 3)).toEqual([
       "marktfeedback",
       "funnel",

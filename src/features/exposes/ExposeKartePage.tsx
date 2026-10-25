@@ -23,8 +23,8 @@ const LEAFLET_CSS =
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
 
 /* Feste Kategorienfarben wie in der Exposé-Auswertung (--viz-1 … --viz-5). */
-const FARBEN = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"];
-const FARBE_SONST = "#8a97ab";
+const FARBEN = ["#233567", "#8ea9c1", "#4f6fa3", "#a6a6a6", "#6b6f8a"];
+const FARBE_SONST = "#d9d9d9";
 
 // Minimaler Ausschnitt der Leaflet-API, den die Seite nutzt.
 type LMarker = {
@@ -109,13 +109,13 @@ function popupHtml(o: KartenObjekt): string {
   const tabelle = zeilen(o)
     .map(
       ([k, v]) =>
-        `<tr><td style="color:#5a6a85;padding:1px 12px 1px 0">${esc(k)}</td><td style="text-align:right;font-variant-numeric:tabular-nums">${esc(v)}</td></tr>`,
+        `<tr><td style="color:#595959;padding:1px 12px 1px 0">${esc(k)}</td><td style="text-align:right;font-variant-numeric:tabular-nums">${esc(v)}</td></tr>`,
     )
     .join("");
   const hinweis = o.genau
     ? ""
-    : `<div style="margin-top:6px;color:#b45309;font-size:11px">Lage ungefähr (nur Ort bekannt)</div>`;
-  return `<div style="font-size:12px;min-width:220px"><div style="font-weight:600;font-size:13px">${titel}</div><div style="color:#5a6a85;margin-bottom:6px">${ort}</div><table style="width:100%;border-collapse:collapse">${tabelle}</table>${hinweis}</div>`;
+    : `<div style="margin-top:6px;color:#a8671a;font-size:11px">Lage ungefähr (nur Ort bekannt)</div>`;
+  return `<div style="font-size:12px;min-width:220px"><div style="font-weight:600;font-size:13px">${titel}</div><div style="color:#595959;margin-bottom:6px">${ort}</div><table style="width:100%;border-collapse:collapse">${tabelle}</table>${hinweis}</div>`;
 }
 
 /** Karte aller Exposés mit Eckdaten — Grundlage für Vergleichsobjekte im Kundengespräch. */
@@ -247,7 +247,7 @@ export function ExposeKartePage() {
         radius: 11,
         color: "#ffffff",
         weight: 3,
-        fillColor: "#1a2b4b",
+        fillColor: "#233567",
         fillOpacity: 1,
       }).bindPopup(
         `<div style="font-size:12px"><b>Ihr Projekt</b><br>${esc(

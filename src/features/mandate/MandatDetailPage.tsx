@@ -41,7 +41,7 @@ export function FunnelBalken({ funnel }: { funnel: Funnel }) {
           <span className="w-28 shrink-0 text-text-muted">{label}</span>
           <div className="h-4 flex-1 bg-surface-muted">
             <div
-              className="h-4 bg-[#c4922a]"
+              className="h-4 bg-brand"
               style={{ width: `${(wert / max) * 100}%` }}
             />
           </div>

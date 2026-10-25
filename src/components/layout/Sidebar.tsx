@@ -13,9 +13,10 @@ import { NAVIGATION, type BadgeTon, type NavItem } from "./navigation";
 const GRAPH_PREFETCH_PFADE = new Set(["/exposes"]);
 
 const BADGE_TON: Record<BadgeTon, string> = {
-  emerald: "bg-emerald-400/15 text-emerald-200 border-emerald-300/30",
-  amber: "bg-amber-400/15 text-amber-200 border-amber-300/30",
-  violet: "bg-violet-400/15 text-violet-200 border-violet-300/30",
+  // CI: Hellblau auf Navy, abgestuft statt bunter Töne.
+  emerald: "bg-[var(--gc-hellblau)] text-[var(--gc-navy)] border-[var(--gc-hellblau)]",
+  amber: "bg-white text-[var(--gc-navy)] border-white",
+  violet: "bg-transparent text-[var(--gc-hellblau)] border-[var(--gc-hellblau)]/60",
 };
 
 /** Aktiver Eintrag: exakter Pfad oder Unterseite — ohne Geschwister zu treffen. */
@@ -51,7 +52,7 @@ function NavLink({
       onMouseEnter={() => onPrefetch(item.to)}
       onFocus={() => onPrefetch(item.to)}
       className={cn(
-        "relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-[13.5px] text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
+        "relative flex h-9 items-center gap-3 px-2.5 text-[13.5px] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
         aktiv &&
           "bg-sidebar-accent font-medium text-sidebar-foreground [&>svg]:text-sidebar-foreground",
       )}
@@ -59,7 +60,7 @@ function NavLink({
     >
       {aktiv ? (
         <span
-          className="absolute -left-2 inset-y-1.5 w-[3px] rounded-r-full bg-sidebar-foreground"
+          className="absolute -left-2 inset-y-0 w-[3px] bg-[var(--gc-hellblau)]"
           aria-hidden
         />
       ) : null}
@@ -127,7 +128,7 @@ export function Sidebar() {
         {NAVIGATION.map((section) => (
           <div key={section.label} className="py-2.5">
             {!collapsed ? (
-              <div className="px-2.5 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/45">
+              <div className="px-2.5 pb-2 pt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--gc-hellblau)]/80">
                 {section.label}
               </div>
             ) : (

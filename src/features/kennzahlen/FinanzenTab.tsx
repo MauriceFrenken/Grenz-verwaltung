@@ -215,12 +215,12 @@ export function FinanzenTab() {
                   <Bar
                     dataKey="einnahmen"
                     fill="var(--color-einnahmen)"
-                    radius={[4, 4, 0, 0]}
+                    radius={[1, 1, 0, 0]}
                   />
                   <Bar
                     dataKey="ausgaben"
                     fill="var(--color-ausgaben)"
-                    radius={[4, 4, 0, 0]}
+                    radius={[1, 1, 0, 0]}
                   />
                 </BarChart>
               </ChartContainer>

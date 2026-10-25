@@ -174,7 +174,7 @@ export function MaklerTab() {
               <ChartTooltip
                 content={<AnzahlTooltip labels={labels(phaseConfig)} />}
               />
-              <Bar dataKey="anzahl" radius={[0, 4, 4, 0]}>
+              <Bar dataKey="anzahl" radius={[0, 1, 1, 0]}>
                 {daten.phasen.map((p) => (
                   <Cell key={p.phase} fill={phasenFarbe(p.phase)} />
                 ))}
@@ -205,7 +205,7 @@ export function MaklerTab() {
               <Bar
                 dataKey="anzahl"
                 fill="var(--color-anzahl)"
-                radius={[4, 4, 0, 0]}
+                radius={[1, 1, 0, 0]}
               >
                 <LabelList
                   dataKey="anzahl"
@@ -279,7 +279,7 @@ export function MaklerTab() {
               <Bar
                 dataKey="anzahl"
                 fill="var(--color-anzahl)"
-                radius={[0, 4, 4, 0]}
+                radius={[0, 1, 1, 0]}
               >
                 <LabelList
                   dataKey="anzahl"
@@ -324,7 +324,7 @@ export function MaklerTab() {
               <Bar
                 dataKey="kaufpreis"
                 fill="var(--color-kaufpreis)"
-                radius={[4, 4, 0, 0]}
+                radius={[1, 1, 0, 0]}
               >
                 <LabelList
                   dataKey="kaufpreis"
@@ -454,17 +454,17 @@ export function MaklerTab() {
               <Bar
                 dataKey="umsatz"
                 fill="var(--color-umsatz)"
-                radius={[4, 4, 0, 0]}
+                radius={[1, 1, 0, 0]}
               />
               <Bar
                 dataKey="kosten"
                 fill="var(--color-kosten)"
-                radius={[4, 4, 0, 0]}
+                radius={[1, 1, 0, 0]}
               />
               <Bar
                 dataKey="ergebnis"
                 fill="var(--color-ergebnis)"
-                radius={[4, 4, 0, 0]}
+                radius={[1, 1, 0, 0]}
               />
             </BarChart>
           </ChartContainer>

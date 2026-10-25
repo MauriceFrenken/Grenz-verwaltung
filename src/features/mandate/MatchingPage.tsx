@@ -17,7 +17,7 @@ function ScoreBalken({ wert, gedimmt }: { wert: number; gedimmt?: boolean }) {
     <div className="flex items-center gap-2">
       <div className="h-2 w-20 bg-surface-muted">
         <div
-          className={gedimmt ? "h-2 bg-text-subtle" : "h-2 bg-[#c4922a]"}
+          className={gedimmt ? "h-2 bg-text-subtle" : "h-2 bg-brand"}
           style={{ width: `${wert}%` }}
         />
       </div>

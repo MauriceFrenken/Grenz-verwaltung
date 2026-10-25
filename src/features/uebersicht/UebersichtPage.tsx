@@ -121,7 +121,7 @@ export function UebersichtPage() {
     <>
       <header className="hairline-b flex shrink-0 flex-col gap-1 border-b border-hairline bg-surface px-8 py-6">
         <span className="label-caps text-text-muted">{datum}</span>
-        <h1 className="text-2xl font-semibold tracking-tight text-heading">
+        <h1 className="titel-ci text-[1.75rem] leading-tight">
           {tagesgruss()}
           {vorname ? `, ${vorname}` : ""}
         </h1>
@@ -603,7 +603,7 @@ function Finanzen({ finanzen }: { finanzen: KennzahlenDto }) {
           <Bar
             dataKey="provisionen"
             fill="var(--color-provisionen)"
-            radius={[4, 4, 0, 0]}
+            radius={[1, 1, 0, 0]}
           />
         </BarChart>
       </ChartContainer>

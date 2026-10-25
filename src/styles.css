@@ -1,36 +1,93 @@
-@import "@fontsource/cormorant-garamond/latin-500.css";
-@import "@fontsource/cormorant-garamond/latin-600.css";
-@import "@fontsource/cormorant-garamond/latin-700.css";
-@import "@fontsource/source-sans-3/latin-400.css";
-@import "@fontsource/source-sans-3/latin-500.css";
-@import "@fontsource/source-sans-3/latin-600.css";
-@import "@fontsource/source-sans-3/latin-700.css";
-@import "@fontsource/source-sans-3/latin-ext-400.css";
-@import "@fontsource/source-sans-3/latin-ext-500.css";
-@import "@fontsource/source-sans-3/latin-ext-600.css";
-@import "@fontsource/source-sans-3/latin-ext-700.css";
-
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
+/* Roboto (SIL OFL 1.1, aus @fontsource/roboto) — CI-Schrift der Grenz-Vorlagen. */
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300;
+  src: url("./assets/fonts/roboto/roboto-latin-ext-300-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("./assets/fonts/roboto/roboto-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("./assets/fonts/roboto/roboto-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("./assets/fonts/roboto/roboto-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300;
+  src: url("./assets/fonts/roboto/roboto-latin-300-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("./assets/fonts/roboto/roboto-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("./assets/fonts/roboto/roboto-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("./assets/fonts/roboto/roboto-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
 /*
- * Grenz & Co. Verwaltung — helles Admin-Design im Auftritt von grenz-co.de.
- * Navy (#1a2b4b) für Chrome und Akzente, Weiß für Flächen, Serif für Marke.
+ * Grenz & Co. Verwaltung — Corporate Design aus den Grenz-Vorlagen
+ * (Marktpreisanalyse, Vermarktungsbericht): Navy #233567, Hellblau #BCD4E5,
+ * Grau #F2F2F2/#D9D9D9, Roboto Light für Titel, eckige Flächen ohne Rundung.
+ * Gleiche Werte wie BERICHT_FARBEN in src/lib/mandate/vermarktungsbericht.ts.
  */
 
 @theme inline {
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
-  --radius-3xl: 20px;
-  --radius-4xl: 24px;
-  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  /* CI: eckige Flächen, nur ein Hauch Rundung für Bedienelemente. */
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
+  --radius-3xl: 2px;
+  --radius-4xl: 2px;
+  --font-sans: "Roboto", "Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Roboto", "Helvetica Neue", Arial, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -74,55 +131,64 @@
 }
 
 :root {
-  --radius: 10px;
+  --radius: 2px;
   color-scheme: light;
-  /* Grenz & Co.: Navy-Chrome, weiße Flächen */
-  --background: #ffffff;
-  --foreground: #1a2b4b;
-  --heading: #1a2b4b;
-  --text-muted: #5a6a85;
-  --text-subtle: #8a97ab;
+  /* Grenz & Co. CI */
+  --gc-navy: #233567;
+  --gc-navy-tief: #1b2a52;
+  --gc-navy-hell: #2e4377;
+  --gc-hellblau: #bcd4e5;
+  --gc-hellblau-zart: #e9f1f7;
+  --gc-grau: #d9d9d9;
+  --gc-grau-zart: #f2f2f2;
+
+  --background: #f7f8fa;
+  --foreground: #1c2c36;
+  --heading: var(--gc-navy);
+  --text-muted: #595959;
+  --text-subtle: #8c8c8c;
   --surface: #ffffff;
-  --surface-muted: #f4f6f9;
-  --hairline: #e2e6ee;
+  --surface-muted: var(--gc-grau-zart);
+  --hairline: #e1e4ea;
   --card: #ffffff;
-  --card-foreground: #1a2b4b;
+  --card-foreground: #1c2c36;
   --popover: #ffffff;
-  --popover-foreground: #1a2b4b;
-  --primary: #1a2b4b;
+  --popover-foreground: #1c2c36;
+  --primary: var(--gc-navy);
   --primary-foreground: #ffffff;
-  --secondary: #eef1f6;
-  --secondary-foreground: #1a2b4b;
-  --muted: #eef1f6;
-  --muted-foreground: #5a6a85;
-  --accent: #eef1f6;
-  --accent-foreground: #1a2b4b;
-  --danger: #c23b3b;
-  --destructive: #c23b3b;
+  --secondary: var(--gc-hellblau-zart);
+  --secondary-foreground: var(--gc-navy);
+  --muted: var(--gc-grau-zart);
+  --muted-foreground: #595959;
+  --accent: var(--gc-hellblau-zart);
+  --accent-foreground: var(--gc-navy);
+  --danger: #b3261e;
+  --destructive: #b3261e;
   --destructive-foreground: #ffffff;
-  --border: #e2e6ee;
-  --input: #d0d7e3;
-  --ring: #3d5a8a;
-  --chart-1: #1a2b4b;
-  --chart-2: #2f9d6a;
-  --chart-3: #c4922a;
-  --chart-4: #5a6a85;
-  --chart-5: #8a97ab;
-  /* Analyse-Diagramme: geprüfte Kategorienfarben (feste Reihenfolge). */
-  --viz-1: #2a78d6;
-  --viz-2: #eb6834;
-  --viz-3: #1baf7a;
-  --viz-4: #eda100;
-  --viz-5: #e87ba4;
-  --viz-gitter: #e2e6ee;
-  --sidebar: #1a2b4b;
-  --sidebar-foreground: #f0f3f8;
+  --border: #e1e4ea;
+  --input: var(--gc-grau);
+  --ring: var(--gc-navy);
+  /* Diagramme: Navy-Familie aus der Vorlage, Hellblau als Zweitton. */
+  --chart-1: var(--gc-navy);
+  --chart-2: #4f6fa3;
+  --chart-3: var(--gc-hellblau);
+  --chart-4: #6b6f8a;
+  --chart-5: #a6a6a6;
+  /* Analyse-Diagramme: Kategorien in fester Reihenfolge, hell/dunkel abwechselnd. */
+  --viz-1: var(--gc-navy);
+  --viz-2: #8ea9c1;
+  --viz-3: #4f6fa3;
+  --viz-4: #a6a6a6;
+  --viz-5: #6b6f8a;
+  --viz-gitter: #e1e4ea;
+  --sidebar: var(--gc-navy);
+  --sidebar-foreground: #ffffff;
   --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #1a2b4b;
-  --sidebar-accent: #243656;
+  --sidebar-primary-foreground: var(--gc-navy);
+  --sidebar-accent: var(--gc-navy-hell);
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #2a3d5c;
-  --sidebar-ring: #7a8fb0;
+  --sidebar-border: #34487c;
+  --sidebar-ring: var(--gc-hellblau);
 }
 
 .dark {
@@ -145,9 +211,17 @@
 
   h1, h2, h3, h4, h5, h6 {
     color: var(--color-heading);
-    letter-spacing: -0.015em;
+    letter-spacing: 0;
   }
 
+}
+
+/* CI-Titel: Roboto Light, Versalien, Navy — wie „WOHNMARKT“ in der Vorlage. */
+@utility titel-ci {
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-heading);
 }
 
 @utility label-caps {
@@ -208,26 +282,24 @@ html[data-op-zensur="true"] [data-op-zensur-ausnahme] * {
   --color-brand: var(--brand);
   --color-brand-text: var(--brand-text);
   --color-brand-soft: var(--brand-soft);
-  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-display: "Roboto", "Helvetica Neue", Arial, sans-serif;
 }
 
 :root {
   --elevated: #ffffff;
-  --accent-soft: #eef1f6;
-  --ok: #2f9d6a;
-  --ok-soft: rgb(47 157 106 / 0.12);
-  --warn: #c4922a;
-  --warn-soft: rgb(196 146 42 / 0.12);
+  --accent-soft: var(--gc-hellblau-zart);
+  /* Status bleibt erkennbar, aber gedeckt neben Navy. */
+  --ok: #2e7d5b;
+  --ok-soft: rgb(46 125 91 / 0.1);
+  --warn: #a8671a;
+  --warn-soft: rgb(168 103 26 / 0.1);
   --bad: var(--danger);
-  --bad-soft: rgb(194 59 59 / 0.12);
+  --bad-soft: rgb(179 38 30 / 0.08);
 
-  /*
-   * Grenz-&-Co.-Navy (Website grenz-co.de) für Knöpfe, Auswahl, Links,
-   * Fokus und Diagrammlinien.
-   */
-  --brand: #1a2b4b;
-  --brand-text: #3d5a8a;
-  --brand-soft: rgb(26 43 75 / 0.1);
+  /* Grenz-&-Co.-Navy für Knöpfe, Auswahl, Links, Fokus und Diagrammlinien. */
+  --brand: var(--gc-navy);
+  --brand-text: var(--gc-navy);
+  --brand-soft: var(--gc-hellblau-zart);
 }
 
 /* Ziffern in Zahlen immer tabellarisch. */
@@ -239,8 +311,7 @@ html[data-op-zensur="true"] [data-op-zensur-ausnahme] * {
 /* Karten: feine Kante, leichter Schatten. */
 @utility schatten-karte {
   box-shadow:
-    0 1px 2px 0 rgb(26 43 75 / 0.06),
-    0 1px 3px 0 rgb(26 43 75 / 0.04);
+    0 1px 2px 0 rgb(35 53 103 / 0.05);
 }
 
 @media print {
@@ -257,7 +328,7 @@ html[data-op-zensur="true"] [data-op-zensur-ausnahme] * {
     --hairline: #ddd;
     --border: #ddd;
     --input: #ccc;
-    --brand-text: #1a2b4b;
+    --brand-text: #233567;
   }
   aside,
   .nicht-drucken {

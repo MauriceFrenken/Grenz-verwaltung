@@ -12,7 +12,7 @@ import type { Block, DesignVorlage, DokumentInhalt } from "./typen";
 const farbe = (hex: string) => hex.replace("#", "");
 
 function schriftName(art: "serif" | "sans"): string {
-  return art === "serif" ? "Cormorant Garamond" : "Source Sans 3";
+  return art === "serif" ? "Cormorant Garamond" : "Roboto Light";
 }
 
 function blockText(b: Block): string[] {

@@ -24,7 +24,7 @@ export function TopBar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-stretch border-b border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <header className="sticky top-0 z-40 flex h-16 items-stretch border-b-2 border-[var(--gc-hellblau)] bg-sidebar text-sidebar-foreground">
       <div className="flex w-60 items-center justify-center gap-2 border-r border-sidebar-border px-5">
         <span
           data-op-zensur-ziel=""
@@ -42,7 +42,7 @@ export function TopBar() {
         <div className="ml-2 flex items-center gap-3 border-l border-sidebar-border pl-4">
           <div
             data-op-zensur-ziel=""
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-foreground text-xs font-semibold uppercase text-sidebar"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--gc-hellblau)] text-xs font-medium uppercase text-[var(--gc-navy)]"
           >
             {initialen}
           </div>

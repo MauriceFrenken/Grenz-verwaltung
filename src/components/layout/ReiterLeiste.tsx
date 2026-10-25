@@ -34,7 +34,7 @@ export function ReiterLeiste({
             className={cn(
               "-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-sm transition-colors",
               istAktiv
-                ? "border-heading font-medium text-heading"
+                ? "border-[var(--gc-navy)] font-medium text-heading"
                 : "border-transparent text-text-muted hover:text-heading",
             )}
           >

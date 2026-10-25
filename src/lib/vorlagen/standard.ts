@@ -6,20 +6,20 @@ import type {
 } from "./typen";
 
 /**
- * Grenz-Standarddesign, abgeleitet aus der App (Navy, Gold, Garamond/Source Sans) und dem Impressum.
+ * Grenz-Standarddesign nach CI der Grenz-Vorlagen (Navy #233567, Hellblau #BCD4E5, Roboto) und dem Impressum.
  * Disclaimer, Provisionshinweis und Widerrufsbelehrung wörtlich aus dem Grenz-Exposé
  * „Bilker Allee 112“ (Stand 04/2026, AGB Stand 03/2025) übernommen.
  */
 export const GRENZ_DESIGN: DesignDefinition = {
   farben: {
-    primaer: "#1a2b4b",
-    akzent: "#c4922a",
-    text: "#1a2b4b",
-    textHell: "#5a6a85",
-    linie: "#e2e6ee",
-    flaeche: "#f4f6f9",
+    primaer: "#233567",
+    akzent: "#BCD4E5",
+    text: "#1C2C36",
+    textHell: "#595959",
+    linie: "#D9D9D9",
+    flaeche: "#F2F2F2",
   },
-  schriften: { titel: "serif", text: "sans" },
+  schriften: { titel: "sans", text: "sans" },
   logoPfad: null,
   firma: {
     name: "Grenz & Co. Immobilienberatungs-GmbH",

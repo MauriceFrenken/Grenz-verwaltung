@@ -63,7 +63,7 @@ function KlassenChart({
         <ChartTooltip
           content={<AnzahlTooltip labels={{ anzahl: "Exposés" }} />}
         />
-        <Bar dataKey="anzahl" fill="var(--color-anzahl)" radius={[4, 4, 0, 0]}>
+        <Bar dataKey="anzahl" fill="var(--color-anzahl)" radius={[1, 1, 0, 0]}>
           <LabelList dataKey="anzahl" position="top" className="fill-heading" />
         </Bar>
       </BarChart>
@@ -232,12 +232,12 @@ export function ExposeMarktTab() {
             <Bar
               dataKey="anzahl"
               fill="var(--color-anzahl)"
-              radius={[4, 4, 0, 0]}
+              radius={[1, 1, 0, 0]}
             />
             <Bar
               dataKey="exportiert"
               fill="var(--color-exportiert)"
-              radius={[4, 4, 0, 0]}
+              radius={[1, 1, 0, 0]}
             />
           </BarChart>
         </ChartContainer>

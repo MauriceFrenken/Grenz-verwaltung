@@ -39,7 +39,7 @@ export function PageHeader({
         <div className="flex min-w-0 flex-col gap-1">
           <h1
             data-op-zensur-daten={zensurTitel ? "" : undefined}
-            className="text-2xl font-semibold tracking-tight text-heading"
+            className="titel-ci text-[1.75rem] leading-tight"
           >
             {titel}
           </h1>

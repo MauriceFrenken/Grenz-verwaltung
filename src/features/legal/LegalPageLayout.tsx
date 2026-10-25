@@ -36,7 +36,7 @@ export function LegalPageLayout({
           Zur Anmeldung
         </Link>
 
-        <h1 className="text-2xl font-semibold tracking-tight text-heading">
+        <h1 className="titel-ci text-[1.75rem] leading-tight">
           {titel}
         </h1>
         <p className="mt-2 text-sm text-text-muted">{untertitel}</p>

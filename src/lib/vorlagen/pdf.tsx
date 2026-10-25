@@ -114,7 +114,7 @@ function stile(v: DesignVorlage) {
       fontSize: 7,
       color: f.textHell,
     },
-    stempel: { color: f.akzent, fontFamily: schrift(text, true) },
+    stempel: { color: f.primaer, fontFamily: schrift(text, true) },
     abschnitt: { marginBottom: 16 },
     abschnittTitel: {
       fontFamily: schrift(titel, true),
@@ -129,7 +129,7 @@ function stile(v: DesignVorlage) {
       marginBottom: 8,
     },
     absatz: { marginBottom: 6, fontSize: 9.5, lineHeight: 1.45 },
-    quelleNr: { fontSize: 6.5, color: f.akzent },
+    quelleNr: { fontSize: 6.5, color: f.primaer },
     kennzahlen: { flexDirection: "row", flexWrap: "wrap", marginBottom: 6 },
     kennzahl: {
       width: "33.33%",
