@@ -6,6 +6,7 @@
 
 import { createHash } from "node:crypto";
 
+import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { benchmarksAusDokument, type DokumentInhalt } from "./ki";
@@ -46,6 +47,23 @@ type Geladen =
   | { typ: "gesperrt"; grund: string };
 
 class Abbruch extends Error {}
+
+/**
+ * Die KI ist gerade nicht nutzbar (Guthaben leer, Schlüssel fehlt, Überlastung, Netz). Dann
+ * zählt nichts als erledigt: Quelle und Dokument bleiben fällig und der nächste Lauf versucht es neu.
+ */
+export function istKiAusfall(e: unknown): boolean {
+  if (e instanceof Anthropic.APIConnectionError) return true;
+  if (e instanceof Anthropic.APIError) {
+    const status = e.status ?? 0;
+    return (
+      [401, 402, 403, 429].includes(status) ||
+      status >= 500 ||
+      /credit balance|billing/i.test(e.message)
+    );
+  }
+  return e instanceof Error && /ANTHROPIC_API_KEY/.test(e.message);
+}
 
 /** Lädt eine Adresse; Weiterleitungen werden einzeln geprüft (keine internen Ziele). */
 async function laden(start: string): Promise<Geladen> {
@@ -100,7 +118,10 @@ async function ladenMitErsatz(url: string): Promise<Geladen> {
     if (e instanceof Abbruch && !/HTTP (429|5\d\d)/.test(e.message)) throw e;
     fehler = e;
   }
-  const ki = await perKiAbrufen(url).catch(() => null);
+  const ki = await perKiAbrufen(url).catch((e) => {
+    if (istKiAusfall(e)) throw e;
+    return null;
+  });
   if (ki?.typ === "pdf") return { typ: "pdf", bytes: ki.bytes, url: ki.url };
   if (ki?.typ === "text" && ki.text.length > 300)
     return { typ: "text", text: ki.text, url: ki.url };
@@ -228,6 +249,14 @@ async function dokumentAuslesen(
     });
   } catch (e) {
     const meldung = e instanceof Error ? e.message : String(e);
+    if (istKiAusfall(e)) {
+      // Kein Versuch verbraucht: das Dokument bleibt „neu“ für den nächsten Lauf.
+      await admin
+        .from("marktbericht_dokumente")
+        .update({ fehler: `KI nicht verfügbar: ${meldung}`.slice(0, 500) })
+        .eq("id", dok.id);
+      throw e;
+    }
     const versuche = (dok.versuche ?? 0) + 1;
     await admin
       .from("marktbericht_dokumente")
@@ -287,10 +316,18 @@ async function quelleDurchsuchen(
       .eq("id", quelle.id);
     return neu;
   } catch (e) {
+    // KI-Ausfall: Quelle bleibt sofort fällig. Andere Fehler: in einem Tag erneut versuchen.
+    const ausfall = istKiAusfall(e);
     await admin
       .from("marktbericht_quellen")
       .update({
-        zuletzt_gesucht: new Date().toISOString(),
+        ...(ausfall
+          ? {}
+          : {
+              zuletzt_gesucht: new Date(
+                Date.now() - (SUCHINTERVALL_TAGE - 1) * 86_400_000,
+              ).toISOString(),
+            }),
         letzter_fehler: (e instanceof Error ? e.message : String(e)).slice(
           0,
           500,
@@ -307,6 +344,8 @@ export type LaufErgebnis = {
   ausgelesen: number;
   gesperrt: number;
   fehler: number;
+  /** Gesetzt, wenn der Lauf wegen eines KI-Ausfalls abgebrochen wurde. */
+  kiAusfall?: string;
 };
 
 /**
@@ -345,25 +384,39 @@ export async function quellenLauf(
       (e) => {
         console.warn(`[marktbericht-quellen] ${quelle.kuerzel}:`, e);
         ergebnis.fehler++;
+        if (istKiAusfall(e))
+          ergebnis.kiAusfall = e instanceof Error ? e.message : String(e);
         return 0;
       },
     );
     ergebnis.durchsucht.push(quelle.name);
   }
 
-  while (rest() > AUSLESE_MS) {
+  const versucht: string[] = [];
+  while (!ergebnis.kiAusfall && rest() > AUSLESE_MS) {
     let offen = admin
       .from("marktbericht_dokumente")
       .select(`${DOKUMENT_SPALTEN}, versuche`)
       .eq("status", "neu");
     if (optionen.quelleId) offen = offen.eq("quelle_id", optionen.quelleId);
+    // Jedes Dokument höchstens einmal je Lauf.
+    if (versucht.length)
+      offen = offen.not("id", "in", `(${versucht.join(",")})`);
     const { data } = await offen
       .order("versuche", { ascending: true })
       .order("gefunden_am", { ascending: true })
       .limit(1);
     if (!data?.length) break;
     const dok = { ...dokumentAus(data[0]), versuche: Number(data[0].versuche) };
-    const status = await dokumentAuslesen(admin, dok);
+    versucht.push(dok.id);
+    let status: DokumentStatus;
+    try {
+      status = await dokumentAuslesen(admin, dok);
+    } catch (e) {
+      ergebnis.kiAusfall = e instanceof Error ? e.message : String(e);
+      ergebnis.fehler++;
+      break;
+    }
     if (status === "ausgelesen" || status === "ohne_werte")
       ergebnis.ausgelesen++;
     else if (status === "gesperrt") ergebnis.gesperrt++;
