@@ -35,8 +35,8 @@ export interface NavSection {
 
 /**
  * Seitenleiste nach dem Vorbild von admin.buyanymachine.com:
- * Hauptmenü, dann die Käuferseite (Vermarktung) und die Verkäuferseite (Akquise), dann die KI-Tools
- * (Register in src/lib/ki-tools/tools.ts) und System.
+ * Hauptmenü, dann die Käuferseite (Vermarktung) und die Verkäuferseite (Akquise), dann die
+ * KI-Dokumentenerstellung und Tools (Register der KI-Tools in src/lib/ki-tools/tools.ts) und System.
  */
 export const NAVIGATION: NavSection[] = [
   {
@@ -69,30 +69,41 @@ export const NAVIGATION: NavSection[] = [
     label: "Akquise",
     items: [
       {
-        to: "/exposes",
-        label: "Exposéanalyse",
-        icon: Inbox,
-        badge: "angebotseingang",
-        badgeTon: "amber",
-      },
-      {
         to: "/verkaeufer",
         label: "Verkäufer",
         icon: Radar,
         badge: "verkaeufer",
         badgeTon: "violet",
       },
-      { to: "/exposes/karte", label: "Marktkarte", icon: MapPin },
     ],
   },
   {
-    label: "Tools",
-    items: KI_TOOLS.map((t) => ({
+    label: "KI-Dokumentenerstellung",
+    items: KI_TOOLS.filter((t) => t.bereich === "dokumente").map((t) => ({
       to: t.pfad,
       label: t.label,
       icon: t.icon,
       umbruch: true,
     })),
+  },
+  {
+    label: "Tools",
+    items: [
+      {
+        to: "/exposes",
+        label: "Exposéanalyse",
+        icon: Inbox,
+        badge: "angebotseingang",
+        badgeTon: "amber",
+      },
+      { to: "/exposes/karte", label: "Marktkarte", icon: MapPin },
+      ...KI_TOOLS.filter((t) => t.bereich === "berichte").map((t) => ({
+        to: t.pfad,
+        label: t.label,
+        icon: t.icon,
+        umbruch: true,
+      })),
+    ],
   },
   {
     label: "System",
