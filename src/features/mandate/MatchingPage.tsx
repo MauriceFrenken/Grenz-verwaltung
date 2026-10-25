@@ -1,5 +1,12 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Loader2, Megaphone } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  Megaphone,
+  Radar,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageWrapper } from "@/components/layout/PageWrapper";
@@ -7,7 +14,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { formatEuro } from "@/lib/format";
+import { formatDate, formatEuro } from "@/lib/format";
 import type { MatchingDto } from "@/lib/matching/server-fn";
 
 import { MandatReiter } from "./MandatReiter";
@@ -48,6 +55,8 @@ export function MatchingPage({ sfId }: { sfId: string }) {
   const [mindestScore, setMindestScore] = useState(60);
   const [kampagnenName, setKampagnenName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [marktAlle, setMarktAlle] = useState(false);
+  const [marktSuche, setMarktSuche] = useState(false);
 
   const laden = useCallback(async () => {
     if (!token) return;
@@ -160,6 +169,42 @@ export function MatchingPage({ sfId }: { sfId: string }) {
     }
   };
 
+  const marktSuchen = async () => {
+    setMarktSuche(true);
+    try {
+      const { marktSucheFuerMandatFn } =
+        await import("@/lib/matching/server-fn");
+      const r = await marktSucheFuerMandatFn({
+        data: { supabaseAccessToken: token, mandatSfId: sfId },
+      });
+      toast.success(
+        r.neu
+          ? `${r.neu} neue aktive Käufer gefunden.`
+          : "Keine neuen Käufer mit belegter Quelle gefunden.",
+      );
+      await laden();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Marktsuche fehlgeschlagen.",
+        {
+          duration: 12_000,
+        },
+      );
+    } finally {
+      setMarktSuche(false);
+    }
+  };
+
+  const umschalten = (id: string, an: boolean) =>
+    setAuswahl((a) => {
+      const n = new Set(a);
+      if (an) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+
+  const markt = (dto?.markt ?? []).filter((m) => marktAlle || m.score >= 40);
+
   const o = dto?.objekt;
 
   return (
@@ -225,6 +270,18 @@ export function MatchingPage({ sfId }: { sfId: string }) {
               </span>
             </div>
 
+            <div className="flex flex-col gap-1">
+              <h2 className="text-base font-semibold text-heading">
+                Interne Datenbank
+              </h2>
+              <p className="text-xs text-text-subtle">
+                Ankaufsprofile aus Salesforce und Kontakte, die bei ähnlichen
+                Grenz-Mandaten Interesse gezeigt haben.
+              </p>
+            </div>
+            <h3 className="text-sm font-semibold text-heading">
+              Ankaufsprofile
+            </h3>
             <div className="overflow-x-auto border border-hairline bg-surface">
               <table className="w-full text-sm">
                 <thead className="bg-surface-muted text-left text-xs text-text-subtle">
@@ -335,6 +392,236 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                 </tbody>
               </table>
             </div>
+
+            <h3 className="text-sm font-semibold text-heading">
+              Interessenten ähnlicher Mandate ({dto.historie.length})
+            </h3>
+            {dto.historie.length ? (
+              <div className="overflow-x-auto border border-hairline bg-surface">
+                <table className="w-full text-sm">
+                  <thead className="bg-surface-muted text-left text-xs text-text-subtle">
+                    <tr>
+                      <th className="w-8 px-2 py-2" />
+                      <th className="px-2 py-2">Kontakt</th>
+                      <th className="px-2 py-2">Reagiert auf</th>
+                      <th className="px-2 py-2">Score</th>
+                      <th className="px-2 py-2">Hinweis</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dto.historie.map((h) => (
+                      <tr
+                        key={h.kontaktSfId}
+                        className="border-t border-hairline align-top hover:bg-surface-muted"
+                      >
+                        <td className="px-2 py-2">
+                          <input
+                            type="checkbox"
+                            disabled={!h.waehlbar || h.bereitsAngesprochen}
+                            checked={auswahl.has(h.kontaktSfId)}
+                            onChange={(e) =>
+                              umschalten(h.kontaktSfId, e.target.checked)
+                            }
+                            aria-label="Für Kampagne auswählen"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <span className="font-medium text-heading">
+                            {h.kontaktName ??
+                              h.firma ??
+                              "Kontakt nicht im Cache"}
+                          </span>
+                          {h.firma && h.kontaktName ? (
+                            <span className="block text-xs text-text-subtle">
+                              {h.firma}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-2 py-2 text-xs">
+                          {h.objekte.slice(0, 3).map((x) => (
+                            <span key={x.mandat.sfId} className="block">
+                              {x.mandat.name}
+                              <span className="text-text-subtle">
+                                {" "}
+                                · {x.stufe}
+                                {x.mandat.objektart
+                                  ? ` · ${x.mandat.objektart}`
+                                  : ""}
+                              </span>
+                            </span>
+                          ))}
+                          {h.objekte.length > 3 ? (
+                            <span className="text-text-subtle">
+                              und {h.objekte.length - 3} weitere
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-2 py-2">
+                          <ScoreBalken wert={h.score} />
+                        </td>
+                        <td className="px-2 py-2 text-xs">
+                          {h.bereitsAngesprochen
+                            ? "bereits angesprochen"
+                            : !h.waehlbar
+                              ? "Firma ohne Kontaktperson"
+                              : ""}
+                          {h.hatAnkaufsprofil ? (
+                            <span className="block text-text-subtle">
+                              hat Ankaufsprofil
+                            </span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">
+                Keine Rückmeldungen auf vergleichbare Mandate.
+              </p>
+            )}
+
+            <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-base font-semibold text-heading">
+                  Extern: gerade aktiv am Markt
+                </h2>
+                <p className="text-xs text-text-subtle">
+                  Käufer aus dem Markt-Radar (Immobiliennews, nur mit belegter
+                  Quelle), bewertet nach Nutzung, Region, Ticketgröße und
+                  Aktualität.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={marktAlle}
+                    onChange={(e) => setMarktAlle(e.target.checked)}
+                  />
+                  auch schwache Treffer
+                </label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void marktSuchen()}
+                  disabled={marktSuche}
+                >
+                  {marktSuche ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Radar className="h-4 w-4" />
+                  )}
+                  Käufer für dieses Objekt suchen
+                </Button>
+              </div>
+            </div>
+            {marktSuche ? (
+              <p className="flex items-center gap-2 text-sm text-text-muted">
+                <Loader2 className="h-4 w-4 animate-spin" /> Die KI durchsucht
+                Immobiliennews der letzten 12 Monate nach Käufern vergleichbarer
+                Objekte. Das dauert einige Minuten.
+              </p>
+            ) : null}
+            {markt.length ? (
+              <div className="overflow-x-auto border border-hairline bg-surface">
+                <table className="w-full text-sm">
+                  <thead className="bg-surface-muted text-left text-xs text-text-subtle">
+                    <tr>
+                      <th className="w-8 px-2 py-2" />
+                      <th className="px-2 py-2">Käufer</th>
+                      <th className="px-2 py-2">Was ist passiert</th>
+                      <th className="px-2 py-2">Passung</th>
+                      <th className="px-2 py-2">Quelle</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {markt.map((m) => {
+                      const sfKontakt =
+                        m.sfKontaktSfId?.startsWith("003") === true;
+                      return (
+                        <tr
+                          key={m.id}
+                          className="border-t border-hairline align-top hover:bg-surface-muted"
+                        >
+                          <td className="px-2 py-2">
+                            <input
+                              type="checkbox"
+                              disabled={!sfKontakt}
+                              checked={auswahl.has(m.sfKontaktSfId ?? "")}
+                              onChange={(e) =>
+                                umschalten(m.sfKontaktSfId!, e.target.checked)
+                              }
+                              aria-label="Für Kampagne auswählen"
+                              title={
+                                sfKontakt
+                                  ? undefined
+                                  : "Erst als Kontakt in Salesforce anlegen (Investoren › Markt-Radar)"
+                              }
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <span className="font-medium text-heading">
+                              {m.akteur}
+                            </span>
+                            <span className="block text-xs text-text-subtle">
+                              {[
+                                m.akteurTyp,
+                                m.sfBekanntAls
+                                  ? `in Salesforce: ${m.sfBekanntAls}`
+                                  : "nicht in Salesforce",
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </span>
+                          </td>
+                          <td className="max-w-md px-2 py-2 text-xs">
+                            {m.ereignis}
+                            {m.volumenEur ? (
+                              <span className="text-text-subtle">
+                                {" "}
+                                ({formatEuro(m.volumenEur)})
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-2 py-2">
+                            <ScoreBalken wert={m.score} />
+                            {m.gruende.length ? (
+                              <span className="mt-1 block text-xs text-text-subtle">
+                                {m.gruende.join(", ")}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-2 py-2 text-xs">
+                            <a
+                              href={m.quelleUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 hover:underline"
+                            >
+                              {m.quelleMedium ?? "Quelle"}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                            <span className="block text-text-subtle">
+                              {formatDate(m.ereignisAm ?? m.createdAt)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">
+                {dto.markt.length
+                  ? "Nur schwache Treffer im Markt-Radar."
+                  : "Noch keine aktiven Käufer im Markt-Radar."}{" "}
+                Mit „Käufer für dieses Objekt suchen“ sucht die KI gezielt nach
+                Käufern vergleichbarer Objekte.
+              </p>
+            )}
 
             <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
               <h2 className="text-sm font-semibold text-heading">

@@ -126,9 +126,14 @@ export type RadarLaufErgebnis = {
   verworfen: number;
 };
 
+/**
+ * `optionen.auftrag`: zusätzlicher Suchauftrag, z. B. die Käufersuche für ein einzelnes
+ * Mandat aus der Mandatsakte; `optionen.seiten` beschränkt den Lauf auf eine Seite.
+ */
 export async function marktRadarAusfuehren(
   admin: Admin,
   ausloeser: "cron" | "manuell",
+  optionen: { seiten?: RadarSeite[]; auftrag?: string } = {},
 ): Promise<RadarLaufErgebnis> {
   const { data: lauf, error: laufFehler } = await admin
     .from("markt_radar_laeufe")
@@ -151,9 +156,12 @@ export async function marktRadarAusfuehren(
     let verworfen = 0;
 
     const ergebnisse = await Promise.all(
-      SEITEN.map(async (seite) => {
+      (optionen.seiten ?? SEITEN).map(async (seite) => {
         const bekannt = await bekannteAkteure(admin, seite);
-        return { seite, ...(await radarRecherche(seite, profil, bekannt)) };
+        return {
+          seite,
+          ...(await radarRecherche(seite, profil, bekannt, optionen.auftrag)),
+        };
       }),
     );
 

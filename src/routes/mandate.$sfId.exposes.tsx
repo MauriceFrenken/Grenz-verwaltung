@@ -1,11 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { MandatExposesPage } from "@/features/mandate/MandatExposesPage";
-
+/** Reiter entfernt (25.10.2026): alte Adresse führt zum Überblick der Mandatsakte. */
 export const Route = createFileRoute("/mandate/$sfId/exposes")({
-  head: () => ({ meta: [{ title: "Exposé & Teaser — Grenz & Co." }] }),
-  component: function MandatExposesPageRoute() {
-    const { sfId } = Route.useParams();
-    return <MandatExposesPage key={sfId} sfId={sfId} />;
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: "/mandate/$sfId",
+      params: { sfId: params.sfId },
+      replace: true,
+    });
   },
 });
