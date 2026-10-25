@@ -145,6 +145,8 @@ export type MarktberichtTexte = {
 export type MarktberichtInhalt = {
   texte: MarktberichtTexte;
   benchmarks: Benchmark[];
+  /** Ids der automatisch übernommenen Bibliothekswerte; gelöschte kommen so nicht zurück. */
+  uebernommen?: string[];
 };
 
 export type MarktberichtStatus = "entwurf" | "freigegeben";

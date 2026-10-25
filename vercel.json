@@ -23,7 +23,27 @@
     },
     {
       "path": "/api/cron/marktbericht-quellen",
-      "schedule": "0 2 * * *"
+      "schedule": "15 0 * * *"
+    },
+    {
+      "path": "/api/cron/marktbericht-quellen",
+      "schedule": "15 1 * * *"
+    },
+    {
+      "path": "/api/cron/marktbericht-quellen",
+      "schedule": "15 2 * * *"
+    },
+    {
+      "path": "/api/cron/marktbericht-quellen",
+      "schedule": "15 3 * * *"
+    },
+    {
+      "path": "/api/cron/marktbericht-quellen",
+      "schedule": "15 4 * * *"
+    },
+    {
+      "path": "/api/cron/marktbericht-quellen",
+      "schedule": "15 5 * * *"
     },
     {
       "path": "/api/cron/marktbericht-quellen",

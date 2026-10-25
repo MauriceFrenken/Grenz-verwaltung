@@ -18,15 +18,26 @@ export const Route = createFileRoute("/api/cron/marktbericht-quellen")({
         const admin = createServiceRoleClient();
         try {
           // Entwurf zuerst: meist nur eine kurze Prüfung, zweimal im Jahr ca. 1–2 Minuten.
-          const { automatischerEntwurf } =
+          // Ein Fehler hier darf die Suche nicht aufhalten.
+          const { automatischerEntwurf, entwuerfeAktualisieren } =
             await import("@/lib/marktbericht/server-fn");
-          const entwurf = await automatischerEntwurf(admin);
+          const entwurf = await automatischerEntwurf(admin).catch((e) => {
+            console.error("[cron/marktbericht-quellen] Entwurf:", e);
+            return null;
+          });
           const { quellenLauf } =
             await import("@/lib/marktbericht/quellen-lauf");
           const lauf = await quellenLauf(admin, {
-            deadlineMs: start + 280_000,
+            deadlineMs: start + 270_000,
           });
-          return Response.json({ ok: true, ...lauf, entwurf });
+          // Neu belegte Werte in offene Entwürfe übernehmen (Texte bleiben unverändert).
+          const aktualisiert = await entwuerfeAktualisieren(admin).catch(
+            (e) => {
+              console.error("[cron/marktbericht-quellen] Entwürfe:", e);
+              return 0;
+            },
+          );
+          return Response.json({ ok: true, ...lauf, entwurf, aktualisiert });
         } catch (err) {
           console.error("[cron/marktbericht-quellen]", err);
           return Response.json(
