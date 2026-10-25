@@ -93,18 +93,10 @@ function worauf(r: SfRoh): RohAufgabe["worauf"] {
   };
 }
 
-async function aufgaben(user: string): Promise<RohAufgabe[]> {
-  const [tasks, events] = await Promise.all([
-    sfAbfrage(
-      `SELECT Id, Subject, TaskSubtype, Status, ActivityDate, CompletedDateTime, CreatedDate, Owner.Name, WhatId, What.Type, What.Name, ${WHO} FROM Task WHERE OwnerId IN (${user}) AND CreatedDate = LAST_N_MONTHS:36`,
-    ),
-    sfAbfrage(
-      `SELECT Id, Subject, EventSubtype, StartDateTime, CreatedDate, Owner.Name, WhatId, What.Type, What.Name, ${WHO} FROM Event WHERE OwnerId IN (${user}) AND CreatedDate = LAST_N_MONTHS:36`,
-    ),
-  ]);
-  const t: RohAufgabe[] = tasks.map((r) => ({
+export function mappeTask(r: SfRoh): RohAufgabe {
+  return {
     id: r.Id,
-    typ: "Task",
+    typ: "Task" as const,
     betreff: text(r.Subject) ?? "",
     subtyp: text(r.TaskSubtype),
     status: text(r.Status),
@@ -114,7 +106,19 @@ async function aufgaben(user: string): Promise<RohAufgabe[]> {
     bearbeiter: text(bezug(r, "Owner.Name")),
     wer: person(r.Who),
     worauf: worauf(r),
-  }));
+  };
+}
+
+async function aufgaben(user: string): Promise<RohAufgabe[]> {
+  const [tasks, events] = await Promise.all([
+    sfAbfrage(
+      `SELECT Id, Subject, TaskSubtype, Status, ActivityDate, CompletedDateTime, CreatedDate, Owner.Name, WhatId, What.Type, What.Name, ${WHO} FROM Task WHERE OwnerId IN (${user}) AND CreatedDate = LAST_N_MONTHS:36`,
+    ),
+    sfAbfrage(
+      `SELECT Id, Subject, EventSubtype, StartDateTime, CreatedDate, Owner.Name, WhatId, What.Type, What.Name, ${WHO} FROM Event WHERE OwnerId IN (${user}) AND CreatedDate = LAST_N_MONTHS:36`,
+    ),
+  ]);
+  const t = tasks.map(mappeTask);
   const e: RohAufgabe[] = events.map((r) => ({
     id: r.Id,
     typ: "Event",
@@ -131,11 +135,8 @@ async function aufgaben(user: string): Promise<RohAufgabe[]> {
   return [...t, ...e];
 }
 
-async function mandate(): Promise<RohMandat[]> {
-  const r = await sfAbfrage(
-    "SELECT Id, Name, Stage__c, Lost_Reason__c, CreatedDate, LastModifiedDate, Account__c, Account__r.Name, Contact_Person__r.Name, Real_Estate__r.Name FROM Mandate__c",
-  );
-  return r.map((m) => ({
+export function mappeMandat(m: SfRoh): RohMandat {
+  return {
     id: m.Id,
     name: text(m.Name) ?? m.Id,
     phase: text(m.Stage__c),
@@ -146,14 +147,18 @@ async function mandate(): Promise<RohMandat[]> {
     accountId: text(m.Account__c),
     ansprechpartner: text(bezug(m, "Contact_Person__r.Name")),
     objekt: text(bezug(m, "Real_Estate__r.Name")),
-  }));
+  };
 }
 
-async function kaeufe(): Promise<RohKauf[]> {
+async function mandate(): Promise<RohMandat[]> {
   const r = await sfAbfrage(
-    `SELECT Id, Name, CloseDate, Beurkundeter_Kaufpreis_in__c, AccountId, Account.Name, Real_Estate__r.Name FROM Opportunity WHERE RecordType.DeveloperName = '${GRENZ_DEAL_RECORD_TYPE}' AND IsWon = true`,
+    "SELECT Id, Name, Stage__c, Lost_Reason__c, CreatedDate, LastModifiedDate, Account__c, Account__r.Name, Contact_Person__r.Name, Real_Estate__r.Name FROM Mandate__c",
   );
-  return r.map((d) => ({
+  return r.map(mappeMandat);
+}
+
+export function mappeKauf(d: SfRoh): RohKauf {
+  return {
     id: d.Id,
     name: text(d.Name) ?? d.Id,
     abschlussAm: text(d.CloseDate),
@@ -161,7 +166,14 @@ async function kaeufe(): Promise<RohKauf[]> {
     kaeufer: text(bezug(d, "Account.Name")),
     accountId: text(d.AccountId),
     objekt: text(bezug(d, "Real_Estate__r.Name")),
-  }));
+  };
+}
+
+async function kaeufe(): Promise<RohKauf[]> {
+  const r = await sfAbfrage(
+    `SELECT Id, Name, CloseDate, Beurkundeter_Kaufpreis_in__c, AccountId, Account.Name, Real_Estate__r.Name FROM Opportunity WHERE RecordType.DeveloperName = '${GRENZ_DEAL_RECORD_TYPE}' AND IsWon = true`,
+  );
+  return r.map(mappeKauf);
 }
 
 async function leadPool(): Promise<Rohdaten["leadPool"]> {

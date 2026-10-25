@@ -3,7 +3,12 @@ import { Link } from "@tanstack/react-router";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { prozent } from "@/features/kennzahlen/hilfen";
-import type { AkquiseDto, Massnahme } from "@/lib/akquise/typen";
+import { aktivitaetenSicht } from "@/lib/akquise/berechnen";
+import type {
+  AkquiseDto,
+  AktivitaetenSicht,
+  Massnahme,
+} from "@/lib/akquise/typen";
 import { formatInt } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +25,20 @@ type Massnahmenkarte = {
   link?: { to: string; label: string };
 };
 
+const sichten = new WeakMap<AkquiseDto, AktivitaetenSicht>();
+
+/** Erledigte Aktivitäten einer Maßnahme in den letzten 12 Monaten, alle Bereiche. */
 function jahr(d: AkquiseDto, m: Massnahme): number {
-  return d.aktivitaeten.summen.find((s) => s.massnahme === m)?.jahr ?? 0;
+  let sicht = sichten.get(d);
+  if (!sicht) {
+    sicht = aktivitaetenSicht(
+      d.aktivitaeten.verlauf,
+      { monate: 12, person: null, bereich: null },
+      d.stand.slice(0, 10),
+    );
+    sichten.set(d, sicht);
+  }
+  return sicht.summen.find((s) => s.massnahme === m)?.zeitraum ?? 0;
 }
 
 /**
@@ -52,9 +69,9 @@ const MASSNAHMEN: Massnahmenkarte[] = [
     praxis:
       "Branchenüblich antworten 1 bis 3 % direkt, mit telefonischem Nachfassen deutlich mehr. Zweitbrief nach 6 bis 12 Monaten mit neuem Anlass (Zinsen, Vergleichsverkauf).",
     kennzahl: (d) => ({
-      wert: formatInt(d.anschreiben.briefe12m),
-      text: `Briefe in 12 Monaten · Reaktionsquote ${prozent(d.anschreiben.reaktionsquote, 1)}`,
-      stand: d.anschreiben.briefe12m > 0 ? "läuft" : "offen",
+      wert: formatInt(d.anschreiben.versendet12m),
+      text: `Briefe versendet in 12 Monaten (${formatInt(d.anschreiben.offen)} weitere vorbereitet) · Reaktionsquote ${prozent(d.anschreiben.reaktionsquote, 1)}`,
+      stand: d.anschreiben.versendet12m > 0 ? "läuft" : "offen",
     }),
     link: {
       to: "/akquise/salesforce/anschreiben",

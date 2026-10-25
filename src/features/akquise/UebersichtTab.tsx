@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import {
@@ -22,13 +23,19 @@ import {
   zelle,
   zelleRechts,
 } from "@/features/kennzahlen/hilfen";
+import { aktivitaetenSicht } from "@/lib/akquise/berechnen";
 import {
   MASSNAHME_LABEL,
   MASSNAHMEN_REIHENFOLGE,
 } from "@/lib/akquise/klassifizieren";
-import type { AkquiseDto, Massnahme } from "@/lib/akquise/typen";
+import type {
+  AkquiseDto,
+  AktivitaetenFilter,
+  Massnahme,
+} from "@/lib/akquise/typen";
 import { formatInt } from "@/lib/format";
 
+import { AnschreibenAnnahme, FilterLeiste } from "./bausteine";
 import { GRUPPEN, gruppiereMonat } from "./hilfen";
 
 const gruppenConfig = Object.fromEntries(
@@ -37,26 +44,42 @@ const gruppenConfig = Object.fromEntries(
 
 const gruppenLabels = Object.fromEntries(GRUPPEN.map((g) => [g.id, g.label]));
 
-function summe(
-  d: AkquiseDto,
-  m: Massnahme,
-  feld: "jahr" | "vorjahr" = "jahr",
-): number {
-  return d.aktivitaeten.summen.find((s) => s.massnahme === m)?.[feld] ?? 0;
-}
+const ZEITRAUM_LABEL: Record<number, string> = {
+  3: "3 Monate",
+  6: "6 Monate",
+  12: "12 Monate",
+  24: "24 Monate",
+};
 
-function veraenderung(jahr: number, vorjahr: number): string {
-  if (!vorjahr) return "Vorjahr: keine";
-  const p = ((jahr - vorjahr) / vorjahr) * 100;
-  return `Vorjahr ${formatInt(vorjahr)} (${p >= 0 ? "+" : ""}${Math.round(p)} %)`;
+function veraenderung(jetzt: number, vorher: number): string {
+  if (!vorher) return "Vorzeitraum: keine";
+  const p = ((jetzt - vorher) / vorher) * 100;
+  return `Vorzeitraum ${formatInt(vorher)} (${p >= 0 ? "+" : ""}${Math.round(p)} %)`;
 }
 
 /** Dashboard aller Akquise-Aktivitäten aus Salesforce. */
 export function UebersichtTab({ daten }: { daten: AkquiseDto }) {
+  const [filter, setFilter] = useState<AktivitaetenFilter>({
+    monate: 12,
+    person: null,
+    bereich: "akquise",
+  });
+  const sicht = useMemo(
+    () =>
+      aktivitaetenSicht(
+        daten.aktivitaeten.verlauf,
+        filter,
+        daten.stand.slice(0, 10),
+      ),
+    [daten, filter],
+  );
+  const summe = (m: Massnahme, feld: "zeitraum" | "vorzeitraum" = "zeitraum") =>
+    sicht.summen.find((s) => s.massnahme === m)?.[feld] ?? 0;
+  const zr = ZEITRAUM_LABEL[filter.monate] ?? `${filter.monate} Monate`;
   const a = daten.anschreiben;
   const pool = daten.pool.reduce((s, p) => s + p.anzahl, 0);
-  const termine = summe(daten, "akquise_termin");
-  const nachfassen = summe(daten, "nachfassen") + summe(daten, "proaktiv");
+  const termine = summe("akquise_termin");
+  const nachfassen = summe("nachfassen") + summe("proaktiv");
 
   const funnel = [
     {
@@ -64,7 +87,11 @@ export function UebersichtTab({ daten }: { daten: AkquiseDto }) {
       wert: pool,
       zusatz: "alle Uploads, gemeinsam mit FRENKEN",
     },
-    { name: "Von Grenz angeschrieben", wert: a.leadsAngeschrieben },
+    {
+      name: "Von Grenz angeschrieben (Brief versendet)",
+      wert: a.leadsAngeschrieben,
+      zusatz: `${formatInt(a.leadsNurVorbereitet)} weitere nur vorbereitet`,
+    },
     {
       name: "Reaktion (Kontakt oder Absage)",
       wert: a.ergebnisse
@@ -90,44 +117,46 @@ export function UebersichtTab({ daten }: { daten: AkquiseDto }) {
   ];
 
   const personenSpalten = MASSNAHMEN_REIHENFOLGE.filter((m) =>
-    daten.aktivitaeten.jePerson.some((p) => (p[m] ?? 0) > 0),
+    sicht.jePerson.some((p) => (p[m] ?? 0) > 0),
   );
 
   return (
     <div className="flex flex-col gap-6">
+      <FilterLeiste
+        filter={filter}
+        personen={sicht.personen}
+        onChange={setFilter}
+      />
       <KachelReihe>
         <Kachel
-          titel="Anschreiben (12 Monate)"
-          wert={formatInt(a.briefe12m)}
-          unterzeile={veraenderung(
-            a.briefe12m,
-            summe(daten, "anschreiben", "vorjahr"),
-          )}
+          titel={`Briefe versendet (${zr})`}
+          wert={formatInt(summe("anschreiben"))}
+          unterzeile={`${veraenderung(summe("anschreiben"), summe("anschreiben", "vorzeitraum"))} · ${formatInt(a.offen)} vorbereitet, nicht versendet`}
         />
         <Kachel
-          titel="Anrufe (12 Monate)"
-          wert={formatInt(summe(daten, "anruf"))}
+          titel={`Anrufe (${zr})`}
+          wert={formatInt(summe("anruf"))}
           unterzeile={veraenderung(
-            summe(daten, "anruf"),
-            summe(daten, "anruf", "vorjahr"),
+            summe("anruf"),
+            summe("anruf", "vorzeitraum"),
           )}
         />
         <Kachel
           titel="Objektaufnahmen / Einwertungen"
           wert={formatInt(termine)}
-          unterzeile={`12 Monate · ${veraenderung(termine, summe(daten, "akquise_termin", "vorjahr"))}`}
+          unterzeile={`${zr} · ${veraenderung(termine, summe("akquise_termin", "vorzeitraum"))}`}
         />
         <Kachel
           titel="Nachfassen & proaktive Akquise"
           wert={formatInt(nachfassen)}
-          unterzeile="erledigt in 12 Monaten"
+          unterzeile={`erledigt in ${zr} · ${formatInt(summe("email"))} E-Mails`}
         />
       </KachelReihe>
       <KachelReihe>
         <Kachel
           titel="Reaktionsquote Anschreiben"
           wert={prozent(a.reaktionsquote, 1)}
-          unterzeile={`Interesse: ${prozent(a.interessequote, 1)} der angeschriebenen Eigentümer`}
+          unterzeile={`Interesse: ${prozent(a.interessequote, 1)} · gesamt, ohne Filter`}
         />
         <Kachel
           titel="Nachfassquote"
@@ -154,12 +183,12 @@ export function UebersichtTab({ daten }: { daten: AkquiseDto }) {
       </KachelReihe>
 
       <Karte
-        titel="Akquise-Aktivitäten je Monat"
-        hinweis="Erledigte Aufgaben und Termine in Salesforce, Anschreiben nach Erstellung. Offene Aufgaben zählen erst, wenn sie erledigt sind."
+        titel="Aktivitäten je Monat"
+        hinweis="Erledigte Aufgaben und Termine in Salesforce. Offene Aufgaben (auch vorbereitete Briefe) zählen erst, wenn sie erledigt sind."
       >
         <ChartContainer config={gruppenConfig} className="h-72 w-full">
           <BarChart
-            data={daten.aktivitaeten.jeMonat.map((z) => ({
+            data={sicht.jeMonat.map((z) => ({
               name: monatLabel(z.monat, true),
               ...gruppiereMonat(z),
             }))}
@@ -169,7 +198,7 @@ export function UebersichtTab({ daten }: { daten: AkquiseDto }) {
               dataKey="name"
               tickLine={false}
               axisLine={false}
-              interval={1}
+              interval={filter.monate > 12 ? 2 : 0}
             />
             <YAxis tickLine={false} axisLine={false} width={40} />
             <ChartTooltip content={<AnzahlTooltip labels={gruppenLabels} />} />
@@ -188,6 +217,8 @@ export function UebersichtTab({ daten }: { daten: AkquiseDto }) {
         </ChartContainer>
       </Karte>
 
+      <AnschreibenAnnahme offen={a.offen} />
+
       <div className="grid gap-6 xl:grid-cols-2">
         <Karte
           titel="Vom Eigentümer zum Mandat"
@@ -195,33 +226,31 @@ export function UebersichtTab({ daten }: { daten: AkquiseDto }) {
         >
           <BalkenListe zeilen={funnel} />
         </Karte>
-        <Karte titel="Aktivitäten: letzte 12 Monate gegen Vorjahr">
+        <Karte titel={`Aktivitäten: letzte ${zr} gegen den Zeitraum davor`}>
           <Tabelle
             kopf={[
               { titel: "Maßnahme" },
-              { titel: "12 Monate", rechts: true },
-              { titel: "Vorjahr", rechts: true },
+              { titel: zr, rechts: true },
+              { titel: "davor", rechts: true },
             ]}
-            leer={
-              daten.aktivitaeten.summen.length ? null : "Keine Aktivitäten."
-            }
+            leer={sicht.summen.length ? null : "Keine Aktivitäten."}
           >
             {MASSNAHMEN_REIHENFOLGE.map((m) =>
-              daten.aktivitaeten.summen.find((s) => s.massnahme === m),
+              sicht.summen.find((s) => s.massnahme === m),
             )
               .filter((s): s is NonNullable<typeof s> => Boolean(s))
               .map((s) => (
                 <tr key={s.massnahme}>
                   <td className={zelle}>{MASSNAHME_LABEL[s.massnahme]}</td>
-                  <td className={zelleRechts}>{formatInt(s.jahr)}</td>
-                  <td className={zelleRechts}>{formatInt(s.vorjahr)}</td>
+                  <td className={zelleRechts}>{formatInt(s.zeitraum)}</td>
+                  <td className={zelleRechts}>{formatInt(s.vorzeitraum)}</td>
                 </tr>
               ))}
           </Tabelle>
         </Karte>
       </div>
 
-      <Karte titel="Aktivitäten je Person (12 Monate)">
+      <Karte titel={`Aktivitäten je Person (${zr})`}>
         <Tabelle
           kopf={[
             { titel: "Person" },
@@ -231,11 +260,9 @@ export function UebersichtTab({ daten }: { daten: AkquiseDto }) {
             })),
             { titel: "Gesamt", rechts: true },
           ]}
-          leer={
-            daten.aktivitaeten.jePerson.length ? null : "Keine Aktivitäten."
-          }
+          leer={sicht.jePerson.length ? null : "Keine Aktivitäten."}
         >
-          {daten.aktivitaeten.jePerson.map((p) => (
+          {sicht.jePerson.map((p) => (
             <tr key={p.person}>
               <td className={zelle}>{p.person}</td>
               {personenSpalten.map((m) => (

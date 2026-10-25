@@ -3,7 +3,11 @@
 import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { AkquiseDto } from "@/lib/akquise/typen";
+import type {
+  AkquiseDto,
+  AktivitaetenFilter,
+  Bereich,
+} from "@/lib/akquise/typen";
 
 import { sfLink } from "./useAkquiseDaten";
 
@@ -90,5 +94,84 @@ export function SfVerweis({
       {children}
       <ExternalLink className="size-3 shrink-0 text-text-muted" />
     </a>
+  );
+}
+
+const auswahl = "h-9 border border-input bg-background px-2 text-sm";
+
+/** Zeitraum, Person und Bereich für die Aktivitäten-Auswertungen. */
+export function FilterLeiste({
+  filter,
+  personen,
+  onChange,
+}: {
+  filter: AktivitaetenFilter;
+  personen: string[];
+  onChange: (f: AktivitaetenFilter) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-end gap-4 text-xs">
+      <label className="flex flex-col gap-1 text-text-subtle">
+        Zeitraum
+        <select
+          className={auswahl}
+          value={filter.monate}
+          onChange={(e) =>
+            onChange({ ...filter, monate: Number(e.target.value) })
+          }
+        >
+          <option value={3}>letzte 3 Monate</option>
+          <option value={6}>letzte 6 Monate</option>
+          <option value={12}>letzte 12 Monate</option>
+          <option value={24}>letzte 24 Monate</option>
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-text-subtle">
+        Person
+        <select
+          className={auswahl}
+          value={filter.person ?? ""}
+          onChange={(e) =>
+            onChange({ ...filter, person: e.target.value || null })
+          }
+        >
+          <option value="">alle Grenz-User</option>
+          {personen.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-text-subtle">
+        Bereich
+        <select
+          className={auswahl}
+          value={filter.bereich ?? ""}
+          onChange={(e) =>
+            onChange({
+              ...filter,
+              bereich: (e.target.value || null) as Bereich | null,
+            })
+          }
+        >
+          <option value="akquise">nur Akquise (Verkäufer)</option>
+          <option value="vermarktung">nur Vermarktung (Käufer)</option>
+          <option value="allgemein">nur Allgemein / Netzwerk</option>
+          <option value="">alle Bereiche</option>
+        </select>
+      </label>
+    </div>
+  );
+}
+
+/** Hinweis, wie Anschreiben gezählt werden (Annahme, bis Grenz das bestätigt). */
+export function AnschreibenAnnahme({ offen }: { offen: number }) {
+  return (
+    <p className="border-l-2 border-primary bg-surface-muted px-3 py-2 text-xs text-text-muted">
+      Annahme: Als versendet zählen erledigte „Send Letter“-Aufgaben. Offene
+      Aufgaben ({offen.toLocaleString("de-DE")}) gelten als vorbereitet und
+      fließen nicht in Versand und Reaktionsquote ein.
+    </p>
   );
 }

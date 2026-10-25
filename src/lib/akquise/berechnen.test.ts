@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { akquiseBerechnen } from "./berechnen";
+import { akquiseBerechnen, aktivitaetenSicht } from "./berechnen";
 import { klassifiziere } from "./klassifizieren";
 import type { RohAufgabe, RohPerson, Rohdaten } from "./typen";
 
@@ -165,24 +165,26 @@ describe("akquiseBerechnen", () => {
 
   const d = akquiseBerechnen(daten, heute, "2026-10-25T12:00:00.000Z");
 
-  it("zählt Anschreiben und Reaktionen je Lead", () => {
-    expect(d.anschreiben.briefeGesamt).toBe(5);
-    expect(d.anschreiben.briefeErledigt).toBe(4);
-    expect(d.anschreiben.leadsAngeschrieben).toBe(5);
-    // Reaktion: qualifiziert + zwei Absagen = 3 von 5.
-    expect(d.anschreiben.reaktionsquote).toBeCloseTo(60);
-    expect(d.anschreiben.interessequote).toBeCloseTo(20);
-    expect(d.anschreiben.absagegruende.map((g) => g.grund).sort()).toEqual([
-      "Spekulationsfrist läuft aus",
+  it("zählt nur erledigte Anschreiben als versendet", () => {
+    expect(d.anschreiben.versendet).toBe(4);
+    expect(d.anschreiben.offen).toBe(1);
+    expect(d.anschreiben.leadsAngeschrieben).toBe(4);
+    expect(d.anschreiben.leadsNurVorbereitet).toBe(1);
+    // Reaktion: qualifiziert + Absage = 2 von 4 (Speku-Lead nur vorbereitet).
+    expect(d.anschreiben.reaktionsquote).toBeCloseTo(50);
+    expect(d.anschreiben.interessequote).toBeCloseTo(25);
+    expect(d.anschreiben.absagegruende.map((g) => g.grund)).toEqual([
       "Verkauf kommt nicht in Frage",
     ]);
+    const sep = d.anschreiben.briefeJeMonat.find((m) => m.monat === "2026-09");
+    expect(sep).toEqual({ monat: "2026-09", versendet: 1, offen: 0 });
   });
 
   it("listet nur unbeantwortete Briefe ohne Folgeaktivität zum Nachfassen", () => {
     // kalt hat nur eine offene (geplante) Call-Aufgabe → Anruf zählt als Folgeaktivität.
     // nachgefasst hat einen erledigten Anruf → nicht in der Liste.
     expect(d.nachfassen.liste.map((x) => x.lead.id)).toEqual([]);
-    expect(d.anschreiben.nachfassquote).toBeCloseTo(40);
+    expect(d.anschreiben.nachfassquote).toBeCloseTo(50);
   });
 
   it("zeigt offene Aufgaben als Wiedervorlagen mit Überfälligkeit", () => {
@@ -203,9 +205,44 @@ describe("akquiseBerechnen", () => {
   });
 
   it("trennt Akquise und Vermarktung", () => {
-    const vermarktung = d.aktivitaeten.jeBereich.find(
+    const sicht = aktivitaetenSicht(
+      d.aktivitaeten.verlauf,
+      { monate: 12, person: null, bereich: null },
+      heute,
+    );
+    const vermarktung = sicht.jeBereich.find(
       (b) => b.bereich === "vermarktung",
     );
     expect(vermarktung?.anzahl).toBe(1);
+  });
+
+  it("filtert Aktivitäten nach Zeitraum, Bereich und Person", () => {
+    const akquise = aktivitaetenSicht(
+      d.aktivitaeten.verlauf,
+      { monate: 3, person: null, bereich: "akquise" },
+      heute,
+    );
+    expect(akquise.jeMonat.map((m) => m.monat)).toEqual([
+      "2026-08",
+      "2026-09",
+      "2026-10",
+    ]);
+    // Aug–Okt: 4 Briefe + 1 Anruf erledigt; die Besichtigung ist Vermarktung.
+    const summe = (m: string) =>
+      akquise.summen.find((s) => s.massnahme === m)?.zeitraum ?? 0;
+    expect(summe("anschreiben")).toBe(4);
+    expect(summe("anruf")).toBe(1);
+    expect(summe("besichtigung")).toBe(0);
+    // Juli liegt im Vorzeitraum, war aber nur vorbereitet.
+    expect(
+      akquise.summen.find((s) => s.massnahme === "anschreiben")?.vorzeitraum ??
+        0,
+    ).toBe(0);
+    const niemand = aktivitaetenSicht(
+      d.aktivitaeten.verlauf,
+      { monate: 3, person: "Sebastian Grenz", bereich: null },
+      heute,
+    );
+    expect(niemand.summen).toEqual([]);
   });
 });

@@ -86,6 +86,8 @@ export type Ergebnis =
   | "interesse"
   | "kontakt"
   | "absage"
+  | "erstkontakt"
+  | "aussortiert"
   | "miteigentuemer"
   | "retoure"
   | "keine";
@@ -148,13 +150,40 @@ export type AktivitaetZeile = {
   bearbeiter: string | null;
 };
 
+/** Kompakte Aktivität: Tag, Maßnahme, Bereich, Person. */
+export type VerlaufEintrag = { d: string; m: Massnahme; b: Bereich; p: string };
+
+export type AktivitaetenFilter = {
+  /** Anzahl Monate bis einschließlich des laufenden Monats. */
+  monate: number;
+  person: string | null;
+  bereich: Bereich | null;
+};
+
+export type AktivitaetenSicht = {
+  jeMonat: Array<{ monat: string } & Partial<Record<Massnahme, number>>>;
+  summen: Array<{
+    massnahme: Massnahme;
+    zeitraum: number;
+    vorzeitraum: number;
+  }>;
+  jePerson: Array<
+    { person: string; gesamt: number } & Partial<Record<Massnahme, number>>
+  >;
+  jeBereich: Array<{ bereich: Bereich; anzahl: number }>;
+  personen: string[];
+};
+
 export type AkquiseDto = {
   stand: string;
   anschreiben: {
-    briefe12m: number;
-    briefeGesamt: number;
-    briefeErledigt: number;
+    /** Erledigte „Send Letter“-Aufgaben gelten als versendet. */
+    versendet12m: number;
+    versendet: number;
+    /** Offene „Send Letter“-Aufgaben: vorbereitet, nicht als versendet markiert. */
+    offen: number;
     leadsAngeschrieben: number;
+    leadsNurVorbereitet: number;
     reaktionsquote: number | null;
     interessequote: number | null;
     nachfassquote: number | null;
@@ -170,15 +199,11 @@ export type AkquiseDto = {
       reaktion: number;
     }>;
     nachOrt: Array<{ ort: string; angeschrieben: number; reaktion: number }>;
-    briefeJeMonat: Array<{ monat: string; anzahl: number }>;
+    briefeJeMonat: Array<{ monat: string; versendet: number; offen: number }>;
   };
   aktivitaeten: {
-    jeMonat: Array<{ monat: string } & Partial<Record<Massnahme, number>>>;
-    summen: Array<{ massnahme: Massnahme; jahr: number; vorjahr: number }>;
-    jePerson: Array<
-      { person: string; gesamt: number } & Partial<Record<Massnahme, number>>
-    >;
-    jeBereich: Array<{ bereich: Bereich; anzahl: number }>;
+    /** Alle stattgefundenen Aktivitäten, kompakt, zum Filtern im Browser. */
+    verlauf: VerlaufEintrag[];
     letzte: AktivitaetZeile[];
   };
   wiedervorlagen: {

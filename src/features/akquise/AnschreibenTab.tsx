@@ -2,6 +2,8 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import {
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   type ChartConfig,
 } from "@/components/ui/chart";
@@ -24,11 +26,12 @@ import { ERGEBNIS_LABEL } from "@/lib/akquise/klassifizieren";
 import type { AkquiseDto } from "@/lib/akquise/typen";
 import { formatInt } from "@/lib/format";
 
-import { SfVerweis } from "./bausteine";
+import { AnschreibenAnnahme, SfVerweis } from "./bausteine";
 import { datum } from "./hilfen";
 
 const briefeConfig = {
-  anzahl: { label: "Anschreiben", color: VIZ[0] },
+  versendet: { label: "Versendet (erledigt)", color: VIZ[0] },
+  offen: { label: "Vorbereitet (offen)", color: VIZ[3] },
 } satisfies ChartConfig;
 
 function q(teil: number, gesamt: number): string {
@@ -40,16 +43,17 @@ export function AnschreibenTab({ daten }: { daten: AkquiseDto }) {
   const a = daten.anschreiben;
   return (
     <div className="flex flex-col gap-6">
+      <AnschreibenAnnahme offen={a.offen} />
       <KachelReihe>
         <Kachel
-          titel="Anschreiben gesamt"
-          wert={formatInt(a.briefeGesamt)}
-          unterzeile={`${formatInt(a.briefeErledigt)} als erledigt markiert · ${formatInt(a.briefe12m)} in 12 Monaten`}
+          titel="Briefe versendet"
+          wert={formatInt(a.versendet)}
+          unterzeile={`${formatInt(a.versendet12m)} in 12 Monaten · ${formatInt(a.offen)} vorbereitet, nicht versendet`}
         />
         <Kachel
           titel="Angeschriebene Eigentümer"
           wert={formatInt(a.leadsAngeschrieben)}
-          unterzeile={`${formatInt(a.mehrfachAngeschrieben)} mehrfach angeschrieben`}
+          unterzeile={`${formatInt(a.mehrfachAngeschrieben)} mehrfach · ${formatInt(a.leadsNurVorbereitet)} nur vorbereitet`}
         />
         <Kachel
           titel="Reaktionsquote"
@@ -66,7 +70,7 @@ export function AnschreibenTab({ daten }: { daten: AkquiseDto }) {
       <div className="grid gap-6 xl:grid-cols-2">
         <Karte
           titel="Anschreiben je Monat"
-          hinweis="Aufgaben „Send Letter“ der Grenz-User, nach Erledigung bzw. Erstellung."
+          hinweis="Aufgaben „Send Letter“ der Grenz-User: versendet nach Erledigungsdatum, vorbereitet nach Erstellung."
         >
           <ChartContainer config={briefeConfig} className="h-64 w-full">
             <BarChart
@@ -84,15 +88,28 @@ export function AnschreibenTab({ daten }: { daten: AkquiseDto }) {
               />
               <YAxis tickLine={false} axisLine={false} width={40} />
               <ChartTooltip
-                content={<AnzahlTooltip labels={{ anzahl: "Anschreiben" }} />}
+                content={
+                  <AnzahlTooltip
+                    labels={{
+                      versendet: "Versendet",
+                      offen: "Vorbereitet",
+                    }}
+                  />
+                }
               />
-              <Bar dataKey="anzahl" fill="var(--color-anzahl)" />
+              <ChartLegend content={<ChartLegendContent />} />
+              <Bar
+                dataKey="versendet"
+                stackId="b"
+                fill="var(--color-versendet)"
+              />
+              <Bar dataKey="offen" stackId="b" fill="var(--color-offen)" />
             </BarChart>
           </ChartContainer>
         </Karte>
         <Karte
           titel="Ergebnis je angeschriebenem Eigentümer"
-          hinweis="Aus dem Lead-Status in Salesforce und Rückmeldungen nach dem ersten Brief."
+          hinweis="Nur Eigentümer mit versendetem Brief. Aus dem Lead-Status in Salesforce und Rückmeldungen nach dem ersten Brief. Als Reaktion zählen Konvertierung, Interesse, Erstkontakt mit Rückmeldung und Absage."
         >
           <BalkenListe
             zeilen={a.ergebnisse

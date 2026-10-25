@@ -14,6 +14,8 @@ import {
 } from "./klassifizieren";
 import type {
   AkquiseDto,
+  AktivitaetenFilter,
+  AktivitaetenSicht,
   AktivitaetZeile,
   Bereich,
   Ergebnis,
@@ -25,6 +27,7 @@ import type {
   RohAufgabe,
   RohPerson,
   Rohdaten,
+  VerlaufEintrag,
   Wiedervorlage,
 } from "./typen";
 
@@ -84,7 +87,10 @@ function istTest(name: string | null | undefined): boolean {
 
 type LeadVerlauf = {
   person: RohPerson;
+  /** Versandtage (erledigte „Send Letter“-Aufgaben), aufsteigend. */
   briefe: string[];
+  /** Offene „Send Letter“-Aufgaben: vorbereitet, nicht als versendet markiert. */
+  vorbereitet: number;
   aktivitaeten: Angereichert[];
 };
 
@@ -96,10 +102,14 @@ function leadVerlaeufe(aufgaben: Angereichert[]): Map<string, LeadVerlauf> {
     const v = m.get(a.wer.id) ?? {
       person: a.wer,
       briefe: [],
+      vorbereitet: 0,
       aktivitaeten: [],
     };
     v.aktivitaeten.push(a);
-    if (a.massnahme === "anschreiben") v.briefe.push(a.datum);
+    if (a.massnahme === "anschreiben") {
+      if (istOffen(a)) v.vorbereitet += 1;
+      else v.briefe.push(a.datum);
+    }
     m.set(a.wer.id, v);
   }
   for (const v of m.values()) v.briefe.sort();
@@ -120,6 +130,7 @@ function anschreibenAuswerten(
   heute: string,
 ) {
   const briefe = alle.filter((a) => a.massnahme === "anschreiben");
+  const versendet = briefe.filter((b) => !istOffen(b));
   const vor12 = new Date(Date.parse(heute) - 365 * TAG).toISOString();
   const angeschrieben = [...verlaeufe.values()].filter(
     (v) => v.briefe.length > 0,
@@ -191,13 +202,19 @@ function anschreibenAuswerten(
       .map((v) => v.person.absagegrund ?? "ohne Grund"),
   );
 
-  const briefeJeMonat = zaehle(briefe.map((b) => monatVon(b.datum)));
+  const versendetJeMonat = zaehle(versendet.map((b) => monatVon(b.datum)));
+  const offenJeMonat = zaehle(
+    briefe.filter(istOffen).map((b) => monatVon(b.datum)),
+  );
 
   return {
-    briefe12m: briefe.filter((b) => b.datum >= vor12).length,
-    briefeGesamt: briefe.length,
-    briefeErledigt: briefe.filter((b) => b.status === "Completed").length,
+    versendet12m: versendet.filter((b) => b.datum >= vor12).length,
+    versendet: versendet.length,
+    offen: briefe.length - versendet.length,
     leadsAngeschrieben: angeschrieben.length,
+    leadsNurVorbereitet: [...verlaeufe.values()].filter(
+      (v) => v.briefe.length === 0 && v.vorbereitet > 0,
+    ).length,
     reaktionsquote: quote(reaktionen, angeschrieben.length),
     interessequote: quote(interesse, angeschrieben.length),
     nachfassquote: quote(nachgefasst, reif.length),
@@ -213,7 +230,9 @@ function anschreibenAuswerten(
         "interesse",
         "kontakt",
         "absage",
+        "erstkontakt",
         "miteigentuemer",
+        "aussortiert",
         "retoure",
         "keine",
       ] as Ergebnis[]
@@ -233,7 +252,8 @@ function anschreibenAuswerten(
       .map(([ort, z]) => ({ ort, ...z })),
     briefeJeMonat: monateBis(heute, 18).map((monat) => ({
       monat,
-      anzahl: briefeJeMonat.get(monat) ?? 0,
+      versendet: versendetJeMonat.get(monat) ?? 0,
+      offen: offenJeMonat.get(monat) ?? 0,
     })),
     ergebnisJe,
   };
@@ -318,52 +338,12 @@ function aktivitaetenAuswerten(
   alle: Angereichert[],
   heute: string,
 ): AkquiseDto["aktivitaeten"] {
-  // Nur stattgefundene Aktivitäten; offene Aufgaben sind Planung (Ausnahme: Anschreiben,
-  // die Grenz nicht immer abhakt).
+  // Nur stattgefundene Aktivitäten; offene Aufgaben (auch vorbereitete Briefe) sind Planung.
   const erfolgt = alle.filter(
-    (a) => !istOffen(a) || a.massnahme === "anschreiben",
+    (a) => !istOffen(a) && a.datum <= `${heute}T23:59:59.999Z`,
   );
-  const monate = monateBis(heute, 18);
-  const jeMonat = monate.map((monat) => {
-    const zeile: { monat: string } & Partial<Record<Massnahme, number>> = {
-      monat,
-    };
-    for (const a of erfolgt)
-      if (monatVon(a.datum) === monat)
-        zeile[a.massnahme] = (zeile[a.massnahme] ?? 0) + 1;
-    return zeile;
-  });
-  const vor12 = new Date(Date.parse(heute) - 365 * TAG).toISOString();
-  const vor24 = new Date(Date.parse(heute) - 730 * TAG).toISOString();
-  const jahr = erfolgt.filter((a) => a.datum >= vor12);
-  const vorjahr = erfolgt.filter((a) => a.datum >= vor24 && a.datum < vor12);
-  const jahrZ = zaehle(jahr.map((a) => a.massnahme));
-  const vorjahrZ = zaehle(vorjahr.map((a) => a.massnahme));
-  const summen = [...new Set([...jahrZ.keys(), ...vorjahrZ.keys()])].map(
-    (massnahme) => ({
-      massnahme,
-      jahr: jahrZ.get(massnahme) ?? 0,
-      vorjahr: vorjahrZ.get(massnahme) ?? 0,
-    }),
-  );
-
-  const personen = new Map<
-    string,
-    { person: string; gesamt: number } & Partial<Record<Massnahme, number>>
-  >();
-  for (const a of jahr) {
-    const name = a.bearbeiter ?? "unbekannt";
-    const z = personen.get(name) ?? { person: name, gesamt: 0 };
-    z.gesamt += 1;
-    z[a.massnahme] = (z[a.massnahme] ?? 0) + 1;
-    personen.set(name, z);
-  }
-  const bereiche = zaehle(jahr.map((a) => a.bereich));
-
   const letzte: AktivitaetZeile[] = erfolgt
-    .filter(
-      (a) => a.massnahme !== "anschreiben" && a.datum <= `${heute}T23:59:59Z`,
-    )
+    .filter((a) => a.massnahme !== "anschreiben")
     .sort((a, b) => b.datum.localeCompare(a.datum))
     .slice(0, 80)
     .map((a) => ({
@@ -375,18 +355,78 @@ function aktivitaetenAuswerten(
       wer: a.wer?.name ?? a.worauf?.name ?? null,
       bearbeiter: a.bearbeiter,
     }));
+  return {
+    verlauf: erfolgt.map((a) => ({
+      d: a.datum.slice(0, 10),
+      m: a.massnahme,
+      b: a.bereich,
+      p: a.bearbeiter ?? "unbekannt",
+    })),
+    letzte,
+  };
+}
 
+/**
+ * Sicht auf die Aktivitäten für Zeitraum, Person und Bereich; läuft im Browser,
+ * damit die Filter des Dashboards ohne neuen Salesforce-Abruf wirken.
+ */
+export function aktivitaetenSicht(
+  verlauf: VerlaufEintrag[],
+  filter: AktivitaetenFilter,
+  heute: string,
+): AktivitaetenSicht {
+  const monate = monateBis(heute, filter.monate);
+  const ab = `${monate[0]}-01`;
+  const vorMonate = monateBis(`${monate[0]}-01`, filter.monate + 1).slice(
+    0,
+    filter.monate,
+  );
+  const vorAb = `${vorMonate[0]}-01`;
+  const passt = (e: VerlaufEintrag) =>
+    (!filter.person || e.p === filter.person) &&
+    (!filter.bereich || e.b === filter.bereich);
+  const ohneBereich = verlauf.filter(
+    (e) => !filter.person || e.p === filter.person,
+  );
+  const gefiltert = verlauf.filter(passt);
+  const zeitraum = gefiltert.filter((e) => e.d >= ab);
+  const vorzeitraum = gefiltert.filter((e) => e.d >= vorAb && e.d < ab);
+
+  const jeMonat = monate.map((monat) => {
+    const zeile: { monat: string } & Partial<Record<Massnahme, number>> = {
+      monat,
+    };
+    for (const e of zeitraum)
+      if (e.d.startsWith(monat)) zeile[e.m] = (zeile[e.m] ?? 0) + 1;
+    return zeile;
+  });
+  const z = zaehle(zeitraum.map((e) => e.m));
+  const vz = zaehle(vorzeitraum.map((e) => e.m));
+  const summen = [...new Set([...z.keys(), ...vz.keys()])].map((massnahme) => ({
+    massnahme,
+    zeitraum: z.get(massnahme) ?? 0,
+    vorzeitraum: vz.get(massnahme) ?? 0,
+  }));
+
+  const personen = new Map<
+    string,
+    { person: string; gesamt: number } & Partial<Record<Massnahme, number>>
+  >();
+  for (const e of zeitraum) {
+    const p = personen.get(e.p) ?? { person: e.p, gesamt: 0 };
+    p.gesamt += 1;
+    p[e.m] = (p[e.m] ?? 0) + 1;
+    personen.set(e.p, p);
+  }
+  const bereiche = zaehle(ohneBereich.filter((e) => e.d >= ab).map((e) => e.b));
   return {
     jeMonat,
     summen,
     jePerson: [...personen.values()].sort((a, b) => b.gesamt - a.gesamt),
     jeBereich: (["akquise", "vermarktung", "allgemein"] as Bereich[]).map(
-      (bereich) => ({
-        bereich,
-        anzahl: bereiche.get(bereich) ?? 0,
-      }),
+      (bereich) => ({ bereich, anzahl: bereiche.get(bereich) ?? 0 }),
     ),
-    letzte,
+    personen: [...new Set(verlauf.map((e) => e.p))].sort(),
   };
 }
 
@@ -484,8 +524,8 @@ function potenzialErmitteln(
     if (status === "First contact" || status === "Erstkontakt")
       signal(
         e,
-        "Erstkontakt nach Anschreiben",
-        25,
+        "Status Erstkontakt",
+        15,
         "Gespräch vertiefen, Verkaufsabsicht klären",
       );
     if (grundPunkte !== undefined)

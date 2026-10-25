@@ -1,8 +1,16 @@
+import { useMemo, useState } from "react";
+
 import { BalkenListe, Karte, Tabelle } from "@/features/kennzahlen/bausteine";
 import { zelle } from "@/features/kennzahlen/hilfen";
 import { MASSNAHME_LABEL } from "@/lib/akquise/klassifizieren";
-import type { AkquiseDto, Bereich } from "@/lib/akquise/typen";
+import { aktivitaetenSicht } from "@/lib/akquise/berechnen";
+import type {
+  AkquiseDto,
+  AktivitaetenFilter,
+  Bereich,
+} from "@/lib/akquise/typen";
 
+import { FilterLeiste } from "./bausteine";
 import { datum } from "./hilfen";
 
 const BEREICH_LABEL: Record<Bereich, string> = {
@@ -13,32 +21,55 @@ const BEREICH_LABEL: Record<Bereich, string> = {
 
 /** Alle Aktivitäten: Verteilung nach Bereich und die letzten Einträge. */
 export function AktivitaetenTab({ daten }: { daten: AkquiseDto }) {
+  const [filter, setFilter] = useState<AktivitaetenFilter>({
+    monate: 12,
+    person: null,
+    bereich: null,
+  });
+  const sicht = useMemo(
+    () =>
+      aktivitaetenSicht(
+        daten.aktivitaeten.verlauf,
+        filter,
+        daten.stand.slice(0, 10),
+      ),
+    [daten, filter],
+  );
+  const zr = `${filter.monate} Monate`;
   return (
     <div className="flex flex-col gap-6">
+      <FilterLeiste
+        filter={filter}
+        personen={sicht.personen}
+        onChange={setFilter}
+      />
       <div className="grid gap-6 xl:grid-cols-2">
-        <Karte titel="Aktivitäten nach Bereich (12 Monate)">
+        <Karte
+          titel={`Aktivitäten nach Bereich (${zr})`}
+          hinweis="Ohne Bereichsfilter, damit der Vergleich sichtbar bleibt."
+        >
           <BalkenListe
-            zeilen={daten.aktivitaeten.jeBereich.map((b) => ({
+            zeilen={sicht.jeBereich.map((b) => ({
               name: BEREICH_LABEL[b.bereich],
               wert: b.anzahl,
             }))}
           />
         </Karte>
-        <Karte titel="Aktivitäten nach Maßnahme (12 Monate)">
+        <Karte titel={`Aktivitäten nach Maßnahme (${zr})`}>
           <BalkenListe
-            zeilen={[...daten.aktivitaeten.summen]
-              .sort((a, b) => b.jahr - a.jahr)
-              .filter((s) => s.jahr > 0)
+            zeilen={[...sicht.summen]
+              .sort((a, b) => b.zeitraum - a.zeitraum)
+              .filter((s) => s.zeitraum > 0)
               .map((s) => ({
                 name: MASSNAHME_LABEL[s.massnahme],
-                wert: s.jahr,
+                wert: s.zeitraum,
               }))}
           />
         </Karte>
       </div>
       <Karte
         titel="Letzte Aktivitäten"
-        hinweis="Ohne Anschreiben (die stehen im Reiter Anschreiben)."
+        hinweis="Die letzten 80 erledigten Aktivitäten aller Bereiche, ohne Anschreiben (die stehen im Reiter Anschreiben)."
       >
         <Tabelle
           kopf={[

@@ -61,7 +61,9 @@ export const ERGEBNIS_LABEL: Record<Ergebnis, string> = {
   mandat: "Konvertiert (Kontakt/Mandat)",
   interesse: "Interesse / qualifiziert",
   kontakt: "Erstkontakt",
-  absage: "Absage",
+  absage: "Absage durch Eigentümer",
+  erstkontakt: "Status Erstkontakt, ohne vermerkte Antwort",
+  aussortiert: "Aussortiert (Einfamilienhaus, Makler)",
   miteigentuemer: "Über Miteigentümer kontaktiert",
   retoure: "Brief kam zurück",
   keine: "Keine Reaktion",
@@ -149,6 +151,16 @@ export function bereichVon(a: RohAufgabe, massnahme: Massnahme): Bereich {
 }
 
 /** Stand eines angeschriebenen Eigentümer-Leads, aus Lead-Status und Folgeaktivitäten. */
+/** Absagegründe aus der Recherche (Lead nicht ansprechen), keine Antwort des Eigentümers. */
+export const AUSSORTIERT_GRUENDE = new Set([
+  "Einfamilienhaus - KEINE ANSPRACHE",
+  "ist selbst Makler",
+]);
+
+/**
+ * Stand eines angeschriebenen Eigentümer-Leads. „First contact“ setzt Grenz meist ohne
+ * vermerkte Antwort; als Reaktion zählt erst eine Rückmeldung, Qualifizierung oder Absage.
+ */
 export function ergebnisVon(
   person: RohPerson,
   massnahmenDanach: Set<Massnahme>,
@@ -157,9 +169,12 @@ export function ergebnisVon(
   const s = person.leadStatus ?? "";
   if (["Qualified", "Nurturing", "Wiedervorlage"].includes(s))
     return "interesse";
-  if (["Unqualified", "Abgelehnt"].includes(s)) return "absage";
-  if (["First contact", "Erstkontakt"].includes(s)) return "kontakt";
+  if (["Unqualified", "Abgelehnt"].includes(s))
+    return person.absagegrund && AUSSORTIERT_GRUENDE.has(person.absagegrund)
+      ? "aussortiert"
+      : "absage";
   if (massnahmenDanach.has("rueckmeldung")) return "kontakt";
+  if (["First contact", "Erstkontakt"].includes(s)) return "erstkontakt";
   if (s === "Co-owners already contacted") return "miteigentuemer";
   if (massnahmenDanach.has("retoure")) return "retoure";
   return "keine";
