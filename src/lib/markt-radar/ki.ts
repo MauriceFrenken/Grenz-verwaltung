@@ -63,13 +63,14 @@ async function recherchieren(
   seite: RadarSeite,
   profil: string,
   bekannteAkteure: string[],
+  auftrag?: string,
 ): Promise<Recherche> {
   const ki = client();
   const heute = new Date().toISOString().slice(0, 10);
   const nachrichten: Anthropic.MessageParam[] = [
     {
       role: "user",
-      content: `Heute ist der ${heute}. Erstelle das Markt-Radar „${seite === "kaeufer" ? "Käufer" : "Verkäufer"}“ für Grenz & Co. Liste am Ende alle Akteure mit allen Angaben und der exakten Quell-URL auf.${bereitsBekannt(bekannteAkteure)}`,
+      content: `Heute ist der ${heute}. Erstelle das Markt-Radar „${seite === "kaeufer" ? "Käufer" : "Verkäufer"}“ für Grenz & Co. Liste am Ende alle Akteure mit allen Angaben und der exakten Quell-URL auf.${auftrag ? `\n\nSonderauftrag (geht dem täglichen Schwerpunkt vor):\n${auftrag}` : bereitsBekannt(bekannteAkteure)}`,
     },
   ];
   const urls = new Set<string>();
@@ -238,8 +239,14 @@ export async function radarRecherche(
   seite: RadarSeite,
   profil: string,
   bekannteAkteure: string[],
+  auftrag?: string,
 ) {
-  const recherche = await recherchieren(seite, profil, bekannteAkteure);
+  const recherche = await recherchieren(
+    seite,
+    profil,
+    bekannteAkteure,
+    auftrag,
+  );
   const struktur = await strukturieren(seite, recherche.bericht);
   return {
     funde: struktur.funde,
