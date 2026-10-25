@@ -34,6 +34,8 @@ import { Route as ExposesKarteRouteImport } from './routes/exposes.karte'
 import { Route as MandateIndexRouteImport } from './routes/mandate.index'
 import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
+import { Route as ToolsIndexRouteImport } from './routes/tools.index'
+import { Route as ToolsToolRouteImport } from './routes/tools.$tool'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
 import { Route as ApiCronMarktRadarRouteImport } from './routes/api.cron.markt-radar'
@@ -175,6 +177,16 @@ const SalesforceCallbackRoute = SalesforceCallbackRouteImport.update({
   path: '/salesforce/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsIndexRoute = ToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsToolRoute = ToolsToolRouteImport.update({
+  id: '/tools/$tool',
+  path: '/tools/$tool',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronEbicsUmsaetzeRoute = ApiCronEbicsUmsaetzeRouteImport.update({
   id: '/api/cron/ebics-umsaetze',
   path: '/api/cron/ebics-umsaetze',
@@ -270,9 +282,11 @@ export interface FileRoutesByFullPath {
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
+  '/tools/$tool': typeof ToolsToolRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
   '/mandate/': typeof MandateIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
@@ -308,9 +322,11 @@ export interface FileRoutesByTo {
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
+  '/tools/$tool': typeof ToolsToolRoute
   '/einstellungen': typeof EinstellungenIndexRoute
   '/exposes': typeof ExposesIndexRoute
   '/mandate': typeof MandateIndexRoute
+  '/tools': typeof ToolsIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
@@ -350,9 +366,11 @@ export interface FileRoutesById {
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
+  '/tools/$tool': typeof ToolsToolRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
   '/mandate/': typeof MandateIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
@@ -393,9 +411,11 @@ export interface FileRouteTypes {
     | '/exposes/karte'
     | '/microsoft/callback'
     | '/salesforce/callback'
+    | '/tools/$tool'
     | '/einstellungen/'
     | '/exposes/'
     | '/mandate/'
+    | '/tools/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/markt-radar'
@@ -431,9 +451,11 @@ export interface FileRouteTypes {
     | '/exposes/karte'
     | '/microsoft/callback'
     | '/salesforce/callback'
+    | '/tools/$tool'
     | '/einstellungen'
     | '/exposes'
     | '/mandate'
+    | '/tools'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/markt-radar'
@@ -472,9 +494,11 @@ export interface FileRouteTypes {
     | '/exposes/karte'
     | '/microsoft/callback'
     | '/salesforce/callback'
+    | '/tools/$tool'
     | '/einstellungen/'
     | '/exposes/'
     | '/mandate/'
+    | '/tools/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/markt-radar'
@@ -507,7 +531,9 @@ export interface RootRouteChildren {
   VerkaeuferRoute: typeof VerkaeuferRoute
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
+  ToolsToolRoute: typeof ToolsToolRoute
   MandateIndexRoute: typeof MandateIndexRoute
+  ToolsIndexRoute: typeof ToolsIndexRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
   ApiCronMarktRadarRoute: typeof ApiCronMarktRadarRoute
@@ -699,6 +725,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SalesforceCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/': {
+      id: '/tools/'
+      path: '/tools'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof ToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/$tool': {
+      id: '/tools/$tool'
+      path: '/tools/$tool'
+      fullPath: '/tools/$tool'
+      preLoaderRoute: typeof ToolsToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/ebics-umsaetze': {
       id: '/api/cron/ebics-umsaetze'
       path: '/api/cron/ebics-umsaetze'
@@ -867,7 +907,9 @@ const rootRouteChildren: RootRouteChildren = {
   VerkaeuferRoute: VerkaeuferRoute,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
+  ToolsToolRoute: ToolsToolRoute,
   MandateIndexRoute: MandateIndexRoute,
+  ToolsIndexRoute: ToolsIndexRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
   ApiCronMarktRadarRoute: ApiCronMarktRadarRoute,

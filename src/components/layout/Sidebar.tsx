@@ -52,6 +52,7 @@ function NavLink({
       onFocus={() => onPrefetch(item.to)}
       className={cn(
         "relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-[13.5px] text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
+        item.umbruch && !collapsed && "h-auto min-h-9 py-1.5",
         aktiv &&
           "bg-sidebar-accent font-medium text-sidebar-foreground [&>svg]:text-sidebar-foreground",
       )}
@@ -65,7 +66,14 @@ function NavLink({
       ) : null}
       <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
       {!collapsed ? (
-        <span className="flex-1 truncate">{item.label}</span>
+        <span
+          className={cn(
+            "flex-1",
+            item.umbruch ? "leading-snug" : "truncate",
+          )}
+        >
+          {item.label}
+        </span>
       ) : null}
       {zahl > 0 && item.badgeTon ? (
         collapsed ? (
