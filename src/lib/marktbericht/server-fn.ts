@@ -69,6 +69,9 @@ function inhaltAus(roh: unknown): MarktberichtInhalt {
   return {
     texte: i.texte ?? {},
     benchmarks: Array.isArray(i.benchmarks) ? i.benchmarks : [],
+    ...(Array.isArray(i.uebernommen)
+      ? { uebernommen: i.uebernommen.filter((x) => typeof x === "string") }
+      : {}),
   };
 }
 
@@ -361,7 +364,11 @@ export async function berichtAnlegen(
     vorher ? inhaltAus(vorher.inhalt).benchmarks : [],
     await bibliothekFuer(admin, periode),
   );
-  const inhalt: MarktberichtInhalt = { texte: {}, benchmarks };
+  const inhalt: MarktberichtInhalt = {
+    texte: {},
+    benchmarks,
+    uebernommen: benchmarks.map((b) => b.id),
+  };
   const { data: row, error } = await admin
     .from("marktberichte")
     .insert({
@@ -402,6 +409,13 @@ export async function automatischerEntwurf(
     .limit(1);
   if (error) throw fehler(error.message);
   if (da?.length) return null;
+  // Erst wenn jede aktive Quelle einmal durchsucht ist, sonst fehlen die Vergleichswerte.
+  const { count: offen } = await admin
+    .from("marktbericht_quellen")
+    .select("id", { count: "exact", head: true })
+    .eq("aktiv", true)
+    .is("zuletzt_gesucht", null);
+  if (offen) return null;
   const neu = await berichtAnlegen(admin, periode, null);
   const b = await ladeVoll(admin, neu.id);
   const { texteEntwurf } = await import("./ki");
@@ -411,6 +425,48 @@ export async function automatischerEntwurf(
     .update({ inhalt: { ...b.inhalt, texte } })
     .eq("id", neu.id);
   return neu.id;
+}
+
+/**
+ * Offene Entwürfe um neu belegte Bibliothekswerte ihrer Periode ergänzen. Vorhandene Werte und
+ * Texte bleiben unverändert; entfernte Werte kommen nur zurück, wenn die Bibliothek sie neu liefert.
+ */
+export async function entwuerfeAktualisieren(
+  admin: SupabaseClient,
+): Promise<number> {
+  const { data, error } = await admin
+    .from("marktberichte")
+    .select("id, kennzahlen, inhalt")
+    .eq("status", "entwurf");
+  if (error) throw fehler(error.message);
+  let aktualisiert = 0;
+  for (const r of data ?? []) {
+    const periode = (r.kennzahlen as MarktberichtKennzahlen).periode;
+    const inhalt = inhaltAus(r.inhalt);
+    const bekannt = new Set(
+      (inhalt.uebernommen ?? []).concat(inhalt.benchmarks.map((b) => b.id)),
+    );
+    const neu = (await bibliothekFuer(admin, periode)).filter(
+      (b) => !bekannt.has(b.id),
+    );
+    const { benchmarks, hinzugefuegt } = benchmarksZusammenfuehren(
+      inhalt.benchmarks,
+      neu,
+    );
+    if (!hinzugefuegt) continue;
+    const { error: e } = await admin
+      .from("marktberichte")
+      .update({
+        inhalt: {
+          ...inhalt,
+          benchmarks,
+          uebernommen: [...bekannt, ...neu.map((b) => b.id)].slice(-500),
+        },
+      })
+      .eq("id", r.id);
+    if (!e) aktualisiert++;
+  }
+  return aktualisiert;
 }
 
 export const marktberichtAnlegenFn = createServerFn({ method: "POST" })
@@ -471,10 +527,13 @@ export const marktberichtSpeichernFn = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<MarktberichtVoll> => {
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
     const admin = createServiceRoleClient();
-    await ladeEntwurf(admin, data.id);
+    const vorher = await ladeEntwurf(admin, data.id);
     const inhalt: MarktberichtInhalt = {
       texte: data.texte,
       benchmarks: data.benchmarks,
+      ...(vorher.inhalt.uebernommen
+        ? { uebernommen: vorher.inhalt.uebernommen }
+        : {}),
     };
     const { error } = await admin
       .from("marktberichte")
