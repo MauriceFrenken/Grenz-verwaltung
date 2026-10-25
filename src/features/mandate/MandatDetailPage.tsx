@@ -1,28 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { Calculator, FilePlus2, Loader2, Users } from "lucide-react";
-import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/useAuth";
 import { formatDate, formatEuro, formatFlaeche } from "@/lib/format";
 import type { Funnel } from "@/lib/mandate/report";
-import type { MandatDetail } from "@/lib/mandate/server-fn";
 
-import { DokumenteKarte } from "./DokumenteKarte";
-
-const STATUS_TEXT: Record<string, string> = {
-  entwurf: "Entwurf",
-  freigegeben: "Freigegeben",
-  versendet: "Versendet",
-};
-
-function tagVor(n: number): string {
-  return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
-}
+import { MandatReiter } from "./MandatReiter";
+import {
+  mandatBeschreibung,
+  mandatTitel,
+  useMandatDetail,
+} from "./useMandatDetail";
 
 function Kennzahl({ label, wert }: { label: string; wert: string }) {
   return (
@@ -67,53 +56,7 @@ export function FunnelBalken({ funnel }: { funnel: Funnel }) {
 }
 
 export function MandatDetailPage({ sfId }: { sfId: string }) {
-  const { session } = useAuth();
-  const token = session?.access_token ?? "";
-  const navigate = useNavigate();
-  const [von, setVon] = useState(tagVor(30));
-  const [bis, setBis] = useState(tagVor(0));
-  const [detail, setDetail] = useState<MandatDetail | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const laden = useCallback(async () => {
-    if (!token) return;
-    try {
-      const { mandatDetailFn } = await import("@/lib/mandate/server-fn");
-      setDetail(
-        await mandatDetailFn({
-          data: { supabaseAccessToken: token, sfId, von, bis },
-        }),
-      );
-    } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Mandat konnte nicht geladen werden.",
-      );
-    }
-  }, [token, sfId, von, bis]);
-
-  useEffect(() => {
-    void laden();
-  }, [laden]);
-
-  const reportAnlegen = async () => {
-    setBusy(true);
-    try {
-      const { reportAnlegenFn } = await import("@/lib/mandate/server-fn");
-      const { id } = await reportAnlegenFn({
-        data: { supabaseAccessToken: token, sfId, von, bis },
-      });
-      toast.success("Bericht angelegt. Zahlen sind auf heute eingefroren.");
-      await navigate({ to: "/mandate/$sfId/report/$id", params: { sfId, id } });
-    } catch (e) {
-      toast.error(
-        e instanceof Error
-          ? e.message
-          : "Bericht konnte nicht angelegt werden.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
+  const { detail, von, setVon, bis, setBis } = useMandatDetail(sfId);
 
   const m = detail?.mandat;
   const v = detail?.vorschau;
@@ -121,39 +64,9 @@ export function MandatDetailPage({ sfId }: { sfId: string }) {
   return (
     <>
       <PageHeader
-        titel={m ? (m.objekt ?? m.name) : "Mandat"}
-        beschreibung={
-          m
-            ? [m.name, m.adresse, m.status].filter(Boolean).join(" · ")
-            : undefined
-        }
-        aktionen={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/mandate/$sfId/matching" params={{ sfId }}>
-                <Users className="h-4 w-4" />
-                Käufer-Matching
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/mandate/$sfId/bewertung" params={{ sfId }}>
-                <Calculator className="h-4 w-4" />
-                Bewertung
-              </Link>
-            </Button>
-            <Button
-              onClick={() => void reportAnlegen()}
-              disabled={busy || !detail}
-            >
-              {busy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <FilePlus2 className="h-4 w-4" />
-              )}
-              Vermarktungsbericht anlegen
-            </Button>
-          </div>
-        }
+        titel={mandatTitel(detail)}
+        beschreibung={mandatBeschreibung(detail)}
+        reiter={<MandatReiter sfId={sfId} aktiv="ueberblick" />}
       />
       <PageWrapper>
         {!detail || !m || !v ? (
@@ -230,54 +143,24 @@ export function MandatDetailPage({ sfId }: { sfId: string }) {
                 />
               </label>
               <p className="pb-2 text-xs text-text-subtle">
-                Der Zeitraum gilt für Aktivitäten und den neuen Bericht.
+                Der Zeitraum gilt für die Aktivitäten unten.
               </p>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
-                <h2 className="text-sm font-semibold text-heading">
-                  Vermarktungsverlauf ({v.kampagnen.length} Kampagne
-                  {v.kampagnen.length === 1 ? "" : "n"})
-                </h2>
-                {v.kampagnen.length ? (
-                  <FunnelBalken funnel={v.funnel} />
-                ) : (
-                  <p className="text-sm text-text-muted">
-                    In Salesforce ist keine Kampagne mit diesem Objekt
-                    verknüpft.
-                  </p>
-                )}
-              </section>
-
-              <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
-                <h2 className="text-sm font-semibold text-heading">
-                  Angebote ({v.angebote.length})
-                </h2>
-                {v.angebote.length ? (
-                  <table className="text-sm">
-                    <tbody>
-                      {v.angebote.map((a) => (
-                        <tr
-                          key={a.quelleId}
-                          className="border-t border-hairline"
-                        >
-                          <td className="py-1 pr-3">{a.bieter}</td>
-                          <td className="py-1 pr-3 text-right tabular-nums">
-                            {a.betrag ? formatEuro(a.betrag) : "ohne Betrag"}
-                          </td>
-                          <td className="py-1 text-text-subtle">{a.phase}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className="text-sm text-text-muted">
-                    Noch keine Kaufangebote.
-                  </p>
-                )}
-              </section>
-            </div>
+            <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
+              <h2 className="text-sm font-semibold text-heading">
+                Vermarktungsverlauf ({v.kampagnen.length} Kampagne
+                {v.kampagnen.length === 1 ? "" : "n"}, {v.angebote.length}{" "}
+                Kaufangebot{v.angebote.length === 1 ? "" : "e"})
+              </h2>
+              {v.kampagnen.length ? (
+                <FunnelBalken funnel={v.funnel} />
+              ) : (
+                <p className="text-sm text-text-muted">
+                  In Salesforce ist keine Kampagne mit diesem Objekt verknüpft.
+                </p>
+              )}
+            </section>
 
             <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
               <h2 className="text-sm font-semibold text-heading">
@@ -306,48 +189,6 @@ export function MandatDetailPage({ sfId }: { sfId: string }) {
                   </tbody>
                 </table>
               </div>
-            </section>
-
-            <DokumenteKarte token={token} sfId={sfId} />
-
-            <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
-              <h2 className="text-sm font-semibold text-heading">
-                Vermarktungsberichte
-              </h2>
-              {detail.reports.length ? (
-                <table className="w-full text-sm">
-                  <tbody>
-                    {detail.reports.map((r) => (
-                      <tr key={r.id} className="border-t border-hairline">
-                        <td className="py-2 pr-3">
-                          <Link
-                            to="/mandate/$sfId/report/$id"
-                            params={{ sfId, id: r.id }}
-                            className="font-medium text-heading hover:underline"
-                          >
-                            {formatDate(r.zeitraumVon)} bis{" "}
-                            {formatDate(r.zeitraumBis)}
-                          </Link>
-                        </td>
-                        <td className="py-2 pr-3">
-                          {STATUS_TEXT[r.status] ?? r.status}
-                        </td>
-                        <td className="py-2 text-text-subtle">
-                          angelegt {formatDate(r.createdAt)}
-                          {r.versendetAm
-                            ? `, versendet ${formatDate(r.versendetAm)} an ${r.versendetAn}`
-                            : ""}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p className="text-sm text-text-muted">
-                  Noch kein Bericht. Zeitraum wählen und „Vermarktungsbericht
-                  anlegen“.
-                </p>
-              )}
             </section>
           </div>
         )}

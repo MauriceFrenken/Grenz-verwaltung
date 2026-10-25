@@ -1,14 +1,12 @@
 import {
   Briefcase,
   ChartColumn,
-  FileText,
   Inbox,
-  Landmark,
+  LayoutDashboard,
   MapPin,
-  Palette,
-  Plug,
-  ScrollText,
-  UserCog,
+  Settings,
+  TrendingUp,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,40 +21,41 @@ export interface NavSection {
   items: NavItem[];
 }
 
-/** Bereiche der Seitenleiste — auch Grundlage der Übersichtsseite. */
+export const COCKPIT: NavItem = {
+  to: "/",
+  label: "Cockpit",
+  icon: LayoutDashboard,
+};
+
+/**
+ * Bereiche der Seitenleiste entlang des Maklerkreislaufs:
+ * eigenes Geschäft (Vermarktung), fremdes Angebot (Markt), Zahlen und Geld (Unternehmen).
+ */
 export const NAVIGATION: NavSection[] = [
-  {
-    label: "Steuerung",
-    items: [{ to: "/kennzahlen", label: "Kennzahlen", icon: ChartColumn }],
-  },
   {
     label: "Vermarktung",
     items: [{ to: "/mandate", label: "Mandate", icon: Briefcase }],
   },
   {
-    label: "Exposés",
+    label: "Markt",
     items: [
-      { to: "/exposes", label: "Offene Exposés", icon: Inbox },
-      { to: "/exposes/import", label: "Exposé-Import", icon: FileText },
-      { to: "/exposes/auswertung", label: "Exposé-Auswertung", icon: ChartColumn },
-      { to: "/exposes/karte", label: "Exposé-Karte", icon: MapPin },
+      { to: "/exposes", label: "Angebotseingang", icon: Inbox },
+      { to: "/exposes/karte", label: "Marktkarte", icon: MapPin },
+      { to: "/exposes/auswertung", label: "Marktanalyse", icon: ChartColumn },
     ],
   },
   {
-    label: "Bank",
-    items: [{ to: "/ebics", label: "EBICS", icon: Landmark }],
-  },
-  {
-    label: "Einstellungen",
+    label: "Unternehmen",
     items: [
-      { to: "/einstellungen/benutzer", label: "Benutzer", icon: UserCog },
-      {
-        to: "/einstellungen/integrationen",
-        label: "Integrationen",
-        icon: Plug,
-      },
-      { to: "/einstellungen/vorlagen", label: "Design-Vorlagen", icon: Palette },
-      { to: "/einstellungen/audit", label: "Audit-Trail", icon: ScrollText },
+      { to: "/geschaeftszahlen", label: "Geschäftszahlen", icon: TrendingUp },
+      { to: "/finanzen", label: "Finanzen", icon: Wallet },
     ],
   },
 ];
+
+/** Steht am Fuß der Seitenleiste, getrennt vom Tagesgeschäft. */
+export const EINSTELLUNGEN: NavItem = {
+  to: "/einstellungen",
+  label: "Einstellungen",
+  icon: Settings,
+};

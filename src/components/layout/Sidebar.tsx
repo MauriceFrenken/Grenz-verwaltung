@@ -1,23 +1,24 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronsLeft, ChevronsRight, LayoutDashboard } from "lucide-react";
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { prefetchGraphRoute } from "@/lib/graph-cache";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/ui";
 
-import { NAVIGATION, type NavSection } from "./navigation";
+import {
+  COCKPIT,
+  EINSTELLUNGEN,
+  NAVIGATION,
+  type NavItem,
+  type NavSection,
+} from "./navigation";
 
-const GRAPH_PREFETCH_PFADE = new Set([
-  "/exposes",
-]);
+const GRAPH_PREFETCH_PFADE = new Set(["/exposes"]);
 
 const sections: NavSection[] = [
-  {
-    label: "Start",
-    items: [{ to: "/", label: "Übersicht", icon: LayoutDashboard }],
-  },
+  { label: "Start", items: [COCKPIT] },
   ...NAVIGATION,
 ];
 
@@ -32,6 +33,41 @@ function istAktiv(pathname: string, to: string): boolean {
       (i) =>
         i.to !== to && i.to.startsWith(`${to}/`) && pathname.startsWith(i.to),
     ),
+  );
+}
+
+function NavLink({
+  item,
+  aktiv,
+  collapsed,
+  onPrefetch,
+}: {
+  item: NavItem;
+  aktiv: boolean;
+  collapsed: boolean;
+  onPrefetch: (to: string) => void;
+}) {
+  return (
+    <Link
+      to={item.to}
+      onMouseEnter={() => onPrefetch(item.to)}
+      onFocus={() => onPrefetch(item.to)}
+      className={cn(
+        "relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-[13.5px] text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
+        aktiv &&
+          "bg-sidebar-accent font-medium text-sidebar-foreground [&>svg]:text-sidebar-foreground",
+      )}
+      title={collapsed ? item.label : undefined}
+    >
+      {aktiv ? (
+        <span
+          className="absolute -left-2 inset-y-1.5 w-[3px] rounded-r-full bg-sidebar-foreground"
+          aria-hidden
+        />
+      ) : null}
+      <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+      {!collapsed ? <span className="truncate">{item.label}</span> : null}
+    </Link>
   );
 }
 
@@ -59,7 +95,7 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto px-2">
         {sections.map((section) => (
           <div key={section.label} className="py-2.5">
-            {!collapsed ? (
+            {section.label === "Start" ? null : !collapsed ? (
               <div className="px-2.5 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/45">
                 {section.label}
               </div>
@@ -67,42 +103,28 @@ export function Sidebar() {
               <div className="mx-3 my-2 h-px bg-sidebar-border" />
             )}
             <ul className="space-y-px">
-              {section.items.map((item) => {
-                const aktiv = istAktiv(pathname, item.to);
-                return (
-                  <li key={item.to}>
-                    <Link
-                      to={item.to}
-                      onMouseEnter={() => prefetchWennGraph(item.to)}
-                      onFocus={() => prefetchWennGraph(item.to)}
-                      className={cn(
-                        "relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-[13.5px] text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                        aktiv &&
-                          "bg-sidebar-accent font-medium text-sidebar-foreground [&>svg]:text-sidebar-foreground",
-                      )}
-                      title={collapsed ? item.label : undefined}
-                    >
-                      {aktiv ? (
-                        <span
-                          className="absolute -left-2 inset-y-1.5 w-[3px] rounded-r-full bg-sidebar-foreground"
-                          aria-hidden
-                        />
-                      ) : null}
-                      <item.icon
-                        className="h-4 w-4 shrink-0"
-                        strokeWidth={1.5}
-                      />
-                      {!collapsed ? (
-                        <span className="truncate">{item.label}</span>
-                      ) : null}
-                    </Link>
-                  </li>
-                );
-              })}
+              {section.items.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    item={item}
+                    aktiv={istAktiv(pathname, item.to)}
+                    collapsed={collapsed}
+                    onPrefetch={prefetchWennGraph}
+                  />
+                </li>
+              ))}
             </ul>
           </div>
         ))}
       </nav>
+      <div className="border-t border-sidebar-border px-2 py-2">
+        <NavLink
+          item={EINSTELLUNGEN}
+          aktiv={istAktiv(pathname, EINSTELLUNGEN.to)}
+          collapsed={collapsed}
+          onPrefetch={prefetchWennGraph}
+        />
+      </div>
       <button
         type="button"
         onClick={toggle}

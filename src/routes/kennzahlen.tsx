@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { KennzahlenSeite } from "@/features/kennzahlen/KennzahlenSeite";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/** Alte Adresse: Kennzahlen sind jetzt Geschäftszahlen und Finanzen. */
 export const Route = createFileRoute("/kennzahlen")({
-  head: () => ({ meta: [{ title: "Kennzahlen — Grenz & Co." }] }),
-  component: KennzahlenSeite,
+  beforeLoad: () => {
+    throw redirect({ to: "/geschaeftszahlen", replace: true });
+  },
 });

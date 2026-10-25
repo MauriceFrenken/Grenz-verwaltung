@@ -7,7 +7,7 @@ export function ExposeAuswertungPage() {
   return (
     <>
       <PageHeader
-        titel="Exposé-Auswertung"
+        titel="Marktanalyse"
         beschreibung="Angebotener Markt aus allen eingegangenen Exposés"
       />
       <PageWrapper>

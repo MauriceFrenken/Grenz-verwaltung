@@ -1,7 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { EbicsSeite } from "@/features/ebics/EbicsSeite";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/** Alte Adresse: Kontoumsätze stehen jetzt unter Finanzen. */
 export const Route = createFileRoute("/ebics")({
-  head: () => ({ meta: [{ title: "EBICS — Grenz & Co." }] }),
-  component: EbicsSeite,
+  beforeLoad: () => {
+    throw redirect({
+      to: "/finanzen",
+      search: { reiter: "konto" },
+      replace: true,
+    });
+  },
 });

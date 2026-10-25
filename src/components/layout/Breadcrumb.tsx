@@ -2,16 +2,19 @@ import { Link, useMatches } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 
 const LABELS: Record<string, string> = {
-  "/": "Übersicht",
-  "/exposes": "Offene Exposés",
+  "/": "Cockpit",
+  "/mandate": "Mandate",
+  "/exposes": "Angebotseingang",
   "/exposes/import": "Exposé-Import",
   "/exposes/import/salesforce": "Salesforce-Export",
-  "/exposes/auswertung": "Exposé-Auswertung",
-  "/exposes/karte": "Exposé-Karte",
-  "/ebics": "EBICS",
+  "/exposes/auswertung": "Marktanalyse",
+  "/exposes/karte": "Marktkarte",
+  "/geschaeftszahlen": "Geschäftszahlen",
+  "/finanzen": "Finanzen",
   "/einstellungen": "Einstellungen",
   "/einstellungen/benutzer": "Benutzer",
   "/einstellungen/integrationen": "Integrationen",
+  "/einstellungen/vorlagen": "Design-Vorlagen",
   "/einstellungen/audit": "Audit-Trail",
 };
 

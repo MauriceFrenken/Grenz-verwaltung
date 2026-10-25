@@ -1,7 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { FileQuestion, FileText, Image, Loader2, RefreshCw } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import {
+  FileQuestion,
+  FileText,
+  FileUp,
+  Image,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -423,7 +430,16 @@ export function ExposeListePage() {
   return (
     <>
       <PageHeader
-        titel="Offene Exposés"
+        titel="Angebotseingang"
+        beschreibung="Exposés anderer Makler aus dem Ankauf-Postfach: prüfen und nach Salesforce übernehmen."
+        aktionen={
+          <Button variant="outline" asChild>
+            <Link to="/exposes/import">
+              <FileUp className="h-4 w-4" />
+              Exposé hochladen
+            </Link>
+          </Button>
+        }
       />
       <SalesforceConnectDialog
         open={sfConnectOpen}

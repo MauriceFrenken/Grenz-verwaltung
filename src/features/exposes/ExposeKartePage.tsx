@@ -316,7 +316,7 @@ export function ExposeKartePage() {
   return (
     <>
       <PageHeader
-        titel="Exposé-Karte"
+        titel="Marktkarte"
         beschreibung="Lage und Eckdaten aller eingegangenen Exposés, z. B. als Vergleichsobjekte im Kundengespräch"
       />
       <PageWrapper>

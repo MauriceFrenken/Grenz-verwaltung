@@ -16,6 +16,8 @@ import { Route as EbicsRouteImport } from './routes/ebics'
 import { Route as EinladungRouteImport } from './routes/einladung'
 import { Route as EinstellungenRouteImport } from './routes/einstellungen'
 import { Route as ExposesRouteImport } from './routes/exposes'
+import { Route as FinanzenRouteImport } from './routes/finanzen'
+import { Route as GeschaeftszahlenRouteImport } from './routes/geschaeftszahlen'
 import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as KennzahlenRouteImport } from './routes/kennzahlen'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
@@ -39,7 +41,10 @@ import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.
 import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
 import { Route as MandateSfIdIndexRouteImport } from './routes/mandate.$sfId.index'
 import { Route as MandateSfIdBewertungRouteImport } from './routes/mandate.$sfId.bewertung'
+import { Route as MandateSfIdExposesRouteImport } from './routes/mandate.$sfId.exposes'
+import { Route as MandateSfIdInteressentenRouteImport } from './routes/mandate.$sfId.interessenten'
 import { Route as MandateSfIdMatchingRouteImport } from './routes/mandate.$sfId.matching'
+import { Route as MandateSfIdReportsRouteImport } from './routes/mandate.$sfId.reports'
 import { Route as MandateSfIdDokumentIdRouteImport } from './routes/mandate.$sfId.dokument.$id'
 import { Route as MandateSfIdReportIdRouteImport } from './routes/mandate.$sfId.report.$id'
 
@@ -76,6 +81,16 @@ const EinstellungenRoute = EinstellungenRouteImport.update({
 const ExposesRoute = ExposesRouteImport.update({
   id: '/exposes',
   path: '/exposes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanzenRoute = FinanzenRouteImport.update({
+  id: '/finanzen',
+  path: '/finanzen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GeschaeftszahlenRoute = GeschaeftszahlenRouteImport.update({
+  id: '/geschaeftszahlen',
+  path: '/geschaeftszahlen',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImpressumRoute = ImpressumRouteImport.update({
@@ -194,9 +209,25 @@ const MandateSfIdBewertungRoute = MandateSfIdBewertungRouteImport.update({
   path: '/mandate/$sfId/bewertung',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MandateSfIdExposesRoute = MandateSfIdExposesRouteImport.update({
+  id: '/mandate/$sfId/exposes',
+  path: '/mandate/$sfId/exposes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MandateSfIdInteressentenRoute =
+  MandateSfIdInteressentenRouteImport.update({
+    id: '/mandate/$sfId/interessenten',
+    path: '/mandate/$sfId/interessenten',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MandateSfIdMatchingRoute = MandateSfIdMatchingRouteImport.update({
   id: '/mandate/$sfId/matching',
   path: '/mandate/$sfId/matching',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MandateSfIdReportsRoute = MandateSfIdReportsRouteImport.update({
+  id: '/mandate/$sfId/reports',
+  path: '/mandate/$sfId/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MandateSfIdDokumentIdRoute = MandateSfIdDokumentIdRouteImport.update({
@@ -218,6 +249,8 @@ export interface FileRoutesByFullPath {
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
   '/exposes': typeof ExposesRouteWithChildren
+  '/finanzen': typeof FinanzenRoute
+  '/geschaeftszahlen': typeof GeschaeftszahlenRoute
   '/impressum': typeof ImpressumRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
@@ -239,7 +272,10 @@ export interface FileRoutesByFullPath {
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
+  '/mandate/$sfId/exposes': typeof MandateSfIdExposesRoute
+  '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
+  '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
@@ -251,6 +287,8 @@ export interface FileRoutesByTo {
   '/datenschutz': typeof DatenschutzRoute
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
+  '/finanzen': typeof FinanzenRoute
+  '/geschaeftszahlen': typeof GeschaeftszahlenRoute
   '/impressum': typeof ImpressumRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
@@ -271,7 +309,10 @@ export interface FileRoutesByTo {
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
+  '/mandate/$sfId/exposes': typeof MandateSfIdExposesRoute
+  '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
+  '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/exposes/import': typeof ExposesImportIndexRoute
   '/mandate/$sfId': typeof MandateSfIdIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
@@ -286,6 +327,8 @@ export interface FileRoutesById {
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
   '/exposes': typeof ExposesRouteWithChildren
+  '/finanzen': typeof FinanzenRoute
+  '/geschaeftszahlen': typeof GeschaeftszahlenRoute
   '/impressum': typeof ImpressumRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
@@ -307,7 +350,10 @@ export interface FileRoutesById {
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
+  '/mandate/$sfId/exposes': typeof MandateSfIdExposesRoute
+  '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
+  '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
@@ -323,6 +369,8 @@ export interface FileRouteTypes {
     | '/einladung'
     | '/einstellungen'
     | '/exposes'
+    | '/finanzen'
+    | '/geschaeftszahlen'
     | '/impressum'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
@@ -344,7 +392,10 @@ export interface FileRouteTypes {
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
+    | '/mandate/$sfId/exposes'
+    | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
+    | '/mandate/$sfId/reports'
     | '/exposes/import/'
     | '/mandate/$sfId/'
     | '/mandate/$sfId/dokument/$id'
@@ -356,6 +407,8 @@ export interface FileRouteTypes {
     | '/datenschutz'
     | '/ebics'
     | '/einladung'
+    | '/finanzen'
+    | '/geschaeftszahlen'
     | '/impressum'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
@@ -376,7 +429,10 @@ export interface FileRouteTypes {
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
+    | '/mandate/$sfId/exposes'
+    | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
+    | '/mandate/$sfId/reports'
     | '/exposes/import'
     | '/mandate/$sfId'
     | '/mandate/$sfId/dokument/$id'
@@ -390,6 +446,8 @@ export interface FileRouteTypes {
     | '/einladung'
     | '/einstellungen'
     | '/exposes'
+    | '/finanzen'
+    | '/geschaeftszahlen'
     | '/impressum'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
@@ -411,7 +469,10 @@ export interface FileRouteTypes {
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
+    | '/mandate/$sfId/exposes'
+    | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
+    | '/mandate/$sfId/reports'
     | '/exposes/import/'
     | '/mandate/$sfId/'
     | '/mandate/$sfId/dokument/$id'
@@ -426,6 +487,8 @@ export interface RootRouteChildren {
   EinladungRoute: typeof EinladungRoute
   EinstellungenRoute: typeof EinstellungenRouteWithChildren
   ExposesRoute: typeof ExposesRouteWithChildren
+  FinanzenRoute: typeof FinanzenRoute
+  GeschaeftszahlenRoute: typeof GeschaeftszahlenRoute
   ImpressumRoute: typeof ImpressumRoute
   KennzahlenRoute: typeof KennzahlenRoute
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
@@ -437,7 +500,10 @@ export interface RootRouteChildren {
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
   ApiCronSalesforceSyncRoute: typeof ApiCronSalesforceSyncRoute
   MandateSfIdBewertungRoute: typeof MandateSfIdBewertungRoute
+  MandateSfIdExposesRoute: typeof MandateSfIdExposesRoute
+  MandateSfIdInteressentenRoute: typeof MandateSfIdInteressentenRoute
   MandateSfIdMatchingRoute: typeof MandateSfIdMatchingRoute
+  MandateSfIdReportsRoute: typeof MandateSfIdReportsRoute
   MandateSfIdIndexRoute: typeof MandateSfIdIndexRoute
   MandateSfIdDokumentIdRoute: typeof MandateSfIdDokumentIdRoute
   MandateSfIdReportIdRoute: typeof MandateSfIdReportIdRoute
@@ -492,6 +558,20 @@ declare module '@tanstack/react-router' {
       path: '/exposes'
       fullPath: '/exposes'
       preLoaderRoute: typeof ExposesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/finanzen': {
+      id: '/finanzen'
+      path: '/finanzen'
+      fullPath: '/finanzen'
+      preLoaderRoute: typeof FinanzenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/geschaeftszahlen': {
+      id: '/geschaeftszahlen'
+      path: '/geschaeftszahlen'
+      fullPath: '/geschaeftszahlen'
+      preLoaderRoute: typeof GeschaeftszahlenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/impressum': {
@@ -655,11 +735,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MandateSfIdBewertungRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mandate/$sfId/exposes': {
+      id: '/mandate/$sfId/exposes'
+      path: '/mandate/$sfId/exposes'
+      fullPath: '/mandate/$sfId/exposes'
+      preLoaderRoute: typeof MandateSfIdExposesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mandate/$sfId/interessenten': {
+      id: '/mandate/$sfId/interessenten'
+      path: '/mandate/$sfId/interessenten'
+      fullPath: '/mandate/$sfId/interessenten'
+      preLoaderRoute: typeof MandateSfIdInteressentenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mandate/$sfId/matching': {
       id: '/mandate/$sfId/matching'
       path: '/mandate/$sfId/matching'
       fullPath: '/mandate/$sfId/matching'
       preLoaderRoute: typeof MandateSfIdMatchingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mandate/$sfId/reports': {
+      id: '/mandate/$sfId/reports'
+      path: '/mandate/$sfId/reports'
+      fullPath: '/mandate/$sfId/reports'
+      preLoaderRoute: typeof MandateSfIdReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mandate/$sfId/dokument/$id': {
@@ -738,6 +839,8 @@ const rootRouteChildren: RootRouteChildren = {
   EinladungRoute: EinladungRoute,
   EinstellungenRoute: EinstellungenRouteWithChildren,
   ExposesRoute: ExposesRouteWithChildren,
+  FinanzenRoute: FinanzenRoute,
+  GeschaeftszahlenRoute: GeschaeftszahlenRoute,
   ImpressumRoute: ImpressumRoute,
   KennzahlenRoute: KennzahlenRoute,
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
@@ -749,7 +852,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
   ApiCronSalesforceSyncRoute: ApiCronSalesforceSyncRoute,
   MandateSfIdBewertungRoute: MandateSfIdBewertungRoute,
+  MandateSfIdExposesRoute: MandateSfIdExposesRoute,
+  MandateSfIdInteressentenRoute: MandateSfIdInteressentenRoute,
   MandateSfIdMatchingRoute: MandateSfIdMatchingRoute,
+  MandateSfIdReportsRoute: MandateSfIdReportsRoute,
   MandateSfIdIndexRoute: MandateSfIdIndexRoute,
   MandateSfIdDokumentIdRoute: MandateSfIdDokumentIdRoute,
   MandateSfIdReportIdRoute: MandateSfIdReportIdRoute,

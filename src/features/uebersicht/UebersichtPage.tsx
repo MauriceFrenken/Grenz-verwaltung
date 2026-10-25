@@ -608,10 +608,10 @@ function Finanzen({ finanzen }: { finanzen: KennzahlenDto }) {
         </BarChart>
       </ChartContainer>
       <Link
-        to="/kennzahlen"
+        to="/finanzen"
         className="self-start text-xs font-medium text-brand-text hover:underline"
       >
-        Alle Kennzahlen →
+        Zu den Finanzen →
       </Link>
     </div>
   );
@@ -633,7 +633,7 @@ function Schnellzugriff({ daten }: { daten: UebersichtDto }) {
   const links = [
     {
       to: "/exposes",
-      label: "Offene Exposés",
+      label: "Angebotseingang",
       zusatz: `${x.offen} offen · ${x.neu7Tage} neu in 7 Tagen`,
       icon: Inbox,
     },
@@ -645,20 +645,20 @@ function Schnellzugriff({ daten }: { daten: UebersichtDto }) {
     },
     {
       to: "/exposes/karte",
-      label: "Exposé-Karte",
+      label: "Marktkarte",
       zusatz: `${x.gesamt} Angebote im Markt`,
       icon: MapPin,
     },
     {
       to: "/exposes/auswertung",
-      label: "Exposé-Auswertung",
+      label: "Marktanalyse",
       zusatz: "Preise und Faktoren",
       icon: FileText,
     },
     {
-      to: "/kennzahlen",
-      label: "Kennzahlen",
-      zusatz: "Finanzen und Maklergeschäft",
+      to: "/geschaeftszahlen",
+      label: "Geschäftszahlen",
+      zusatz: "Pipeline, Funnel und Abschlüsse",
       icon: ChartColumn,
     },
   ] as const;

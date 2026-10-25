@@ -9,6 +9,8 @@ interface PageHeaderProps {
   /** Steht direkt neben dem Titel (z. B. Status-Button). */
   nebenTitel?: ReactNode;
   meta?: ReactNode;
+  /** Reiterleiste unter dem Kopf (z. B. Mandatsakte, Einstellungen). */
+  reiter?: ReactNode;
   /** Titel/Beschreibung/Meta stammen aus API-Daten und werden bei OP-Zensur unkenntlich. */
   zensurTitel?: boolean;
 }
@@ -19,11 +21,12 @@ export function PageHeader({
   aktionen,
   nebenTitel,
   meta,
+  reiter,
   zensurTitel = false,
 }: PageHeaderProps) {
   const erweitert = Boolean(beschreibung || meta);
 
-  return (
+  const kopf = (
     <header
       className={cn(
         "hairline-b flex shrink-0 border-b border-hairline bg-surface px-8",
@@ -71,5 +74,13 @@ export function PageHeader({
         </div>
       ) : null}
     </header>
+  );
+
+  if (!reiter) return kopf;
+  return (
+    <div className="flex flex-col">
+      {kopf}
+      {reiter}
+    </div>
   );
 }

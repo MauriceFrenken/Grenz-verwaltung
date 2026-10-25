@@ -1,6 +1,6 @@
 ## Agenten-Hinweise
 
-Grenz & Co. Verwaltung — Bereiche: Exposés (Offene Exposés, Exposé-Import), Dokumente (Postfach, Dokumentenablage, Rechnungsfreigabe), EBICS, Einstellungen (Benutzer, Integrationen, Audit-Trail). Die Seitenleiste kommt aus `src/components/layout/navigation.ts`.
+Grenz & Co. Verwaltung — Seitenleiste entlang des Maklerkreislaufs: Cockpit (`/`), Vermarktung (Mandate; jedes Mandat ist eine Akte mit Reitern Überblick, Bewertung, Exposé & Teaser, Käufer-Matching, Interessenten, Eigentümer-Report), Markt (Angebotseingang = eingehende Fremd-Exposés, Marktkarte, Marktanalyse; Routen unter `/exposes`), Unternehmen (Geschäftszahlen, Finanzen inkl. EBICS-Kontoumsätze), Einstellungen am Fuß. „Exposé“ im Bereich Markt meint Angebote anderer Makler, das eigene Exposé liegt in der Mandatsakte. Die Seitenleiste kommt aus `src/components/layout/navigation.ts`; `/kennzahlen` und `/ebics` leiten auf die neuen Seiten weiter.
 
 Clientseitig gibt es **kein** Rollen-/Rechte-Matrix-System. Alle authentifizierten Benutzer sehen dieselben Seiten und Aktionen. Rollen existieren nur noch als Benutzer-Attribut (Anzeige / Einladen), nicht als UI-Zugriffskontrolle.
 

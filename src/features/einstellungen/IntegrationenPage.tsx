@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
+import { EinstellungenReiter } from "./EinstellungenReiter";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -117,7 +118,10 @@ export function IntegrationenPage() {
 
   return (
     <>
-      <PageHeader titel="Integrationen" />
+      <PageHeader
+        titel="Einstellungen"
+        reiter={<EinstellungenReiter aktiv="integrationen" />}
+      />
       <PageWrapper>
         <div className="flex max-w-3xl flex-col gap-6">
           <article className="flex flex-col gap-5 border border-hairline bg-surface p-5">
