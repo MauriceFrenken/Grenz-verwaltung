@@ -35,13 +35,29 @@ export interface KiToolDefinition {
   unterlagen: string;
   /** Platzhalter des Eingabefelds. */
   platzhalter: string;
+  /** Abschnitt der Seitenleiste: KI-Dokumentenerstellung oder Tools (Berichte). */
+  bereich: "dokumente" | "berichte";
 }
 
 export const KI_TOOLS: KiToolDefinition[] = [
   {
+    id: "marktpreis",
+    pfad: "/tools/marktpreis",
+    label: "Marktpreisanalyse",
+    kurz: "Marktpreisanalyse",
+    beschreibung:
+      "Erstellt die Vermarktungseinschätzung als PowerPoint: Key Facts, Vergleichstransaktionen aus Grenz-Daten und Websuche, Preisfindung mit Faktor und Preis pro m².",
+    icon: LineChart,
+    format: "PPTX",
+    unterlagen: "Mieterliste, Flächen, Fotos, Preisvorstellung des Eigentümers",
+    platzhalter:
+      "z. B. Vermarktungseinschätzung für Herrn Rentmeister, Preisvorstellung 2,3 Mio. €",
+    bereich: "dokumente",
+  },
+  {
     id: "expose",
     pfad: "/tools/expose",
-    label: "KI-basierte Exposé-Erstellung",
+    label: "Exposé-Erstellung",
     kurz: "Exposé",
     beschreibung:
       "Erstellt das Verkaufsexposé als PowerPoint in der Grenz-&-Co.-Vorlage: Investment, Objektdaten, Mieterübersicht, Lage, Fotos und Rechtstexte.",
@@ -51,24 +67,12 @@ export const KI_TOOLS: KiToolDefinition[] = [
       "Mieterliste, Flächenaufstellung, Energieausweis, Grundbuch, alte Exposés, Fotos und Grundrisse",
     platzhalter:
       "z. B. Exposé für das Wohn- und Geschäftshaus, Kaufpreis 2,56 Mio. €, Käuferprovision 5,95 %",
-  },
-  {
-    id: "marktpreis",
-    pfad: "/tools/marktpreis",
-    label: "KI-basierte Marktpreisanalyse",
-    kurz: "Marktpreisanalyse",
-    beschreibung:
-      "Erstellt die Vermarktungseinschätzung als PowerPoint: Key Facts, Vergleichstransaktionen aus Grenz-Daten und Websuche, Preisfindung mit Faktor und Preis pro m².",
-    icon: LineChart,
-    format: "PPTX",
-    unterlagen: "Mieterliste, Flächen, Fotos, Preisvorstellung des Eigentümers",
-    platzhalter:
-      "z. B. Vermarktungseinschätzung für Herrn Rentmeister, Preisvorstellung 2,3 Mio. €",
+    bereich: "dokumente",
   },
   {
     id: "mieterliste",
     pfad: "/tools/mieterliste",
-    label: "KI-basierte Mieterlistenerstellung",
+    label: "Mieterlistenerstellung",
     kurz: "Mieterliste",
     beschreibung:
       "Überführt Mietverträge, Mieterlisten oder Sollstellungen in die Grenz-Mietaufstellung (Excel) mit IST/SOLL, Auswertung und Rendite.",
@@ -78,11 +82,12 @@ export const KI_TOOLS: KiToolDefinition[] = [
       "Mieterliste des Eigentümers, Mietverträge, Sollstellung, Hausverwaltungs-Export",
     platzhalter:
       "z. B. Mieterliste für Alter Grenzweg 39-41, Kaufpreis 1,975 Mio. €",
+    bereich: "dokumente",
   },
   {
     id: "dcf",
     pfad: "/tools/dcf",
-    label: "KI-basierte DCF-Kalkulation",
+    label: "DCF-Kalkulation",
     kurz: "DCF-Kalkulation",
     beschreibung:
       "Rechnet einen Discounted Cashflow über 10 Jahre (Excel mit Formeln): Mieten, Bewirtschaftung, Exit, Barwert und IRR.",
@@ -91,11 +96,12 @@ export const KI_TOOLS: KiToolDefinition[] = [
     unterlagen: "Mieterliste, Kaufpreis, Bewirtschaftungskosten, Marktmiete",
     platzhalter:
       "z. B. DCF bei 4,0 Mio. € Kaufpreis, Diskontierungszins 5 %, Exit zum Einstiegsfaktor",
+    bereich: "dokumente",
   },
   {
     id: "kaufpreis",
     pfad: "/tools/kaufpreis",
-    label: "KI-basiertes Kaufpreistool",
+    label: "Kaufpreistool",
     kurz: "Kaufpreistool",
     beschreibung:
       "Füllt das Grenz-Kaufpreistool (Excel): Flächen, Mieten IST/SOLL, Marktmiete und Kaufpreisstaffel mit Faktor und Preis pro m².",
@@ -104,6 +110,7 @@ export const KI_TOOLS: KiToolDefinition[] = [
     unterlagen: "Mieterliste, Flächenaufstellung, Mietspiegel oder Marktmieten",
     platzhalter:
       "z. B. Kaufpreisstaffel ab 4 Mio. € in 200.000-€-Schritten, Marktmiete Wohnen 25 €/m²",
+    bereich: "dokumente",
   },
   {
     id: "marktbericht",
@@ -117,6 +124,7 @@ export const KI_TOOLS: KiToolDefinition[] = [
     unterlagen:
       "Marktberichte von BNP Paribas RE, JLL, CBRE, Cushman & Wakefield, Savills, Colliers als PDF",
     platzhalter: "z. B. Marktbericht 1. Halbjahr 2027",
+    bereich: "berichte",
   },
 ];
 

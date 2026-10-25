@@ -9,7 +9,7 @@ export function ToolsUebersichtPage() {
   return (
     <>
       <PageHeader
-        titel="Tools"
+        titel="KI-Dokumentenerstellung"
         beschreibung="Unterlagen hochladen oder den Objektordner verbinden, die KI erstellt daraus Dokumente im Grenz-&-Co.-Format."
       />
       <PageWrapper>
