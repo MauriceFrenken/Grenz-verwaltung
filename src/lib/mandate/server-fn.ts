@@ -301,6 +301,25 @@ function texteAus(wert: unknown): ReportTexte {
             : 0,
       }))
       .slice(0, 15);
+  if (Array.isArray(w.angebote))
+    werte.angebote = w.angebote
+      .map((g: { bieter?: unknown; betrag?: unknown; stand?: unknown }) => ({
+        bieter: text(g?.bieter, 160),
+        betrag:
+          typeof g?.betrag === "number" && Number.isFinite(g.betrag)
+            ? Math.max(0, Math.round(g.betrag))
+            : null,
+        stand: text(g?.stand, 80),
+      }))
+      .slice(0, 20);
+  if (
+    typeof w.angebotspreis === "number" &&
+    Number.isFinite(w.angebotspreis) &&
+    w.angebotspreis > 0
+  )
+    werte.angebotspreis = Math.round(w.angebotspreis);
+  if (w.bieterNamenZeigen === true) werte.bieterNamenZeigen = true;
+  if (w.ohneAktivitaetsSeite === true) werte.ohneAktivitaetsSeite = true;
   const f = (t.fotos ?? {}) as Record<string, unknown>;
   const pfad = (v: unknown) =>
     typeof v === "string" && v.startsWith("eigentuemer-reports/")
@@ -628,4 +647,26 @@ export const reportVersandProtokollierenFn = createServerFn({ method: "POST" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return ladeReport(data.id);
+  });
+
+/** Aktueller Vermarktungsstand eines Mandats nach Grenz-Vorlage (Reiter „Eigentümer-Report“). */
+export const mandatVermarktungFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => ({
+    supabaseAccessToken: tokenAus(data),
+    sfId: text((data as { sfId?: unknown })?.sfId, 18),
+  }))
+  .handler(async ({ data }) => {
+    await pruefeAufrufer(data.supabaseAccessToken);
+    const admin = createServiceRoleClient();
+    const roh = await ladeMandatRohdaten(admin, data.sfId);
+    const v = await ladeVermarktung(admin, roh);
+    const { interessenten: _weg, ...rest } = v;
+    return {
+      ...rest,
+      angebotspreis: roh.mandat.angebotspreis,
+      hoechstesAngebot:
+        roh.deals
+          .map((d) => d.betrag ?? 0)
+          .reduce((a, b) => Math.max(a, b), 0) || null,
+    };
   });

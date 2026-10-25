@@ -261,3 +261,34 @@ describe("Hilfen", () => {
     expect(s.reduce((a, x) => a + x.anteil, 0)).toBeCloseTo(1);
   });
 });
+
+describe("Seite Aktivitäten & Angebote", () => {
+  it("anonymisiert Bieter und rechnet das höchste Angebot gegen den Angebotspreis", () => {
+    const k = kennzahlen();
+    k.mandat.angebotspreis = 2_000_000;
+    const b = berichtStand(
+      k,
+      {
+        werte: {
+          angebote: [
+            { bieter: "Muster GmbH", betrag: 1_500_000, stand: "Kaufangebot" },
+            { bieter: "Finvia", betrag: 1_900_000, stand: "Verhandlung" },
+          ],
+        },
+      },
+      { freigegeben: false },
+    );
+    expect(b.angebote.map((a) => a.bieter)).toEqual([
+      "Interessent A",
+      "Interessent B",
+    ]);
+    expect(b.angebote[0].betrag).toBe(1_900_000);
+    expect(
+      b.kennzahlen.find((x) => x.label === "Höchstes Angebot"),
+    ).toMatchObject({
+      wert: "1,90 Mio. €",
+      hinweis: "95 % des Angebotspreises",
+    });
+    expect(b.aktivitaetsSeite).toBe(true);
+  });
+});

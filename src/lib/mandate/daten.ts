@@ -9,6 +9,7 @@ import type {
   MitgliedZeile,
   ReportKennzahlen,
 } from "./report";
+import { aktivitaetenJeMonat } from "./report";
 import {
   berechneVermarktung,
   type InteressentInfo,
@@ -288,7 +289,9 @@ export async function ladeMandatRohdaten(
         accountJeKontakt.set(k.sf_id as string, k.account_sf_id as string);
       namen.set(
         k.sf_id as string,
-        k.firma ? `${k.name} (${k.firma})` : (k.name as string),
+        k.firma && k.firma !== k.name
+          ? `${k.name} (${k.firma})`
+          : (k.name as string),
       );
       if (k.email) emails.set(k.sf_id as string, k.email as string);
     }
@@ -419,15 +422,22 @@ export async function ladeVermarktung(
     roh.mandat.beauftragtAm ??
     erste(roh.aktivitaeten.map((a) => a.datum?.slice(0, 10)));
   const objekt = roh.objekt;
-  return berechneVermarktung({
-    mitglieder: roh.mitglieder,
-    deals: roh.deals,
-    aktivitaeten: roh.aktivitaeten,
-    infos,
-    objekttyp: (objekt?.objektart as string) ?? null,
-    objektanschrift: roh.mandat.adresse,
-    ort: (objekt?.ort as string) ?? null,
-    auftraggeber: roh.mandat.eigentuemer,
-    vermarktungsbeginn: beginn,
-  });
+  const heute = new Date().toISOString().slice(0, 10);
+  const verlauf = beginn
+    ? aktivitaetenJeMonat(roh.aktivitaeten, beginn.slice(0, 10), heute)
+    : [];
+  return {
+    ...berechneVermarktung({
+      mitglieder: roh.mitglieder,
+      deals: roh.deals,
+      aktivitaeten: roh.aktivitaeten,
+      infos,
+      objekttyp: (objekt?.objektart as string) ?? null,
+      objektanschrift: roh.mandat.adresse,
+      ort: (objekt?.ort as string) ?? null,
+      auftraggeber: roh.mandat.eigentuemer,
+      vermarktungsbeginn: beginn,
+    }),
+    verlauf,
+  };
 }

@@ -10,6 +10,7 @@ import wortmarkeWeiss from "@/assets/grenz-co-wortmarke-weiss.png";
 import {
   BERICHT_FARBEN as F,
   tortenStuecke,
+  euroKurz,
   type BerichtStand,
 } from "@/lib/mandate/vermarktungsbericht";
 
@@ -33,6 +34,10 @@ function Folie({ children }: { children: ReactNode }) {
     <div
       className="relative w-full overflow-hidden bg-white shadow-sm ring-1 ring-black/10"
       style={{
+        position: "relative",
+        width: "100%",
+        overflow: "hidden",
+        background: "#fff",
         aspectRatio: `${B} / ${H}`,
         containerType: "inline-size",
         fontFamily: "Roboto, 'Helvetica Neue', Arial, sans-serif",
@@ -400,6 +405,172 @@ export function BerichtVorschau({
           <Punkte titel="Weiteres Vorgehen:" punkte={b.weiteresVorgehen} />
         </div>
       </Rahmen>
+      {b.aktivitaetsSeite ? <AktivitaetsFolie b={b} /> : null}
     </div>
+  );
+}
+
+function AktivitaetsFolie({ b }: { b: BerichtStand }) {
+  const breite = (6.85 - 4 * 0.1) / 5;
+  const max = Math.max(1, ...b.verlauf.map((v) => v.wert));
+  const hoechstes = b.kennzahlen.find((k) => k.label === "Höchstes Angebot");
+  return (
+    <Rahmen
+      titel="Aktivitäten & Angebote"
+      untertitel="Vermarktung seit Beginn in Zahlen"
+      seite={4}
+      stempel={b.stempel}
+    >
+      {b.kennzahlen.map((k, i) => (
+        <div
+          key={k.label}
+          style={{
+            ...pos(0.35 + i * (breite + 0.1), 1.61, breite, 1.05),
+            background: F.zeile,
+            borderTop: `${pt(3)} solid ${F.navy}`,
+            padding: pt(6),
+          }}
+        >
+          <div style={{ fontSize: pt(14), color: F.navy, lineHeight: 1.1 }}>
+            {k.wert}
+          </div>
+          <div style={{ fontSize: pt(7.5), marginTop: pt(3) }}>{k.label}</div>
+          {k.hinweis ? (
+            <div style={{ fontSize: pt(6.5), color: F.textHell }}>
+              {k.hinweis}
+            </div>
+          ) : null}
+        </div>
+      ))}
+      {b.verlauf.some((v) => v.wert > 0) ? (
+        <div style={pos(0.35, 2.9, 6.85, 2.3)}>
+          <div
+            style={{
+              fontSize: pt(9),
+              color: F.textHell,
+              textAlign: "center",
+              marginBottom: pt(6),
+            }}
+          >
+            Vermarktungsaktivitäten je Monat (Salesforce)
+          </div>
+          <div
+            style={{ display: "flex", alignItems: "flex-end", height: pt(118) }}
+          >
+            {b.verlauf.map((v) => (
+              <div
+                key={v.label}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                }}
+              >
+                <span style={{ fontSize: pt(7) }}>{v.wert || ""}</span>
+                <div
+                  style={{
+                    width: "55%",
+                    height: pt(Math.max(0.5, (v.wert / max) * 104)),
+                    background: F.navy,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", borderTop: `1px solid ${F.grau}` }}>
+            {b.verlauf.map((v) => (
+              <span
+                key={v.label}
+                style={{ flex: 1, fontSize: pt(6.5), textAlign: "center" }}
+              >
+                {v.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <table
+        style={{
+          ...pos(0.35, 5.35, 6.85),
+          borderCollapse: "collapse",
+          fontSize: pt(9),
+        }}
+      >
+        <tbody>
+          <tr style={{ background: F.navy, color: "#fff" }}>
+            <td style={{ padding: `${pt(3)} ${pt(6)}` }}>Angebote</td>
+            <td style={{ padding: `${pt(3)} ${pt(6)}`, textAlign: "right" }}>
+              Kaufpreis
+            </td>
+            <td style={{ padding: `${pt(3)} ${pt(6)}` }}>Stand</td>
+          </tr>
+          {b.angebote.length ? (
+            b.angebote.slice(0, 6).map((a, i) => (
+              <tr
+                key={i}
+                style={{
+                  background: F.zeile,
+                  borderBottom: `${pt(1.5)} solid #fff`,
+                }}
+              >
+                <td style={{ padding: `${pt(3)} ${pt(6)}` }}>{a.bieter}</td>
+                <td
+                  style={{ padding: `${pt(3)} ${pt(6)}`, textAlign: "right" }}
+                >
+                  {euroKurz(a.betrag)}
+                </td>
+                <td style={{ padding: `${pt(3)} ${pt(6)}` }}>{a.stand}</td>
+              </tr>
+            ))
+          ) : (
+            <tr style={{ background: F.zeile }}>
+              <td
+                colSpan={3}
+                style={{ padding: `${pt(3)} ${pt(6)}`, color: F.textHell }}
+              >
+                Bisher liegen keine Kaufangebote vor.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <div
+        style={{
+          ...pos(7.95, 1.61, 3.3, 1.35),
+          background: F.navy,
+          color: "#fff",
+          padding: pt(14),
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
+        <span style={{ fontSize: pt(8.5) }}>Angebotspreis</span>
+        <span style={{ fontSize: pt(20) }}>{euroKurz(b.angebotspreis)}</span>
+      </div>
+      {hoechstes ? (
+        <div
+          style={{
+            ...pos(7.95, 3.1, 3.3, 1.25),
+            background: "#fff",
+            padding: pt(14),
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          <span style={{ fontSize: pt(8.5) }}>Höchstes Angebot</span>
+          <span style={{ fontSize: pt(16), color: F.navy }}>
+            {hoechstes.wert}
+          </span>
+          {hoechstes.hinweis ? (
+            <span style={{ fontSize: pt(7.5), color: F.textHell }}>
+              {hoechstes.hinweis}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </Rahmen>
   );
 }

@@ -9,7 +9,11 @@ import PptxGenJS from "pptxgenjs";
 import logoWeiss from "@/assets/grenz-co-logo-weiss.png?inline";
 import wortmarkeWeiss from "@/assets/grenz-co-wortmarke-weiss.png?inline";
 
-import { BERICHT_FARBEN, type BerichtStand } from "./vermarktungsbericht";
+import {
+  BERICHT_FARBEN,
+  euroKurz,
+  type BerichtStand,
+} from "./vermarktungsbericht";
 
 export type BerichtFoto = { dataUri: string; breite: number; hoehe: number };
 
@@ -385,5 +389,188 @@ export async function berichtAlsPptx(
       fit: "shrink",
     });
 
+  if (b.aktivitaetsSeite) aktivitaetsFolie(pptx, b);
+
   return (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
+}
+
+/** Folie 4: Kennzahlen, Aktivitäten je Monat, Angebote, Angebotspreis. */
+function aktivitaetsFolie(pptx: PptxGenJS, b: BerichtStand) {
+  const s = pptx.addSlide();
+  rahmen(
+    s,
+    "Aktivitäten & Angebote",
+    "Vermarktung seit Beginn in Zahlen",
+    4,
+    b.stempel,
+  );
+  const breite = (6.85 - 4 * 0.1) / 5;
+  b.kennzahlen.forEach((k, i) => {
+    const x = 0.35 + i * (breite + 0.1);
+    s.addShape("rect", {
+      x,
+      y: 1.61,
+      w: breite,
+      h: 1.05,
+      fill: { color: F.zeile },
+      line: { color: F.zeile },
+    });
+    s.addShape("rect", {
+      x,
+      y: 1.61,
+      w: breite,
+      h: 0.05,
+      fill: { color: F.navy },
+      line: { color: F.navy },
+    });
+    s.addText(
+      [
+        {
+          text: k.wert,
+          options: {
+            fontSize: k.wert.length > 8 ? 13 : 16,
+            color: F.navy,
+            breakLine: true,
+          },
+        },
+        {
+          text: k.label,
+          options: { fontSize: 8, color: F.text, breakLine: !!k.hinweis },
+        },
+        ...(k.hinweis
+          ? [{ text: k.hinweis, options: { fontSize: 7, color: F.textHell } }]
+          : []),
+      ],
+      {
+        x: x + 0.08,
+        y: 1.72,
+        w: breite - 0.16,
+        h: 0.88,
+        fontFace: SCHRIFT,
+        valign: "top",
+        margin: 0,
+        fit: "shrink",
+      },
+    );
+  });
+
+  if (b.verlauf.some((v) => v.wert > 0))
+    s.addChart(
+      pptx.ChartType.bar,
+      [
+        {
+          name: "Aktivitäten",
+          labels: b.verlauf.map((v) => v.label),
+          values: b.verlauf.map((v) => v.wert),
+        },
+      ],
+      {
+        x: 0.25,
+        y: 2.85,
+        w: 7.0,
+        h: 2.35,
+        barDir: "col",
+        chartColors: [F.navy],
+        barGapWidthPct: 60,
+        showTitle: true,
+        title: "Vermarktungsaktivitäten je Monat (Salesforce)",
+        titleFontFace: SCHRIFT,
+        titleFontSize: 10,
+        titleColor: F.textHell,
+        showValue: true,
+        dataLabelFontSize: 8,
+        dataLabelColor: F.text,
+        catAxisLabelFontFace: SCHRIFT,
+        catAxisLabelFontSize: 8,
+        catAxisLabelColor: F.text,
+        valAxisHidden: true,
+        valGridLine: { style: "none" },
+        catAxisLineShow: false,
+        showLegend: false,
+      },
+    );
+
+  const zeilen: Zelle[][] = [
+    ["Angebote", "Kaufpreis", "Stand"].map((t, i) =>
+      zelle(t, {
+        fill: { color: F.navy },
+        color: "FFFFFF",
+        align: i === 1 ? "right" : "left",
+      }),
+    ),
+    ...(b.angebote.length
+      ? b.angebote
+          .slice(0, 6)
+          .map((a) => [
+            zelle(a.bieter),
+            zelle(euroKurz(a.betrag), { align: "right" }),
+            zelle(a.stand),
+          ])
+      : [
+          [
+            zelle("Bisher liegen keine Kaufangebote vor.", {
+              colspan: 3,
+              color: F.textHell,
+            }),
+          ],
+        ]),
+  ];
+  s.addTable(zeilen, {
+    x: 0.35,
+    y: 5.35,
+    w: 6.85,
+    colW: [3.1, 1.6, 2.15],
+    rowH: 0.31,
+  });
+
+  s.addShape("rect", {
+    x: 7.95,
+    y: 1.61,
+    w: 3.3,
+    h: 1.35,
+    fill: { color: F.navy },
+    line: { color: F.navy },
+  });
+  s.addText(
+    [
+      { text: "Angebotspreis", options: { fontSize: 9, breakLine: true } },
+      { text: euroKurz(b.angebotspreis), options: { fontSize: 22 } },
+    ],
+    {
+      x: 8.15,
+      y: 1.75,
+      w: 2.95,
+      h: 1.1,
+      fontFace: SCHRIFT,
+      color: "FFFFFF",
+      valign: "middle",
+      margin: 0,
+    },
+  );
+  const hoechstes = b.kennzahlen.find((k) => k.label === "Höchstes Angebot");
+  if (hoechstes)
+    s.addText(
+      [
+        { text: "Höchstes Angebot", options: { fontSize: 9, breakLine: true } },
+        {
+          text: hoechstes.wert,
+          options: { fontSize: 18, color: F.navy, breakLine: true },
+        },
+        {
+          text: hoechstes.hinweis ?? "",
+          options: { fontSize: 8, color: F.textHell },
+        },
+      ],
+      {
+        x: 7.95,
+        y: 3.1,
+        w: 3.3,
+        h: 1.25,
+        fontFace: SCHRIFT,
+        color: F.text,
+        fill: { color: "FFFFFF" },
+        valign: "middle",
+        margin: [10, 14, 10, 14],
+      },
+    );
 }

@@ -27,6 +27,8 @@ import type { ReportTexte } from "@/lib/mandate/report";
 import type { ReportVoll } from "@/lib/mandate/server-fn";
 import {
   ABSAGEGRUENDE,
+  angeboteAusKennzahlen,
+  euroKurz,
   KUNDENGRUPPEN,
   berichtStand,
   herausforderungenAus,
@@ -527,6 +529,9 @@ export function ReportEditorPage({ sfId, id }: { sfId: string; id: string }) {
                 <TabsTrigger value="texte">
                   Herausforderungen & Vorgehen
                 </TabsTrigger>
+                <TabsTrigger value="angebote">
+                  Aktivitäten & Angebote
+                </TabsTrigger>
                 <TabsTrigger value="interessenten">Interessenten</TabsTrigger>
               </TabsList>
 
@@ -846,6 +851,171 @@ export function ReportEditorPage({ sfId, id }: { sfId: string; id: string }) {
                     }
                     placeholder="Ein Punkt je Zeile"
                   />
+                </section>
+              </TabsContent>
+
+              <TabsContent value="angebote">
+                <section className="flex flex-col gap-4 border border-hairline bg-surface p-5">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      disabled={gesperrt}
+                      checked={!w.ohneAktivitaetsSeite}
+                      onChange={(e) =>
+                        setzeWerte({
+                          ohneAktivitaetsSeite: e.target.checked
+                            ? undefined
+                            : true,
+                        })
+                      }
+                    />
+                    Seite „Aktivitäten & Angebote“ in den Bericht aufnehmen
+                  </label>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="flex flex-col gap-1 text-sm">
+                      <span className="text-xs font-medium text-text-muted">
+                        Angebotspreis (€)
+                      </span>
+                      <Input
+                        type="number"
+                        min={0}
+                        disabled={gesperrt}
+                        value={w.angebotspreis ?? ""}
+                        placeholder={
+                          k.mandat.angebotspreis != null
+                            ? `Salesforce: ${euroKurz(k.mandat.angebotspreis)}`
+                            : "nicht gepflegt"
+                        }
+                        onChange={(e) =>
+                          setzeWerte({
+                            angebotspreis:
+                              e.target.value === ""
+                                ? undefined
+                                : Number(e.target.value),
+                          })
+                        }
+                        className={
+                          w.angebotspreis != null
+                            ? "border-amber-400"
+                            : undefined
+                        }
+                      />
+                    </label>
+                    <label className="flex items-end gap-2 pb-2 text-sm">
+                      <input
+                        type="checkbox"
+                        disabled={gesperrt}
+                        checked={!!w.bieterNamenZeigen}
+                        onChange={(e) =>
+                          setzeWerte({
+                            bieterNamenZeigen: e.target.checked
+                              ? true
+                              : undefined,
+                          })
+                        }
+                      />
+                      Bieternamen zeigen (sonst „Interessent A, B …“)
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-4">
+                    <h2 className="text-sm font-semibold text-heading">
+                      Angebote
+                    </h2>
+                    {w.angebote && !gesperrt ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setzeWerte({ angebote: undefined })}
+                      >
+                        <RotateCcw className="h-4 w-4" /> Salesforce-Angebote
+                      </Button>
+                    ) : null}
+                  </div>
+                  {(w.angebote ?? angeboteAusKennzahlen(k)).map(
+                    (a, i, liste) => {
+                      const aendern = (teil: Partial<typeof a>) =>
+                        setzeWerte({
+                          angebote: liste.map((x, j) =>
+                            j === i ? { ...x, ...teil } : x,
+                          ),
+                        });
+                      const rand = w.angebote ? "h-8 border-amber-400" : "h-8";
+                      return (
+                        <div
+                          key={i}
+                          className="grid grid-cols-[1fr_140px_150px_40px] items-center gap-2"
+                        >
+                          <Input
+                            disabled={gesperrt}
+                            value={a.bieter}
+                            placeholder="Bieter"
+                            onChange={(e) =>
+                              aendern({ bieter: e.target.value })
+                            }
+                            className={rand}
+                          />
+                          <Input
+                            type="number"
+                            min={0}
+                            disabled={gesperrt}
+                            value={a.betrag ?? ""}
+                            placeholder="Kaufpreis €"
+                            onChange={(e) =>
+                              aendern({
+                                betrag:
+                                  e.target.value === ""
+                                    ? null
+                                    : Number(e.target.value),
+                              })
+                            }
+                            className={`${rand} text-right`}
+                          />
+                          <Input
+                            disabled={gesperrt}
+                            value={a.stand}
+                            placeholder="Stand"
+                            onChange={(e) => aendern({ stand: e.target.value })}
+                            className={rand}
+                          />
+                          {!gesperrt ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              aria-label="Angebot entfernen"
+                              onClick={() =>
+                                setzeWerte({
+                                  angebote: liste.filter((_, j) => j !== i),
+                                })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      );
+                    },
+                  )}
+                  {!gesperrt ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="self-start"
+                      onClick={() =>
+                        setzeWerte({
+                          angebote: [
+                            ...(w.angebote ?? angeboteAusKennzahlen(k)),
+                            { bieter: "", betrag: null, stand: "Kaufangebot" },
+                          ],
+                        })
+                      }
+                    >
+                      <Plus className="h-4 w-4" /> Angebot hinzufügen
+                    </Button>
+                  ) : null}
+                  <p className="text-xs text-text-subtle">
+                    Kennzahlen und Monatsverlauf kommen aus Salesforce und
+                    folgen den Werten im Reiter „Vermarktungsstand“.
+                  </p>
                 </section>
               </TabsContent>
 

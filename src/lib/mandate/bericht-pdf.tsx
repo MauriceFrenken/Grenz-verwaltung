@@ -22,6 +22,7 @@ import type { BerichtFoto } from "./bericht-pptx";
 import {
   BERICHT_FARBEN as F,
   tortenStuecke,
+  euroKurz,
   type BerichtStand,
 } from "./vermarktungsbericht";
 
@@ -276,6 +277,233 @@ function Torte({
   );
 }
 
+function AktivitaetsSeite({ b }: { b: BerichtStand }) {
+  const breite = (6.85 - 4 * 0.1) / 5;
+  const max = Math.max(1, ...b.verlauf.map((v) => v.wert));
+  const diagrammH = 1.45;
+  const spalte = b.verlauf.length ? 6.85 / b.verlauf.length : 1;
+  const hoechstes = b.kennzahlen.find((k) => k.label === "Höchstes Angebot");
+  return (
+    <Rahmen
+      titel="Aktivitäten & Angebote"
+      untertitel="Vermarktung seit Beginn in Zahlen"
+      seite={4}
+      stempel={b.stempel}
+    >
+      {b.kennzahlen.map((k, i) => (
+        <View
+          key={k.label}
+          style={{
+            ...abs({
+              x: 0.35 + i * (breite + 0.1),
+              y: 1.61,
+              w: breite,
+              h: 1.05,
+            }),
+            backgroundColor: F.zeile,
+            borderTop: `3pt solid ${F.navy}`,
+            padding: 6,
+          }}
+        >
+          <Text style={{ fontSize: 14, color: F.navy, marginBottom: 3 }}>
+            {k.wert}
+          </Text>
+          <Text style={{ fontSize: 7.5 }}>{k.label}</Text>
+          {k.hinweis ? (
+            <Text style={{ fontSize: 6.5, color: F.textHell, marginTop: 2 }}>
+              {k.hinweis}
+            </Text>
+          ) : null}
+        </View>
+      ))}
+
+      {b.verlauf.some((v) => v.wert > 0) ? (
+        <View style={abs({ x: 0.35, y: 2.9, w: 6.85, h: 2.3 })}>
+          <Text
+            style={{
+              fontSize: 9,
+              color: F.textHell,
+              textAlign: "center",
+              marginBottom: 6,
+            }}
+          >
+            Vermarktungsaktivitäten je Monat (Salesforce)
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-end",
+              height: (diagrammH + 0.2) * Z,
+            }}
+          >
+            {b.verlauf.map((v) => (
+              <View
+                key={v.label}
+                style={{ width: spalte * Z, alignItems: "center" }}
+              >
+                <Text style={{ fontSize: 7, marginBottom: 2 }}>
+                  {v.wert || ""}
+                </Text>
+                <View
+                  style={{
+                    width: Math.min(0.45, spalte * 0.6) * Z,
+                    height: Math.max(0.5, (v.wert / max) * diagrammH * Z),
+                    backgroundColor: F.navy,
+                  }}
+                />
+              </View>
+            ))}
+          </View>
+          <View
+            style={{
+              flexDirection: "row",
+              borderTop: `0.5pt solid ${F.grau}`,
+              paddingTop: 3,
+            }}
+          >
+            {b.verlauf.map((v) => (
+              <Text
+                key={v.label}
+                style={{
+                  width: spalte * Z,
+                  fontSize: 6.5,
+                  textAlign: "center",
+                }}
+              >
+                {v.label}
+              </Text>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      <View
+        style={{
+          position: "absolute",
+          left: 0.35 * Z,
+          top: 5.35 * Z,
+          width: 6.85 * Z,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            backgroundColor: F.navy,
+            minHeight: 0.31 * Z,
+            alignItems: "center",
+          }}
+        >
+          {[
+            ["Angebote", 3.1, "left"],
+            ["Kaufpreis", 1.6, "right"],
+            ["Stand", 2.15, "left"],
+          ].map(([t, w, a]) => (
+            <Text
+              key={t as string}
+              style={{
+                width: (w as number) * Z,
+                paddingHorizontal: 6,
+                fontSize: 9,
+                color: "#FFFFFF",
+                textAlign: a as "left" | "right",
+              }}
+            >
+              {t as string}
+            </Text>
+          ))}
+        </View>
+        {b.angebote.length ? (
+          b.angebote.slice(0, 6).map((a, i) => (
+            <View
+              key={i}
+              style={{
+                flexDirection: "row",
+                backgroundColor: F.zeile,
+                borderBottom: "1.5pt solid #FFFFFF",
+                minHeight: 0.31 * Z,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{ width: 3.1 * Z, paddingHorizontal: 6, fontSize: 9 }}
+              >
+                {a.bieter}
+              </Text>
+              <Text
+                style={{
+                  width: 1.6 * Z,
+                  paddingHorizontal: 6,
+                  fontSize: 9,
+                  textAlign: "right",
+                }}
+              >
+                {euroKurz(a.betrag)}
+              </Text>
+              <Text
+                style={{ width: 2.15 * Z, paddingHorizontal: 6, fontSize: 9 }}
+              >
+                {a.stand}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <View
+            style={{
+              backgroundColor: F.zeile,
+              minHeight: 0.31 * Z,
+              justifyContent: "center",
+            }}
+          >
+            <Text
+              style={{ paddingHorizontal: 6, fontSize: 9, color: F.textHell }}
+            >
+              Bisher liegen keine Kaufangebote vor.
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View
+        style={{
+          ...abs({ x: 7.95, y: 1.61, w: 3.3, h: 1.35 }),
+          backgroundColor: F.navy,
+          padding: 14,
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ fontSize: 8.5, color: "#FFFFFF", marginBottom: 4 }}>
+          Angebotspreis
+        </Text>
+        <Text style={{ fontSize: 20, color: "#FFFFFF" }}>
+          {euroKurz(b.angebotspreis)}
+        </Text>
+      </View>
+      {hoechstes ? (
+        <View
+          style={{
+            ...abs({ x: 7.95, y: 3.1, w: 3.3, h: 1.25 }),
+            backgroundColor: "#FFFFFF",
+            padding: 14,
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 8.5, marginBottom: 4 }}>
+            Höchstes Angebot
+          </Text>
+          <Text style={{ fontSize: 16, color: F.navy, marginBottom: 3 }}>
+            {hoechstes.wert}
+          </Text>
+          {hoechstes.hinweis ? (
+            <Text style={{ fontSize: 7.5, color: F.textHell }}>
+              {hoechstes.hinweis}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+    </Rahmen>
+  );
+}
+
 function Punkte({ titel, punkte }: { titel: string; punkte: string[] }) {
   if (!punkte.length) return null;
   return (
@@ -458,6 +686,7 @@ function BerichtDokument({
           <Punkte titel="Weiteres Vorgehen:" punkte={b.weiteresVorgehen} />
         </View>
       </Rahmen>
+      {b.aktivitaetsSeite ? <AktivitaetsSeite b={b} /> : null}
     </Document>
   );
 }

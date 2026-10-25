@@ -112,6 +112,8 @@ export type VermarktungAusSalesforce = {
   kundengruppen: Record<KundengruppeSchluessel, number>;
   absagegruende: { grund: string; anzahl: number }[];
   interessenten: InteressentEinordnung[];
+  /** Salesforce-Aktivitäten je Monat seit Vermarktungsbeginn (ab 25.10.2026). */
+  verlauf?: { monat: string; anzahl: number }[];
 };
 
 /** Händische Werte aus der App; jeder gesetzte Wert ersetzt den Salesforce-Vorschlag. */
@@ -126,6 +128,19 @@ export type BerichtWerte = {
   status?: Partial<Record<StatusSchluessel, number>>;
   kundengruppen?: Partial<Record<KundengruppeSchluessel, number>>;
   absagegruende?: { grund: string; anzahl: number }[];
+  /** Angebote als ganze Liste; ersetzt die Angebote aus Salesforce. */
+  angebote?: BerichtAngebot[];
+  angebotspreis?: number;
+  /** Bieter im Bericht als „Interessent A, B …“ zeigen (Standard: ja). */
+  bieterNamenZeigen?: boolean;
+  /** Seite „Aktivitäten & Angebote“ weglassen. */
+  ohneAktivitaetsSeite?: boolean;
+};
+
+export type BerichtAngebot = {
+  bieter: string;
+  betrag: number | null;
+  stand: string;
 };
 
 export type BerichtFotos = { titel?: string | null; objekt?: string | null };
@@ -541,7 +556,49 @@ export type BerichtStand = {
   herausforderungen: string[];
   weiteresVorgehen: string[];
   stempel: string | null;
+  angebotspreis: number | null;
+  /** Angebote, wie sie gedruckt werden (ggf. anonymisiert), höchstes zuerst. */
+  angebote: BerichtAngebot[];
+  kennzahlen: { label: string; wert: string; hinweis?: string }[];
+  verlauf: { label: string; wert: number }[];
+  aktivitaetsSeite: boolean;
 };
+
+/** Angebote aus Salesforce in der Form des Berichts. */
+export function angeboteAusKennzahlen(k: ReportKennzahlen): BerichtAngebot[] {
+  return k.angebote.map((a) => ({
+    bieter: a.bieter,
+    betrag: a.betrag,
+    stand: phaseKurz(a.phase),
+  }));
+}
+
+const PHASE_KURZ: Record<string, string> = {
+  "initial interest": "Erstes Interesse",
+  "data room": "Prüfung Unterlagen",
+  "closed lost": "Abgesagt",
+  "invoice paid": "Beurkundet",
+  "closed won": "Beurkundet",
+  kaufangebot: "Kaufangebot",
+  verhandlung: "In Verhandlung",
+};
+
+function phaseKurz(phase: string | null): string {
+  if (!phase) return "Kaufangebot";
+  return PHASE_KURZ[phase.trim().toLowerCase()] ?? phase;
+}
+
+export function euroKurz(n: number | null | undefined): string {
+  if (n == null) return "–";
+  if (n >= 1_000_000)
+    return `${(n / 1_000_000).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Mio. €`;
+  return `${n.toLocaleString("de-DE", { maximumFractionDigits: 0 })} €`;
+}
+
+function prozent(teil: number, ganz: number): string {
+  if (!ganz) return "–";
+  return `${Math.round((teil / ganz) * 100).toLocaleString("de-DE")} %`;
+}
 
 function gesetzt(wert: string | undefined): wert is string {
   return typeof wert === "string" && wert.trim() !== "";
@@ -641,6 +698,7 @@ export function berichtStand(
       .map((t) => t.trim())
       .filter(Boolean),
     stempel: optionen.freigegeben ? null : "ENTWURF",
+    ...aktivitaetsTeil(k, w, status),
   };
 }
 
@@ -710,4 +768,71 @@ export function tortenStuecke(
       },
     ];
   });
+}
+
+function aktivitaetsTeil(
+  k: ReportKennzahlen,
+  w: BerichtWerte,
+  status: (Zeile & { key: StatusSchluessel })[],
+) {
+  const wert = (key: StatusSchluessel) =>
+    status.find((s) => s.key === key)?.wert ?? 0;
+  const angesprochen = status.reduce((s, x) => s + x.wert, 0);
+  const rueckmeldungen = angesprochen - wert("exposeInPruefung");
+  const besichtigungen =
+    wert("besichtigung") +
+    wert("pruefungNachBesichtigung") +
+    wert("kaufangebot");
+  const roh = (w.angebote ?? angeboteAusKennzahlen(k))
+    .filter((a) => a.bieter.trim() || a.betrag != null)
+    .sort((a, b) => (b.betrag ?? 0) - (a.betrag ?? 0));
+  const angebote = w.bieterNamenZeigen
+    ? roh
+    : roh.map((a, i) => ({
+        ...a,
+        bieter: `Interessent ${String.fromCharCode(65 + (i % 26))}`,
+      }));
+  const angebotspreis =
+    w.angebotspreis != null && w.angebotspreis > 0
+      ? w.angebotspreis
+      : k.mandat.angebotspreis;
+  const hoechstes = roh.find((a) => a.betrag != null)?.betrag ?? null;
+  const kaufangebote = Math.max(wert("kaufangebot"), roh.length);
+  const verlaufRoh = k.vermarktung?.verlauf ?? k.aktivitaeten.jeMonat ?? [];
+  const verlauf = verlaufRoh.slice(-12).map((m) => ({
+    label: `${MONATE[Number(m.monat.slice(5, 7)) - 1].slice(0, 3)} ${m.monat.slice(2, 4)}`,
+    wert: m.anzahl,
+  }));
+  return {
+    angebotspreis: angebotspreis ?? null,
+    angebote,
+    kennzahlen: [
+      {
+        label: "Angesprochene Investoren",
+        wert: angesprochen.toLocaleString("de-DE"),
+      },
+      {
+        label: "Rückmeldungen",
+        wert: rueckmeldungen.toLocaleString("de-DE"),
+        hinweis: `Quote ${prozent(rueckmeldungen, angesprochen)}`,
+      },
+      {
+        label: "Besichtigungen",
+        wert: besichtigungen.toLocaleString("de-DE"),
+      },
+      { label: "Kaufangebote", wert: kaufangebote.toLocaleString("de-DE") },
+      {
+        label: "Höchstes Angebot",
+        wert: euroKurz(hoechstes),
+        hinweis:
+          hoechstes && angebotspreis
+            ? `${prozent(hoechstes, angebotspreis)} des Angebotspreises`
+            : angebotspreis
+              ? `Angebotspreis ${euroKurz(angebotspreis)}`
+              : undefined,
+      },
+    ],
+    verlauf,
+    aktivitaetsSeite: !w.ohneAktivitaetsSeite,
+  };
 }
