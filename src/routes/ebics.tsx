@@ -1,11 +1,11 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-/** Alte Adresse: Kontoumsätze stehen jetzt unter Finanzen. */
+/** Alte Adresse: Kontoumsätze stehen jetzt unter Kennzahlen → Liquidität. */
 export const Route = createFileRoute("/ebics")({
   beforeLoad: () => {
     throw redirect({
-      to: "/finanzen",
-      search: { reiter: "konto" },
+      to: "/kennzahlen",
+      search: { tab: "liquiditaet" },
       replace: true,
     });
   },

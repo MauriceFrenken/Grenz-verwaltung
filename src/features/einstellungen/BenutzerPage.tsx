@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { EinstellungenReiter } from "./EinstellungenReiter";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { LoeschenDialog } from "@/components/shared/LoeschenDialog";
@@ -108,8 +107,7 @@ export function BenutzerPage() {
   return (
     <>
       <PageHeader
-        titel="Einstellungen"
-        reiter={<EinstellungenReiter aktiv="benutzer" />}
+        titel="Benutzer"
         aktionen={
           <Dialog open={dialogOffen} onOpenChange={setDialogOffen}>
             <DialogTrigger asChild>

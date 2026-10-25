@@ -4,7 +4,6 @@ import { toast } from "sonner";
 
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { EinstellungenReiter } from "./EinstellungenReiter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -130,8 +129,7 @@ export function VorlagenPage() {
   return (
     <>
       <PageHeader
-        titel="Einstellungen"
-        reiter={<EinstellungenReiter aktiv="vorlagen" />}
+        titel="Design-Vorlagen"
         beschreibung="Grenz-Design für Exposé, Teaser, Eigentümer-Report und Bewertung. PDF und PowerPoint nutzen dieselbe Vorlage."
       />
       <PageWrapper>

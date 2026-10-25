@@ -16,12 +16,12 @@ import { Route as EbicsRouteImport } from './routes/ebics'
 import { Route as EinladungRouteImport } from './routes/einladung'
 import { Route as EinstellungenRouteImport } from './routes/einstellungen'
 import { Route as ExposesRouteImport } from './routes/exposes'
-import { Route as FinanzenRouteImport } from './routes/finanzen'
-import { Route as GeschaeftszahlenRouteImport } from './routes/geschaeftszahlen'
 import { Route as ImpressumRouteImport } from './routes/impressum'
+import { Route as InvestorenRouteImport } from './routes/investoren'
 import { Route as KennzahlenRouteImport } from './routes/kennzahlen'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as VerkaeuferRouteImport } from './routes/verkaeufer'
 import { Route as EinstellungenIndexRouteImport } from './routes/einstellungen.index'
 import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
 import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
@@ -36,6 +36,7 @@ import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callba
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
+import { Route as ApiCronMarktRadarRouteImport } from './routes/api.cron.markt-radar'
 import { Route as ApiCronSalesforceSyncRouteImport } from './routes/api.cron.salesforce-sync'
 import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.index'
 import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
@@ -83,19 +84,14 @@ const ExposesRoute = ExposesRouteImport.update({
   path: '/exposes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FinanzenRoute = FinanzenRouteImport.update({
-  id: '/finanzen',
-  path: '/finanzen',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GeschaeftszahlenRoute = GeschaeftszahlenRouteImport.update({
-  id: '/geschaeftszahlen',
-  path: '/geschaeftszahlen',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ImpressumRoute = ImpressumRouteImport.update({
   id: '/impressum',
   path: '/impressum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvestorenRoute = InvestorenRouteImport.update({
+  id: '/investoren',
+  path: '/investoren',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KennzahlenRoute = KennzahlenRouteImport.update({
@@ -111,6 +107,11 @@ const PasswortZuruecksetzenRoute = PasswortZuruecksetzenRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerkaeuferRoute = VerkaeuferRouteImport.update({
+  id: '/verkaeufer',
+  path: '/verkaeufer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EinstellungenIndexRoute = EinstellungenIndexRouteImport.update({
@@ -184,6 +185,11 @@ const ApiCronExposeAnalyseRoute = ApiCronExposeAnalyseRouteImport.update({
   path: '/api/cron/expose-analyse',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronMarktRadarRoute = ApiCronMarktRadarRouteImport.update({
+  id: '/api/cron/markt-radar',
+  path: '/api/cron/markt-radar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronSalesforceSyncRoute = ApiCronSalesforceSyncRouteImport.update({
   id: '/api/cron/salesforce-sync',
   path: '/api/cron/salesforce-sync',
@@ -249,12 +255,12 @@ export interface FileRoutesByFullPath {
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
   '/exposes': typeof ExposesRouteWithChildren
-  '/finanzen': typeof FinanzenRoute
-  '/geschaeftszahlen': typeof GeschaeftszahlenRoute
   '/impressum': typeof ImpressumRoute
+  '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verkaeufer': typeof VerkaeuferRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -269,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/mandate/': typeof MandateIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
@@ -287,12 +294,12 @@ export interface FileRoutesByTo {
   '/datenschutz': typeof DatenschutzRoute
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
-  '/finanzen': typeof FinanzenRoute
-  '/geschaeftszahlen': typeof GeschaeftszahlenRoute
   '/impressum': typeof ImpressumRoute
+  '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verkaeufer': typeof VerkaeuferRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -306,6 +313,7 @@ export interface FileRoutesByTo {
   '/mandate': typeof MandateIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
@@ -327,12 +335,12 @@ export interface FileRoutesById {
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
   '/exposes': typeof ExposesRouteWithChildren
-  '/finanzen': typeof FinanzenRoute
-  '/geschaeftszahlen': typeof GeschaeftszahlenRoute
   '/impressum': typeof ImpressumRoute
+  '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verkaeufer': typeof VerkaeuferRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -347,6 +355,7 @@ export interface FileRoutesById {
   '/mandate/': typeof MandateIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
@@ -369,12 +378,12 @@ export interface FileRouteTypes {
     | '/einladung'
     | '/einstellungen'
     | '/exposes'
-    | '/finanzen'
-    | '/geschaeftszahlen'
     | '/impressum'
+    | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
+    | '/verkaeufer'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -389,6 +398,7 @@ export interface FileRouteTypes {
     | '/mandate/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/markt-radar'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
@@ -407,12 +417,12 @@ export interface FileRouteTypes {
     | '/datenschutz'
     | '/ebics'
     | '/einladung'
-    | '/finanzen'
-    | '/geschaeftszahlen'
     | '/impressum'
+    | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
+    | '/verkaeufer'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -426,6 +436,7 @@ export interface FileRouteTypes {
     | '/mandate'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/markt-radar'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
@@ -446,12 +457,12 @@ export interface FileRouteTypes {
     | '/einladung'
     | '/einstellungen'
     | '/exposes'
-    | '/finanzen'
-    | '/geschaeftszahlen'
     | '/impressum'
+    | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
+    | '/verkaeufer'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -466,6 +477,7 @@ export interface FileRouteTypes {
     | '/mandate/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/markt-radar'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
@@ -487,17 +499,18 @@ export interface RootRouteChildren {
   EinladungRoute: typeof EinladungRoute
   EinstellungenRoute: typeof EinstellungenRouteWithChildren
   ExposesRoute: typeof ExposesRouteWithChildren
-  FinanzenRoute: typeof FinanzenRoute
-  GeschaeftszahlenRoute: typeof GeschaeftszahlenRoute
   ImpressumRoute: typeof ImpressumRoute
+  InvestorenRoute: typeof InvestorenRoute
   KennzahlenRoute: typeof KennzahlenRoute
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  VerkaeuferRoute: typeof VerkaeuferRoute
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
   MandateIndexRoute: typeof MandateIndexRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
+  ApiCronMarktRadarRoute: typeof ApiCronMarktRadarRoute
   ApiCronSalesforceSyncRoute: typeof ApiCronSalesforceSyncRoute
   MandateSfIdBewertungRoute: typeof MandateSfIdBewertungRoute
   MandateSfIdExposesRoute: typeof MandateSfIdExposesRoute
@@ -560,25 +573,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExposesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/finanzen': {
-      id: '/finanzen'
-      path: '/finanzen'
-      fullPath: '/finanzen'
-      preLoaderRoute: typeof FinanzenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/geschaeftszahlen': {
-      id: '/geschaeftszahlen'
-      path: '/geschaeftszahlen'
-      fullPath: '/geschaeftszahlen'
-      preLoaderRoute: typeof GeschaeftszahlenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/impressum': {
       id: '/impressum'
       path: '/impressum'
       fullPath: '/impressum'
       preLoaderRoute: typeof ImpressumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/investoren': {
+      id: '/investoren'
+      path: '/investoren'
+      fullPath: '/investoren'
+      preLoaderRoute: typeof InvestorenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kennzahlen': {
@@ -600,6 +606,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verkaeufer': {
+      id: '/verkaeufer'
+      path: '/verkaeufer'
+      fullPath: '/verkaeufer'
+      preLoaderRoute: typeof VerkaeuferRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/einstellungen/': {
@@ -698,6 +711,13 @@ declare module '@tanstack/react-router' {
       path: '/api/cron/expose-analyse'
       fullPath: '/api/cron/expose-analyse'
       preLoaderRoute: typeof ApiCronExposeAnalyseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/markt-radar': {
+      id: '/api/cron/markt-radar'
+      path: '/api/cron/markt-radar'
+      fullPath: '/api/cron/markt-radar'
+      preLoaderRoute: typeof ApiCronMarktRadarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cron/salesforce-sync': {
@@ -839,17 +859,18 @@ const rootRouteChildren: RootRouteChildren = {
   EinladungRoute: EinladungRoute,
   EinstellungenRoute: EinstellungenRouteWithChildren,
   ExposesRoute: ExposesRouteWithChildren,
-  FinanzenRoute: FinanzenRoute,
-  GeschaeftszahlenRoute: GeschaeftszahlenRoute,
   ImpressumRoute: ImpressumRoute,
+  InvestorenRoute: InvestorenRoute,
   KennzahlenRoute: KennzahlenRoute,
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  VerkaeuferRoute: VerkaeuferRoute,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
   MandateIndexRoute: MandateIndexRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
+  ApiCronMarktRadarRoute: ApiCronMarktRadarRoute,
   ApiCronSalesforceSyncRoute: ApiCronSalesforceSyncRoute,
   MandateSfIdBewertungRoute: MandateSfIdBewertungRoute,
   MandateSfIdExposesRoute: MandateSfIdExposesRoute,

@@ -608,10 +608,10 @@ function Finanzen({ finanzen }: { finanzen: KennzahlenDto }) {
         </BarChart>
       </ChartContainer>
       <Link
-        to="/finanzen"
+        to="/kennzahlen"
         className="self-start text-xs font-medium text-brand-text hover:underline"
       >
-        Zu den Finanzen →
+        Alle Kennzahlen →
       </Link>
     </div>
   );
@@ -656,9 +656,9 @@ function Schnellzugriff({ daten }: { daten: UebersichtDto }) {
       icon: FileText,
     },
     {
-      to: "/geschaeftszahlen",
-      label: "Geschäftszahlen",
-      zusatz: "Pipeline, Funnel und Abschlüsse",
+      to: "/kennzahlen",
+      label: "Kennzahlen",
+      zusatz: "Finanzen und Maklergeschäft",
       icon: ChartColumn,
     },
   ] as const;
