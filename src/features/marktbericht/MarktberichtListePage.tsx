@@ -11,6 +11,8 @@ import { formatDate } from "@/lib/format";
 import type { MarktberichtZeile } from "@/lib/marktbericht/server-fn";
 import type { PeriodenArt } from "@/lib/marktbericht/typen";
 
+import { MarktberichtBibliothek } from "./MarktberichtBibliothek";
+
 const STATUS: Record<MarktberichtZeile["status"], string> = {
   entwurf: "Entwurf",
   freigegeben: "Freigegeben",
@@ -95,7 +97,7 @@ export function MarktberichtListePage() {
     <>
       <PageHeader
         titel="Marktbericht Zinshäuser Rheinland"
-        beschreibung="Halbjahres- und Jahresbericht im Grenz-&-Co.-Design. Grundlage sind die eigenen Daten (Exposé-Eingang, Ankaufsprofile, Salesforce, Markt-Radar), die Zinsen der Bundesbank und zitierte Kennzahlen großer Häuser."
+        beschreibung="Halbjahres- und Jahresbericht im Grenz-&-Co.-Design. Grundlage sind die eigenen Daten (Exposé-Eingang, Ankaufsprofile, Salesforce, Markt-Radar), die Zinsen der Bundesbank und die automatisch ausgelesenen Marktberichte großer Häuser."
       />
       <PageWrapper>
         <div className="flex max-w-5xl flex-col gap-6">
@@ -202,6 +204,8 @@ export function MarktberichtListePage() {
               </ul>
             )}
           </section>
+
+          <MarktberichtBibliothek token={token} />
         </div>
       </PageWrapper>
     </>

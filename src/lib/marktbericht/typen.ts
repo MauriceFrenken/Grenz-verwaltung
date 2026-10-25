@@ -118,6 +118,12 @@ export type Benchmark = {
   zitat?: string;
   /** KI-Auszüge aus hochgeladenen Berichten sind ungeprüft, bis ein Nutzer sie bestätigt. Nur geprüfte Werte werden gedruckt. */
   geprueft: boolean;
+  /** automatisch = Zitat und Zahl wurden im Originaltext des Dokuments gefunden. */
+  pruefung?: "automatisch" | "nutzer";
+  /** Bedeutung für einen Zinshaus-Bericht Rheinland, 0 bis 100 (aus der Auslese). */
+  relevanz?: number;
+  /** Herkunft aus der Bibliothek (marktbericht_dokumente.id). */
+  dokumentId?: string;
 };
 
 export type Trend = "steigend" | "stabil" | "fallend";

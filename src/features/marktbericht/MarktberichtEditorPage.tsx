@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Download,
   FileUp,
+  Library,
   Loader2,
   Plus,
   RefreshCw,
@@ -142,7 +143,15 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
   const setzeWert = (i: number, teil: Partial<Benchmark> | null) => {
     setWerte((liste) => {
       const neu = [...liste];
-      if (teil) neu[i] = { ...neu[i], ...teil };
+      // Geänderte Werte sind nicht mehr automatisch belegt, sondern vom Nutzer verantwortet.
+      if (teil)
+        neu[i] = {
+          ...neu[i],
+          ...(neu[i].pruefung === "automatisch" && !("geprueft" in teil)
+            ? { pruefung: "nutzer" as const }
+            : {}),
+          ...teil,
+        };
       else neu.splice(i, 1);
       return neu;
     });
@@ -198,8 +207,28 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
       });
       setWerte((liste) => [...liste, ...neu]);
       setGeaendert(true);
+      const belegt = neu.filter((w) => w.geprueft).length;
       toast.success(
-        `${neu.length} Kennzahlen ausgelesen. Bitte je Wert prüfen und bestätigen.`,
+        `${neu.length} Kennzahlen ausgelesen, ${belegt} automatisch im Originaltext belegt.${neu.length > belegt ? " Die übrigen bitte prüfen." : ""}`,
+      );
+    });
+
+  const ausBibliothek = () =>
+    mitBusy("bibliothek", async () => {
+      const { marktberichtBibliothekWerteFn } =
+        await import("@/lib/marktbericht/quellen-server-fn");
+      const { benchmarksZusammenfuehren } =
+        await import("@/lib/marktbericht/quellen");
+      const neu = await marktberichtBibliothekWerteFn({
+        data: { supabaseAccessToken: token, id },
+      });
+      const r = benchmarksZusammenfuehren(werte, neu);
+      setWerte(r.benchmarks);
+      if (r.hinzugefuegt) setGeaendert(true);
+      toast.success(
+        r.hinzugefuegt
+          ? `${r.hinzugefuegt} Vergleichswerte aus der Bibliothek übernommen. Bitte speichern.`
+          : "Keine neuen Vergleichswerte für diese Periode in der Bibliothek.",
       );
     });
 
@@ -462,6 +491,15 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
                       size="sm"
                       variant="outline"
                       disabled={!!busy}
+                      onClick={() => void ausBibliothek()}
+                    >
+                      {symbol("bibliothek") ?? <Library className="h-4 w-4" />}
+                      Aus Bibliothek übernehmen
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!!busy}
                       onClick={() => dateiInput.current?.click()}
                     >
                       {symbol("auslesen") ?? <FileUp className="h-4 w-4" />}
@@ -481,10 +519,17 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
                 ) : null}
               </div>
               <p className="text-xs text-text-subtle">
-                PDF von BNP Paribas RE, JLL, CBRE, Cushman & Wakefield, Savills,
-                Colliers oder dem Gutachterausschuss hochladen (bis 3 MB). Die
-                KI liest Kennzahlen mit Seite und Zitat aus; gedruckt werden nur
-                bestätigte Werte, immer mit Quelle.
+                Die Berichte von BNP Paribas RE, JLL, CBRE, Cushman & Wakefield,
+                Savills, Colliers, Engel & Völkers, den Gutachterausschüssen und
+                weiteren Häusern werden automatisch gesucht und ausgelesen
+                (siehe{" "}
+                <Link to="/tools/marktbericht" className="underline">
+                  Bibliothek
+                </Link>
+                ). Werte, deren Zitat samt Zahl im Originaltext steht, gelten
+                als belegt. Gedruckt werden nur geprüfte Werte, immer mit
+                Quelle. Berichte hinter einer Registrierung als PDF hochladen
+                (bis 3 MB).
                 {ungeprueft
                   ? ` ${ungeprueft} Wert(e) noch nicht bestätigt.`
                   : ""}
@@ -584,6 +629,19 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
                       {w.zitat ? (
                         <p className="text-xs text-text-muted">
                           Seite {w.seite ?? "?"}: „{w.zitat}“
+                          {w.url ? (
+                            <>
+                              {" "}
+                              <a
+                                href={w.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="underline"
+                              >
+                                Quelle öffnen
+                              </a>
+                            </>
+                          ) : null}
                         </p>
                       ) : null}
                       {!gesperrt ? (
@@ -593,10 +651,15 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
                               type="checkbox"
                               checked={w.geprueft}
                               onChange={(e) =>
-                                setzeWert(i, { geprueft: e.target.checked })
+                                setzeWert(i, {
+                                  geprueft: e.target.checked,
+                                  pruefung: "nutzer",
+                                })
                               }
                             />
-                            Geprüft, im Bericht zitieren
+                            {w.geprueft && w.pruefung === "automatisch"
+                              ? "Automatisch belegt (Zitat im Originaltext), im Bericht zitieren"
+                              : "Geprüft, im Bericht zitieren"}
                           </label>
                           <Button
                             size="sm"
