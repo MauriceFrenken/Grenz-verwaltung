@@ -34,6 +34,8 @@ import { Route as ExposesKarteRouteImport } from './routes/exposes.karte'
 import { Route as MandateIndexRouteImport } from './routes/mandate.index'
 import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
+import { Route as ToolsIndexRouteImport } from './routes/tools.index'
+import { Route as ToolsToolRouteImport } from './routes/tools.$tool'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
 import { Route as ApiCronMarktRadarRouteImport } from './routes/api.cron.markt-radar'
@@ -46,6 +48,8 @@ import { Route as MandateSfIdExposesRouteImport } from './routes/mandate.$sfId.e
 import { Route as MandateSfIdInteressentenRouteImport } from './routes/mandate.$sfId.interessenten'
 import { Route as MandateSfIdMatchingRouteImport } from './routes/mandate.$sfId.matching'
 import { Route as MandateSfIdReportsRouteImport } from './routes/mandate.$sfId.reports'
+import { Route as ToolsMarktberichtIndexRouteImport } from './routes/tools.marktbericht.index'
+import { Route as ToolsMarktberichtIdRouteImport } from './routes/tools.marktbericht.$id'
 import { Route as MandateSfIdDokumentIdRouteImport } from './routes/mandate.$sfId.dokument.$id'
 import { Route as MandateSfIdReportIdRouteImport } from './routes/mandate.$sfId.report.$id'
 
@@ -175,6 +179,16 @@ const SalesforceCallbackRoute = SalesforceCallbackRouteImport.update({
   path: '/salesforce/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsIndexRoute = ToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsToolRoute = ToolsToolRouteImport.update({
+  id: '/tools/$tool',
+  path: '/tools/$tool',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronEbicsUmsaetzeRoute = ApiCronEbicsUmsaetzeRouteImport.update({
   id: '/api/cron/ebics-umsaetze',
   path: '/api/cron/ebics-umsaetze',
@@ -236,6 +250,16 @@ const MandateSfIdReportsRoute = MandateSfIdReportsRouteImport.update({
   path: '/mandate/$sfId/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsMarktberichtIndexRoute = ToolsMarktberichtIndexRouteImport.update({
+  id: '/tools/marktbericht/',
+  path: '/tools/marktbericht/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsMarktberichtIdRoute = ToolsMarktberichtIdRouteImport.update({
+  id: '/tools/marktbericht/$id',
+  path: '/tools/marktbericht/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MandateSfIdDokumentIdRoute = MandateSfIdDokumentIdRouteImport.update({
   id: '/mandate/$sfId/dokument/$id',
   path: '/mandate/$sfId/dokument/$id',
@@ -270,9 +294,11 @@ export interface FileRoutesByFullPath {
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
+  '/tools/$tool': typeof ToolsToolRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
   '/mandate/': typeof MandateIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
@@ -283,8 +309,10 @@ export interface FileRoutesByFullPath {
   '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
+  '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
+  '/tools/marktbericht/': typeof ToolsMarktberichtIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
@@ -308,9 +336,11 @@ export interface FileRoutesByTo {
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
+  '/tools/$tool': typeof ToolsToolRoute
   '/einstellungen': typeof EinstellungenIndexRoute
   '/exposes': typeof ExposesIndexRoute
   '/mandate': typeof MandateIndexRoute
+  '/tools': typeof ToolsIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
@@ -321,8 +351,10 @@ export interface FileRoutesByTo {
   '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
+  '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
   '/exposes/import': typeof ExposesImportIndexRoute
   '/mandate/$sfId': typeof MandateSfIdIndexRoute
+  '/tools/marktbericht': typeof ToolsMarktberichtIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
@@ -350,9 +382,11 @@ export interface FileRoutesById {
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
+  '/tools/$tool': typeof ToolsToolRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
   '/mandate/': typeof MandateIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
@@ -363,8 +397,10 @@ export interface FileRoutesById {
   '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
+  '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
+  '/tools/marktbericht/': typeof ToolsMarktberichtIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
@@ -393,9 +429,11 @@ export interface FileRouteTypes {
     | '/exposes/karte'
     | '/microsoft/callback'
     | '/salesforce/callback'
+    | '/tools/$tool'
     | '/einstellungen/'
     | '/exposes/'
     | '/mandate/'
+    | '/tools/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/markt-radar'
@@ -406,8 +444,10 @@ export interface FileRouteTypes {
     | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
+    | '/tools/marktbericht/$id'
     | '/exposes/import/'
     | '/mandate/$sfId/'
+    | '/tools/marktbericht/'
     | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -431,9 +471,11 @@ export interface FileRouteTypes {
     | '/exposes/karte'
     | '/microsoft/callback'
     | '/salesforce/callback'
+    | '/tools/$tool'
     | '/einstellungen'
     | '/exposes'
     | '/mandate'
+    | '/tools'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/markt-radar'
@@ -444,8 +486,10 @@ export interface FileRouteTypes {
     | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
+    | '/tools/marktbericht/$id'
     | '/exposes/import'
     | '/mandate/$sfId'
+    | '/tools/marktbericht'
     | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   id:
@@ -472,9 +516,11 @@ export interface FileRouteTypes {
     | '/exposes/karte'
     | '/microsoft/callback'
     | '/salesforce/callback'
+    | '/tools/$tool'
     | '/einstellungen/'
     | '/exposes/'
     | '/mandate/'
+    | '/tools/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/markt-radar'
@@ -485,8 +531,10 @@ export interface FileRouteTypes {
     | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
+    | '/tools/marktbericht/$id'
     | '/exposes/import/'
     | '/mandate/$sfId/'
+    | '/tools/marktbericht/'
     | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   fileRoutesById: FileRoutesById
@@ -507,7 +555,9 @@ export interface RootRouteChildren {
   VerkaeuferRoute: typeof VerkaeuferRoute
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
+  ToolsToolRoute: typeof ToolsToolRoute
   MandateIndexRoute: typeof MandateIndexRoute
+  ToolsIndexRoute: typeof ToolsIndexRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
   ApiCronMarktRadarRoute: typeof ApiCronMarktRadarRoute
@@ -517,7 +567,9 @@ export interface RootRouteChildren {
   MandateSfIdInteressentenRoute: typeof MandateSfIdInteressentenRoute
   MandateSfIdMatchingRoute: typeof MandateSfIdMatchingRoute
   MandateSfIdReportsRoute: typeof MandateSfIdReportsRoute
+  ToolsMarktberichtIdRoute: typeof ToolsMarktberichtIdRoute
   MandateSfIdIndexRoute: typeof MandateSfIdIndexRoute
+  ToolsMarktberichtIndexRoute: typeof ToolsMarktberichtIndexRoute
   MandateSfIdDokumentIdRoute: typeof MandateSfIdDokumentIdRoute
   MandateSfIdReportIdRoute: typeof MandateSfIdReportIdRoute
 }
@@ -699,6 +751,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SalesforceCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/': {
+      id: '/tools/'
+      path: '/tools'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof ToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/$tool': {
+      id: '/tools/$tool'
+      path: '/tools/$tool'
+      fullPath: '/tools/$tool'
+      preLoaderRoute: typeof ToolsToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/ebics-umsaetze': {
       id: '/api/cron/ebics-umsaetze'
       path: '/api/cron/ebics-umsaetze'
@@ -781,6 +847,20 @@ declare module '@tanstack/react-router' {
       path: '/mandate/$sfId/reports'
       fullPath: '/mandate/$sfId/reports'
       preLoaderRoute: typeof MandateSfIdReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/marktbericht/': {
+      id: '/tools/marktbericht/'
+      path: '/tools/marktbericht'
+      fullPath: '/tools/marktbericht/'
+      preLoaderRoute: typeof ToolsMarktberichtIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/marktbericht/$id': {
+      id: '/tools/marktbericht/$id'
+      path: '/tools/marktbericht/$id'
+      fullPath: '/tools/marktbericht/$id'
+      preLoaderRoute: typeof ToolsMarktberichtIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mandate/$sfId/dokument/$id': {
@@ -867,7 +947,9 @@ const rootRouteChildren: RootRouteChildren = {
   VerkaeuferRoute: VerkaeuferRoute,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
+  ToolsToolRoute: ToolsToolRoute,
   MandateIndexRoute: MandateIndexRoute,
+  ToolsIndexRoute: ToolsIndexRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
   ApiCronMarktRadarRoute: ApiCronMarktRadarRoute,
@@ -877,7 +959,9 @@ const rootRouteChildren: RootRouteChildren = {
   MandateSfIdInteressentenRoute: MandateSfIdInteressentenRoute,
   MandateSfIdMatchingRoute: MandateSfIdMatchingRoute,
   MandateSfIdReportsRoute: MandateSfIdReportsRoute,
+  ToolsMarktberichtIdRoute: ToolsMarktberichtIdRoute,
   MandateSfIdIndexRoute: MandateSfIdIndexRoute,
+  ToolsMarktberichtIndexRoute: ToolsMarktberichtIndexRoute,
   MandateSfIdDokumentIdRoute: MandateSfIdDokumentIdRoute,
   MandateSfIdReportIdRoute: MandateSfIdReportIdRoute,
 }

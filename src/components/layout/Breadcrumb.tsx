@@ -11,10 +11,16 @@ const LABELS: Record<string, string> = {
   "/exposes/import": "Exposé-Import",
   "/exposes/import/salesforce": "Salesforce-Export",
   "/exposes/karte": "Marktkarte",
+  "/tools": "Tools",
+  "/tools/expose": "Exposé-Erstellung",
+  "/tools/marktpreis": "Marktpreisanalyse",
+  "/tools/mieterliste": "Mieterliste",
+  "/tools/dcf": "DCF-Kalkulation",
+  "/tools/kaufpreis": "Kaufpreistool",
+  "/tools/marktbericht": "Marktbericht",
   "/einstellungen": "System",
   "/einstellungen/benutzer": "Benutzer",
   "/einstellungen/integrationen": "Integrationen",
-  "/einstellungen/vorlagen": "Design-Vorlagen",
   "/einstellungen/audit": "Audit-Trail",
 };
 
