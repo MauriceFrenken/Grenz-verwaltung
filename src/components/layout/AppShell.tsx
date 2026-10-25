@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 
 import { useGraphCachePrefetch } from "@/hooks/useGraphCachePrefetch";
+import { useSalesforceAutoAbruf } from "@/hooks/useSalesforceAutoAbruf";
 
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell({ children }: { children: ReactNode }) {
   useGraphCachePrefetch();
+  useSalesforceAutoAbruf();
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">

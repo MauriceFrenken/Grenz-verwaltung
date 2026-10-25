@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import {
   Calculator,
   CheckCircle2,
@@ -20,6 +19,8 @@ import type {
   BewertungVorschau,
   BewertungZeile,
 } from "@/lib/bewertung/server-fn";
+
+import { MandatReiter } from "./MandatReiter";
 
 type Felder = {
   objektart: string;
@@ -184,19 +185,9 @@ export function BewertungPage({ sfId }: { sfId: string }) {
   return (
     <>
       <PageHeader
-        titel={
-          vorschau
-            ? `Indikative Bewertung: ${vorschau.objekt.bezeichnung}`
-            : "Indikative Bewertung"
-        }
+        titel={vorschau ? vorschau.objekt.bezeichnung : "Indikative Bewertung"}
         beschreibung="Faktor- und Vergleichswertverfahren aus Vergleichsdaten. Kein Gutachten."
-        aktionen={
-          <Button variant="outline" asChild>
-            <Link to="/mandate/$sfId" params={{ sfId }}>
-              Zum Mandat
-            </Link>
-          </Button>
-        }
+        reiter={<MandatReiter sfId={sfId} aktiv="bewertung" />}
       />
       <PageWrapper>
         <div className="grid max-w-7xl gap-6 xl:grid-cols-[320px_1fr]">

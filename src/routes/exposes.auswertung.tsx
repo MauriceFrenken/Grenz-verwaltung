@@ -1,7 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ExposeAuswertungPage } from "@/features/exposes/ExposeAuswertungPage";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/** Alte Adresse: die Marktanalyse ist jetzt Kennzahlen → Markt. */
 export const Route = createFileRoute("/exposes/auswertung")({
-  head: () => ({ meta: [{ title: "Exposé-Auswertung — Grenz & Co." }] }),
-  component: ExposeAuswertungPage,
+  beforeLoad: () => {
+    throw redirect({
+      to: "/kennzahlen",
+      search: { tab: "markt" },
+      replace: true,
+    });
+  },
 });

@@ -1,21 +1,29 @@
 import {
   Briefcase,
   ChartColumn,
-  FileText,
   Inbox,
-  Landmark,
+  LayoutDashboard,
   MapPin,
   Palette,
   Plug,
+  Radar,
   ScrollText,
   UserCog,
+  Users,
   type LucideIcon,
 } from "lucide-react";
+
+import type { NavZaehler } from "@/lib/navigation/server-fn";
+
+export type BadgeTon = "emerald" | "amber" | "violet";
 
 export interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
+  /** Zähler aus navZaehlerFn, der als Badge erscheint. */
+  badge?: keyof NavZaehler;
+  badgeTon?: BadgeTon;
 }
 
 export interface NavSection {
@@ -23,31 +31,59 @@ export interface NavSection {
   items: NavItem[];
 }
 
-/** Bereiche der Seitenleiste — auch Grundlage der Übersichtsseite. */
+/**
+ * Seitenleiste nach dem Vorbild von admin.buyanymachine.com:
+ * Hauptmenü, dann die Käuferseite (Vermarktung) und die Verkäuferseite (Akquise), dann System.
+ */
 export const NAVIGATION: NavSection[] = [
   {
-    label: "Steuerung",
-    items: [{ to: "/kennzahlen", label: "Kennzahlen", icon: ChartColumn }],
-  },
-  {
-    label: "Vermarktung",
-    items: [{ to: "/mandate", label: "Mandate", icon: Briefcase }],
-  },
-  {
-    label: "Exposés",
+    label: "Hauptmenü",
     items: [
-      { to: "/exposes", label: "Offene Exposés", icon: Inbox },
-      { to: "/exposes/import", label: "Exposé-Import", icon: FileText },
-      { to: "/exposes/auswertung", label: "Exposé-Auswertung", icon: ChartColumn },
-      { to: "/exposes/karte", label: "Exposé-Karte", icon: MapPin },
+      { to: "/", label: "Übersicht", icon: LayoutDashboard },
+      { to: "/kennzahlen", label: "Kennzahlen", icon: ChartColumn },
     ],
   },
   {
-    label: "Bank",
-    items: [{ to: "/ebics", label: "EBICS", icon: Landmark }],
+    label: "Vermarktung",
+    items: [
+      {
+        to: "/mandate",
+        label: "Mandate",
+        icon: Briefcase,
+        badge: "mandate",
+        badgeTon: "emerald",
+      },
+      {
+        to: "/investoren",
+        label: "Investoren",
+        icon: Users,
+        badge: "investoren",
+        badgeTon: "violet",
+      },
+    ],
   },
   {
-    label: "Einstellungen",
+    label: "Akquise",
+    items: [
+      {
+        to: "/exposes",
+        label: "Angebotseingang",
+        icon: Inbox,
+        badge: "angebotseingang",
+        badgeTon: "amber",
+      },
+      {
+        to: "/verkaeufer",
+        label: "Verkäufer",
+        icon: Radar,
+        badge: "verkaeufer",
+        badgeTon: "violet",
+      },
+      { to: "/exposes/karte", label: "Marktkarte", icon: MapPin },
+    ],
+  },
+  {
+    label: "System",
     items: [
       { to: "/einstellungen/benutzer", label: "Benutzer", icon: UserCog },
       {
@@ -55,7 +91,11 @@ export const NAVIGATION: NavSection[] = [
         label: "Integrationen",
         icon: Plug,
       },
-      { to: "/einstellungen/vorlagen", label: "Design-Vorlagen", icon: Palette },
+      {
+        to: "/einstellungen/vorlagen",
+        label: "Design-Vorlagen",
+        icon: Palette,
+      },
       { to: "/einstellungen/audit", label: "Audit-Trail", icon: ScrollText },
     ],
   },

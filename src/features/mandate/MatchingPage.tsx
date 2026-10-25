@@ -1,5 +1,4 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Loader2, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { formatEuro } from "@/lib/format";
 import type { MatchingDto } from "@/lib/matching/server-fn";
+
+import { MandatReiter } from "./MandatReiter";
 
 function ScoreBalken({ wert, gedimmt }: { wert: number; gedimmt?: boolean }) {
   return (
@@ -164,7 +165,7 @@ export function MatchingPage({ sfId }: { sfId: string }) {
   return (
     <>
       <PageHeader
-        titel={o ? `Käufer-Matching: ${o.name}` : "Käufer-Matching"}
+        titel={o ? o.name : "Käufer-Matching"}
         beschreibung={
           o
             ? [
@@ -177,13 +178,7 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                 .join(" · ")
             : undefined
         }
-        aktionen={
-          <Button variant="outline" asChild>
-            <Link to="/mandate/$sfId" params={{ sfId }}>
-              Zum Mandat
-            </Link>
-          </Button>
-        }
+        reiter={<MandatReiter sfId={sfId} aktiv="matching" />}
       />
       <PageWrapper>
         {!dto ? (

@@ -3,15 +3,18 @@ import { ChevronRight } from "lucide-react";
 
 const LABELS: Record<string, string> = {
   "/": "Übersicht",
-  "/exposes": "Offene Exposés",
+  "/kennzahlen": "Kennzahlen",
+  "/mandate": "Mandate",
+  "/investoren": "Investoren",
+  "/verkaeufer": "Verkäufer",
+  "/exposes": "Angebotseingang",
   "/exposes/import": "Exposé-Import",
   "/exposes/import/salesforce": "Salesforce-Export",
-  "/exposes/auswertung": "Exposé-Auswertung",
-  "/exposes/karte": "Exposé-Karte",
-  "/ebics": "EBICS",
-  "/einstellungen": "Einstellungen",
+  "/exposes/karte": "Marktkarte",
+  "/einstellungen": "System",
   "/einstellungen/benutzer": "Benutzer",
   "/einstellungen/integrationen": "Integrationen",
+  "/einstellungen/vorlagen": "Design-Vorlagen",
   "/einstellungen/audit": "Audit-Trail",
 };
 

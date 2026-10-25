@@ -1,6 +1,6 @@
 ## Agenten-Hinweise
 
-Grenz & Co. Verwaltung — Bereiche: Exposés (Offene Exposés, Exposé-Import), Dokumente (Postfach, Dokumentenablage, Rechnungsfreigabe), EBICS, Einstellungen (Benutzer, Integrationen, Audit-Trail). Die Seitenleiste kommt aus `src/components/layout/navigation.ts`.
+Grenz & Co. Verwaltung — Seitenleiste nach dem Vorbild von admin.buyanymachine.com: Hauptmenü (Übersicht, Kennzahlen mit Reitern Wachstum/Liquidität/Markt über `?tab=`), Vermarktung = Käuferseite (Mandate, Investoren), Akquise = Verkäuferseite (Angebotseingang = eingehende Fremd-Exposés unter `/exposes`, Verkäufer, Marktkarte), System (Benutzer, Integrationen, Design-Vorlagen, Audit-Trail). Badges kommen aus `navZaehlerFn`. Jedes Mandat ist eine Akte mit Reitern (Überblick, Bewertung, Exposé & Teaser, Käufer-Matching, Interessenten, Eigentümer-Report). Investoren und Verkäufer zeigen das Markt-Radar (`src/lib/markt-radar`, Cron `/api/cron/markt-radar` täglich, Claude mit Websuche; Funde nur mit belegter Quell-URL). Die Seitenleiste kommt aus `src/components/layout/navigation.ts`; `/ebics`, `/exposes/auswertung` leiten auf Kennzahlen weiter.
 
 Clientseitig gibt es **kein** Rollen-/Rechte-Matrix-System. Alle authentifizierten Benutzer sehen dieselben Seiten und Aktionen. Rollen existieren nur noch als Benutzer-Attribut (Anzeige / Einladen), nicht als UI-Zugriffskontrolle.
 

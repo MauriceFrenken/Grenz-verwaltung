@@ -17,9 +17,11 @@ import { Route as EinladungRouteImport } from './routes/einladung'
 import { Route as EinstellungenRouteImport } from './routes/einstellungen'
 import { Route as ExposesRouteImport } from './routes/exposes'
 import { Route as ImpressumRouteImport } from './routes/impressum'
+import { Route as InvestorenRouteImport } from './routes/investoren'
 import { Route as KennzahlenRouteImport } from './routes/kennzahlen'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as VerkaeuferRouteImport } from './routes/verkaeufer'
 import { Route as EinstellungenIndexRouteImport } from './routes/einstellungen.index'
 import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
 import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
@@ -34,12 +36,16 @@ import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callba
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
+import { Route as ApiCronMarktRadarRouteImport } from './routes/api.cron.markt-radar'
 import { Route as ApiCronSalesforceSyncRouteImport } from './routes/api.cron.salesforce-sync'
 import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.index'
 import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
 import { Route as MandateSfIdIndexRouteImport } from './routes/mandate.$sfId.index'
 import { Route as MandateSfIdBewertungRouteImport } from './routes/mandate.$sfId.bewertung'
+import { Route as MandateSfIdExposesRouteImport } from './routes/mandate.$sfId.exposes'
+import { Route as MandateSfIdInteressentenRouteImport } from './routes/mandate.$sfId.interessenten'
 import { Route as MandateSfIdMatchingRouteImport } from './routes/mandate.$sfId.matching'
+import { Route as MandateSfIdReportsRouteImport } from './routes/mandate.$sfId.reports'
 import { Route as MandateSfIdDokumentIdRouteImport } from './routes/mandate.$sfId.dokument.$id'
 import { Route as MandateSfIdReportIdRouteImport } from './routes/mandate.$sfId.report.$id'
 
@@ -83,6 +89,11 @@ const ImpressumRoute = ImpressumRouteImport.update({
   path: '/impressum',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvestorenRoute = InvestorenRouteImport.update({
+  id: '/investoren',
+  path: '/investoren',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const KennzahlenRoute = KennzahlenRouteImport.update({
   id: '/kennzahlen',
   path: '/kennzahlen',
@@ -96,6 +107,11 @@ const PasswortZuruecksetzenRoute = PasswortZuruecksetzenRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerkaeuferRoute = VerkaeuferRouteImport.update({
+  id: '/verkaeufer',
+  path: '/verkaeufer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EinstellungenIndexRoute = EinstellungenIndexRouteImport.update({
@@ -169,6 +185,11 @@ const ApiCronExposeAnalyseRoute = ApiCronExposeAnalyseRouteImport.update({
   path: '/api/cron/expose-analyse',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronMarktRadarRoute = ApiCronMarktRadarRouteImport.update({
+  id: '/api/cron/markt-radar',
+  path: '/api/cron/markt-radar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronSalesforceSyncRoute = ApiCronSalesforceSyncRouteImport.update({
   id: '/api/cron/salesforce-sync',
   path: '/api/cron/salesforce-sync',
@@ -194,9 +215,25 @@ const MandateSfIdBewertungRoute = MandateSfIdBewertungRouteImport.update({
   path: '/mandate/$sfId/bewertung',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MandateSfIdExposesRoute = MandateSfIdExposesRouteImport.update({
+  id: '/mandate/$sfId/exposes',
+  path: '/mandate/$sfId/exposes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MandateSfIdInteressentenRoute =
+  MandateSfIdInteressentenRouteImport.update({
+    id: '/mandate/$sfId/interessenten',
+    path: '/mandate/$sfId/interessenten',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MandateSfIdMatchingRoute = MandateSfIdMatchingRouteImport.update({
   id: '/mandate/$sfId/matching',
   path: '/mandate/$sfId/matching',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MandateSfIdReportsRoute = MandateSfIdReportsRouteImport.update({
+  id: '/mandate/$sfId/reports',
+  path: '/mandate/$sfId/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MandateSfIdDokumentIdRoute = MandateSfIdDokumentIdRouteImport.update({
@@ -219,9 +256,11 @@ export interface FileRoutesByFullPath {
   '/einstellungen': typeof EinstellungenRouteWithChildren
   '/exposes': typeof ExposesRouteWithChildren
   '/impressum': typeof ImpressumRoute
+  '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verkaeufer': typeof VerkaeuferRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -236,10 +275,14 @@ export interface FileRoutesByFullPath {
   '/mandate/': typeof MandateIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
+  '/mandate/$sfId/exposes': typeof MandateSfIdExposesRoute
+  '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
+  '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
@@ -252,9 +295,11 @@ export interface FileRoutesByTo {
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
   '/impressum': typeof ImpressumRoute
+  '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verkaeufer': typeof VerkaeuferRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -268,10 +313,14 @@ export interface FileRoutesByTo {
   '/mandate': typeof MandateIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
+  '/mandate/$sfId/exposes': typeof MandateSfIdExposesRoute
+  '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
+  '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/exposes/import': typeof ExposesImportIndexRoute
   '/mandate/$sfId': typeof MandateSfIdIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
@@ -287,9 +336,11 @@ export interface FileRoutesById {
   '/einstellungen': typeof EinstellungenRouteWithChildren
   '/exposes': typeof ExposesRouteWithChildren
   '/impressum': typeof ImpressumRoute
+  '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verkaeufer': typeof VerkaeuferRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -304,10 +355,14 @@ export interface FileRoutesById {
   '/mandate/': typeof MandateIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
+  '/mandate/$sfId/exposes': typeof MandateSfIdExposesRoute
+  '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
+  '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
   '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
@@ -324,9 +379,11 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/exposes'
     | '/impressum'
+    | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
+    | '/verkaeufer'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -341,10 +398,14 @@ export interface FileRouteTypes {
     | '/mandate/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/markt-radar'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
+    | '/mandate/$sfId/exposes'
+    | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
+    | '/mandate/$sfId/reports'
     | '/exposes/import/'
     | '/mandate/$sfId/'
     | '/mandate/$sfId/dokument/$id'
@@ -357,9 +418,11 @@ export interface FileRouteTypes {
     | '/ebics'
     | '/einladung'
     | '/impressum'
+    | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
+    | '/verkaeufer'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -373,10 +436,14 @@ export interface FileRouteTypes {
     | '/mandate'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/markt-radar'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
+    | '/mandate/$sfId/exposes'
+    | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
+    | '/mandate/$sfId/reports'
     | '/exposes/import'
     | '/mandate/$sfId'
     | '/mandate/$sfId/dokument/$id'
@@ -391,9 +458,11 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/exposes'
     | '/impressum'
+    | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
+    | '/verkaeufer'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -408,10 +477,14 @@ export interface FileRouteTypes {
     | '/mandate/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/markt-radar'
     | '/api/cron/salesforce-sync'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
+    | '/mandate/$sfId/exposes'
+    | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
+    | '/mandate/$sfId/reports'
     | '/exposes/import/'
     | '/mandate/$sfId/'
     | '/mandate/$sfId/dokument/$id'
@@ -427,17 +500,23 @@ export interface RootRouteChildren {
   EinstellungenRoute: typeof EinstellungenRouteWithChildren
   ExposesRoute: typeof ExposesRouteWithChildren
   ImpressumRoute: typeof ImpressumRoute
+  InvestorenRoute: typeof InvestorenRoute
   KennzahlenRoute: typeof KennzahlenRoute
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  VerkaeuferRoute: typeof VerkaeuferRoute
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
   MandateIndexRoute: typeof MandateIndexRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
+  ApiCronMarktRadarRoute: typeof ApiCronMarktRadarRoute
   ApiCronSalesforceSyncRoute: typeof ApiCronSalesforceSyncRoute
   MandateSfIdBewertungRoute: typeof MandateSfIdBewertungRoute
+  MandateSfIdExposesRoute: typeof MandateSfIdExposesRoute
+  MandateSfIdInteressentenRoute: typeof MandateSfIdInteressentenRoute
   MandateSfIdMatchingRoute: typeof MandateSfIdMatchingRoute
+  MandateSfIdReportsRoute: typeof MandateSfIdReportsRoute
   MandateSfIdIndexRoute: typeof MandateSfIdIndexRoute
   MandateSfIdDokumentIdRoute: typeof MandateSfIdDokumentIdRoute
   MandateSfIdReportIdRoute: typeof MandateSfIdReportIdRoute
@@ -501,6 +580,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ImpressumRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/investoren': {
+      id: '/investoren'
+      path: '/investoren'
+      fullPath: '/investoren'
+      preLoaderRoute: typeof InvestorenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/kennzahlen': {
       id: '/kennzahlen'
       path: '/kennzahlen'
@@ -520,6 +606,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verkaeufer': {
+      id: '/verkaeufer'
+      path: '/verkaeufer'
+      fullPath: '/verkaeufer'
+      preLoaderRoute: typeof VerkaeuferRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/einstellungen/': {
@@ -620,6 +713,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronExposeAnalyseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/markt-radar': {
+      id: '/api/cron/markt-radar'
+      path: '/api/cron/markt-radar'
+      fullPath: '/api/cron/markt-radar'
+      preLoaderRoute: typeof ApiCronMarktRadarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/salesforce-sync': {
       id: '/api/cron/salesforce-sync'
       path: '/api/cron/salesforce-sync'
@@ -655,11 +755,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MandateSfIdBewertungRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mandate/$sfId/exposes': {
+      id: '/mandate/$sfId/exposes'
+      path: '/mandate/$sfId/exposes'
+      fullPath: '/mandate/$sfId/exposes'
+      preLoaderRoute: typeof MandateSfIdExposesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mandate/$sfId/interessenten': {
+      id: '/mandate/$sfId/interessenten'
+      path: '/mandate/$sfId/interessenten'
+      fullPath: '/mandate/$sfId/interessenten'
+      preLoaderRoute: typeof MandateSfIdInteressentenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mandate/$sfId/matching': {
       id: '/mandate/$sfId/matching'
       path: '/mandate/$sfId/matching'
       fullPath: '/mandate/$sfId/matching'
       preLoaderRoute: typeof MandateSfIdMatchingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mandate/$sfId/reports': {
+      id: '/mandate/$sfId/reports'
+      path: '/mandate/$sfId/reports'
+      fullPath: '/mandate/$sfId/reports'
+      preLoaderRoute: typeof MandateSfIdReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mandate/$sfId/dokument/$id': {
@@ -739,17 +860,23 @@ const rootRouteChildren: RootRouteChildren = {
   EinstellungenRoute: EinstellungenRouteWithChildren,
   ExposesRoute: ExposesRouteWithChildren,
   ImpressumRoute: ImpressumRoute,
+  InvestorenRoute: InvestorenRoute,
   KennzahlenRoute: KennzahlenRoute,
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  VerkaeuferRoute: VerkaeuferRoute,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
   MandateIndexRoute: MandateIndexRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
+  ApiCronMarktRadarRoute: ApiCronMarktRadarRoute,
   ApiCronSalesforceSyncRoute: ApiCronSalesforceSyncRoute,
   MandateSfIdBewertungRoute: MandateSfIdBewertungRoute,
+  MandateSfIdExposesRoute: MandateSfIdExposesRoute,
+  MandateSfIdInteressentenRoute: MandateSfIdInteressentenRoute,
   MandateSfIdMatchingRoute: MandateSfIdMatchingRoute,
+  MandateSfIdReportsRoute: MandateSfIdReportsRoute,
   MandateSfIdIndexRoute: MandateSfIdIndexRoute,
   MandateSfIdDokumentIdRoute: MandateSfIdDokumentIdRoute,
   MandateSfIdReportIdRoute: MandateSfIdReportIdRoute,
