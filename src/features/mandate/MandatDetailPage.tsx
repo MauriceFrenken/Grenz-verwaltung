@@ -7,6 +7,7 @@ import { formatDate, formatEuro, formatFlaeche } from "@/lib/format";
 import type { Funnel } from "@/lib/mandate/report";
 
 import { MandatReiter } from "./MandatReiter";
+import { ObjektordnerKarte } from "./ObjektordnerKarte";
 import {
   mandatBeschreibung,
   mandatTitel,
@@ -56,7 +57,7 @@ export function FunnelBalken({ funnel }: { funnel: Funnel }) {
 }
 
 export function MandatDetailPage({ sfId }: { sfId: string }) {
-  const { detail, von, setVon, bis, setBis } = useMandatDetail(sfId);
+  const { token, detail, von, setVon, bis, setBis } = useMandatDetail(sfId);
 
   const m = detail?.mandat;
   const v = detail?.vorschau;
@@ -124,6 +125,8 @@ export function MandatDetailPage({ sfId }: { sfId: string }) {
                 </>
               ) : null}
             </div>
+
+            <ObjektordnerKarte token={token} sfId={sfId} />
 
             <div className="flex flex-wrap items-end gap-3">
               <label className="flex flex-col gap-1 text-xs text-text-subtle">

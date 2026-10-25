@@ -20,6 +20,15 @@ import {
   type ObjektMerkmale,
   type ProfilZeile,
 } from "./score";
+import {
+  historieTreffer,
+  marktPassung,
+  type HistorieTreffer,
+  type InteresseEreignis,
+  type MandatKurz,
+  type MarktTreffer,
+  type RadarKaeufer,
+} from "./zusatz";
 
 const KLASSEN = ["Core", "Core+", "Value Add", "Opportunistic", "Development"];
 
@@ -48,13 +57,196 @@ export type RechercheTreffer = {
   quelle: string;
 };
 
+export type HistorieZeile = HistorieTreffer & {
+  kontaktName: string | null;
+  firma: string | null;
+  email: string | null;
+  /** Kontakt (003…) für die Kampagne; Accounts lassen sich nicht direkt hinzufügen. */
+  waehlbar: boolean;
+  hatAnkaufsprofil: boolean;
+  bereitsAngesprochen: boolean;
+};
+
 export type MatchingDto = {
   objekt: ObjektMerkmale & { name: string };
   treffer: MatchTreffer[];
   profileGesamt: number;
+  /** Interne Datenbank: Interessenten ähnlicher Grenz-Mandate ohne passendes Profil. */
+  historie: HistorieZeile[];
+  /** Externe, gerade aktive Käufer aus dem Markt-Radar. */
+  markt: MarktTreffer[];
   recherche: RechercheTreffer[];
   klassen: string[];
 };
+
+/** Reaktionen auf frühere Mandate: Kampagnen-Rückmeldungen außer Absage und Interessenten-Deals. */
+async function interesseEreignisse(
+  admin: ReturnType<typeof createServiceRoleClient>,
+): Promise<InteresseEreignis[]> {
+  const [kampagnen, mitglieder, deals] = await Promise.all([
+    alle<{ sf_id: string; mandat_sf_id: string | null }>((a, b) =>
+      admin
+        .from("sf_kampagnen")
+        .select("sf_id, mandat_sf_id")
+        .not("mandat_sf_id", "is", null)
+        .order("sf_id")
+        .range(a, b),
+    ),
+    alle<{
+      kampagne_sf_id: string;
+      kontakt_sf_id: string | null;
+      status: string | null;
+      erstmals_geantwortet_am: string | null;
+    }>((a, b) =>
+      admin
+        .from("sf_kampagnen_mitglieder")
+        .select(
+          "kampagne_sf_id, kontakt_sf_id, status, erstmals_geantwortet_am",
+        )
+        .eq("geantwortet", true)
+        .order("sf_id")
+        .range(a, b),
+    ),
+    alle<{
+      mandat_sf_id: string | null;
+      kontakt_sf_id: string | null;
+      account_sf_id: string | null;
+      phase: string | null;
+      abschluss_am: string | null;
+    }>((a, b) =>
+      admin
+        .from("sf_deals")
+        .select(
+          "mandat_sf_id, kontakt_sf_id, account_sf_id, phase, abschluss_am",
+        )
+        .eq("record_type", GRENZ_DEAL_RECORD_TYPE)
+        .not("mandat_sf_id", "is", null)
+        .order("sf_id")
+        .range(a, b),
+    ),
+  ]);
+  const mandatJeKampagne = new Map(
+    kampagnen.map((k) => [k.sf_id, k.mandat_sf_id!]),
+  );
+  const ereignisse: InteresseEreignis[] = [];
+  for (const m of mitglieder) {
+    const mandat = mandatJeKampagne.get(m.kampagne_sf_id);
+    if (!mandat || !m.kontakt_sf_id || /absage/i.test(m.status ?? "")) continue;
+    ereignisse.push({
+      kontaktSfId: m.kontakt_sf_id,
+      mandatSfId: mandat,
+      stufe: m.status ?? "Rückmeldung",
+      datum: m.erstmals_geantwortet_am,
+    });
+  }
+  for (const d of deals) {
+    const kontakt = d.kontakt_sf_id ?? d.account_sf_id;
+    if (!kontakt || /closed lost/i.test(d.phase ?? "")) continue;
+    ereignisse.push({
+      kontaktSfId: kontakt,
+      mandatSfId: d.mandat_sf_id!,
+      stufe: d.phase ?? "Deal",
+      datum: d.abschluss_am,
+    });
+  }
+  return ereignisse;
+}
+
+async function mandateKurz(
+  admin: ReturnType<typeof createServiceRoleClient>,
+): Promise<Map<string, MandatKurz>> {
+  const [mandate, objekte] = await Promise.all([
+    alle<{
+      sf_id: string;
+      name: string;
+      real_estate_sf_id: string | null;
+      angebotspreis: number | null;
+    }>((a, b) =>
+      admin
+        .from("sf_mandate")
+        .select("sf_id, name, real_estate_sf_id, angebotspreis")
+        .order("sf_id")
+        .range(a, b),
+    ),
+    alle<{
+      sf_id: string;
+      name: string;
+      objektart: string | null;
+      ort: string | null;
+    }>((a, b) =>
+      admin
+        .from("sf_real_estate")
+        .select("sf_id, name, objektart, ort")
+        .order("sf_id")
+        .range(a, b),
+    ),
+  ]);
+  const objektJeId = new Map(objekte.map((o) => [o.sf_id, o]));
+  return new Map(
+    mandate.map((m) => {
+      const o = m.real_estate_sf_id
+        ? objektJeId.get(m.real_estate_sf_id)
+        : undefined;
+      return [
+        m.sf_id,
+        {
+          sfId: m.sf_id,
+          name: o?.name ?? m.name,
+          objektart: o?.objektart ?? null,
+          ort: o?.ort ?? null,
+          preis: m.angebotspreis ? Number(m.angebotspreis) : null,
+        },
+      ];
+    }),
+  );
+}
+
+/** Aktive Käufer aus dem Markt-Radar der letzten 180 Tage, außer verworfenen. */
+async function marktKaeufer(
+  admin: ReturnType<typeof createServiceRoleClient>,
+  objekt: { objektart: string | null; orte: string[]; preis: number | null },
+): Promise<MarktTreffer[]> {
+  const ab = new Date(Date.now() - 180 * 86_400_000).toISOString();
+  const { data, error } = await admin
+    .from("markt_radar_meldungen")
+    .select(
+      "id, akteur, akteur_typ, ereignis, objektart, ort, volumen_eur, ereignis_am, created_at, relevanz, quelle_url, quelle_titel, quelle_medium, sf_kontakt_sf_id, sf_bekannt_als, status",
+    )
+    .eq("seite", "kaeufer")
+    .neq("status", "verworfen")
+    .gte("created_at", ab)
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  if (error) throw new Error(error.message);
+  const besteJeAkteur = new Map<string, MarktTreffer>();
+  for (const r of data ?? []) {
+    const k: RadarKaeufer = {
+      id: String(r.id),
+      akteur: String(r.akteur),
+      akteurTyp: (r.akteur_typ as string) ?? null,
+      ereignis: String(r.ereignis),
+      objektart: (r.objektart as string) ?? null,
+      ort: (r.ort as string) ?? null,
+      volumenEur: r.volumen_eur != null ? Number(r.volumen_eur) : null,
+      ereignisAm: (r.ereignis_am as string) ?? null,
+      createdAt: String(r.created_at),
+      relevanz: Number(r.relevanz) || 0,
+      quelleUrl: String(r.quelle_url),
+      quelleTitel: (r.quelle_titel as string) ?? null,
+      quelleMedium: (r.quelle_medium as string) ?? null,
+      sfKontaktSfId: (r.sf_kontakt_sf_id as string) ?? null,
+      sfBekanntAls: (r.sf_bekannt_als as string) ?? null,
+      status: String(r.status),
+    };
+    const t = marktPassung(k, objekt);
+    const schluessel = k.akteur.toLowerCase();
+    const bisher = besteJeAkteur.get(schluessel);
+    if (!bisher || t.score > bisher.score) besteJeAkteur.set(schluessel, t);
+  }
+  return [...besteJeAkteur.values()]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 60);
+}
 
 async function alle<T>(
   abfrage: (
@@ -250,6 +442,53 @@ export const matchingFn = createServerFn({ method: "POST" })
       };
     });
 
+    // Interne Datenbank über die Profile hinaus: Interessenten ähnlicher Mandate.
+    const [ereignisse, mandate, markt] = await Promise.all([
+      interesseEreignisse(admin),
+      mandateKurz(admin),
+      marktKaeufer(admin, objekt),
+    ]);
+    const mitProfil = new Set(
+      profile
+        .flatMap((p) => [p.kontakt_sf_id, p.account_sf_id])
+        .filter(Boolean),
+    );
+    const historieRoh = historieTreffer(
+      objekt,
+      data.mandatSfId,
+      ereignisse,
+      mandate,
+    )
+      .filter((h) => h.score >= 40)
+      .slice(0, 80);
+    const fehlend = historieRoh
+      .map((h) => h.kontaktSfId)
+      .filter((id) => !kontakte.has(id));
+    for (let i = 0; i < fehlend.length; i += 300) {
+      const { data: k } = await admin
+        .from("sf_kontakte")
+        .select("sf_id, name, firma, email")
+        .in("sf_id", fehlend.slice(i, i + 300));
+      for (const x of k ?? [])
+        kontakte.set(x.sf_id as string, {
+          name: x.name as string,
+          firma: (x.firma as string) ?? null,
+          email: (x.email as string) ?? null,
+        });
+    }
+    const historie: HistorieZeile[] = historieRoh.map((h) => {
+      const k = kontakte.get(h.kontaktSfId);
+      return {
+        ...h,
+        kontaktName: k?.name ?? null,
+        firma: k?.firma ?? null,
+        email: k?.email ?? null,
+        waehlbar: h.kontaktSfId.startsWith("003"),
+        hatAnkaufsprofil: mitProfil.has(h.kontaktSfId),
+        bereitsAngesprochen: angesprochen.has(h.kontaktSfId),
+      };
+    });
+
     // Recherche-Pool: nie kontaktierte Adressen, getrennt und nur nach Ort.
     const orte = objekt.orte.map((x) => x.toLowerCase());
     const { data: pool } = await admin
@@ -275,6 +514,8 @@ export const matchingFn = createServerFn({ method: "POST" })
       objekt,
       treffer,
       profileGesamt: profile.length,
+      historie,
+      markt,
       recherche,
       klassen: KLASSEN,
     };
@@ -464,4 +705,64 @@ export const poolNachSalesforceFn = createServerFn({ method: "POST" })
       })
       .eq("id", data.poolId);
     return { kontaktSfId };
+  });
+
+/**
+ * Sucht mit dem Markt-Radar gezielt Käufer, die gerade Objekte wie dieses kaufen
+ * (Websuche, nur belegte Quellen). Die Funde landen im Radar und damit im Matching.
+ */
+export const marktSucheFuerMandatFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => {
+    const d = (data ?? {}) as { mandatSfId?: unknown };
+    return {
+      supabaseAccessToken: tokenAus(data),
+      mandatSfId: text(d.mandatSfId, 18),
+    };
+  })
+  .handler(async ({ data }) => {
+    await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
+    const admin = createServiceRoleClient();
+    const vor = new Date(Date.now() - 15 * 60_000).toISOString();
+    const { data: laufend } = await admin
+      .from("markt_radar_laeufe")
+      .select("id")
+      .eq("status", "laeuft")
+      .gte("gestartet_am", vor)
+      .limit(1);
+    if (laufend?.length) throw new Error("Es läuft bereits eine Marktsuche.");
+
+    const { data: m } = await admin
+      .from("sf_mandate")
+      .select("name, real_estate_sf_id, angebotspreis")
+      .eq("sf_id", data.mandatSfId)
+      .maybeSingle();
+    if (!m) throw new Error("Mandat nicht gefunden.");
+    const o = m.real_estate_sf_id
+      ? (
+          await admin
+            .from("sf_real_estate")
+            .select("objektart, ort, einheiten, baujahr, jahresnettokaltmiete")
+            .eq("sf_id", m.real_estate_sf_id)
+            .maybeSingle()
+        ).data
+      : null;
+    const preis = Number(m.angebotspreis) || null;
+    const merkmale = [
+      o?.objektart ?? "Zinshaus",
+      o?.ort ? `in ${o.ort}` : null,
+      preis
+        ? `Angebotspreis rund ${Math.round(preis / 100_000) / 10} Mio. €`
+        : null,
+      Number(o?.einheiten) ? `${Number(o?.einheiten)} Einheiten` : null,
+      Number(o?.baujahr) ? `Baujahr ${Number(o?.baujahr)}` : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const auftrag = `Suche Käufer für ein konkretes Verkaufsmandat: ${merkmale}.
+Finde Unternehmen und Personen, die in den letzten 12 Monaten vergleichbare Objekte in derselben Stadt oder Region gekauft haben, dafür ein Ankaufsprofil veröffentlicht haben oder Kapital dafür einsammeln. Nenne keine Makler. Gib für jeden Akteur die Objektart und den Ort seiner Käufe an.`;
+    const { marktRadarAusfuehren } = await import("@/lib/markt-radar/lauf");
+    return marktRadarAusfuehren(admin, "manuell", {
+      seiten: ["kaeufer"],
+      auftrag,
+    });
   });
