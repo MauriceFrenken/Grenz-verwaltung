@@ -4,6 +4,11 @@
  */
 
 import type {
+  BerichtFotos,
+  BerichtWerte,
+  VermarktungAusSalesforce,
+} from "./vermarktungsbericht";
+import type {
   Block,
   DokumentInhalt,
   InhaltAbschnitt,
@@ -251,7 +256,7 @@ export function aktivitaetenJeWoche(
   bis: string,
 ): WochenWert[] {
   const zaehler = new Map<string, number>();
-  for (let w = wochenStart(`${von}T00:00:00Z`); w <= bis;) {
+  for (let w = wochenStart(`${von}T00:00:00Z`); w <= bis; ) {
     zaehler.set(w, 0);
     const d = new Date(`${w}T00:00:00Z`);
     d.setUTCDate(d.getUTCDate() + 7);
@@ -399,6 +404,8 @@ export type ReportKennzahlen = {
     art: string;
     betreff: string;
   }[];
+  /** Vermarktungsbericht nach Grenz-Vorlage (ab 25.10.2026; ältere Reports: neu laden). */
+  vermarktung?: VermarktungAusSalesforce;
 };
 
 export type ReportEingabe = {
@@ -456,8 +463,15 @@ export type ReportTexte = {
   einleitung?: string;
   marktfeedback?: { text: string; quellen: string[] }[];
   marktfeedbackLuecken?: string[];
+  /** Im Vermarktungsbericht „Weiteres Vorgehen“. */
   naechsteSchritte?: string[];
   kommentar?: string;
+  /** „Bisherige Herausforderungen bei der Vermarktung“. */
+  herausforderungen?: string[];
+  /** Händisch angepasste Werte; haben Vorrang vor Salesforce. */
+  werte?: BerichtWerte;
+  /** Storage-Pfade (Bucket „dokumente“). */
+  fotos?: BerichtFotos;
 };
 
 export function euro(wert: number | null | undefined): string {
