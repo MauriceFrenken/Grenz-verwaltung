@@ -633,7 +633,7 @@ function Schnellzugriff({ daten }: { daten: UebersichtDto }) {
   const links = [
     {
       to: "/exposes",
-      label: "Angebotseingang",
+      label: "Exposéanalyse",
       zusatz: `${x.offen} offen · ${x.neu7Tage} neu in 7 Tagen`,
       icon: Inbox,
     },

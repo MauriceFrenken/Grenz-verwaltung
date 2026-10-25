@@ -7,7 +7,7 @@ const LABELS: Record<string, string> = {
   "/mandate": "Mandate",
   "/investoren": "Investoren",
   "/verkaeufer": "Verkäufer",
-  "/exposes": "Angebotseingang",
+  "/exposes": "Exposéanalyse",
   "/exposes/import": "Exposé-Import",
   "/exposes/import/salesforce": "Salesforce-Export",
   "/exposes/karte": "Marktkarte",

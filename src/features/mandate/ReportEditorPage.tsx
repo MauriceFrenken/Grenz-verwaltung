@@ -37,6 +37,7 @@ import {
 } from "@/lib/mandate/vermarktungsbericht";
 
 import { BerichtVorschau } from "./BerichtVorschau";
+import { MandatReiter } from "./MandatReiter";
 
 const STATUS_TEXT: Record<string, string> = {
   entwurf: "Entwurf",
@@ -440,12 +441,13 @@ export function ReportEditorPage({ sfId, id }: { sfId: string; id: string }) {
     <>
       <PageHeader
         titel={report.titel ?? "Vermarktungsbericht"}
+        reiter={<MandatReiter sfId={sfId} aktiv="reports" />}
         beschreibung={`Salesforce-Stand vom ${formatDate(k.stand)} · Status: ${STATUS_TEXT[report.status]} · Gelb umrandete Felder sind händisch angepasst und haben Vorrang vor Salesforce.`}
         aktionen={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" asChild>
-              <Link to="/mandate/$sfId" params={{ sfId }}>
-                Zum Mandat
+              <Link to="/mandate/$sfId/reports" params={{ sfId }}>
+                Alle Berichte
               </Link>
             </Button>
             {!gesperrt ? (
