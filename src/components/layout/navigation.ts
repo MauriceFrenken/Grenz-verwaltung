@@ -67,7 +67,7 @@ export const NAVIGATION: NavSection[] = [
     items: [
       {
         to: "/exposes",
-        label: "Angebotseingang",
+        label: "Exposéanalyse",
         icon: Inbox,
         badge: "angebotseingang",
         badgeTon: "amber",

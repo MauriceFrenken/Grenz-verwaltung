@@ -430,7 +430,7 @@ export function ExposeListePage() {
   return (
     <>
       <PageHeader
-        titel="Angebotseingang"
+        titel="Exposéanalyse"
         beschreibung="Exposés anderer Makler aus dem Ankauf-Postfach: prüfen und nach Salesforce übernehmen."
         aktionen={
           <Button variant="outline" asChild>

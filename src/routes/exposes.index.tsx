@@ -2,6 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ExposeListePage } from "@/features/exposes/ExposeListePage";
 
 export const Route = createFileRoute("/exposes/")({
-  head: () => ({ meta: [{ title: "Angebotseingang — Grenz & Co." }] }),
+  head: () => ({ meta: [{ title: "Exposéanalyse — Grenz & Co." }] }),
   component: ExposeListePage,
 });
