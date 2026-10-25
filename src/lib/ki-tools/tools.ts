@@ -7,6 +7,7 @@ import {
   Calculator,
   Coins,
   FileSpreadsheet,
+  FileText,
   LineChart,
   Presentation,
   type LucideIcon,
@@ -17,7 +18,8 @@ export type KiToolId =
   | "marktpreis"
   | "mieterliste"
   | "dcf"
-  | "kaufpreis";
+  | "kaufpreis"
+  | "marktbericht";
 
 export interface KiToolDefinition {
   id: KiToolId;
@@ -28,7 +30,7 @@ export interface KiToolDefinition {
   beschreibung: string;
   icon: LucideIcon;
   /** Ausgabeformat im Grenz-&-Co.-Design. */
-  format: "PPTX" | "XLSX";
+  format: "PPTX" | "XLSX" | "PDF";
   /** Was als Grundlage am meisten hilft (Hinweis im Eingabefeld). */
   unterlagen: string;
   /** Platzhalter des Eingabefelds. */
@@ -74,7 +76,8 @@ export const KI_TOOLS: KiToolDefinition[] = [
     format: "XLSX",
     unterlagen:
       "Mieterliste des Eigentümers, Mietverträge, Sollstellung, Hausverwaltungs-Export",
-    platzhalter: "z. B. Mieterliste für Alter Grenzweg 39-41, Kaufpreis 1,975 Mio. €",
+    platzhalter:
+      "z. B. Mieterliste für Alter Grenzweg 39-41, Kaufpreis 1,975 Mio. €",
   },
   {
     id: "dcf",
@@ -101,6 +104,19 @@ export const KI_TOOLS: KiToolDefinition[] = [
     unterlagen: "Mieterliste, Flächenaufstellung, Mietspiegel oder Marktmieten",
     platzhalter:
       "z. B. Kaufpreisstaffel ab 4 Mio. € in 200.000-€-Schritten, Marktmiete Wohnen 25 €/m²",
+  },
+  {
+    id: "marktbericht",
+    pfad: "/tools/marktbericht",
+    label: "Marktbericht Halbjahr und Jahr",
+    kurz: "Marktbericht",
+    beschreibung:
+      "Erstellt den Marktbericht Zinshäuser Rheinland zum Halbjahr und Jahresende: Angebotsfaktoren aus dem Exposé-Eingang, Käuferindex, Zinsen der Bundesbank und zitierte Werte großer Häuser.",
+    icon: FileText,
+    format: "PDF",
+    unterlagen:
+      "Marktberichte von BNP Paribas RE, JLL, CBRE, Cushman & Wakefield, Savills, Colliers als PDF",
+    platzhalter: "z. B. Marktbericht 1. Halbjahr 2027",
   },
 ];
 
