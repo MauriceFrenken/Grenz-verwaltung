@@ -1,11 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { BewertungPage } from "@/features/mandate/BewertungPage";
-
+/** Reiter entfernt (25.10.2026): alte Adresse führt zum Überblick der Mandatsakte. */
 export const Route = createFileRoute("/mandate/$sfId/bewertung")({
-  head: () => ({ meta: [{ title: "Indikative Bewertung — Grenz & Co." }] }),
-  component: function BewertungRoute() {
-    const { sfId } = Route.useParams();
-    return <BewertungPage key={sfId} sfId={sfId} />;
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: "/mandate/$sfId",
+      params: { sfId: params.sfId },
+      replace: true,
+    });
   },
 });
