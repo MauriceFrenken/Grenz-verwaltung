@@ -41,7 +41,6 @@ alter table public.sf_ankaufsprofile
   add column if not exists owner_sf_user_id text;
 
 create index if not exists sf_mandate_real_estate_idx on public.sf_mandate (real_estate_sf_id);
-create index if not exists sf_kampagnen_mitglieder_kampagne_idx on public.sf_kampagnen_mitglieder (kampagne_sf_id);
 create index if not exists sf_aktivitaeten_owner_idx on public.sf_aktivitaeten (owner_sf_user_id);
 
 insert into public.sf_sync_stand (sf_objekt) values
