@@ -2,18 +2,25 @@
  * Serverseitiger Salesforce-Zugang für Sync und Schreibpfad:
  * Connected App mit JWT Bearer Flow und eigenem Integrationsuser.
  * Env: SF_LOGIN_URL, SF_CLIENT_ID, SF_USERNAME, SF_PRIVATE_KEY (PEM).
- * Fallback für den Übergang: SALESFORCE_REFRESH_TOKEN bzw. SALESFORCE_ACCESS_TOKEN.
+ * Ohne Connected App: die in Einstellungen › Integrationen hinterlegte Salesforce-Anmeldung
+ * (Refresh Token in Supabase Vault), danach SALESFORCE_REFRESH_TOKEN bzw. SALESFORCE_ACCESS_TOKEN.
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createSign } from "node:crypto";
 
-import { resolveSalesforceCredentials } from "@/lib/salesforce/server-credentials";
+import { createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
+import {
+  resolveSalesforceCredentials,
+  SALESFORCE_NICHT_VERBUNDEN,
+} from "@/lib/salesforce/server-credentials";
+
+import { hinterlegtenZugangHolen } from "./hinterlegt";
 
 export type SfServerZugang = {
   accessToken: string;
   instanceUrl: string;
-  quelle: "jwt" | "env" | "sitzung";
+  quelle: "jwt" | "hinterlegt" | "env" | "sitzung";
 };
 
 function readEnv(name: string): string {
@@ -22,7 +29,11 @@ function readEnv(name: string): string {
 }
 
 function base64url(input: Buffer | string): string {
-  return Buffer.from(input).toString("base64").replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  return Buffer.from(input)
+    .toString("base64")
+    .replace(/=+$/, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
 }
 
 /** PEM aus der Env: Vercel speichert Zeilenumbrüche oft als `\n`. */
@@ -32,14 +43,19 @@ export function privaterSchluesselAusEnv(roh: string): string {
 }
 
 export function jwtZugangKonfiguriert(): boolean {
-  return Boolean(readEnv("SF_CLIENT_ID") && readEnv("SF_USERNAME") && readEnv("SF_PRIVATE_KEY"));
+  return Boolean(
+    readEnv("SF_CLIENT_ID") &&
+    readEnv("SF_USERNAME") &&
+    readEnv("SF_PRIVATE_KEY"),
+  );
 }
 
 function loginUrl(): string {
-  return (readEnv("SF_LOGIN_URL") || readEnv("SALESFORCE_LOGIN_URL") || "https://login.salesforce.com").replace(
-    /\/$/,
-    "",
-  );
+  return (
+    readEnv("SF_LOGIN_URL") ||
+    readEnv("SALESFORCE_LOGIN_URL") ||
+    "https://login.salesforce.com"
+  ).replace(/\/$/, "");
 }
 
 /** Signierte JWT-Assertion (RS256) für den Token-Endpunkt. */
@@ -53,7 +69,12 @@ export function erzeugeJwtAssertion(input: {
   const jetzt = input.jetztSekunden ?? Math.floor(Date.now() / 1000);
   const kopf = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const inhalt = base64url(
-    JSON.stringify({ iss: input.clientId, sub: input.username, aud: input.audience, exp: jetzt + 180 }),
+    JSON.stringify({
+      iss: input.clientId,
+      sub: input.username,
+      aud: input.audience,
+      exp: jetzt + 180,
+    }),
   );
   const signierer = createSign("RSA-SHA256");
   signierer.update(`${kopf}.${inhalt}`);
@@ -69,7 +90,10 @@ let cache: (SfServerZugang & { gueltigBis: number }) | null = null;
  */
 const vorgabe = new AsyncLocalStorage<SfServerZugang>();
 
-export function mitSfZugang<T>(zugang: SfServerZugang, lauf: () => Promise<T>): Promise<T> {
+export function mitSfZugang<T>(
+  zugang: SfServerZugang,
+  lauf: () => Promise<T>,
+): Promise<T> {
   return vorgabe.run(zugang, lauf);
 }
 
@@ -109,21 +133,49 @@ async function jwtToken(): Promise<SfServerZugang> {
       `Salesforce JWT-Anmeldung fehlgeschlagen: ${data?.error_description ?? data?.error ?? res.status}`,
     );
   }
-  return { accessToken: data.access_token, instanceUrl: data.instance_url.replace(/\/$/, ""), quelle: "jwt" };
+  return {
+    accessToken: data.access_token,
+    instanceUrl: data.instance_url.replace(/\/$/, ""),
+    quelle: "jwt",
+  };
 }
 
 /** Gültiger Server-Zugang, 30 Minuten zwischengespeichert. */
-export async function sfServerZugang(optionen: { erneuern?: boolean } = {}): Promise<SfServerZugang> {
+export async function sfServerZugang(
+  optionen: { erneuern?: boolean } = {},
+): Promise<SfServerZugang> {
   const vorgegeben = vorgabe.getStore();
   if (vorgegeben) return vorgegeben;
-  if (!optionen.erneuern && cache && cache.gueltigBis > Date.now()) return cache;
+  if (!optionen.erneuern && cache && cache.gueltigBis > Date.now())
+    return cache;
 
   let zugang: SfServerZugang;
   if (jwtZugangKonfiguriert()) {
     zugang = await jwtToken();
   } else {
-    const creds = await resolveSalesforceCredentials(null, { forceRefresh: optionen.erneuern });
-    zugang = { accessToken: creds.accessToken, instanceUrl: creds.instanceUrl, quelle: "env" };
+    const hinterlegt = await hinterlegtenZugangHolen(createServiceRoleClient());
+    if (hinterlegt) {
+      zugang = { ...hinterlegt, quelle: "hinterlegt" };
+    } else {
+      const creds = await resolveSalesforceCredentials(null, {
+        forceRefresh: optionen.erneuern,
+      }).catch((err) => {
+        if (
+          err instanceof Error &&
+          err.message === SALESFORCE_NICHT_VERBUNDEN
+        ) {
+          throw new Error(
+            "Salesforce ist nicht dauerhaft verbunden. Bitte in Einstellungen › Integrationen auf „Salesforce dauerhaft verbinden“ klicken.",
+          );
+        }
+        throw err;
+      });
+      zugang = {
+        accessToken: creds.accessToken,
+        instanceUrl: creds.instanceUrl,
+        quelle: "env",
+      };
+    }
   }
   cache = { ...zugang, gueltigBis: Date.now() + 30 * 60 * 1000 };
   return zugang;
