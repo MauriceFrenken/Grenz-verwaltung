@@ -137,9 +137,9 @@ function Marke({
       className={cn(
         "inline-flex max-w-[14rem] items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium",
         ton === "ok" &&
-          "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+          "bg-ok-soft text-ok",
         ton === "annahme" &&
-          "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+          "bg-warn-soft text-warn",
         ton === "fehlt" && "bg-muted text-text-muted",
       )}
     >
@@ -645,7 +645,7 @@ export function KiErgebnis({ ergebnis }: { ergebnis: ToolErgebnis }) {
   return (
     <div className="flex flex-col gap-4">
       {(ergebnis.hinweise.length > 0 || ergebnis.verworfen > 0) && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+        <div className="rounded-xl border border-warn bg-warn-soft p-4 text-sm text-warn">
           <div className="mb-1.5 flex items-center gap-2 font-semibold">
             <AlertTriangle className="h-4 w-4" /> Bitte prüfen
           </div>

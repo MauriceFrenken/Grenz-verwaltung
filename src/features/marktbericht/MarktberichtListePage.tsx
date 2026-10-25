@@ -190,8 +190,8 @@ export function MarktberichtListePage() {
                       <span
                         className={
                           b.status === "freigegeben"
-                            ? "rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800"
-                            : "rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800"
+                            ? "rounded-full bg-ok-soft px-2 py-0.5 text-xs text-ok"
+                            : "rounded-full bg-warn-soft px-2 py-0.5 text-xs text-warn"
                         }
                       >
                         {STATUS[b.status]}

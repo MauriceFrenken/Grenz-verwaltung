@@ -398,7 +398,7 @@ export function ExposeEditorPage({ sfId, id }: { sfId: string; id: string }) {
                         {v.wert}
                         {felder[v.feld]?.wert &&
                         felder[v.feld]?.wert !== v.wert ? (
-                          <span className="text-red-700">
+                          <span className="text-danger">
                             {" "}
                             (bisher: {felder[v.feld]?.wert})
                           </span>
@@ -551,7 +551,7 @@ export function ExposeEditorPage({ sfId, id }: { sfId: string; id: string }) {
                             </span>
                           ))}
                           {!a.quellen.length ? (
-                            <span className="text-red-700">Ohne Beleg</span>
+                            <span className="text-danger">Ohne Beleg</span>
                           ) : null}
                           {!gesperrt ? (
                             <>
@@ -647,9 +647,9 @@ export function ExposeEditorPage({ sfId, id }: { sfId: string; id: string }) {
             <section className="flex flex-col gap-2 border border-hairline bg-surface p-4">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-heading">
                 {entwurf.pruefung.ok ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-700" />
+                  <CheckCircle2 className="h-4 w-4 text-ok" />
                 ) : (
-                  <CircleAlert className="h-4 w-4 text-red-700" />
+                  <CircleAlert className="h-4 w-4 text-danger" />
                 )}
                 Pflichtangaben-Prüfung
               </h2>
@@ -665,7 +665,7 @@ export function ExposeEditorPage({ sfId, id }: { sfId: string; id: string }) {
                   <li key={p.id} className="flex items-start gap-2">
                     <span
                       className={
-                        p.status === "ok" ? "text-green-700" : "text-red-700"
+                        p.status === "ok" ? "text-ok" : "text-danger"
                       }
                     >
                       {p.status === "ok" ? "✓" : "✗"}

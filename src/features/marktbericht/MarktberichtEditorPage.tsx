@@ -318,7 +318,7 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
               {(texte.pruefhinweise ?? []).map((h, i) => (
                 <div
                   key={i}
-                  className="flex items-start gap-2 border-l-2 border-amber-600 bg-amber-50 px-2 py-1 text-xs text-amber-900"
+                  className="flex items-start gap-2 border-l-2 border-warn bg-warn-soft px-2 py-1 text-xs text-warn"
                 >
                   <span className="flex-1">{h}</span>
                   {!gesperrt ? (
@@ -498,7 +498,7 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
                   {werte.map((w, i) => (
                     <div
                       key={w.id}
-                      className={`flex flex-col gap-2 border p-3 ${w.geprueft ? "border-hairline" : "border-amber-400 bg-amber-50/40"}`}
+                      className={`flex flex-col gap-2 border p-3 ${w.geprueft ? "border-hairline" : "border-warn bg-warn-soft"}`}
                     >
                       <div className="grid gap-2 sm:grid-cols-[2fr_1fr_0.8fr_0.8fr_1fr]">
                         <Input
@@ -709,7 +709,7 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
                   .join(" · ") || "–"}
               </p>
               {k.zinsen.fehler ? (
-                <p className="text-red-700">{k.zinsen.fehler}</p>
+                <p className="text-danger">{k.zinsen.fehler}</p>
               ) : null}
             </section>
 

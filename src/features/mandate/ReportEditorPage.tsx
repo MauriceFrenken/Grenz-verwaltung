@@ -506,7 +506,7 @@ export function ReportEditorPage({ sfId, id }: { sfId: string; id: string }) {
       />
       <PageWrapper>
         {!v ? (
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-l-2 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-l-2 border-warn bg-warn-soft px-4 py-3 text-sm text-warn">
             Dieser Bericht wurde vor der neuen Grenz-Vorlage angelegt. Bitte die
             Zahlen einmal aus Salesforce laden, damit Status, Kundengruppen und
             Absagegründe befüllt werden.
@@ -793,7 +793,7 @@ export function ReportEditorPage({ sfId, id }: { sfId: string; id: string }) {
                       </Button>
                     ) : null}
                     <p
-                      className={`text-xs ${stand.absagenGesamt !== absagenSoll ? "text-amber-700" : "text-text-subtle"}`}
+                      className={`text-xs ${stand.absagenGesamt !== absagenSoll ? "text-warn" : "text-text-subtle"}`}
                     >
                       Summe der Gründe{" "}
                       {stand.absagenGesamt.toLocaleString("de-DE")} · Absagen
@@ -1140,7 +1140,7 @@ export function ReportEditorPage({ sfId, id }: { sfId: string; id: string }) {
               <h2 className="text-sm font-semibold text-heading">
                 Vorschau{" "}
                 {geaendert ? (
-                  <span className="font-normal text-amber-700">
+                  <span className="font-normal text-warn">
                     (ungespeichert)
                   </span>
                 ) : null}
