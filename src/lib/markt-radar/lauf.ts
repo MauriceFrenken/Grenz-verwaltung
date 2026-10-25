@@ -49,7 +49,6 @@ export async function grenzProfil(admin: Admin): Promise<string> {
     admin
       .from("sf_ankaufsprofile")
       .select("assetklassen, regionen, volumen_min, volumen_max")
-      .eq("aktiv", true)
       .limit(5000),
   ]);
   const preise = (mandate.data ?? [])
@@ -231,6 +230,13 @@ export async function marktRadarAusfuehren(
         kosten: { ...kosten, verworfen },
       })
       .eq("id", lauf.id);
+    // Neue Käufermeldungen den Investoren zuordnen und die Liste fortschreiben.
+    try {
+      const { investorenAufbauen } = await import("@/lib/investoren/aufbau");
+      await investorenAufbauen(admin);
+    } catch (err) {
+      console.error("[markt-radar] Investoren-Aufbau", err);
+    }
     return { laufId: lauf.id, neu, gesamt, verworfen };
   } catch (err) {
     await admin

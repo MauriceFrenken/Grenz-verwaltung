@@ -48,6 +48,22 @@
     {
       "path": "/api/cron/marktbericht-quellen",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/investoren-pruefung",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/investoren-pruefung",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/investoren-pruefung",
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/investoren-entdeckung",
+      "schedule": "0 3 * * 1,4"
     }
   ]
 }

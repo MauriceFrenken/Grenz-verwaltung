@@ -38,7 +38,8 @@ const FELDER = {
   EmailMessage:
     "Id, Subject, MessageDate, Status, Incoming, FromAddress, ToAddress, MessageIdentifier, RelatedToId, CreatedById, CreatedDate, SystemModstamp",
   Contact: "Id, Name, FirstName, LastName, AccountId, Account.Name, Email, Phone, MobilePhone, MailingCity, OwnerId, SystemModstamp",
-  Account: "Id, Name, Type, Private__c, Industry, Phone, BillingCity, OwnerId, SystemModstamp",
+  Account:
+    "Id, Name, Type, Private__c, Industry, Phone, Website, BillingCity, OwnerId, Focus__c, Priorit_t__c, Account_Phase__c, Investor__c, DO_NOT_CONTACT__c, Gesch_ftsbereich__c, SystemModstamp",
   Lead: "Id, Name, FirstName, LastName, Company, Email, Phone, MobilePhone, City, Status, OwnerId, SystemModstamp",
 } as const;
 
@@ -270,6 +271,7 @@ async function holeKontakte(
           ["sf_deals", "account_sf_id"],
           ["sf_real_estate", "eigentuemer_account_sf_id"],
           ["sf_kontakte", "account_sf_id"],
+          ["investor_quellen", "sf_account_sf_id"],
         ]
       : [
           ["sf_mandate", "eigentuemer_kontakt_sf_id"],
@@ -278,6 +280,7 @@ async function holeKontakte(
           ["sf_deals", "kontakt_sf_id"],
           ["sf_aktivitaeten", "who_sf_id"],
           ["sf_real_estate", "eigentuemer_kontakt_sf_id"],
+          ["investor_quellen", "sf_kontakt_sf_id"],
         ];
 
   const referenziert = new Set<string>();
@@ -356,6 +359,13 @@ export async function salesforceSyncAusfuehren(
         .upsert({ sf_objekt: objekt, letzter_abruf_am: start, letzter_fehler: fehler.slice(0, 1000) }, { onConflict: "sf_objekt" });
       ergebnisse.push({ objekt, geholt: 0, geloescht: 0, fehler });
     }
+  }
+  // Investorenliste aus dem frischen Cache neu ableiten; Fehler stoppen den Sync nicht.
+  try {
+    const { investorenAufbauen } = await import("@/lib/investoren/aufbau");
+    await investorenAufbauen(admin);
+  } catch (err) {
+    console.error("[sf-sync] Investoren-Aufbau", err);
   }
   return ergebnisse;
 }

@@ -183,7 +183,6 @@ export const ankaufsprofileLadenFn = createServerFn({ method: "POST" })
       .select(
         "sf_id, name, kontakt_sf_id, account_sf_id, investor_typ, assetklassen, regionen, volumen_min, volumen_max, faktor_max, sf_geaendert_am",
       )
-      .eq("aktiv", true)
       .order("sf_geaendert_am", { ascending: false })
       .limit(2000);
     if (error) throw new Error(error.message);
