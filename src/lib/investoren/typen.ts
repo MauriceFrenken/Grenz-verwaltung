@@ -97,6 +97,8 @@ export type QuelleZeile = {
   adresse: string | null;
   webseite: string | null;
   quelleLink: string | null;
+  /** Bei Recherche-Funden: was wann gekauft oder gesucht wurde. */
+  beleg: string | null;
   typ: string | null;
   nutzungen: string[];
   volumenMin: number | null;

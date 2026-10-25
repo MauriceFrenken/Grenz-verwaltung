@@ -77,7 +77,7 @@ create index if not exists investor_vorschlaege_entschieden_von_idx on public.in
 -- Externe Listen (7Plus, Leadliste, Suchkunden): normalisiert, mit Salesforce-Treffer und Passung.
 create table if not exists public.investor_quellen (
   schluessel text primary key,
-  quelle text not null check (quelle in ('7plus', 'leadliste', 'suchkunden')),
+  quelle text not null check (quelle in ('7plus', 'leadliste', 'suchkunden', 'recherche')),
   firma text,
   person text,
   emails text[] not null default '{}',

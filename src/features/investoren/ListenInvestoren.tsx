@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Plus, X } from "lucide-react";
+import { ExternalLink, Loader2, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -23,6 +23,7 @@ const QUELLEN = [
   ["7plus", "7Plus"],
   ["leadliste", "Leadliste Grenz"],
   ["suchkunden", "Suchkunden"],
+  ["recherche", "Recherche 2026"],
 ] as const;
 
 const PASSUNG = [
@@ -54,6 +55,20 @@ export function ListenInvestoren() {
     laden().catch((e) => toast.error(e instanceof Error ? e.message : "Listen konnten nicht geladen werden."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, quelle, minPassung]);
+
+  async function recherchieren() {
+    setBusy(true);
+    try {
+      const { entdeckungJetztFn } = await import("@/lib/investoren/server-fn");
+      const r = await entdeckungJetztFn({ data: { supabaseAccessToken: token } });
+      toast.success(r.neu ? `${r.neu} neue Investoren gefunden: ${r.firmen.slice(0, 5).join(", ")}` : "Keine neuen Investoren in diesem Suchfeld.");
+      await laden();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Recherche fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function verwerfen() {
     setBusy(true);
@@ -88,7 +103,7 @@ export function ListenInvestoren() {
   return (
     <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
       <p className="text-sm text-text-muted">
-        Investoren aus 7Plus, der Leadliste und den Suchkunden, die noch nicht in Salesforce sind. Die Passung bewertet
+        Investoren aus 7Plus, der Leadliste, den Suchkunden und der laufenden Recherche (zweimal pro Woche neue, 2025/2026 aktive Käufer mit Beleg), die noch nicht in Salesforce sind. Die Passung bewertet
         NRW-Bezug, Wohnen und Wohn-/Geschäftshaus, Volumen 1 bis 20 Mio. € und Erreichbarkeit. Vor dem Anlegen bitte
         die Prüfung abwarten: Insolvente oder gelöschte Firmen legt die App nicht an.
       </p>
@@ -113,6 +128,9 @@ export function ListenInvestoren() {
         </select>
         <span className="text-xs text-text-subtle">{zeilen?.length ?? "…"} Einträge (höchstens 500)</span>
         <div className="ml-auto flex gap-2">
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => void recherchieren()}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Neue 2026 aktive recherchieren
+          </Button>
           <Button size="sm" disabled={!auswahl.size || busy} onClick={() => setFrage(true)}>
             <Plus className="h-4 w-4" /> In Salesforce anlegen ({Math.min(auswahl.size, 25)})
           </Button>
@@ -162,6 +180,16 @@ export function ListenInvestoren() {
                       {z.adresse ? ` · ${z.adresse}` : ""}
                       {z.nrwBezug ? " · NRW" : ""}
                     </div>
+                    {z.beleg ? (
+                      <div className="text-xs text-text-muted">
+                        {z.beleg}
+                        {z.quelleLink ? (
+                          <a className="ml-1 inline-flex items-center text-brand-text hover:underline" href={z.quelleLink} target="_blank" rel="noreferrer">
+                            Quelle <ExternalLink className="ml-0.5 h-3 w-3" />
+                          </a>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {z.objekteInteresse.length ? (
                       <div className="text-xs text-text-muted">Interesse: {z.objekteInteresse.join(", ")}</div>
                     ) : null}
@@ -190,7 +218,7 @@ export function ListenInvestoren() {
             <AlertDialogDescription>
               Je Eintrag entstehen ein Account (Geschäftsbereich Grenz & Co, Owner Sebastian Grenz), ein Kontakt und,
               wenn Kriterien bekannt sind, ein Ankaufsprofil. Als insolvent oder gelöscht geprüfte Firmen werden
-              übersprungen.
+              übersprungen, ebenso Firmen, die Salesforce schon unter gleicher E-Mail, Website oder gleichem Namen kennt.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

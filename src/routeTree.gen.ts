@@ -38,6 +38,7 @@ import { Route as ToolsIndexRouteImport } from './routes/tools.index'
 import { Route as ToolsToolRouteImport } from './routes/tools.$tool'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
+import { Route as ApiCronInvestorenEntdeckungRouteImport } from './routes/api.cron.investoren-entdeckung'
 import { Route as ApiCronInvestorenPruefungRouteImport } from './routes/api.cron.investoren-pruefung'
 import { Route as ApiCronMarktRadarRouteImport } from './routes/api.cron.markt-radar'
 import { Route as ApiCronMarktberichtQuellenRouteImport } from './routes/api.cron.marktbericht-quellen'
@@ -201,6 +202,12 @@ const ApiCronExposeAnalyseRoute = ApiCronExposeAnalyseRouteImport.update({
   path: '/api/cron/expose-analyse',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronInvestorenEntdeckungRoute =
+  ApiCronInvestorenEntdeckungRouteImport.update({
+    id: '/api/cron/investoren-entdeckung',
+    path: '/api/cron/investoren-entdeckung',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiCronInvestorenPruefungRoute =
   ApiCronInvestorenPruefungRouteImport.update({
     id: '/api/cron/investoren-pruefung',
@@ -315,6 +322,7 @@ export interface FileRoutesByFullPath {
   '/tools/': typeof ToolsIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/investoren-entdeckung': typeof ApiCronInvestorenEntdeckungRoute
   '/api/cron/investoren-pruefung': typeof ApiCronInvestorenPruefungRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
   '/api/cron/marktbericht-quellen': typeof ApiCronMarktberichtQuellenRoute
@@ -359,6 +367,7 @@ export interface FileRoutesByTo {
   '/tools': typeof ToolsIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/investoren-entdeckung': typeof ApiCronInvestorenEntdeckungRoute
   '/api/cron/investoren-pruefung': typeof ApiCronInvestorenPruefungRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
   '/api/cron/marktbericht-quellen': typeof ApiCronMarktberichtQuellenRoute
@@ -407,6 +416,7 @@ export interface FileRoutesById {
   '/tools/': typeof ToolsIndexRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
+  '/api/cron/investoren-entdeckung': typeof ApiCronInvestorenEntdeckungRoute
   '/api/cron/investoren-pruefung': typeof ApiCronInvestorenPruefungRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
   '/api/cron/marktbericht-quellen': typeof ApiCronMarktberichtQuellenRoute
@@ -456,6 +466,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/investoren-entdeckung'
     | '/api/cron/investoren-pruefung'
     | '/api/cron/markt-radar'
     | '/api/cron/marktbericht-quellen'
@@ -500,6 +511,7 @@ export interface FileRouteTypes {
     | '/tools'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/investoren-entdeckung'
     | '/api/cron/investoren-pruefung'
     | '/api/cron/markt-radar'
     | '/api/cron/marktbericht-quellen'
@@ -547,6 +559,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
+    | '/api/cron/investoren-entdeckung'
     | '/api/cron/investoren-pruefung'
     | '/api/cron/markt-radar'
     | '/api/cron/marktbericht-quellen'
@@ -586,6 +599,7 @@ export interface RootRouteChildren {
   ToolsIndexRoute: typeof ToolsIndexRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
+  ApiCronInvestorenEntdeckungRoute: typeof ApiCronInvestorenEntdeckungRoute
   ApiCronInvestorenPruefungRoute: typeof ApiCronInvestorenPruefungRoute
   ApiCronMarktRadarRoute: typeof ApiCronMarktRadarRoute
   ApiCronMarktberichtQuellenRoute: typeof ApiCronMarktberichtQuellenRoute
@@ -807,6 +821,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronExposeAnalyseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/investoren-entdeckung': {
+      id: '/api/cron/investoren-entdeckung'
+      path: '/api/cron/investoren-entdeckung'
+      fullPath: '/api/cron/investoren-entdeckung'
+      preLoaderRoute: typeof ApiCronInvestorenEntdeckungRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/investoren-pruefung': {
       id: '/api/cron/investoren-pruefung'
       path: '/api/cron/investoren-pruefung'
@@ -994,6 +1015,7 @@ const rootRouteChildren: RootRouteChildren = {
   ToolsIndexRoute: ToolsIndexRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
+  ApiCronInvestorenEntdeckungRoute: ApiCronInvestorenEntdeckungRoute,
   ApiCronInvestorenPruefungRoute: ApiCronInvestorenPruefungRoute,
   ApiCronMarktRadarRoute: ApiCronMarktRadarRoute,
   ApiCronMarktberichtQuellenRoute: ApiCronMarktberichtQuellenRoute,

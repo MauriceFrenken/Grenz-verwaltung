@@ -283,6 +283,7 @@ function zuQuelle(q: Roh, p?: Roh): QuelleZeile {
     adresse: (q.adresse as string) ?? null,
     webseite: (q.webseite as string) ?? null,
     quelleLink: (q.quelle_link as string) ?? null,
+    beleg: ((q.roh as Roh | null)?.beleg as string | undefined) ?? null,
     typ: (q.typ as string) ?? null,
     nutzungen: (q.nutzungen as string[]) ?? [],
     volumenMin: zahl(q.volumen_min),
@@ -352,6 +353,49 @@ export const quelleBearbeitenFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const FREEMAIL = new Set(["gmail.com", "googlemail.com", "web.de", "gmx.de", "gmx.net", "t-online.de", "outlook.com", "outlook.de", "hotmail.com", "hotmail.de", "yahoo.de", "yahoo.com", "icloud.com", "me.com", "aol.com", "mail.de", "freenet.de", "posteo.de", "online.de", "arcor.de"]);
+
+function soqlText(w: string): string {
+  return w.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function domainAus(w: string | null): string | null {
+  if (!w) return null;
+  const d = w.toLowerCase().replace(/^[a-z]+:\/\//, "").replace(/^www\./, "").split(/[/?#@]/)[0].trim();
+  return d.includes(".") && !FREEMAIL.has(d) ? d : null;
+}
+
+/**
+ * Live-Abfrage gegen Salesforce vor dem Anlegen: gleiche E-Mail, gleiche Website-Domain oder
+ * gleicher Firmenkern im Account-Namen. Der App-Cache kennt nur referenzierte Accounts.
+ */
+async function sfDubletteSuchen(
+  name: string,
+  webseite: string | null,
+  emails: string[],
+): Promise<{ art: "email" | "domain" | "name"; accountId: string | null; kontaktId: string | null } | null> {
+  const { sfAbfrage } = await import("@/lib/sf-sync/client");
+  const { normalisiereFirma } = await import("@/lib/markt-radar/abgleich");
+  const mails = emails.map((e) => e.trim().toLowerCase()).filter(Boolean).slice(0, 5);
+  if (mails.length) {
+    const k = await sfAbfrage(`SELECT Id, AccountId FROM Contact WHERE Email IN (${mails.map((m) => `'${soqlText(m)}'`).join(",")}) LIMIT 1`);
+    if (k[0]) return { art: "email", accountId: (k[0].AccountId as string | null) ?? null, kontaktId: k[0].Id };
+  }
+  const domains = [domainAus(webseite), ...mails.map((m) => domainAus(m.split("@")[1] ?? null))].filter((d): d is string => Boolean(d));
+  for (const d of [...new Set(domains)].slice(0, 2)) {
+    const a = await sfAbfrage(`SELECT Id FROM Account WHERE Website LIKE '%${soqlText(d)}%' LIMIT 1`);
+    if (a[0]) return { art: "domain", accountId: a[0].Id, kontaktId: null };
+  }
+  const kern = normalisiereFirma(name);
+  if (kern.length >= 4) {
+    const wort = kern.split(" ").sort((x, y) => y.length - x.length)[0];
+    const kandidaten = await sfAbfrage(`SELECT Id, Name FROM Account WHERE Name LIKE '%${soqlText(wort)}%' LIMIT 50`);
+    const treffer = kandidaten.find((a) => normalisiereFirma(String(a.Name ?? "")) === kern);
+    if (treffer) return { art: "name", accountId: treffer.Id, kontaktId: null };
+  }
+  return null;
+}
+
 /**
  * Legt ausgewählte Listeneinträge in Salesforce an (Account, Kontakt, Ankaufsprofil).
  * Nur nach Bestätigung in der UI, höchstens 25 je Vorgang. Insolvente oder gelöschte Firmen werden übersprungen.
@@ -381,6 +425,14 @@ export const quellenAnlegenFn = createServerFn({ method: "POST" })
         if (q.sf_treffer_art) throw new Error("Ist schon in Salesforce.");
         const { data: pr } = await admin.from("investor_pruefungen").select("status").eq("schluessel", `quelle:${q.schluessel}`).maybeSingle();
         if (pr && ["insolvenz", "liquidation", "geloescht"].includes(pr.status)) throw new Error(`Laut Prüfung ${pr.status}.`);
+        const dublette = await sfDubletteSuchen(name, q.webseite ?? null, q.emails ?? []);
+        if (dublette) {
+          await admin
+            .from("investor_quellen")
+            .update({ sf_treffer_art: dublette.art, sf_account_sf_id: dublette.accountId, sf_kontakt_sf_id: dublette.kontaktId })
+            .eq("schluessel", q.schluessel);
+          throw new Error(`Gibt es schon in Salesforce (${dublette.art === "email" ? "E-Mail" : dublette.art === "domain" ? "Website" : "Name"}), nicht neu angelegt.`);
+        }
         const typWert = q.typ ? ACCOUNT_TYPE_JE_TYP[q.typ as InvestorTyp] : null;
         const accountId = await sfCreate(admin, "Account", {
           Name: name,
@@ -436,6 +488,15 @@ export const quellenAnlegenFn = createServerFn({ method: "POST" })
       await investorenAufbauen(admin);
     }
     return { angelegt, fehler };
+  });
+
+/** Sucht sofort neue, 2025/2026 aktive Investoren in einem Suchfeld. Dauert zwei bis drei Minuten. */
+export const entdeckungJetztFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => ({ supabaseAccessToken: tokenAus(data) }))
+  .handler(async ({ data }) => {
+    await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
+    const { entdeckungLauf } = await import("./entdeckung");
+    return entdeckungLauf(createServiceRoleClient());
   });
 
 /** Prüft sofort die nächsten Firmen (Existenz, Insolvenz, Ankaufsprofil). Dauert ein bis zwei Minuten. */
