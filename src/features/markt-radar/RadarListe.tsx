@@ -27,9 +27,9 @@ type FilterId = (typeof FILTER)[number]["id"];
 function RelevanzPunkt({ wert }: { wert: number }) {
   const ton =
     wert >= 75
-      ? "bg-emerald-600 text-white"
+      ? "bg-brand text-white"
       : wert >= 50
-        ? "bg-amber-500 text-white"
+        ? "bg-[var(--gc-hellblau)] text-heading"
         : "bg-surface-muted text-text-muted";
   return (
     <span
@@ -74,7 +74,7 @@ function Zeile({
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-heading">{m.akteur}</span>
           {m.status === "neu" ? (
-            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+            <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-heading">
               neu
             </span>
           ) : null}
@@ -86,7 +86,7 @@ function Zeile({
               in Salesforce
             </span>
           ) : (
-            <span className="rounded-full border border-amber-300 px-2 py-0.5 text-[11px] text-amber-800">
+            <span className="rounded-full border border-[var(--gc-hellblau)] px-2 py-0.5 text-[11px] text-heading">
               noch nicht in Salesforce
             </span>
           )}

@@ -363,7 +363,7 @@ export function ObjektordnerKarte({
                   }
                 >
                   {u.anzahl ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-[#c4922a]" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-brand" />
                   ) : (
                     <CircleAlert className="h-3.5 w-3.5" />
                   )}

@@ -32,15 +32,15 @@ import {
 const STATUS_TEXT: Record<string, { text: string; klasse: string }> = {
   entwurf: {
     text: "Entwurf",
-    klasse: "bg-amber-50 text-amber-800 ring-amber-200",
+    klasse: "bg-surface-muted text-text-muted ring-hairline",
   },
   freigegeben: {
     text: "Freigegeben",
-    klasse: "bg-sky-50 text-sky-800 ring-sky-200",
+    klasse: "bg-brand-soft text-heading ring-[var(--gc-hellblau)]",
   },
   versendet: {
     text: "Versendet",
-    klasse: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+    klasse: "bg-brand text-white ring-brand",
   },
 };
 

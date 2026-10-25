@@ -109,7 +109,7 @@ function Feld({
         value={wert ?? ""}
         placeholder={vorschlag || "nicht gepflegt"}
         onChange={(e) => onChange(e.target.value)}
-        className={eigen ? "border-amber-400" : undefined}
+        className={eigen ? "border-[var(--gc-hellblau)]" : undefined}
       />
       {hinweis ? (
         <span className="text-[11px] text-text-subtle">{hinweis}</span>
@@ -148,7 +148,7 @@ function ZahlZeile({
               : Math.max(0, Number(e.target.value)),
           )
         }
-        className={`h-8 text-right ${eigen ? "border-amber-400" : ""}`}
+        className={`h-8 text-right ${eigen ? "border-[var(--gc-hellblau)]" : ""}`}
       />
       <span className="flex items-center gap-1 text-xs text-text-subtle">
         {ausSalesforce == null
@@ -736,7 +736,7 @@ export function ReportEditorPage({ sfId, id }: { sfId: string; id: string }) {
                             )
                           }
                           className={
-                            w.absagegruende ? "h-8 border-amber-400" : "h-8"
+                            w.absagegruende ? "h-8 border-[var(--gc-hellblau)]" : "h-8"
                           }
                         />
                         <Input
@@ -759,7 +759,7 @@ export function ReportEditorPage({ sfId, id }: { sfId: string; id: string }) {
                               ),
                             )
                           }
-                          className={`h-8 text-right ${w.absagegruende ? "border-amber-400" : ""}`}
+                          className={`h-8 text-right ${w.absagegruende ? "border-[var(--gc-hellblau)]" : ""}`}
                         />
                         {!gesperrt ? (
                           <Button
@@ -896,7 +896,7 @@ export function ReportEditorPage({ sfId, id }: { sfId: string; id: string }) {
                         }
                         className={
                           w.angebotspreis != null
-                            ? "border-amber-400"
+                            ? "border-[var(--gc-hellblau)]"
                             : undefined
                         }
                       />
@@ -939,7 +939,7 @@ export function ReportEditorPage({ sfId, id }: { sfId: string; id: string }) {
                             j === i ? { ...x, ...teil } : x,
                           ),
                         });
-                      const rand = w.angebote ? "h-8 border-amber-400" : "h-8";
+                      const rand = w.angebote ? "h-8 border-[var(--gc-hellblau)]" : "h-8";
                       return (
                         <div
                           key={i}
