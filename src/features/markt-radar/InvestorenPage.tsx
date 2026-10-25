@@ -12,9 +12,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatDate } from "@/lib/format";
 import type { AnkaufsprofilZeile } from "@/lib/markt-radar/server-fn";
 
+import { InvestorenListe } from "@/features/investoren/InvestorenListe";
+import { ListenInvestoren } from "@/features/investoren/ListenInvestoren";
+import { Pruefliste } from "@/features/investoren/Pruefliste";
+
 import { RadarListe } from "./RadarListe";
 
-export type InvestorenReiter = "markt" | "profile";
+export type InvestorenReiter = "datenbank" | "pruefliste" | "listen" | "markt" | "profile";
+export const INVESTOREN_REITER: InvestorenReiter[] = ["datenbank", "pruefliste", "listen", "markt", "profile"];
 
 function volumen(p: AnkaufsprofilZeile): string {
   if (p.volumenMin && p.volumenMax)
@@ -121,14 +126,14 @@ function Ankaufsprofile() {
   );
 }
 
-/** Käuferseite: wer kauft gerade im Markt, und wer sucht laut Salesforce. */
+/** Investorendatenbank, Prüfliste, neue Investoren aus Listen und Käufer am Markt. */
 export function InvestorenPage({ reiter }: { reiter: InvestorenReiter }) {
   const navigate = useNavigate();
   return (
     <>
       <PageHeader
         titel="Investoren"
-        beschreibung="Aktive Käufer am Markt und Ankaufsprofile aus Salesforce"
+        beschreibung="Bereinigte Investorendatenbank, Prüfliste für Salesforce und aktive Käufer am Markt"
       />
       <PageWrapper>
         <Tabs
@@ -142,9 +147,21 @@ export function InvestorenPage({ reiter }: { reiter: InvestorenReiter }) {
           }
         >
           <TabsList>
+            <TabsTrigger value="datenbank">Datenbank</TabsTrigger>
+            <TabsTrigger value="pruefliste">Prüfliste</TabsTrigger>
+            <TabsTrigger value="listen">Neue aus Listen</TabsTrigger>
             <TabsTrigger value="markt">Aktiv am Markt</TabsTrigger>
             <TabsTrigger value="profile">Ankaufsprofile</TabsTrigger>
           </TabsList>
+          <TabsContent value="datenbank" className="mt-4">
+            <InvestorenListe />
+          </TabsContent>
+          <TabsContent value="pruefliste" className="mt-4">
+            <Pruefliste />
+          </TabsContent>
+          <TabsContent value="listen" className="mt-4">
+            <ListenInvestoren />
+          </TabsContent>
           <TabsContent value="markt" className="mt-4">
             <RadarListe seite="kaeufer" />
           </TabsContent>
