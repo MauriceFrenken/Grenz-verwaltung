@@ -1,8 +1,10 @@
 import {
   Briefcase,
   ChartColumn,
+  Cloud,
   Inbox,
   LayoutDashboard,
+  ListChecks,
   MapPin,
   Plug,
   Radar,
@@ -75,6 +77,8 @@ export const NAVIGATION: NavSection[] = [
         badge: "verkaeufer",
         badgeTon: "violet",
       },
+      { to: "/akquise/salesforce", label: "Salesforce", icon: Cloud },
+      { to: "/akquise/massnahmen", label: "Maßnahmen", icon: ListChecks },
     ],
   },
   {
