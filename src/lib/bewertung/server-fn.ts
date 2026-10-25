@@ -88,7 +88,7 @@ async function objektAusMandat(
   };
 }
 
-async function vergleichsdaten(admin: SupabaseClient): Promise<Vergleich[]> {
+export async function vergleichsdaten(admin: SupabaseClient): Promise<Vergleich[]> {
   const zeilen: Record<string, unknown>[] = [];
   for (let von = 0; ; von += 1000) {
     const { data, error } = await admin
@@ -197,7 +197,7 @@ export type MarktdatenZeile = {
 };
 
 /** Marktdaten (IMV, BORIS NRW, Kaufpreissammlung) zur PLZ oder zum Ort, immer mit Quelle und Stichtag. */
-async function marktdatenFuer(
+export async function marktdatenFuer(
   admin: SupabaseClient,
   plz: string | null,
   ort: string | null,

@@ -74,7 +74,8 @@ export const KI_TOOLS: KiToolDefinition[] = [
     format: "XLSX",
     unterlagen:
       "Mieterliste des Eigentümers, Mietverträge, Sollstellung, Hausverwaltungs-Export",
-    platzhalter: "z. B. Mieterliste für Alter Grenzweg 39-41, Kaufpreis 1,975 Mio. €",
+    platzhalter:
+      "z. B. Mieterliste für Alter Grenzweg 39-41, Kaufpreis 1,975 Mio. €",
   },
   {
     id: "dcf",
