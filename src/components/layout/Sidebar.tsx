@@ -67,10 +67,7 @@ function NavLink({
       <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
       {!collapsed ? (
         <span
-          className={cn(
-            "flex-1",
-            item.umbruch ? "leading-snug" : "truncate",
-          )}
+          className={cn("flex-1", item.umbruch ? "leading-snug" : "truncate")}
         >
           {item.label}
         </span>
