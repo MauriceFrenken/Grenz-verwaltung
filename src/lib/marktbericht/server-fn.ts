@@ -16,6 +16,12 @@ import { dateinameAus, type DateiErgebnis } from "@/lib/vorlagen/export";
 
 import { berechneKennzahlen } from "./daten";
 import {
+  benchmarksZusammenfuehren,
+  bibliothekAuswahl,
+  DOKUMENT_SPALTEN,
+  dokumentAus,
+} from "./quellen";
+import {
   periodeSchluessel,
   periodeText,
   type Benchmark,
@@ -204,6 +210,15 @@ function benchmarksAus(roh: unknown): Benchmark[] {
         ...(url && /^https:\/\//.test(url) ? { url } : {}),
         ...(zitat ? { zitat } : {}),
         geprueft: b.geprueft === true,
+        ...(b.pruefung === "automatisch" || b.pruefung === "nutzer"
+          ? { pruefung: b.pruefung }
+          : {}),
+        ...(Number.isFinite(Number(b.relevanz)) && b.relevanz != null
+          ? { relevanz: Math.max(0, Math.min(100, Number(b.relevanz))) }
+          : {}),
+        ...(typeof b.dokumentId === "string" && b.dokumentId.length <= 40
+          ? { dokumentId: b.dokumentId }
+          : {}),
       };
     })
     .filter((b): b is Benchmark => b !== null);
@@ -305,6 +320,99 @@ export const marktberichteListeFn = createServerFn({ method: "POST" })
     return (rows ?? []).map(zeile);
   });
 
+/** Vergleichswerte aus der Bibliothek (automatisch belegt) für eine Periode. */
+async function bibliothekFuer(
+  admin: SupabaseClient,
+  periode: Periode,
+): Promise<Benchmark[]> {
+  const [{ data: doks, error }, { data: quellen }] = await Promise.all([
+    admin
+      .from("marktbericht_dokumente")
+      .select(DOKUMENT_SPALTEN)
+      .eq("status", "ausgelesen")
+      .limit(1000),
+    admin.from("marktbericht_quellen").select("id, name"),
+  ]);
+  // Ohne Bibliothek-Tabelle (Migration fehlt) bleibt der Bericht ohne fremde Werte.
+  if (error) return [];
+  return bibliothekAuswahl(
+    (doks ?? []).map(dokumentAus),
+    periode,
+    new Map((quellen ?? []).map((q) => [String(q.id), String(q.name)])),
+  );
+}
+
+/** Bericht anlegen: Kennzahlen einfrieren, Vergleichswerte aus Vorversion und Bibliothek übernehmen. */
+export async function berichtAnlegen(
+  admin: SupabaseClient,
+  periode: Periode,
+  erstelltVon: string | null,
+): Promise<MarktberichtZeile> {
+  const kennzahlen = await berechneKennzahlen(admin, periode);
+  // Vergleichswerte des letzten Berichts derselben Periode als Ausgangspunkt übernehmen.
+  const { data: vorher } = await admin
+    .from("marktberichte")
+    .select("inhalt")
+    .eq("periode", periodeSchluessel(periode))
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const { benchmarks } = benchmarksZusammenfuehren(
+    vorher ? inhaltAus(vorher.inhalt).benchmarks : [],
+    await bibliothekFuer(admin, periode),
+  );
+  const inhalt: MarktberichtInhalt = { texte: {}, benchmarks };
+  const { data: row, error } = await admin
+    .from("marktberichte")
+    .insert({
+      periode: periodeSchluessel(periode),
+      titel: `Marktbericht Zinshäuser Rheinland ${periodeText(periode)}`,
+      stichtag: kennzahlen.stichtag,
+      kennzahlen,
+      inhalt,
+      erstellt_von: erstelltVon,
+    })
+    .select(SPALTEN)
+    .single();
+  if (error) throw fehler(error.message);
+  return zeile(row);
+}
+
+/**
+ * Automatischer Entwurf: ab 1. August für das erste Halbjahr, ab 1. Februar für das Vorjahr,
+ * sobald die großen Häuser ihre Zahlen veröffentlicht haben. Legt nur an, wenn es für die
+ * Periode noch keinen Bericht gibt, und schreibt die Texte mit der KI vor. Freigeben bleibt beim Nutzer.
+ */
+export async function automatischerEntwurf(
+  admin: SupabaseClient,
+  heute = new Date(),
+): Promise<string | null> {
+  const jahr = heute.getUTCFullYear();
+  const monat = heute.getUTCMonth() + 1;
+  const periode: Periode =
+    monat >= 8
+      ? { jahr, art: "H1" }
+      : monat >= 2
+        ? { jahr: jahr - 1, art: "GJ" }
+        : { jahr: jahr - 1, art: "H1" };
+  const { data: da, error } = await admin
+    .from("marktberichte")
+    .select("id")
+    .eq("periode", periodeSchluessel(periode))
+    .limit(1);
+  if (error) throw fehler(error.message);
+  if (da?.length) return null;
+  const neu = await berichtAnlegen(admin, periode, null);
+  const b = await ladeVoll(admin, neu.id);
+  const { texteEntwurf } = await import("./ki");
+  const texte = await texteEntwurf(b.kennzahlen, b.inhalt.benchmarks);
+  await admin
+    .from("marktberichte")
+    .update({ inhalt: { ...b.inhalt, texte } })
+    .eq("id", neu.id);
+  return neu.id;
+}
+
 export const marktberichtAnlegenFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => ({
     supabaseAccessToken: tokenAus(data),
@@ -315,34 +423,11 @@ export const marktberichtAnlegenFn = createServerFn({ method: "POST" })
       data.supabaseAccessToken,
       "schreiben",
     );
-    const admin = createServiceRoleClient();
-    const kennzahlen = await berechneKennzahlen(admin, data.periode);
-    // Vergleichswerte des letzten Berichts derselben Periode als Ausgangspunkt übernehmen.
-    const { data: vorher } = await admin
-      .from("marktberichte")
-      .select("inhalt")
-      .eq("periode", periodeSchluessel(data.periode))
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const inhalt: MarktberichtInhalt = {
-      texte: {},
-      benchmarks: vorher ? inhaltAus(vorher.inhalt).benchmarks : [],
-    };
-    const { data: row, error } = await admin
-      .from("marktberichte")
-      .insert({
-        periode: periodeSchluessel(data.periode),
-        titel: `Marktbericht Zinshäuser Rheinland ${periodeText(data.periode)}`,
-        stichtag: kennzahlen.stichtag,
-        kennzahlen,
-        inhalt,
-        erstellt_von: aufrufer.userId === "cron" ? null : aufrufer.userId,
-      })
-      .select(SPALTEN)
-      .single();
-    if (error) throw fehler(error.message);
-    return zeile(row);
+    return berichtAnlegen(
+      createServiceRoleClient(),
+      data.periode,
+      aufrufer.userId === "cron" ? null : aufrufer.userId,
+    );
   });
 
 export const marktberichtLadenFn = createServerFn({ method: "POST" })
@@ -441,8 +526,12 @@ export const marktberichtPdfAuslesenFn = createServerFn({ method: "POST" })
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
     if (!data.base64.startsWith("JVBER"))
       throw new Error("Bitte eine PDF-Datei hochladen.");
-    const { benchmarksAusPdf } = await import("./ki");
-    return benchmarksAusPdf(data.base64, data.dateiname);
+    const { pdfAuslesen } = await import("./quellen-lauf");
+    const { werte } = await pdfAuslesen(
+      new Uint8Array(Buffer.from(data.base64, "base64")),
+      data.dateiname,
+    );
+    return werte;
   });
 
 export const marktberichtFreigebenFn = createServerFn({ method: "POST" })

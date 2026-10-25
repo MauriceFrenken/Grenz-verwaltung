@@ -171,6 +171,11 @@ const BENCH_SCHEMA = {
           veraenderung: { type: "string" },
           seite: { type: "integer" },
           zitat: { type: "string" },
+          relevanz: {
+            type: "integer",
+            description:
+              "0 bis 100: Bedeutung für einen Bericht über Zinshäuser im Rheinland",
+          },
         },
         required: [
           "kennzahl",
@@ -180,6 +185,7 @@ const BENCH_SCHEMA = {
           "veraenderung",
           "seite",
           "zitat",
+          "relevanz",
         ],
         additionalProperties: false,
       },
@@ -193,42 +199,59 @@ const BENCH_SYSTEM = `Du liest Marktberichte von Immobilienberatern (z. B. BNP P
 Lies die Kennzahlen aus, die für einen Marktbericht über Zinshäuser, Wohninvestment und Wohnungsmarkt im Rheinland (Köln, Düsseldorf, NRW) oder Deutschland relevant sind:
 Transaktionsvolumen, Spitzenrenditen, Kaufpreisfaktoren, Kaufpreise je m², Angebots- und Vergleichsmieten, Leerstand, Anteil Käufergruppen, Liegenschaftszinssätze, Prognosen.
 Regeln:
-- Nur Werte, die wörtlich im Dokument stehen. "zitat" ist der exakte Textausschnitt mit der Zahl, "seite" die Seitenzahl im PDF (ab 1).
+- Nur Werte, die wörtlich im Dokument stehen. "zitat" ist der exakte, zusammenhängende Textausschnitt (ein Satz oder eine Tabellenzeile, höchstens 300 Zeichen) mit der Zahl genau so geschrieben wie im Dokument, ohne Auslassungen. "seite" die Seitenzahl im PDF (ab 1), bei Webseiten 1.
+- "relevanz": Wohnen, Mehrfamilienhäuser und Wohn- und Geschäftshäuser in Köln, Düsseldorf, Bonn und NRW hoch; Deutschland-Werte für Wohnen mittel; Büro, Logistik oder Einzelhandel niedrig.
 - "wert" als Zahl (z. B. 3.81 für „3,81 %“, 749 für „749 Mio. €“), "einheit" z. B. „%“, „Mio. €“, „€/m²“, „Faktor“.
 - "veraenderung" so wie im Dokument („+34 % y/y“, „+10 bp“) oder leer.
 - "region" z. B. „Düsseldorf“, „Köln“, „Top-7“, „Deutschland“.
 - Höchstens 15 Kennzahlen, die wichtigsten zuerst.`;
 
-export async function benchmarksAusPdf(
-  pdfBase64: string,
-  dateiname: string,
+export type DokumentInhalt =
+  | { pdfBase64: string }
+  | { text: string; art: "pdf" | "html" };
+
+/** Kennzahlen aus einem Marktbericht (PDF oder Text einer Webseite) mit Seite und Zitat. */
+export async function benchmarksAusDokument(
+  inhalt: DokumentInhalt,
+  titel: string,
+  url?: string,
 ): Promise<Benchmark[]> {
-  const antwort = await client().messages.create({
-    model: MODELL,
-    max_tokens: 8000,
-    system: BENCH_SYSTEM,
-    output_config: {
-      effort: "medium",
-      format: { type: "json_schema", schema: BENCH_SCHEMA },
-    },
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "document",
-            source: {
-              type: "base64",
-              media_type: "application/pdf",
-              data: pdfBase64,
-            },
-            title: dateiname,
+  const dokument: Anthropic.DocumentBlockParam =
+    "pdfBase64" in inhalt
+      ? {
+          type: "document",
+          source: {
+            type: "base64",
+            media_type: "application/pdf",
+            data: inhalt.pdfBase64,
           },
-          { type: "text", text: "Lies die Kennzahlen als JSON aus." },
-        ],
+          title: titel,
+        }
+      : {
+          type: "document",
+          source: { type: "text", media_type: "text/plain", data: inhalt.text },
+          title: titel,
+        };
+  const antwort = await client()
+    .messages.stream({
+      model: MODELL,
+      max_tokens: 10000,
+      system: BENCH_SYSTEM,
+      output_config: {
+        effort: "medium",
+        format: { type: "json_schema", schema: BENCH_SCHEMA },
       },
-    ],
-  });
+      messages: [
+        {
+          role: "user",
+          content: [
+            dokument,
+            { type: "text", text: "Lies die Kennzahlen als JSON aus." },
+          ],
+        },
+      ],
+    })
+    .finalMessage();
   const roh = JSON.parse(textAus(antwort)) as {
     herausgeber: string;
     stichtag: string;
@@ -240,6 +263,7 @@ export async function benchmarksAusPdf(
       veraenderung: string;
       seite: number;
       zitat: string;
+      relevanz: number;
     }[];
   };
   const stichtag = /^\d{4}-\d{2}-\d{2}$/.test(roh.stichtag)
@@ -254,11 +278,21 @@ export async function benchmarksAusPdf(
       region: x.region,
       wert: x.wert,
       einheit: x.einheit,
-      veraenderung: x.veraenderung || undefined,
-      quelle: `${roh.herausgeber}, ${dateiname.replace(/\.pdf$/i, "")}`,
+      ...(x.veraenderung ? { veraenderung: x.veraenderung } : {}),
+      quelle: `${roh.herausgeber}, ${titel.replace(/\.pdf$/i, "")}`,
       stichtag,
-      seite: x.seite,
+      ...(Number.isInteger(x.seite) && x.seite > 0 ? { seite: x.seite } : {}),
+      ...(url ? { url } : {}),
       zitat: x.zitat.slice(0, 400),
+      relevanz: Math.max(0, Math.min(100, Math.round(x.relevanz))),
       geprueft: false,
     }));
+}
+
+/** Hochgeladenes PDF auslesen (Editor). */
+export function benchmarksAusPdf(
+  pdfBase64: string,
+  dateiname: string,
+): Promise<Benchmark[]> {
+  return benchmarksAusDokument({ pdfBase64 }, dateiname);
 }
