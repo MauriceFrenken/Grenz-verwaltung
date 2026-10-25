@@ -22,6 +22,7 @@ import { Route as KennzahlenRouteImport } from './routes/kennzahlen'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as VerkaeuferRouteImport } from './routes/verkaeufer'
+import { Route as AkquiseMassnahmenRouteImport } from './routes/akquise.massnahmen'
 import { Route as EinstellungenIndexRouteImport } from './routes/einstellungen.index'
 import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
 import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
@@ -36,6 +37,8 @@ import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callba
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
 import { Route as ToolsIndexRouteImport } from './routes/tools.index'
 import { Route as ToolsToolRouteImport } from './routes/tools.$tool'
+import { Route as AkquiseSalesforceIndexRouteImport } from './routes/akquise.salesforce.index'
+import { Route as AkquiseSalesforceReiterRouteImport } from './routes/akquise.salesforce.$reiter'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
 import { Route as ApiCronMarktRadarRouteImport } from './routes/api.cron.markt-radar'
@@ -119,6 +122,11 @@ const VerkaeuferRoute = VerkaeuferRouteImport.update({
   path: '/verkaeufer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AkquiseMassnahmenRoute = AkquiseMassnahmenRouteImport.update({
+  id: '/akquise/massnahmen',
+  path: '/akquise/massnahmen',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EinstellungenIndexRoute = EinstellungenIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -188,6 +196,16 @@ const ToolsIndexRoute = ToolsIndexRouteImport.update({
 const ToolsToolRoute = ToolsToolRouteImport.update({
   id: '/tools/$tool',
   path: '/tools/$tool',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AkquiseSalesforceIndexRoute = AkquiseSalesforceIndexRouteImport.update({
+  id: '/akquise/salesforce/',
+  path: '/akquise/salesforce/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AkquiseSalesforceReiterRoute = AkquiseSalesforceReiterRouteImport.update({
+  id: '/akquise/salesforce/$reiter',
+  path: '/akquise/salesforce/$reiter',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCronEbicsUmsaetzeRoute = ApiCronEbicsUmsaetzeRouteImport.update({
@@ -292,6 +310,7 @@ export interface FileRoutesByFullPath {
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
+  '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -306,6 +325,7 @@ export interface FileRoutesByFullPath {
   '/exposes/': typeof ExposesIndexRoute
   '/mandate/': typeof MandateIndexRoute
   '/tools/': typeof ToolsIndexRoute
+  '/akquise/salesforce/$reiter': typeof AkquiseSalesforceReiterRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
@@ -318,6 +338,7 @@ export interface FileRoutesByFullPath {
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
+  '/akquise/salesforce/': typeof AkquiseSalesforceIndexRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
   '/tools/marktbericht/': typeof ToolsMarktberichtIndexRoute
@@ -336,6 +357,7 @@ export interface FileRoutesByTo {
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
+  '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -349,6 +371,7 @@ export interface FileRoutesByTo {
   '/exposes': typeof ExposesIndexRoute
   '/mandate': typeof MandateIndexRoute
   '/tools': typeof ToolsIndexRoute
+  '/akquise/salesforce/$reiter': typeof AkquiseSalesforceReiterRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
@@ -361,6 +384,7 @@ export interface FileRoutesByTo {
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
+  '/akquise/salesforce': typeof AkquiseSalesforceIndexRoute
   '/exposes/import': typeof ExposesImportIndexRoute
   '/mandate/$sfId': typeof MandateSfIdIndexRoute
   '/tools/marktbericht': typeof ToolsMarktberichtIndexRoute
@@ -382,6 +406,7 @@ export interface FileRoutesById {
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
+  '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
@@ -396,6 +421,7 @@ export interface FileRoutesById {
   '/exposes/': typeof ExposesIndexRoute
   '/mandate/': typeof MandateIndexRoute
   '/tools/': typeof ToolsIndexRoute
+  '/akquise/salesforce/$reiter': typeof AkquiseSalesforceReiterRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/markt-radar': typeof ApiCronMarktRadarRoute
@@ -408,6 +434,7 @@ export interface FileRoutesById {
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
+  '/akquise/salesforce/': typeof AkquiseSalesforceIndexRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
   '/tools/marktbericht/': typeof ToolsMarktberichtIndexRoute
@@ -430,6 +457,7 @@ export interface FileRouteTypes {
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
     | '/verkaeufer'
+    | '/akquise/massnahmen'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -444,6 +472,7 @@ export interface FileRouteTypes {
     | '/exposes/'
     | '/mandate/'
     | '/tools/'
+    | '/akquise/salesforce/$reiter'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/markt-radar'
@@ -456,6 +485,7 @@ export interface FileRouteTypes {
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
     | '/tools/marktbericht/$id'
+    | '/akquise/salesforce/'
     | '/exposes/import/'
     | '/mandate/$sfId/'
     | '/tools/marktbericht/'
@@ -474,6 +504,7 @@ export interface FileRouteTypes {
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
     | '/verkaeufer'
+    | '/akquise/massnahmen'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -487,6 +518,7 @@ export interface FileRouteTypes {
     | '/exposes'
     | '/mandate'
     | '/tools'
+    | '/akquise/salesforce/$reiter'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/markt-radar'
@@ -499,6 +531,7 @@ export interface FileRouteTypes {
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
     | '/tools/marktbericht/$id'
+    | '/akquise/salesforce'
     | '/exposes/import'
     | '/mandate/$sfId'
     | '/tools/marktbericht'
@@ -519,6 +552,7 @@ export interface FileRouteTypes {
     | '/passwort-zuruecksetzen'
     | '/sitemap.xml'
     | '/verkaeufer'
+    | '/akquise/massnahmen'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
@@ -533,6 +567,7 @@ export interface FileRouteTypes {
     | '/exposes/'
     | '/mandate/'
     | '/tools/'
+    | '/akquise/salesforce/$reiter'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/markt-radar'
@@ -545,6 +580,7 @@ export interface FileRouteTypes {
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
     | '/tools/marktbericht/$id'
+    | '/akquise/salesforce/'
     | '/exposes/import/'
     | '/mandate/$sfId/'
     | '/tools/marktbericht/'
@@ -566,11 +602,13 @@ export interface RootRouteChildren {
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VerkaeuferRoute: typeof VerkaeuferRoute
+  AkquiseMassnahmenRoute: typeof AkquiseMassnahmenRoute
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
   ToolsToolRoute: typeof ToolsToolRoute
   MandateIndexRoute: typeof MandateIndexRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
+  AkquiseSalesforceReiterRoute: typeof AkquiseSalesforceReiterRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
   ApiCronMarktRadarRoute: typeof ApiCronMarktRadarRoute
@@ -582,6 +620,7 @@ export interface RootRouteChildren {
   MandateSfIdMatchingRoute: typeof MandateSfIdMatchingRoute
   MandateSfIdReportsRoute: typeof MandateSfIdReportsRoute
   ToolsMarktberichtIdRoute: typeof ToolsMarktberichtIdRoute
+  AkquiseSalesforceIndexRoute: typeof AkquiseSalesforceIndexRoute
   MandateSfIdIndexRoute: typeof MandateSfIdIndexRoute
   ToolsMarktberichtIndexRoute: typeof ToolsMarktberichtIndexRoute
   MandateSfIdDokumentIdRoute: typeof MandateSfIdDokumentIdRoute
@@ -681,6 +720,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerkaeuferRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/akquise/massnahmen': {
+      id: '/akquise/massnahmen'
+      path: '/akquise/massnahmen'
+      fullPath: '/akquise/massnahmen'
+      preLoaderRoute: typeof AkquiseMassnahmenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/einstellungen/': {
       id: '/einstellungen/'
       path: '/'
@@ -777,6 +823,20 @@ declare module '@tanstack/react-router' {
       path: '/tools/$tool'
       fullPath: '/tools/$tool'
       preLoaderRoute: typeof ToolsToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/akquise/salesforce/': {
+      id: '/akquise/salesforce/'
+      path: '/akquise/salesforce'
+      fullPath: '/akquise/salesforce/'
+      preLoaderRoute: typeof AkquiseSalesforceIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/akquise/salesforce/$reiter': {
+      id: '/akquise/salesforce/$reiter'
+      path: '/akquise/salesforce/$reiter'
+      fullPath: '/akquise/salesforce/$reiter'
+      preLoaderRoute: typeof AkquiseSalesforceReiterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cron/ebics-umsaetze': {
@@ -966,11 +1026,13 @@ const rootRouteChildren: RootRouteChildren = {
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VerkaeuferRoute: VerkaeuferRoute,
+  AkquiseMassnahmenRoute: AkquiseMassnahmenRoute,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
   ToolsToolRoute: ToolsToolRoute,
   MandateIndexRoute: MandateIndexRoute,
   ToolsIndexRoute: ToolsIndexRoute,
+  AkquiseSalesforceReiterRoute: AkquiseSalesforceReiterRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
   ApiCronMarktRadarRoute: ApiCronMarktRadarRoute,
@@ -982,6 +1044,7 @@ const rootRouteChildren: RootRouteChildren = {
   MandateSfIdMatchingRoute: MandateSfIdMatchingRoute,
   MandateSfIdReportsRoute: MandateSfIdReportsRoute,
   ToolsMarktberichtIdRoute: ToolsMarktberichtIdRoute,
+  AkquiseSalesforceIndexRoute: AkquiseSalesforceIndexRoute,
   MandateSfIdIndexRoute: MandateSfIdIndexRoute,
   ToolsMarktberichtIndexRoute: ToolsMarktberichtIndexRoute,
   MandateSfIdDokumentIdRoute: MandateSfIdDokumentIdRoute,
