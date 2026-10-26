@@ -94,8 +94,70 @@ export const investorenLadenFn = createServerFn({ method: "POST" })
       alle((von, bis) => admin.from("investor_pruefungen").select("*").like("schluessel", "acc:%").range(von, bis)),
     ]);
     const je = new Map(pruefungen.map((p) => [String(p.schluessel).slice(4), p]));
-    return zeilen.map((z) => zuInvestor(z, je.get(String(z.account_sf_id))));
+    const sf = zeilen.map((z) => zuInvestor(z, je.get(String(z.account_sf_id))));
+    // Dazu die Investoren aus den Listen, die (noch) nicht in Salesforce sind: je Firma der Haupteintrag.
+    const [quellen, qPruefungen] = await Promise.all([
+      alle((von, bis) =>
+        admin
+          .from("investor_quellen")
+          .select(QUELLE_SPALTEN)
+          .is("dublette_von", null)
+          .is("sf_account_sf_id", null)
+          .neq("bearbeitung", "verworfen")
+          .order("passung", { ascending: false })
+          .range(von, bis),
+      ),
+      alle((von, bis) => admin.from("investor_pruefungen").select("*").like("schluessel", "quelle:%").range(von, bis)),
+    ]);
+    const jeQ = new Map(qPruefungen.map((p) => [String(p.schluessel).slice(7), p]));
+    return [...sf, ...quellen.map((q) => quelleAlsInvestor(q, jeQ.get(String(q.schluessel))))];
   });
+
+const QUELLE_SPALTEN =
+  "schluessel, quelle, firma, person, typ, nutzungen, objektklassen, volumen_min, volumen_max, einheiten_min, regionen, nrw_bezug, emails, passung, bearbeitung, roh";
+
+/** Ein Listeneintrag in der Form der Datenbankzeile; Schlüssel „quelle:…“ statt Account-Id. */
+function quelleAlsInvestor(q: Roh, p?: Roh): InvestorZeile {
+  const pruefung = pruefungKurz(p);
+  const erloschen = pruefung && ["insolvenz", "liquidation", "geloescht"].includes(pruefung.status);
+  const regionen = (q.regionen as string[]) ?? [];
+  const nrw = q.nrw_bezug === "region" ? "NRW" : q.nrw_bezug === "sitz" ? "Sitz NRW" : null;
+  const kurz = regionen.length > 3 ? [...regionen.slice(0, 2), `+${regionen.length - 2} weitere`] : regionen;
+  const emails = (q.emails as string[]) ?? [];
+  return {
+    accountSfId: `quelle:${q.schluessel}`,
+    name: String(q.firma ?? q.person ?? q.schluessel),
+    profilSfId: null,
+    typ: (q.typ as string) ?? null,
+    typQuelle: q.typ ? "liste" : null,
+    status: erloschen ? "erloschen" : "neu",
+    statusGrund: erloschen
+      ? (pruefung?.begruendung ?? null)
+      : `Aus Liste ${q.quelle}, noch nicht in Salesforce. Passung ${q.passung ?? 0}.`,
+    prioritaet: null,
+    herkunft: "nur_liste",
+    nutzungen: (q.nutzungen as string[]) ?? [],
+    objektklassen: (q.objektklassen as string[]) ?? [],
+    volumenMin: zahl(q.volumen_min),
+    volumenMax: zahl(q.volumen_max),
+    faktorMax: null,
+    einheitenMin: zahl(q.einheiten_min),
+    regionsebene: nrw,
+    regionenKurz: nrw && !kurz.length ? [nrw] : kurz,
+    bemerkung: ((q.roh as Roh | null)?.beleg as string | undefined) ?? null,
+    kriterienHerkunft: {},
+    letzterKontaktAm: null,
+    aktivitaeten12m: 0,
+    dealsAnzahl: 0,
+    dealsGewonnen: 0,
+    kampagnenAnzahl: 0,
+    radarAnzahl: 0,
+    letzteMarktaktivitaetAm: null,
+    kontakteAnzahl: q.person || emails.length ? 1 : 0,
+    kontakteMitEmail: emails.length ? 1 : 0,
+    pruefung,
+  };
+}
 
 function zuVorschlag(v: Roh, namen: Map<string, string>): VorschlagZeile {
   return {
@@ -127,6 +189,7 @@ export const investorAkteFn = createServerFn({ method: "POST" })
     await pruefeAufrufer(data.supabaseAccessToken);
     const admin = createServiceRoleClient();
     const id = data.accountSfId;
+    if (id.startsWith("quelle:")) return quellenAkte(admin, id.slice(7));
     const [inv, pr, ereignisse, vorschlaege, kontakte, quellen] = await Promise.all([
       admin.from("investoren").select("*").eq("account_sf_id", id).maybeSingle(),
       admin.from("investor_pruefungen").select("*").eq("schluessel", `acc:${id}`).maybeSingle(),
@@ -165,6 +228,42 @@ export const investorAkteFn = createServerFn({ method: "POST" })
       })),
     };
   });
+
+/** Akte eines Listen-Investors: Haupteintrag plus alle zusammengeführten Einträge. */
+async function quellenAkte(admin: ReturnType<typeof createServiceRoleClient>, schluessel: string): Promise<InvestorAkte> {
+  const [q, pr, gruppe] = await Promise.all([
+    admin.from("investor_quellen").select(QUELLE_SPALTEN).eq("schluessel", schluessel).maybeSingle(),
+    admin.from("investor_pruefungen").select("*").eq("schluessel", `quelle:${schluessel}`).maybeSingle(),
+    admin
+      .from("investor_quellen")
+      .select("quelle, quelle_link, nutzungen, volumen_min, volumen_max, objekte_interesse, person, emails, telefon")
+      // Schlüssel enthalten Doppelpunkte und Leerzeichen, deshalb in Anführungszeichen.
+      .or(`schluessel.eq."${schluessel.replace(/"/g, '\\"')}",dublette_von.eq."${schluessel.replace(/"/g, '\\"')}"`),
+  ]);
+  if (q.error) throw new Error(q.error.message);
+  if (!q.data) throw new Error("Eintrag nicht gefunden.");
+  const zeilen = gruppe.data ?? [];
+  const kontakte = new Map<string, { sfId: string; name: string; email: string | null; telefon: string | null }>();
+  for (const z of zeilen) {
+    const email = (z.emails ?? [])[0] ?? null;
+    const name = z.person ?? email ?? "";
+    if (name && !kontakte.has(`${name}|${email}`)) kontakte.set(`${name}|${email}`, { sfId: `${name}|${email}`, name, email, telefon: z.telefon ?? null });
+  }
+  return {
+    investor: quelleAlsInvestor(q.data as Roh, pr.data ?? undefined),
+    ereignisse: [],
+    vorschlaege: [],
+    kontakte: [...kontakte.values()],
+    listen: zeilen.map((z) => ({
+      quelle: z.quelle,
+      link: z.quelle_link,
+      nutzungen: z.nutzungen ?? [],
+      volumenMin: zahl(z.volumen_min),
+      volumenMax: zahl(z.volumen_max),
+      objekteInteresse: z.objekte_interesse ?? [],
+    })),
+  };
+}
 
 export const vorschlaegeLadenFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => {

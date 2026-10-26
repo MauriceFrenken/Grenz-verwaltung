@@ -20,7 +20,13 @@ const HERKUNFT: Record<string, string> = {
   deal: "Deal",
   radar: "Markt-Radar",
   liste: "Externe Liste",
+  nur_liste: "Nur Liste, nicht in Salesforce",
 };
+
+const BESTAND: [string, string][] = [
+  ["sf", "In Salesforce"],
+  ["liste", "Nur in Listen"],
+];
 
 function Auswahl({
   wert,
@@ -57,6 +63,8 @@ export function InvestorenListe() {
   const [status, setStatus] = useState("");
   const [typ, setTyp] = useState("");
   const [herkunft, setHerkunft] = useState("");
+  const [bestand, setBestand] = useState("");
+  const [sichtbar, setSichtbar] = useState(300);
   const [nurKriterien, setNurKriterien] = useState(false);
   const [offen, setOffen] = useState<string | null>(null);
   const [busy, setBusy] = useState<"aufbau" | "pruefung" | null>(null);
@@ -98,18 +106,20 @@ export function InvestorenListe() {
         (!status || z.status === status) &&
         (!typ || (typ === "-" ? !z.typ : z.typ === typ)) &&
         (!herkunft || z.herkunft === herkunft) &&
+        (!bestand || (bestand === "liste") === z.accountSfId.startsWith("quelle:")) &&
         (!nurKriterien || z.nutzungen.length > 0 || z.volumenMin != null || z.volumenMax != null) &&
         (!q ||
           [z.name, z.typ, ...z.nutzungen, ...z.regionenKurz, z.bemerkung]
             .filter(Boolean)
             .some((t) => t!.toLowerCase().includes(q))),
     );
-  }, [zeilen, suche, status, typ, herkunft, nurKriterien]);
+  }, [zeilen, suche, status, typ, herkunft, bestand, nurKriterien]);
 
   const zahlen = useMemo(() => {
     const z = zeilen ?? [];
     return {
       gesamt: z.length,
+      sf: z.filter((x) => !x.accountSfId.startsWith("quelle:")).length,
       aktiv: z.filter((x) => x.status === "aktiv").length,
       ohneTyp: z.filter((x) => !x.typ).length,
       erloschen: z.filter((x) => x.status === "erloschen").length,
@@ -121,7 +131,8 @@ export function InvestorenListe() {
     <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-text-muted">
         <span>
-          <strong className="text-heading">{zahlen.gesamt}</strong> Investoren
+          <strong className="text-heading">{zahlen.gesamt.toLocaleString("de-DE")}</strong> Investoren, davon{" "}
+          <strong className="text-heading">{zahlen.sf}</strong> in Salesforce
         </span>
         <span>
           <strong className="text-heading">{zahlen.aktiv}</strong> aktiv
@@ -163,6 +174,7 @@ export function InvestorenListe() {
           leer="Alle Typen"
           optionen={[...INVESTOR_TYPEN.map((t) => [t, t] as [string, string]), ["-", "Ohne Typ"]]}
         />
+        <Auswahl wert={bestand} onChange={setBestand} leer="Salesforce und Listen" optionen={BESTAND} />
         <Auswahl wert={herkunft} onChange={setHerkunft} leer="Alle Herkünfte" optionen={Object.entries(HERKUNFT)} />
         <label className="flex items-center gap-2 text-sm text-text-muted">
           <input type="checkbox" checked={nurKriterien} onChange={(e) => setNurKriterien(e.target.checked)} />
@@ -189,7 +201,7 @@ export function InvestorenListe() {
               </tr>
             </thead>
             <tbody>
-              {gefiltert.map((z) => (
+              {gefiltert.slice(0, sichtbar).map((z) => (
                 <tr
                   key={z.accountSfId}
                   className="cursor-pointer border-t border-hairline align-top hover:bg-accent-soft"
@@ -218,6 +230,11 @@ export function InvestorenListe() {
           </table>
         </div>
       )}
+      {zeilen && gefiltert.length > sichtbar ? (
+        <Button size="sm" variant="outline" className="self-start" onClick={() => setSichtbar(sichtbar + 300)}>
+          Weitere 300 anzeigen ({(gefiltert.length - sichtbar).toLocaleString("de-DE")} übrig)
+        </Button>
+      ) : null}
       <InvestorAkteSheet accountSfId={offen} onClose={() => setOffen(null)} />
     </section>
   );
