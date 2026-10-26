@@ -117,6 +117,7 @@ export const STATUS_LABEL: Record<string, string> = {
   kein_interesse: "Kein Interesse",
   gesperrt: "Gesperrt",
   erloschen: "Erloschen",
+  neu: "Neu, nicht in Salesforce",
 };
 
 export const PRUEF_LABEL: Record<string, string> = {
