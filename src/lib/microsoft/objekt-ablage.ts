@@ -32,6 +32,15 @@ export function objektAblageKonfiguriert(): boolean {
   );
 }
 
+/** Admin-Freigabe (Consent) der App im Microsoft-Konto der Objektablage. */
+export function objektAblageFreigabeUrl(): string | null {
+  const tenant =
+    env("MICROSOFT_OBJEKTE_TENANT_ID") || microsoftServerTenantId();
+  const clientId = microsoftServerClientId();
+  if (!tenant || !clientId) return null;
+  return `https://login.microsoftonline.com/${encodeURIComponent(tenant)}/adminconsent?client_id=${encodeURIComponent(clientId)}`;
+}
+
 const tokenCache = new Map<string, { token: string; bis: number }>();
 
 async function appToken(): Promise<string> {
