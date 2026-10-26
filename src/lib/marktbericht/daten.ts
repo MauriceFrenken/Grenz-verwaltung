@@ -15,6 +15,7 @@ import {
 } from "./auswertung";
 import { ladeZinsumfeld } from "./bundesbank";
 import {
+  MINDEST_FALLZAHL,
   periodeVonBis,
   vorperiode,
   type MarktberichtKennzahlen,
@@ -45,6 +46,8 @@ export async function berechneKennzahlen(
   const vor = periodeVonBis(vorperiode(periode));
   const heute = new Date().toISOString().slice(0, 10);
   const stichtag = bis < heute ? bis : heute;
+  // Laufende eigene Erhebung: die letzten sechs Monate bis heute, falls die Periode selbst zu dünn ist.
+  const erhebungVon = plusTage(heute, -182);
 
   const [exposes, profile, mandate, deals, radar, zinsen] = await Promise.all([
     alle<ExposeZeile>((a, b) =>
@@ -53,7 +56,7 @@ export async function berechneKennzahlen(
         .select("eingegangen_am, felder")
         .not("felder", "is", null)
         .gte("eingegangen_am", vor.von)
-        .lte("eingegangen_am", `${bis}T23:59:59Z`)
+        .lte("eingegangen_am", `${heute}T23:59:59Z`)
         .range(a, b),
     ),
     alle<AnkaufsprofilZeile>((a, b) =>
@@ -80,11 +83,43 @@ export async function berechneKennzahlen(
           "seite, akteur, ereignis, ort, volumen_eur, ereignis_am, created_at, quelle_url, relevanz",
         )
         .neq("status", "verworfen")
-        .gte("created_at", von)
+        .gte("created_at", von < erhebungVon ? von : erhebungVon)
         .range(a, b),
     ),
     ladeZinsumfeld(stichtag),
   ]);
+
+  let angebot = angebotsmarkt(exposes, von, bis, vor.von, vor.bis);
+  let radarWerte = radarAuswahl(radar, von, bis);
+  const ersatz = { angebot: false, radar: false };
+  // Eigene Quellen laufen erst seit 2026 (Exposé-Eingang ab August, Markt-Radar ab Oktober).
+  // Ohne genug Fälle in der Periode zeigt der Bericht die laufende Erhebung, klar gekennzeichnet.
+  if (erhebungVon > von) {
+    const gesamt = angebot.zeilen.find((z) => z.teilmarkt === "Gesamt");
+    if ((gesamt?.angebote ?? 0) < MINDEST_FALLZAHL) {
+      const laufend = angebotsmarkt(
+        exposes,
+        erhebungVon,
+        heute,
+        plusTage(erhebungVon, -365),
+        plusTage(heute, -365),
+      );
+      if (
+        (laufend.zeilen.find((z) => z.teilmarkt === "Gesamt")?.angebote ?? 0) >
+        (gesamt?.angebote ?? 0)
+      ) {
+        angebot = laufend;
+        ersatz.angebot = true;
+      }
+    }
+    if (radarWerte.kaeufer + radarWerte.verkaeufer === 0) {
+      const laufend = radarAuswahl(radar, erhebungVon, heute);
+      if (laufend.kaeufer + laufend.verkaeufer > 0) {
+        radarWerte = laufend;
+        ersatz.radar = true;
+      }
+    }
+  }
 
   return {
     periode,
@@ -92,11 +127,20 @@ export async function berechneKennzahlen(
     bis,
     stichtag,
     vorlaeufig: stichtag < bis,
-    angebot: angebotsmarkt(exposes, von, bis, vor.von, vor.bis),
+    angebot,
     kaeufer: kaeuferindex(profile),
     vermarktung: vermarktung(mandate, deals, von, bis),
     vermarktungVorperiode: vermarktung(mandate, deals, vor.von, vor.bis),
     zinsen,
-    radar: radarAuswahl(radar, von, bis),
+    radar: radarWerte,
+    ...(ersatz.angebot || ersatz.radar
+      ? { erhebung: { von: erhebungVon, bis: heute, ...ersatz } }
+      : {}),
   };
+}
+
+function plusTage(iso: string, tage: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + tage);
+  return d.toISOString().slice(0, 10);
 }

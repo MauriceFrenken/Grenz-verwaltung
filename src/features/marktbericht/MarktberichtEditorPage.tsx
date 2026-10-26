@@ -21,11 +21,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { base64Herunterladen, dateiAlsBase64 } from "@/lib/download";
 import { formatDate } from "@/lib/format";
-import { fmt, kacheln, median, spanne } from "@/lib/marktbericht/bericht";
+import {
+  erhebungZeitraum,
+  fmt,
+  kacheln,
+  median,
+  spanne,
+} from "@/lib/marktbericht/bericht";
 import type { MarktberichtVoll } from "@/lib/marktbericht/server-fn";
 import {
   MINDEST_FALLZAHL,
   periodeText,
+  texteLeer,
   type Benchmark,
   type MarktberichtTexte,
   type Trend,
@@ -182,6 +189,37 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
       );
       toast.success("Kennzahlen neu berechnet.");
     });
+
+  // Frisch angelegter Entwurf ohne Texte: einmal komplett automatisch schreiben lassen.
+  const autoGestartet = useRef(false);
+  const geaendertRef = useRef(false);
+  useEffect(() => {
+    geaendertRef.current = geaendert;
+  }, [geaendert]);
+  useEffect(() => {
+    if (
+      !bericht ||
+      autoGestartet.current ||
+      bericht.status !== "entwurf" ||
+      !texteLeer(bericht.inhalt.texte)
+    )
+      return;
+    autoGestartet.current = true;
+    void mitBusy("ki", async () => {
+      toast.info(
+        "Der Entwurf wird automatisch geschrieben. Das dauert etwa eine Minute.",
+      );
+      const { marktberichtAutoEntwurfFn } =
+        await import("@/lib/marktbericht/server-fn");
+      const b = await marktberichtAutoEntwurfFn({
+        data: { supabaseAccessToken: token, id },
+      });
+      // Hat jemand währenddessen getippt, nicht überschreiben.
+      if (!geaendertRef.current) uebernehmen(b);
+      toast.success("Entwurf geschrieben und gespeichert. Bitte prüfen.");
+    });
+    // Der Ref sorgt für genau einen Lauf je geöffnetem Bericht.
+  }, [bericht, token, id, uebernehmen]);
 
   const kiTexte = () =>
     mitBusy("ki", async () => {
@@ -743,6 +781,9 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
                 {k.angebot.vorperiode
                   ? ""
                   : " Für den Vorjahresvergleich fehlen noch Daten."}
+                {erhebungZeitraum(k, "angebot")
+                  ? ` Für die Periode zu wenige Fälle, gezeigt wird die laufende Erhebung ${erhebungZeitraum(k, "angebot")}.`
+                  : ""}
               </p>
             </section>
 
@@ -761,6 +802,9 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
               <p>
                 Markt-Radar: {k.radar.kaeufer} Käufer-, {k.radar.verkaeufer}{" "}
                 Verkäufer-Meldungen
+                {erhebungZeitraum(k, "radar")
+                  ? ` (laufende Erhebung ${erhebungZeitraum(k, "radar")})`
+                  : ""}
               </p>
               <p>
                 Zinsen:{" "}

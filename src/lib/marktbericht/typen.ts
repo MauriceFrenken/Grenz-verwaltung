@@ -100,6 +100,11 @@ export type MarktberichtKennzahlen = {
   vermarktungVorperiode: Vermarktung;
   zinsen: Zinsumfeld;
   radar: { kaeufer: number; verkaeufer: number; auswahl: RadarMeldung[] };
+  /**
+   * Hatte die Periode zu wenige eigene Fälle, zeigen Angebotsmarkt bzw. Markt-Radar stattdessen
+   * die laufende Erhebung in diesem Zeitraum (eigene Quellen erst seit 2026).
+   */
+  erhebung?: { von: string; bis: string; angebot: boolean; radar: boolean };
 };
 
 /** Zitierter Vergleichswert aus einem fremden Marktbericht oder einer amtlichen Quelle. */
@@ -147,7 +152,26 @@ export type MarktberichtInhalt = {
   benchmarks: Benchmark[];
   /** Ids der automatisch übernommenen Bibliothekswerte; gelöschte kommen so nicht zurück. */
   uebernommen?: string[];
+  /** Texte stammen unverändert von der KI; dann dürfen sie bei neuen Daten neu geschrieben werden. */
+  texteAutomatisch?: boolean;
+  /** Seit dem letzten automatischen Text kamen neue Vergleichswerte hinzu. */
+  texteFaellig?: boolean;
 };
+
+/** Noch keine Texte geschrieben (frisch angelegter Bericht). */
+export function texteLeer(t: MarktberichtTexte): boolean {
+  return (
+    !t.thesen?.some((x) => x.trim()) &&
+    ![
+      t.einleitung,
+      t.rahmen,
+      t.angebot,
+      t.nachfrage,
+      t.vermarktung,
+      t.ausblick,
+    ].some((x) => x?.trim())
+  );
+}
 
 export type MarktberichtStatus = "entwurf" | "freigegeben";
 

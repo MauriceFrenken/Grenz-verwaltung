@@ -24,6 +24,7 @@ import {
 import {
   periodeSchluessel,
   periodeText,
+  texteLeer,
   type Benchmark,
   type MarktberichtInhalt,
   type MarktberichtKennzahlen,
@@ -72,6 +73,8 @@ function inhaltAus(roh: unknown): MarktberichtInhalt {
     ...(Array.isArray(i.uebernommen)
       ? { uebernommen: i.uebernommen.filter((x) => typeof x === "string") }
       : {}),
+    ...(i.texteAutomatisch === true ? { texteAutomatisch: true } : {}),
+    ...(i.texteFaellig === true ? { texteFaellig: true } : {}),
   };
 }
 
@@ -417,14 +420,60 @@ export async function automatischerEntwurf(
     .is("zuletzt_gesucht", null);
   if (offen) return null;
   const neu = await berichtAnlegen(admin, periode, null);
-  const b = await ladeVoll(admin, neu.id);
-  const { texteEntwurf } = await import("./ki");
-  const texte = await texteEntwurf(b.kennzahlen, b.inhalt.benchmarks);
-  await admin
-    .from("marktberichte")
-    .update({ inhalt: { ...b.inhalt, texte } })
-    .eq("id", neu.id);
+  await automatischSchreiben(admin, neu.id);
   return neu.id;
+}
+
+/**
+ * Kompletter Entwurf ohne Zutun: Kennzahlen neu berechnen und alle Texte von der KI schreiben
+ * lassen. Vergleichswerte bleiben, wie sie sind. Die Texte gelten als automatisch, bis jemand sie ändert.
+ */
+export async function automatischSchreiben(
+  admin: SupabaseClient,
+  id: string,
+): Promise<MarktberichtVoll> {
+  const b = await ladeEntwurf(admin, id);
+  const kennzahlen = await berechneKennzahlen(admin, b.kennzahlen.periode);
+  const { texteEntwurf } = await import("./ki");
+  const texte = await texteEntwurf(kennzahlen, b.inhalt.benchmarks);
+  // Erneut lesen: Während die KI schreibt, kann jemand gespeichert haben.
+  const jetzt = await ladeEntwurf(admin, id);
+  if (!texteLeer(jetzt.inhalt.texte) && !jetzt.inhalt.texteAutomatisch)
+    return jetzt;
+  const inhalt: MarktberichtInhalt = {
+    ...jetzt.inhalt,
+    texte,
+    texteAutomatisch: true,
+  };
+  delete inhalt.texteFaellig;
+  const { error } = await admin
+    .from("marktberichte")
+    .update({ kennzahlen, stichtag: kennzahlen.stichtag, inhalt })
+    .eq("id", id);
+  if (error) throw fehler(error.message);
+  return ladeVoll(admin, id);
+}
+
+/**
+ * Cron: höchstens einen offenen Entwurf vervollständigen, der noch keine Texte hat oder dessen
+ * unveränderte KI-Texte neue Vergleichswerte noch nicht kennen.
+ */
+export async function entwurfTexteNachziehen(
+  admin: SupabaseClient,
+): Promise<string | null> {
+  const { data, error } = await admin
+    .from("marktberichte")
+    .select("id, inhalt")
+    .eq("status", "entwurf")
+    .order("updated_at", { ascending: false });
+  if (error) throw fehler(error.message);
+  const offen = (data ?? []).find((r) => {
+    const i = inhaltAus(r.inhalt);
+    return texteLeer(i.texte) || (i.texteAutomatisch && i.texteFaellig);
+  });
+  if (!offen) return null;
+  await automatischSchreiben(admin, String(offen.id));
+  return String(offen.id);
 }
 
 /**
@@ -461,6 +510,7 @@ export async function entwuerfeAktualisieren(
           ...inhalt,
           benchmarks,
           uebernommen: [...bekannt, ...neu.map((b) => b.id)].slice(-500),
+          ...(inhalt.texteAutomatisch ? { texteFaellig: true } : {}),
         },
       })
       .eq("id", r.id);
@@ -528,11 +578,21 @@ export const marktberichtSpeichernFn = createServerFn({ method: "POST" })
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
     const admin = createServiceRoleClient();
     const vorher = await ladeEntwurf(admin, data.id);
+    // Wer die Texte ändert, übernimmt sie: danach schreibt die KI sie nicht mehr automatisch neu.
+    const unveraendert =
+      JSON.stringify(texteAus(vorher.inhalt.texte)) ===
+      JSON.stringify(data.texte);
     const inhalt: MarktberichtInhalt = {
       texte: data.texte,
       benchmarks: data.benchmarks,
       ...(vorher.inhalt.uebernommen
         ? { uebernommen: vorher.inhalt.uebernommen }
+        : {}),
+      ...(vorher.inhalt.texteAutomatisch && unveraendert
+        ? {
+            texteAutomatisch: true,
+            ...(vorher.inhalt.texteFaellig ? { texteFaellig: true } : {}),
+          }
         : {}),
     };
     const { error } = await admin
@@ -559,6 +619,17 @@ export const marktberichtKiTexteFn = createServerFn({ method: "POST" })
     const b = await ladeEntwurf(createServiceRoleClient(), data.id);
     const { texteEntwurf } = await import("./ki");
     return texteEntwurf(b.kennzahlen, data.benchmarks);
+  });
+
+/** Kompletten Entwurf schreiben: Kennzahlen neu berechnen, alle Texte per KI, direkt gespeichert. */
+export const marktberichtAutoEntwurfFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => ({
+    supabaseAccessToken: tokenAus(data),
+    id: idAus(data),
+  }))
+  .handler(async ({ data }): Promise<MarktberichtVoll> => {
+    await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
+    return automatischSchreiben(createServiceRoleClient(), data.id);
   });
 
 /** PDF eines fremden Marktberichts: Kennzahlen mit Seite und Zitat auslesen (ungeprüft). */
