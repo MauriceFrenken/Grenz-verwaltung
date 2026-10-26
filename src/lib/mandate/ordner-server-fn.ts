@@ -35,6 +35,8 @@ export type OrdnerTreffer = OrdnerKandidat & { score: number };
 export type MandatOrdnerDto = {
   eingerichtet: boolean;
   fehler: string | null;
+  /** Link zur Admin-Freigabe im Microsoft-Konto der Ablage, wenn sie fehlt. */
+  freigabeUrl: string | null;
   ordner: (OrdnerKandidat & { quelle: "verknuepft" | "automatisch" }) | null;
   /** Weitere passende Ordner (zum Umstellen). */
   kandidaten: OrdnerTreffer[];
@@ -223,6 +225,7 @@ export async function mandatOrdnerLaden(
   const leer: MandatOrdnerDto = {
     eingerichtet: objektAblageKonfiguriert(),
     fehler: null,
+    freigabeUrl: null,
     ordner: null,
     kandidaten: [],
     dateien: [],
@@ -257,9 +260,16 @@ export async function mandatOrdnerLaden(
       unterlagen: unterlagenUebersicht(dateien),
     };
   } catch (e) {
+    const fehler =
+      e instanceof Error ? e.message : "Objektablage nicht erreichbar.";
+    const { objektAblageFreigabeUrl } =
+      await import("@/lib/microsoft/objekt-ablage");
     return {
       ...leer,
-      fehler: e instanceof Error ? e.message : "Objektablage nicht erreichbar.",
+      fehler,
+      freigabeUrl: /Admin-Consent|Kein Zugriff|nicht freigegeben/i.test(fehler)
+        ? objektAblageFreigabeUrl()
+        : null,
     };
   }
 }

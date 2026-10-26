@@ -16,6 +16,45 @@ import type { MandatOrdnerDto } from "@/lib/mandate/ordner-server-fn";
 import { KATEGORIEN, type OrdnerDatei } from "@/lib/mandate/ordner";
 import type { Steckbrief, SteckbriefBeleg } from "@/lib/mandate/steckbrief-ki";
 
+/** Die App darf die Ablage noch nicht lesen: Anleitung für den Microsoft-Admin von Grenz & Co. */
+function FreigabeHinweis({ url }: { url: string }) {
+  return (
+    <div className="flex flex-col gap-3 border border-warn/40 bg-warn-soft p-4 text-sm">
+      <p className="flex items-start gap-2 font-medium text-heading">
+        <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warn" />
+        Freigabe für den OneDrive-Ordner „Grenz &amp; Co (neu)“ fehlt
+      </p>
+      <p className="text-text-muted">
+        Damit die App die Objektunterlagen lesen kann, muss ein Admin im
+        Microsoft-Konto von Grenz &amp; Co. (z. B. Sebastian Grenz) einmalig
+        zustimmen. Die App bekommt dadurch nur Lesezugriff auf Dateien.
+      </p>
+      <ol className="list-decimal space-y-1 pl-5 text-text-muted">
+        <li>Button anklicken, am besten in einem privaten Browserfenster.</li>
+        <li>
+          Mit dem Grenz-Admin-Konto (…@grenz-co.de) anmelden, nicht mit einem
+          Frenken-Konto.
+        </li>
+        <li>
+          „Im Namen Ihrer Organisation zustimmen“ ankreuzen und „Akzeptieren“
+          klicken.
+        </li>
+        <li>
+          Danach kann eine Fehlerseite (localhost) erscheinen. Die einfach
+          schließen und diese Seite neu laden.
+        </li>
+      </ol>
+      <div>
+        <Button asChild size="sm">
+          <a href={url} target="_blank" rel="noreferrer">
+            <ExternalLink className="h-4 w-4" /> Freigabe bei Microsoft erteilen
+          </a>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function Beleg({ b }: { b: SteckbriefBeleg }) {
   const text = `${b.datei}, ${b.stelle}`;
   return (
@@ -339,6 +378,8 @@ export function ObjektordnerKarte({
           sucht die App hier den Ordner zu diesem Objekt und stellt die
           Unterlagen zusammen.
         </p>
+      ) : dto.fehler && dto.freigabeUrl ? (
+        <FreigabeHinweis url={dto.freigabeUrl} />
       ) : dto.fehler ? (
         <p className="flex items-start gap-2 text-sm text-destructive">
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" /> {dto.fehler}
