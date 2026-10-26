@@ -316,6 +316,7 @@ export const quellenLadenFn = createServerFn({ method: "POST" })
       .gte("passung", data.minPassung)
       .eq("bearbeitung", "offen")
       .eq("nicht_anlegen", false)
+      .is("dublette_von", null)
       .order("passung", { ascending: false })
       .order("firma")
       .limit(500);
@@ -516,6 +517,9 @@ export const investorenNeuAufbauenFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => ({ supabaseAccessToken: tokenAus(data) }))
   .handler(async ({ data }) => {
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
+    const admin = createServiceRoleClient();
+    const { quellenBereinigen } = await import("./dubletten");
+    await quellenBereinigen(admin);
     const { investorenAufbauen } = await import("./aufbau");
-    return investorenAufbauen(createServiceRoleClient());
+    return investorenAufbauen(admin);
   });

@@ -18,11 +18,13 @@ export const Route = createFileRoute("/api/cron/investoren-pruefung")({
         try {
           const admin = createServiceRoleClient();
           const anzahl = Math.min(30, Number(new URL(request.url).searchParams.get("anzahl")) || 10);
+          const { quellenBereinigen } = await import("@/lib/investoren/dubletten");
+          const dubletten = await quellenBereinigen(admin);
           const { pruefLauf } = await import("@/lib/investoren/pruefung");
           const ergebnis = await pruefLauf(admin, anzahl);
           const { investorenAufbauen } = await import("@/lib/investoren/aufbau");
           const aufbau = await investorenAufbauen(admin);
-          return Response.json({ ok: true, ...ergebnis, aufbau });
+          return Response.json({ ok: true, ...ergebnis, dubletten, aufbau });
         } catch (err) {
           console.error("[cron/investoren-pruefung]", err);
           return Response.json(

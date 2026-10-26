@@ -221,6 +221,8 @@ export async function entdeckungLauf(
       { onConflict: "schluessel", ignoreDuplicates: true },
     );
     if (error) throw new Error(error.message);
+    const { quellenBereinigen } = await import("./dubletten");
+    await quellenBereinigen(admin);
   }
   return { suchfeld, gefunden: funde.length, neu: neu.length, firmen: neu.map((f) => f.firma) };
 }
