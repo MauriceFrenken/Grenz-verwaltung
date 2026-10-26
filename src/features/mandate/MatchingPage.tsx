@@ -266,7 +266,10 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                 Ausschlüsse zeigen (falsche Nutzung oder Region)
               </label>
               <span className="pb-2 text-text-subtle">
-                {sichtbar.length} von {dto.profileGesamt} Ankaufsprofilen
+                {sichtbar.length} von {dto.profileGesamt}{" "}
+                {dto.profilQuelle === "investoren"
+                  ? "Investoren (bereinigte Datenbank, ohne erloschene und gesperrte Firmen)"
+                  : "Ankaufsprofilen"}
               </span>
             </div>
 
@@ -345,6 +348,16 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                         <td className="px-2 py-2 text-xs text-text-subtle">
                           {t.profilName}
                           {t.investorTyp ? ` · ${t.investorTyp}` : ""}
+                          {t.investorStatus === "aktiv" ? (
+                            <span className="ml-1 font-medium text-ok">
+                              · aktiv
+                            </span>
+                          ) : t.investorStatus === "kein_interesse" ? (
+                            <span className="ml-1 font-medium text-warn">
+                              · kein Interesse
+                            </span>
+                          ) : null}
+                          {t.prioritaet ? ` · ${t.prioritaet}` : ""}
                         </td>
                         <td className="px-2 py-2">
                           <ScoreBalken wert={t.score} gedimmt={t.ausschluss} />
