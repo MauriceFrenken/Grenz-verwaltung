@@ -47,6 +47,9 @@ export type MatchTreffer = MatchErgebnis & {
   bereitsAngesprochen: boolean;
   /** Bisherige Reaktionen bei Grenz: Interessenten-Deals und Rückmeldungen auf Kampagnen. */
   reaktionen: { deals: number; rueckmeldungen: number };
+  /** Status laut Investorendatenbank (aktiv, ruhend, kein_interesse); null bei Rohprofilen. */
+  investorStatus: string | null;
+  prioritaet: string | null;
 };
 
 export type RechercheTreffer = {
@@ -71,6 +74,8 @@ export type MatchingDto = {
   objekt: ObjektMerkmale & { name: string };
   treffer: MatchTreffer[];
   profileGesamt: number;
+  /** Woher die Profile kommen: bereinigte Investorendatenbank oder Salesforce-Rohprofile. */
+  profilQuelle: "investoren" | "ankaufsprofile";
   /** Interne Datenbank: Interessenten ähnlicher Grenz-Mandate ohne passendes Profil. */
   historie: HistorieZeile[];
   /** Externe, gerade aktive Käufer aus dem Markt-Radar. */
@@ -316,6 +321,96 @@ async function reaktionenJeProfil(
   return ergebnis;
 }
 
+type InvestorInfo = { status: string; prioritaet: string | null };
+
+/**
+ * Profile für das Matching: bevorzugt die bereinigte Investorendatenbank (ohne erloschene
+ * und gesperrte Firmen), sonst die Salesforce-Ankaufsprofile wie bisher.
+ */
+async function profileLaden(
+  admin: ReturnType<typeof createServiceRoleClient>,
+): Promise<{
+  profile: ProfilZeile[];
+  quelle: MatchingDto["profilQuelle"];
+  info: Map<string, InvestorInfo>;
+}> {
+  try {
+    const zeilen = await alle<{
+      account_sf_id: string;
+      name: string;
+      profil_sf_id: string | null;
+      hauptkontakt_sf_id: string | null;
+      typ: string | null;
+      status: string;
+      prioritaet: string | null;
+      nutzungen: string[] | null;
+      objektklassen: string[] | null;
+      regionen: string[] | null;
+      volumen_min: number | null;
+      volumen_max: number | null;
+      faktor_max: number | null;
+      einheiten_min: number | null;
+      baujahr_ab: number | null;
+      baujahr_bis: number | null;
+    }>((a, b) =>
+      admin
+        .from("investoren")
+        .select(
+          "account_sf_id, name, profil_sf_id, hauptkontakt_sf_id, typ, status, prioritaet, nutzungen, objektklassen, regionen, volumen_min, volumen_max, faktor_max, einheiten_min, baujahr_ab, baujahr_bis",
+        )
+        .not("status", "in", "(erloschen,gesperrt)")
+        .order("account_sf_id")
+        .range(a, b),
+    );
+    if (zeilen.length) {
+      const zahl = (v: unknown) => (v == null ? null : Number(v));
+      const info = new Map<string, InvestorInfo>();
+      const profile = zeilen.map((z): ProfilZeile => {
+        const sfId = z.profil_sf_id ?? z.account_sf_id;
+        info.set(sfId, { status: z.status, prioritaet: z.prioritaet });
+        return {
+          sf_id: sfId,
+          name: z.name,
+          kontakt_sf_id: z.hauptkontakt_sf_id,
+          account_sf_id: z.account_sf_id,
+          assetklassen: z.objektklassen,
+          nutzungsarten: z.nutzungen,
+          regionen: z.regionen,
+          volumen_min: zahl(z.volumen_min),
+          volumen_max: zahl(z.volumen_max),
+          faktor_max: zahl(z.faktor_max),
+          einheiten_min: zahl(z.einheiten_min),
+          baujahr_ab: zahl(z.baujahr_ab),
+          baujahr_bis: zahl(z.baujahr_bis),
+          investor_typ: z.typ,
+        };
+      });
+      return { profile, quelle: "investoren", info };
+    }
+  } catch (e) {
+    // Tabelle fehlt oder ist nicht lesbar: auf die Rohprofile zurückfallen.
+    console.warn("[matching] investoren nicht lesbar", e);
+  }
+  const profile = await alle<ProfilZeile>((a, b) =>
+    admin
+      .from("sf_ankaufsprofile")
+      .select(
+        "sf_id, name, kontakt_sf_id, account_sf_id, assetklassen, nutzungsarten, regionen, volumen_min, volumen_max, faktor_max, einheiten_min, baujahr_ab, baujahr_bis, investor_typ",
+      )
+      .order("sf_id")
+      .range(a, b),
+  );
+  return { profile, quelle: "ankaufsprofile", info: new Map() };
+}
+
+/** Aktive und priorisierte Investoren zählen bei der Sortierung wie zusätzliche Reaktionen. */
+function statusBonus(i: InvestorInfo | undefined): number {
+  if (!i) return 0;
+  const prio =
+    i.prioritaet === "Tier 1" ? 2 : i.prioritaet === "Tier 2" ? 1 : 0;
+  return (i.status === "aktiv" ? 1 : 0) + prio;
+}
+
 export const matchingFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => {
     const d = (data ?? {}) as { mandatSfId?: unknown; objektklasse?: unknown };
@@ -360,20 +455,30 @@ export const matchingFn = createServerFn({ method: "POST" })
       objektklasse: data.objektklasse,
     };
 
-    const profile = await alle<ProfilZeile>((a, b) =>
-      admin
-        .from("sf_ankaufsprofile")
-        .select(
-          "sf_id, name, kontakt_sf_id, account_sf_id, assetklassen, nutzungsarten, regionen, volumen_min, volumen_max, faktor_max, einheiten_min, baujahr_ab, baujahr_bis, investor_typ",
-        )
-        .order("sf_id")
-        .range(a, b),
-    );
+    const { profile, quelle, info } = await profileLaden(admin);
     const reaktionen = await reaktionenJeProfil(admin, profile);
     const summe = new Map(
-      [...reaktionen].map(([id, r]) => [id, r.deals * 3 + r.rueckmeldungen]),
+      profile.map((p) => {
+        const r = reaktionen.get(p.sf_id);
+        return [
+          p.sf_id,
+          (r ? r.deals * 3 + r.rueckmeldungen : 0) +
+            statusBonus(info.get(p.sf_id)),
+        ];
+      }),
     );
-    const ergebnis = rangliste(objekt, profile, summe).slice(0, 300);
+    // „Kein Interesse“ bleibt sichtbar, steht aber hinter allen anderen Treffern.
+    const keinInteresse = (id: string) =>
+      Number(info.get(id)?.status === "kein_interesse");
+    const ergebnis = rangliste(objekt, profile, summe)
+      .map((e, i) => ({ e, i }))
+      .sort(
+        (a, b) =>
+          keinInteresse(a.e.profilSfId) - keinInteresse(b.e.profilSfId) ||
+          a.i - b.i,
+      )
+      .map((x) => x.e)
+      .slice(0, 300);
     const profilJeId = new Map(profile.map((p) => [p.sf_id, p]));
 
     const kontaktIds = new Set<string>();
@@ -439,6 +544,8 @@ export const matchingFn = createServerFn({ method: "POST" })
           p.kontakt_sf_id && angesprochen.has(p.kontakt_sf_id),
         ),
         reaktionen: reaktionen.get(p.sf_id) ?? { deals: 0, rueckmeldungen: 0 },
+        investorStatus: info.get(p.sf_id)?.status ?? null,
+        prioritaet: info.get(p.sf_id)?.prioritaet ?? null,
       };
     });
 
@@ -514,6 +621,7 @@ export const matchingFn = createServerFn({ method: "POST" })
       objekt,
       treffer,
       profileGesamt: profile.length,
+      profilQuelle: quelle,
       historie,
       markt,
       recherche,
