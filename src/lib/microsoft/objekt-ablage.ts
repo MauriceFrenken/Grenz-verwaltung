@@ -295,3 +295,20 @@ export async function ablageDateiInhalt(
     throw new Error(`Datei konnte nicht geladen werden (HTTP ${res.status}).`);
   return new Uint8Array(await res.arrayBuffer());
 }
+
+/** Verkleinerte Fassung eines Fotos (JPEG, längste Seite höchstens `kante` px). */
+export async function ablageVorschau(
+  z: AblageZugang,
+  itemId: string,
+  kante = 1600,
+): Promise<Uint8Array> {
+  const res = await fetch(
+    `${GRAPH}/drives/${encodeURIComponent(z.driveId)}/items/${encodeURIComponent(itemId)}/thumbnails/0/c${kante}x${kante}/content`,
+    { headers: { Authorization: `Bearer ${z.token}` } },
+  );
+  if (!res.ok)
+    throw new Error(
+      `Vorschau konnte nicht geladen werden (HTTP ${res.status}).`,
+    );
+  return new Uint8Array(await res.arrayBuffer());
+}

@@ -2,6 +2,7 @@ import { ReiterLeiste } from "@/components/layout/ReiterLeiste";
 
 export type MandatReiterId =
   | "ueberblick"
+  | "expose"
   | "matching"
   | "interessenten"
   | "reports";
@@ -21,6 +22,7 @@ export function MandatReiter({
       aktiv={aktiv}
       reiter={[
         { id: "ueberblick", label: "Überblick", href: basis },
+        { id: "expose", label: "Exposé", href: `${basis}/expose` },
         { id: "matching", label: "Käufer-Matching", href: `${basis}/matching` },
         {
           id: "interessenten",
