@@ -110,8 +110,18 @@ async function mandatAdresse(
   };
 }
 
-/** Ordner bis zur zweiten Ebene der Ablage (z. B. „Mandate/Düsseldorf_…“). */
+let kandidatenCache: { liste: OrdnerKandidat[]; bis: number } | null = null;
+
+/** Ordner bis zur zweiten Ebene der Ablage (z. B. „Mandate/Düsseldorf_…“), 5 Minuten gemerkt. */
 async function ordnerKandidaten(): Promise<OrdnerKandidat[]> {
+  if (kandidatenCache && kandidatenCache.bis > Date.now())
+    return kandidatenCache.liste;
+  const liste = await ordnerKandidatenLesen();
+  kandidatenCache = { liste, bis: Date.now() + 5 * 60_000 };
+  return liste;
+}
+
+async function ordnerKandidatenLesen(): Promise<OrdnerKandidat[]> {
   const { objektAblageZugang, ablageKinder } =
     await import("@/lib/microsoft/objekt-ablage");
   const z = await objektAblageZugang();
@@ -199,6 +209,61 @@ function unterlagenUebersicht(
   }));
 }
 
+/** Objektordner, Dateien und gespeicherter Steckbrief eines Mandats (ohne Rechteprüfung). */
+export async function mandatOrdnerLaden(
+  admin: Admin,
+  mandatSfId: string,
+): Promise<MandatOrdnerDto> {
+  const { objektAblageKonfiguriert } =
+    await import("@/lib/microsoft/objekt-ablage");
+  const [{ zeile, tabelle }, adresse] = await Promise.all([
+    gespeichert(admin, mandatSfId),
+    mandatAdresse(admin, mandatSfId),
+  ]);
+  const leer: MandatOrdnerDto = {
+    eingerichtet: objektAblageKonfiguriert(),
+    fehler: null,
+    ordner: null,
+    kandidaten: [],
+    dateien: [],
+    unterlagen: unterlagenUebersicht([]),
+    steckbrief: zeile?.steckbrief ?? null,
+    speichernMoeglich: tabelle,
+  };
+  if (!leer.eingerichtet) return leer;
+
+  try {
+    const kandidaten = besteOrdner(await ordnerKandidaten(), adresse);
+    let ordner: MandatOrdnerDto["ordner"] = null;
+    if (zeile?.item_id) {
+      const bekannt = kandidaten.find((k) => k.id === zeile.item_id);
+      ordner = {
+        id: zeile.item_id,
+        name: bekannt?.name ?? zeile.name ?? "Verknüpfter Ordner",
+        pfad: bekannt?.pfad ?? null,
+        webUrl: bekannt?.webUrl ?? zeile.web_url,
+        geaendertAm: bekannt?.geaendertAm ?? null,
+        quelle: "verknuepft",
+      };
+    } else if (kandidaten[0]) {
+      ordner = { ...kandidaten[0], quelle: "automatisch" };
+    }
+    const dateien = ordner ? await ordnerDateien(ordner.id) : [];
+    return {
+      ...leer,
+      ordner,
+      kandidaten: kandidaten.filter((k) => k.id !== ordner?.id).slice(0, 5),
+      dateien,
+      unterlagen: unterlagenUebersicht(dateien),
+    };
+  } catch (e) {
+    return {
+      ...leer,
+      fehler: e instanceof Error ? e.message : "Objektablage nicht erreichbar.",
+    };
+  }
+}
+
 export const mandatOrdnerFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => {
     const d = (data ?? {}) as { mandatSfId?: unknown };
@@ -209,56 +274,7 @@ export const mandatOrdnerFn = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<MandatOrdnerDto> => {
     await pruefeAufrufer(data.supabaseAccessToken);
-    const admin = createServiceRoleClient();
-    const { objektAblageKonfiguriert } =
-      await import("@/lib/microsoft/objekt-ablage");
-    const [{ zeile, tabelle }, adresse] = await Promise.all([
-      gespeichert(admin, data.mandatSfId),
-      mandatAdresse(admin, data.mandatSfId),
-    ]);
-    const leer: MandatOrdnerDto = {
-      eingerichtet: objektAblageKonfiguriert(),
-      fehler: null,
-      ordner: null,
-      kandidaten: [],
-      dateien: [],
-      unterlagen: unterlagenUebersicht([]),
-      steckbrief: zeile?.steckbrief ?? null,
-      speichernMoeglich: tabelle,
-    };
-    if (!leer.eingerichtet) return leer;
-
-    try {
-      const kandidaten = besteOrdner(await ordnerKandidaten(), adresse);
-      let ordner: MandatOrdnerDto["ordner"] = null;
-      if (zeile?.item_id) {
-        const bekannt = kandidaten.find((k) => k.id === zeile.item_id);
-        ordner = {
-          id: zeile.item_id,
-          name: bekannt?.name ?? zeile.name ?? "Verknüpfter Ordner",
-          pfad: bekannt?.pfad ?? null,
-          webUrl: bekannt?.webUrl ?? zeile.web_url,
-          geaendertAm: bekannt?.geaendertAm ?? null,
-          quelle: "verknuepft",
-        };
-      } else if (kandidaten[0]) {
-        ordner = { ...kandidaten[0], quelle: "automatisch" };
-      }
-      const dateien = ordner ? await ordnerDateien(ordner.id) : [];
-      return {
-        ...leer,
-        ordner,
-        kandidaten: kandidaten.filter((k) => k.id !== ordner?.id).slice(0, 5),
-        dateien,
-        unterlagen: unterlagenUebersicht(dateien),
-      };
-    } catch (e) {
-      return {
-        ...leer,
-        fehler:
-          e instanceof Error ? e.message : "Objektablage nicht erreichbar.",
-      };
-    }
+    return mandatOrdnerLaden(createServiceRoleClient(), data.mandatSfId);
   });
 
 /** Ordner fest verknüpfen; itemId null stellt auf automatische Suche zurück. */
@@ -356,7 +372,67 @@ async function unterlageLesen(
   };
 }
 
-/** Liest die wichtigsten Unterlagen des Ordners und erstellt den Steckbrief. */
+/** Liest die wichtigsten Unterlagen des Ordners, erstellt den Steckbrief und speichert ihn. */
+export async function steckbriefErzeugen(
+  admin: Admin,
+  mandatSfId: string,
+  ordnerId: string,
+): Promise<Steckbrief> {
+  if (!ordnerId) throw new Error("Kein Objektordner gefunden.");
+  const adresse = await mandatAdresse(admin, mandatSfId);
+  const { objektAblageZugang, ablageDateiInhalt } =
+    await import("@/lib/microsoft/objekt-ablage");
+  const z = await objektAblageZugang();
+  const auswahl = dateienFuerSteckbrief(await ordnerDateien(ordnerId));
+  if (!auswahl.length)
+    throw new Error("Im Ordner liegen keine lesbaren Unterlagen (PDF, Excel).");
+
+  const gelesen = await Promise.all(
+    auswahl.map(async (d) => {
+      try {
+        return {
+          d,
+          ...(await unterlageLesen(d, await ablageDateiInhalt(z, d.id))),
+        };
+      } catch (e) {
+        return {
+          d,
+          unterlage: null,
+          hinweis: e instanceof Error ? e.message : "nicht lesbar",
+        };
+      }
+    }),
+  );
+  const unterlagen = gelesen.flatMap((g) => (g.unterlage ? [g.unterlage] : []));
+  if (!unterlagen.length)
+    throw new Error("Keine der Unterlagen enthält lesbaren Text.");
+
+  const { steckbriefErstellen } = await import("./steckbrief-ki");
+  const steckbrief = await steckbriefErstellen({
+    objekt: adresse.titel,
+    unterlagen,
+    hinweise: gelesen.map((g) => ({
+      datei: g.d.name,
+      webUrl: g.d.webUrl,
+      hinweis: g.hinweis,
+    })),
+  });
+
+  const { tabelle } = await gespeichert(admin, mandatSfId);
+  if (tabelle) {
+    await admin.from("mandat_ordner").upsert(
+      {
+        mandat_sf_id: mandatSfId,
+        steckbrief,
+        steckbrief_am: steckbrief.erstelltAm,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "mandat_sf_id" },
+    );
+  }
+  return steckbrief;
+}
+
 export const mandatSteckbriefFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => {
     const d = (data ?? {}) as { mandatSfId?: unknown; ordnerId?: unknown };
@@ -368,62 +444,9 @@ export const mandatSteckbriefFn = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<Steckbrief> => {
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
-    if (!data.ordnerId) throw new Error("Kein Objektordner gefunden.");
-    const admin = createServiceRoleClient();
-    const adresse = await mandatAdresse(admin, data.mandatSfId);
-    const { objektAblageZugang, ablageDateiInhalt } =
-      await import("@/lib/microsoft/objekt-ablage");
-    const z = await objektAblageZugang();
-    const auswahl = dateienFuerSteckbrief(await ordnerDateien(data.ordnerId));
-    if (!auswahl.length)
-      throw new Error(
-        "Im Ordner liegen keine lesbaren Unterlagen (PDF, Excel).",
-      );
-
-    const gelesen = await Promise.all(
-      auswahl.map(async (d) => {
-        try {
-          return {
-            d,
-            ...(await unterlageLesen(d, await ablageDateiInhalt(z, d.id))),
-          };
-        } catch (e) {
-          return {
-            d,
-            unterlage: null,
-            hinweis: e instanceof Error ? e.message : "nicht lesbar",
-          };
-        }
-      }),
+    return steckbriefErzeugen(
+      createServiceRoleClient(),
+      data.mandatSfId,
+      data.ordnerId,
     );
-    const unterlagen = gelesen.flatMap((g) =>
-      g.unterlage ? [g.unterlage] : [],
-    );
-    if (!unterlagen.length)
-      throw new Error("Keine der Unterlagen enthält lesbaren Text.");
-
-    const { steckbriefErstellen } = await import("./steckbrief-ki");
-    const steckbrief = await steckbriefErstellen({
-      objekt: adresse.titel,
-      unterlagen,
-      hinweise: gelesen.map((g) => ({
-        datei: g.d.name,
-        webUrl: g.d.webUrl,
-        hinweis: g.hinweis,
-      })),
-    });
-
-    const { tabelle } = await gespeichert(admin, data.mandatSfId);
-    if (tabelle) {
-      await admin.from("mandat_ordner").upsert(
-        {
-          mandat_sf_id: data.mandatSfId,
-          steckbrief,
-          steckbrief_am: steckbrief.erstelltAm,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "mandat_sf_id" },
-      );
-    }
-    return steckbrief;
   });

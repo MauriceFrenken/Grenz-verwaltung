@@ -6,7 +6,9 @@
  *
  * Env:
  * - MICROSOFT_OBJEKTE_ORDNER_URL: Web-Link des Ordners, oder
- * - MICROSOFT_OBJEKTE_USER + MICROSOFT_OBJEKTE_PFAD: OneDrive-Benutzer und Pfad ab Root
+ * - MICROSOFT_OBJEKTE_USER + MICROSOFT_OBJEKTE_PFAD: OneDrive-Benutzer und Pfad ab Root; ohne
+ *   Pfad sucht die App im OneDrive des Benutzers nach dem Ordner MICROSOFT_OBJEKTE_ORDNERNAME
+ *   (Standard „Grenz & Co (neu)“)
  * - MICROSOFT_OBJEKTE_TENANT_ID: optional, Standard ist MICROSOFT_TENANT_ID
  */
 
@@ -26,8 +28,7 @@ function env(name: string): string {
 
 export function objektAblageKonfiguriert(): boolean {
   return Boolean(
-    env("MICROSOFT_OBJEKTE_ORDNER_URL") ||
-    (env("MICROSOFT_OBJEKTE_USER") && env("MICROSOFT_OBJEKTE_PFAD")),
+    env("MICROSOFT_OBJEKTE_ORDNER_URL") || env("MICROSOFT_OBJEKTE_USER"),
   );
 }
 
@@ -155,6 +156,51 @@ let wurzelCache: {
   bis: number;
 } | null = null;
 
+function vergleichsName(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9äöüß]+/g, " ")
+    .trim();
+}
+
+/** Ordner MICROSOFT_OBJEKTE_ORDNERNAME im OneDrive des Benutzers; flachster Treffer gewinnt. */
+async function ordnerSuchen(
+  user: string,
+  token: string,
+  sel: string,
+): Promise<Roh> {
+  const gesucht = env("MICROSOFT_OBJEKTE_ORDNERNAME") || "Grenz & Co (neu)";
+  const ziel = vergleichsName(gesucht);
+  const wurzel = await graph<{ value?: Roh[] }>(
+    `/users/${user}/drive/root/children?${sel}&$top=200`,
+    token,
+  );
+  const direkt = (wurzel.value ?? []).find(
+    (r) => r.folder && r.name && vergleichsName(r.name) === ziel,
+  );
+  if (direkt) return direkt;
+  const suche = await graph<{
+    value?: (Roh & { parentReference?: { path?: string } })[];
+  }>(
+    `/users/${user}/drive/root/search(q='${encodeURIComponent(
+      gesucht.replace(/'/g, "''"),
+    )}')?${sel}&$top=50`,
+    token,
+  );
+  const treffer = (suche.value ?? [])
+    .filter((r) => r.folder && r.name && vergleichsName(r.name) === ziel)
+    .sort(
+      (a, b) =>
+        (a.parentReference?.path ?? "").length -
+        (b.parentReference?.path ?? "").length,
+    );
+  if (!treffer[0])
+    throw new Error(
+      `Ordner „${gesucht}“ im OneDrive von ${decodeURIComponent(user)} nicht gefunden.`,
+    );
+  return treffer[0];
+}
+
 /** Token plus Drive und Wurzelordner der Objektablage. */
 export async function objektAblageZugang(): Promise<AblageZugang> {
   if (!objektAblageKonfiguriert())
@@ -168,18 +214,20 @@ export async function objektAblageZugang(): Promise<AblageZugang> {
   const sel =
     "$select=id,name,size,lastModifiedDateTime,webUrl,folder,parentReference";
   const url = env("MICROSOFT_OBJEKTE_ORDNER_URL");
+  const user = encodeURIComponent(env("MICROSOFT_OBJEKTE_USER"));
+  const pfad = env("MICROSOFT_OBJEKTE_PFAD");
   const roh = url
     ? await graph<Roh>(`/shares/${teilenId(url)}/driveItem?${sel}`, token)
-    : await graph<Roh>(
-        `/users/${encodeURIComponent(env("MICROSOFT_OBJEKTE_USER"))}/drive/root:/${env(
-          "MICROSOFT_OBJEKTE_PFAD",
+    : pfad
+      ? await graph<Roh>(
+          `/users/${user}/drive/root:/${pfad
+            .split("/")
+            .filter(Boolean)
+            .map(encodeURIComponent)
+            .join("/")}?${sel}`,
+          token,
         )
-          .split("/")
-          .filter(Boolean)
-          .map(encodeURIComponent)
-          .join("/")}?${sel}`,
-        token,
-      );
+      : await ordnerSuchen(user, token, sel);
   const wurzel = element(roh);
   const driveId = roh.parentReference?.driveId;
   if (!wurzel || !driveId || !wurzel.istOrdner)
