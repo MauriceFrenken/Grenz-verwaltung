@@ -15,11 +15,12 @@ import type { AnkaufsprofilZeile } from "@/lib/markt-radar/server-fn";
 import { InvestorenListe } from "@/features/investoren/InvestorenListe";
 import { ListenInvestoren } from "@/features/investoren/ListenInvestoren";
 import { Pruefliste } from "@/features/investoren/Pruefliste";
+import { VermarktungsAbgleich } from "@/features/investoren/VermarktungsAbgleich";
 
 import { RadarListe } from "./RadarListe";
 
-export type InvestorenReiter = "datenbank" | "pruefliste" | "listen" | "markt" | "profile";
-export const INVESTOREN_REITER: InvestorenReiter[] = ["datenbank", "pruefliste", "listen", "markt", "profile"];
+export type InvestorenReiter = "datenbank" | "vermarktungen" | "pruefliste" | "listen" | "markt" | "profile";
+export const INVESTOREN_REITER: InvestorenReiter[] = ["datenbank", "vermarktungen", "pruefliste", "listen", "markt", "profile"];
 
 function volumen(p: AnkaufsprofilZeile): string {
   if (p.volumenMin && p.volumenMax)
@@ -148,6 +149,7 @@ export function InvestorenPage({ reiter }: { reiter: InvestorenReiter }) {
         >
           <TabsList>
             <TabsTrigger value="datenbank">Datenbank</TabsTrigger>
+            <TabsTrigger value="vermarktungen">Vermarktungen</TabsTrigger>
             <TabsTrigger value="pruefliste">Prüfliste</TabsTrigger>
             <TabsTrigger value="listen">Neue aus Listen</TabsTrigger>
             <TabsTrigger value="markt">Aktiv am Markt</TabsTrigger>
@@ -155,6 +157,9 @@ export function InvestorenPage({ reiter }: { reiter: InvestorenReiter }) {
           </TabsList>
           <TabsContent value="datenbank" className="mt-4">
             <InvestorenListe />
+          </TabsContent>
+          <TabsContent value="vermarktungen" className="mt-4">
+            <VermarktungsAbgleich />
           </TabsContent>
           <TabsContent value="pruefliste" className="mt-4">
             <Pruefliste />
