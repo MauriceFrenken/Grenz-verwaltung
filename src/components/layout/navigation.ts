@@ -4,6 +4,7 @@ import {
   ChartColumn,
   Cloud,
   Inbox,
+  KanbanSquare,
   LayoutDashboard,
   ListChecks,
   MapPin,
@@ -47,6 +48,13 @@ export const NAVIGATION: NavSection[] = [
     items: [
       { to: "/", label: "Übersicht", icon: LayoutDashboard },
       { to: "/kennzahlen", label: "Kennzahlen", icon: ChartColumn },
+      {
+        to: "/aufgaben",
+        label: "Aufgaben",
+        icon: KanbanSquare,
+        badge: "aufgaben",
+        badgeTon: "amber",
+      },
     ],
   },
   {

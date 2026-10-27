@@ -74,6 +74,9 @@ export type MatchingDto = {
   objekt: ObjektMerkmale & { name: string };
   treffer: MatchTreffer[];
   profileGesamt: number;
+  /** Investoren aus den Listen (noch nicht in Salesforce), ohne Ausschlüsse, Abdeckung ab 50 %. */
+  listen: ListenVermarktungsTreffer[];
+  listenGesamt: number;
   /** Woher die Profile kommen: bereinigte Investorendatenbank oder Salesforce-Rohprofile. */
   profilQuelle: "investoren" | "ankaufsprofile";
   /** Interne Datenbank: Interessenten ähnlicher Grenz-Mandate ohne passendes Profil. */
@@ -411,6 +414,70 @@ function statusBonus(i: InvestorInfo | undefined): number {
   return (i.status === "aktiv" ? 1 : 0) + prio;
 }
 
+/**
+ * Investoren aus den Listen, die noch nicht in Salesforce sind (Haupteinträge, offen, nicht
+ * „Nicht anlegen“, nicht laut Prüfung insolvent, liquidiert oder gelöscht), als Matching-Profile.
+ */
+async function listenProfileLaden(
+  admin: ReturnType<typeof createServiceRoleClient>,
+): Promise<{
+  profile: ProfilZeile[];
+  jeSchluessel: Map<string, Record<string, unknown>>;
+}> {
+  const { listeAlsProfil } = await import("./vermarktung");
+  const [roh, negativ] = await Promise.all([
+    alle<Record<string, unknown>>((a, b) =>
+      admin
+        .from("investor_quellen")
+        .select(
+          "schluessel, quelle, firma, person, ort, typ, nutzungen, objektklassen, regionen, volumen_min, volumen_max, einheiten_min",
+        )
+        .is("dublette_von", null)
+        .is("sf_account_sf_id", null)
+        .eq("nicht_anlegen", false)
+        .eq("bearbeitung", "offen")
+        .order("schluessel")
+        .range(a, b),
+    ),
+    alle<{ schluessel: string }>((a, b) =>
+      admin
+        .from("investor_pruefungen")
+        .select("schluessel")
+        .like("schluessel", "quelle:%")
+        .in("status", ["insolvenz", "liquidation", "geloescht"])
+        .order("schluessel")
+        .range(a, b),
+    ).then((r) => new Set(r.map((x) => x.schluessel))),
+  ]);
+  return {
+    profile: roh
+      .filter((q) => !negativ.has(`quelle:${q.schluessel}`))
+      .map((q) => listeAlsProfil(q as Parameters<typeof listeAlsProfil>[0])),
+    jeSchluessel: new Map(roh.map((q) => [`quelle:${q.schluessel}`, q])),
+  };
+}
+
+/** Listen-Treffer für die Anzeige. */
+function listenTreffer(
+  e: MatchErgebnis & { gruende?: string[] },
+  q: Record<string, unknown>,
+): ListenVermarktungsTreffer {
+  return {
+    schluessel: String(q.schluessel),
+    firma: (q.firma as string) ?? null,
+    person: (q.person as string) ?? null,
+    ort: (q.ort as string) ?? null,
+    quelle: String(q.quelle),
+    score: e.score,
+    abdeckung: e.abdeckung,
+    gruende:
+      e.gruende ??
+      e.kriterien
+        .filter((k) => k.punkte != null && k.punkte >= 70)
+        .map((k) => k.begruendung),
+  };
+}
+
 /** Matching-Merkmale eines Mandats aus Mandat und verknüpftem Objekt (Cache-Zeilen). */
 function objektMerkmale(
   m: Record<string, unknown>,
@@ -626,10 +693,19 @@ export const matchingFn = createServerFn({ method: "POST" })
         quelle: String(r.quelle),
       }));
 
+    // Ganze Investorendatenbank: passende Investoren aus den Listen, die noch nicht in Salesforce sind.
+    const listen = await listenProfileLaden(admin);
+    const listenErgebnis = rangliste(objekt, listen.profile)
+      .filter((e) => !e.ausschluss && e.score >= 50 && e.abdeckung >= 50)
+      .slice(0, 200)
+      .map((e) => listenTreffer(e, listen.jeSchluessel.get(e.profilSfId)!));
+
     return {
       objekt,
       treffer,
       profileGesamt: profile.length,
+      listen: listenErgebnis,
+      listenGesamt: listen.profile.length,
       profilQuelle: quelle,
       historie,
       markt,
@@ -946,45 +1022,23 @@ export const vermarktungsAbgleichFn = createServerFn({ method: "POST" })
       .filter(Boolean) as string[];
     const mandatIds = mandate.map((m) => String(m.sf_id));
 
-    const [objekte, kampagnen, { profile, info }, listenRoh, negativ] =
-      await Promise.all([
-        reIds.length
-          ? admin
-              .from("sf_real_estate")
-              .select("*")
-              .in("sf_id", reIds)
-              .then((r) => r.data ?? [])
-          : Promise.resolve([]),
-        admin
-          .from("sf_kampagnen")
-          .select("sf_id, name, mandat_sf_id, start_am")
-          .in("mandat_sf_id", mandatIds)
-          .order("start_am", { ascending: false, nullsFirst: false })
-          .then((r) => r.data ?? []),
-        profileLaden(admin),
-        alle<Record<string, unknown>>((a, b) =>
-          admin
-            .from("investor_quellen")
-            .select(
-              "schluessel, quelle, firma, person, ort, typ, nutzungen, objektklassen, regionen, volumen_min, volumen_max, einheiten_min",
-            )
-            .is("dublette_von", null)
-            .is("sf_account_sf_id", null)
-            .eq("nicht_anlegen", false)
-            .eq("bearbeitung", "offen")
-            .order("schluessel")
-            .range(a, b),
-        ),
-        admin
-          .from("investor_pruefungen")
-          .select("schluessel")
-          .like("schluessel", "quelle:%")
-          .in("status", ["insolvenz", "liquidation", "geloescht"])
-          .limit(5000)
-          .then(
-            (r) => new Set((r.data ?? []).map((x) => String(x.schluessel))),
-          ),
-      ]);
+    const [objekte, kampagnen, { profile, info }, listen] = await Promise.all([
+      reIds.length
+        ? admin
+            .from("sf_real_estate")
+            .select("*")
+            .in("sf_id", reIds)
+            .then((r) => r.data ?? [])
+        : Promise.resolve([]),
+      admin
+        .from("sf_kampagnen")
+        .select("sf_id, name, mandat_sf_id, start_am")
+        .in("mandat_sf_id", mandatIds)
+        .order("start_am", { ascending: false, nullsFirst: false })
+        .then((r) => r.data ?? []),
+      profileLaden(admin),
+      listenProfileLaden(admin),
+    ]);
     const objektJeId = new Map(
       objekte.map((o) => [String(o.sf_id), o as Record<string, unknown>]),
     );
@@ -999,12 +1053,7 @@ export const vermarktungsAbgleichFn = createServerFn({ method: "POST" })
         ];
       }),
     );
-    const listenJeSchluessel = new Map(
-      listenRoh.map((q) => [`quelle:${q.schluessel}`, q]),
-    );
-    const listenProfile = listenRoh
-      .filter((q) => !negativ.has(`quelle:${q.schluessel}`))
-      .map((q) => listeAlsProfil(q as Parameters<typeof listeAlsProfil>[0]));
+    const { profile: listenProfile, jeSchluessel: listenJeSchluessel } = listen;
 
     // Schon angesprochene Kontakte je Mandat (alle Kampagnen des Mandats).
     const kIds = kampagnen.map((k) => String(k.sf_id));
@@ -1123,19 +1172,9 @@ export const vermarktungsAbgleichFn = createServerFn({ method: "POST" })
             },
           };
         }),
-        listen: z.listen.map((t): ListenVermarktungsTreffer => {
-          const q = listenJeSchluessel.get(t.profilSfId)!;
-          return {
-            schluessel: String(q.schluessel),
-            firma: (q.firma as string) ?? null,
-            person: (q.person as string) ?? null,
-            ort: (q.ort as string) ?? null,
-            quelle: String(q.quelle),
-            score: t.score,
-            abdeckung: t.abdeckung,
-            gruende: t.gruende,
-          };
-        }),
+        listen: z.listen.map((t) =>
+          listenTreffer(t, listenJeSchluessel.get(t.profilSfId)!),
+        ),
       }))
       .sort(
         (a, b) =>

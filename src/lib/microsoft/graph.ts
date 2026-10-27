@@ -1525,3 +1525,80 @@ export async function graphDriveDateiInhalt(
   }
   return new Uint8Array(await res.arrayBuffer());
 }
+
+/**
+ * Upload-Session für eine Datei im OneDrive-Root-Ordner `ordner` (wird bei Bedarf angelegt).
+ * Die Teile lädt graphDriveUploadTeil hoch; die Upload-URL ist vorab autorisiert.
+ */
+export async function graphDriveUploadSessionStarten(
+  accessToken: string,
+  benutzer: string,
+  ordner: string,
+  dateiname: string,
+): Promise<string> {
+  const pfad = `${encodeURIComponent(graphDriveDateinameSaeubern(ordner))}/${encodeURIComponent(graphDriveDateinameSaeubern(dateiname))}`;
+  const session = await graphPost<{ uploadUrl?: string }>(
+    `/users/${encodeURIComponent(benutzer)}/drive/root:/${pfad}:/createUploadSession`,
+    accessToken,
+    { item: { "@microsoft.graph.conflictBehavior": "rename" } },
+    benutzer,
+  );
+  if (!session.uploadUrl)
+    throw new Error("OneDrive-Upload-Session konnte nicht gestartet werden.");
+  return session.uploadUrl;
+}
+
+/** Ein Teil einer Upload-Session; liefert beim letzten Teil die Datei-Id. */
+export async function graphDriveUploadTeil(
+  uploadUrl: string,
+  teil: Uint8Array,
+  offset: number,
+  gesamt: number,
+): Promise<{ itemId: string | null }> {
+  const res = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Length": String(teil.byteLength),
+      "Content-Range": `bytes ${offset}-${offset + teil.byteLength - 1}/${gesamt}`,
+    },
+    body: new Uint8Array(teil),
+  });
+  const json = (await res.json().catch(() => ({}))) as RohDriveItem &
+    GraphFehlerJson;
+  if (!res.ok && res.status !== 202)
+    throw graphFehler(res.status, json, "OneDrive");
+  return { itemId: res.status === 202 ? null : (json.id ?? null) };
+}
+
+/** Datei von Microsoft 365 in PDF umwandeln lassen (Word, PowerPoint, Excel). */
+export async function graphDriveAlsPdf(
+  accessToken: string,
+  benutzer: string,
+  itemId: string,
+): Promise<Uint8Array> {
+  const res = await fetch(
+    `${GRAPH_BASIS}/users/${encodeURIComponent(benutzer)}/drive/items/${encodeURIComponent(itemId)}/content?format=pdf`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) {
+    const json: unknown = await res.json().catch(() => ({}));
+    throw graphFehler(res.status, json as GraphFehlerJson, benutzer);
+  }
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+/** Datei im OneDrive löschen (Papierkorb). */
+export async function graphDriveDateiLoeschen(
+  accessToken: string,
+  benutzer: string,
+  itemId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${GRAPH_BASIS}/users/${encodeURIComponent(benutzer)}/drive/items/${encodeURIComponent(itemId)}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok && res.status !== 404) {
+    const json: unknown = await res.json().catch(() => ({}));
+    throw graphFehler(res.status, json as GraphFehlerJson, benutzer);
+  }
+}
