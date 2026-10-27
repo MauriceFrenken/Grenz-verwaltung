@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnmeldenRouteImport } from './routes/anmelden'
+import { Route as AufgabenRouteImport } from './routes/aufgaben'
 import { Route as DatenschutzRouteImport } from './routes/datenschutz'
 import { Route as EbicsRouteImport } from './routes/ebics'
 import { Route as EinladungRouteImport } from './routes/einladung'
@@ -68,6 +69,11 @@ const IndexRoute = IndexRouteImport.update({
 const AnmeldenRoute = AnmeldenRouteImport.update({
   id: '/anmelden',
   path: '/anmelden',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AufgabenRoute = AufgabenRouteImport.update({
+  id: '/aufgaben',
+  path: '/aufgaben',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DatenschutzRoute = DatenschutzRouteImport.update({
@@ -319,6 +325,7 @@ const MandateSfIdReportIdRoute = MandateSfIdReportIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
+  '/aufgaben': typeof AufgabenRoute
   '/datenschutz': typeof DatenschutzRoute
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
@@ -371,6 +378,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
+  '/aufgaben': typeof AufgabenRoute
   '/datenschutz': typeof DatenschutzRoute
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
@@ -421,6 +429,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
+  '/aufgaben': typeof AufgabenRoute
   '/datenschutz': typeof DatenschutzRoute
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
@@ -475,6 +484,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/anmelden'
+    | '/aufgaben'
     | '/datenschutz'
     | '/ebics'
     | '/einladung'
@@ -527,6 +537,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/anmelden'
+    | '/aufgaben'
     | '/datenschutz'
     | '/ebics'
     | '/einladung'
@@ -576,6 +587,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/anmelden'
+    | '/aufgaben'
     | '/datenschutz'
     | '/ebics'
     | '/einladung'
@@ -629,6 +641,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnmeldenRoute: typeof AnmeldenRoute
+  AufgabenRoute: typeof AufgabenRoute
   DatenschutzRoute: typeof DatenschutzRoute
   EbicsRoute: typeof EbicsRoute
   EinladungRoute: typeof EinladungRoute
@@ -682,6 +695,13 @@ declare module '@tanstack/react-router' {
       path: '/anmelden'
       fullPath: '/anmelden'
       preLoaderRoute: typeof AnmeldenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/aufgaben': {
+      id: '/aufgaben'
+      path: '/aufgaben'
+      fullPath: '/aufgaben'
+      preLoaderRoute: typeof AufgabenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/datenschutz': {
@@ -1077,6 +1097,7 @@ const ExposesRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnmeldenRoute: AnmeldenRoute,
+  AufgabenRoute: AufgabenRoute,
   DatenschutzRoute: DatenschutzRoute,
   EbicsRoute: EbicsRoute,
   EinladungRoute: EinladungRoute,
