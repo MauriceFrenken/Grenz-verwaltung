@@ -5,6 +5,7 @@ import {
   Cloud,
   Inbox,
   KanbanSquare,
+  Landmark,
   LayoutDashboard,
   ListChecks,
   MapPin,
@@ -48,6 +49,12 @@ export const NAVIGATION: NavSection[] = [
     items: [
       { to: "/", label: "Übersicht", icon: LayoutDashboard },
       { to: "/kennzahlen", label: "Kennzahlen", icon: ChartColumn },
+      {
+        to: "/gesellschafterbericht",
+        label: "Gesellschafterbericht",
+        icon: Landmark,
+        umbruch: true,
+      },
       {
         to: "/aufgaben",
         label: "Aufgaben",
