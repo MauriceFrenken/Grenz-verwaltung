@@ -21,7 +21,6 @@ import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as InvestorenRouteImport } from './routes/investoren'
 import { Route as KennzahlenRouteImport } from './routes/kennzahlen'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
-import { Route as PersonalRouteImport } from './routes/personal'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as VerkaeuferRouteImport } from './routes/verkaeufer'
@@ -37,6 +36,8 @@ import { Route as ExposesImportRouteImport } from './routes/exposes.import'
 import { Route as ExposesKarteRouteImport } from './routes/exposes.karte'
 import { Route as MandateIndexRouteImport } from './routes/mandate.index'
 import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
+import { Route as PersonalIndexRouteImport } from './routes/personal.index'
+import { Route as PersonalIdRouteImport } from './routes/personal.$id'
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
 import { Route as ToolsIndexRouteImport } from './routes/tools.index'
 import { Route as ToolsToolRouteImport } from './routes/tools.$tool'
@@ -124,11 +125,6 @@ const PasswortZuruecksetzenRoute = PasswortZuruecksetzenRouteImport.update({
   path: '/passwort-zuruecksetzen',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PersonalRoute = PersonalRouteImport.update({
-  id: '/personal',
-  path: '/personal',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PipelineRoute = PipelineRouteImport.update({
   id: '/pipeline',
   path: '/pipeline',
@@ -203,6 +199,16 @@ const MandateIndexRoute = MandateIndexRouteImport.update({
 const MicrosoftCallbackRoute = MicrosoftCallbackRouteImport.update({
   id: '/microsoft/callback',
   path: '/microsoft/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PersonalIndexRoute = PersonalIndexRouteImport.update({
+  id: '/personal/',
+  path: '/personal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PersonalIdRoute = PersonalIdRouteImport.update({
+  id: '/personal/$id',
+  path: '/personal/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SalesforceCallbackRoute = SalesforceCallbackRouteImport.update({
@@ -353,7 +359,6 @@ export interface FileRoutesByFullPath {
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
-  '/personal': typeof PersonalRoute
   '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
@@ -366,11 +371,13 @@ export interface FileRoutesByFullPath {
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
+  '/personal/$id': typeof PersonalIdRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/tools/$tool': typeof ToolsToolRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
   '/mandate/': typeof MandateIndexRoute
+  '/personal/': typeof PersonalIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/akquise/salesforce/$reiter': typeof AkquiseSalesforceReiterRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
@@ -407,7 +414,6 @@ export interface FileRoutesByTo {
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
-  '/personal': typeof PersonalRoute
   '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
@@ -419,11 +425,13 @@ export interface FileRoutesByTo {
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
+  '/personal/$id': typeof PersonalIdRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/tools/$tool': typeof ToolsToolRoute
   '/einstellungen': typeof EinstellungenIndexRoute
   '/exposes': typeof ExposesIndexRoute
   '/mandate': typeof MandateIndexRoute
+  '/personal': typeof PersonalIndexRoute
   '/tools': typeof ToolsIndexRoute
   '/akquise/salesforce/$reiter': typeof AkquiseSalesforceReiterRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
@@ -463,7 +471,6 @@ export interface FileRoutesById {
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
-  '/personal': typeof PersonalRoute
   '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
@@ -476,11 +483,13 @@ export interface FileRoutesById {
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
+  '/personal/$id': typeof PersonalIdRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/tools/$tool': typeof ToolsToolRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
   '/mandate/': typeof MandateIndexRoute
+  '/personal/': typeof PersonalIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/akquise/salesforce/$reiter': typeof AkquiseSalesforceReiterRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
@@ -521,7 +530,6 @@ export interface FileRouteTypes {
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
-    | '/personal'
     | '/pipeline'
     | '/sitemap.xml'
     | '/verkaeufer'
@@ -534,11 +542,13 @@ export interface FileRouteTypes {
     | '/exposes/import'
     | '/exposes/karte'
     | '/microsoft/callback'
+    | '/personal/$id'
     | '/salesforce/callback'
     | '/tools/$tool'
     | '/einstellungen/'
     | '/exposes/'
     | '/mandate/'
+    | '/personal/'
     | '/tools/'
     | '/akquise/salesforce/$reiter'
     | '/api/cron/ebics-umsaetze'
@@ -575,7 +585,6 @@ export interface FileRouteTypes {
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
-    | '/personal'
     | '/pipeline'
     | '/sitemap.xml'
     | '/verkaeufer'
@@ -587,11 +596,13 @@ export interface FileRouteTypes {
     | '/exposes/auswertung'
     | '/exposes/karte'
     | '/microsoft/callback'
+    | '/personal/$id'
     | '/salesforce/callback'
     | '/tools/$tool'
     | '/einstellungen'
     | '/exposes'
     | '/mandate'
+    | '/personal'
     | '/tools'
     | '/akquise/salesforce/$reiter'
     | '/api/cron/ebics-umsaetze'
@@ -630,7 +641,6 @@ export interface FileRouteTypes {
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
-    | '/personal'
     | '/pipeline'
     | '/sitemap.xml'
     | '/verkaeufer'
@@ -643,11 +653,13 @@ export interface FileRouteTypes {
     | '/exposes/import'
     | '/exposes/karte'
     | '/microsoft/callback'
+    | '/personal/$id'
     | '/salesforce/callback'
     | '/tools/$tool'
     | '/einstellungen/'
     | '/exposes/'
     | '/mandate/'
+    | '/personal/'
     | '/tools/'
     | '/akquise/salesforce/$reiter'
     | '/api/cron/ebics-umsaetze'
@@ -687,15 +699,16 @@ export interface RootRouteChildren {
   InvestorenRoute: typeof InvestorenRoute
   KennzahlenRoute: typeof KennzahlenRoute
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
-  PersonalRoute: typeof PersonalRoute
   PipelineRoute: typeof PipelineRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VerkaeuferRoute: typeof VerkaeuferRoute
   AkquiseMassnahmenRoute: typeof AkquiseMassnahmenRoute
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
+  PersonalIdRoute: typeof PersonalIdRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
   ToolsToolRoute: typeof ToolsToolRoute
   MandateIndexRoute: typeof MandateIndexRoute
+  PersonalIndexRoute: typeof PersonalIndexRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
   AkquiseSalesforceReiterRoute: typeof AkquiseSalesforceReiterRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
@@ -806,13 +819,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PasswortZuruecksetzenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/personal': {
-      id: '/personal'
-      path: '/personal'
-      fullPath: '/personal'
-      preLoaderRoute: typeof PersonalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/pipeline': {
       id: '/pipeline'
       path: '/pipeline'
@@ -916,6 +922,20 @@ declare module '@tanstack/react-router' {
       path: '/microsoft/callback'
       fullPath: '/microsoft/callback'
       preLoaderRoute: typeof MicrosoftCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/personal/': {
+      id: '/personal/'
+      path: '/personal'
+      fullPath: '/personal/'
+      preLoaderRoute: typeof PersonalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/personal/$id': {
+      id: '/personal/$id'
+      path: '/personal/$id'
+      fullPath: '/personal/$id'
+      preLoaderRoute: typeof PersonalIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/salesforce/callback': {
@@ -1167,15 +1187,16 @@ const rootRouteChildren: RootRouteChildren = {
   InvestorenRoute: InvestorenRoute,
   KennzahlenRoute: KennzahlenRoute,
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
-  PersonalRoute: PersonalRoute,
   PipelineRoute: PipelineRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VerkaeuferRoute: VerkaeuferRoute,
   AkquiseMassnahmenRoute: AkquiseMassnahmenRoute,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
+  PersonalIdRoute: PersonalIdRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
   ToolsToolRoute: ToolsToolRoute,
   MandateIndexRoute: MandateIndexRoute,
+  PersonalIndexRoute: PersonalIndexRoute,
   ToolsIndexRoute: ToolsIndexRoute,
   AkquiseSalesforceReiterRoute: AkquiseSalesforceReiterRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,

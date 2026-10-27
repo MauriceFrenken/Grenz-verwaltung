@@ -23,14 +23,17 @@ import {
 } from "./bausteine";
 import type { PersonalKontext } from "./usePersonal";
 
-function NeuDialog({
+export function NeuDialog({
   k,
   offen,
   onClose,
+  fest,
 }: {
   k: PersonalKontext;
   offen: boolean;
   onClose: () => void;
+  /** Mitarbeiter vorgegeben (Profilseite). */
+  fest?: string;
 }) {
   const { daten, ausfuehren } = k;
   const heute = heuteIso();
@@ -38,7 +41,7 @@ function NeuDialog({
     ? aktiveMitarbeiter(daten.mitarbeiter, heute)
     : daten.mitarbeiter.filter((m) => m.id === daten.ichId);
   const [f, setF] = useState({
-    mitarbeiterId: daten.ichId ?? "",
+    mitarbeiterId: fest ?? daten.ichId ?? "",
     art: "weiterbildung_34c" as Schulungsart,
     titel: "",
     anbieter: "",

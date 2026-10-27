@@ -14,7 +14,7 @@ const TITEL: Record<ChecklistenTyp, string> = {
   offboarding: "Offboarding",
 };
 
-function Liste({
+export function Checkliste({
   k,
   m,
   typ,
@@ -164,8 +164,8 @@ export function ChecklistenTab({ k }: { k: PersonalKontext }) {
         </div>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Liste k={k} m={m} typ="onboarding" />
-        <Liste k={k} m={m} typ="offboarding" />
+        <Checkliste k={k} m={m} typ="onboarding" />
+        <Checkliste k={k} m={m} typ="offboarding" />
       </div>
     </div>
   );
