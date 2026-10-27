@@ -1,11 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { ExposeEditorPage } from "@/features/mandate/ExposeEditorPage";
-
+/** Früherer Exposé-Editor (eigenes Layout) ist durch den Reiter „Exposé“ ersetzt. */
 export const Route = createFileRoute("/mandate/$sfId/dokument/$id")({
-  head: () => ({ meta: [{ title: "Exposé — Grenz & Co." }] }),
-  component: function DokumentRoute() {
-    const { sfId, id } = Route.useParams();
-    return <ExposeEditorPage key={id} sfId={sfId} id={id} />;
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: "/mandate/$sfId/expose",
+      params: { sfId: params.sfId },
+      replace: true,
+    });
   },
 });

@@ -1,10 +1,10 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-/** Reiter entfernt (25.10.2026): alte Adresse führt zum Überblick der Mandatsakte. */
+/** Alte Adresse des Reiters „Exposé & Teaser“ führt zum Reiter „Exposé“. */
 export const Route = createFileRoute("/mandate/$sfId/exposes")({
   beforeLoad: ({ params }) => {
     throw redirect({
-      to: "/mandate/$sfId",
+      to: "/mandate/$sfId/expose",
       params: { sfId: params.sfId },
       replace: true,
     });
