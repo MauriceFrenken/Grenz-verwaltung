@@ -14,6 +14,8 @@ export type NavZaehler = {
   angebotseingang: number;
   investoren: number;
   verkaeufer: number;
+  /** Überfällige Aufgaben auf dem Aufgabenboard. */
+  aufgaben: number;
 };
 
 export const navZaehlerFn = createServerFn({ method: "POST" })
@@ -27,24 +29,37 @@ export const navZaehlerFn = createServerFn({ method: "POST" })
         .select("id", { count: "exact", head: true })
         .eq("seite", seite)
         .eq("status", "neu");
-    const [mandate, exposes, kaeufer, verkaeufer] = await Promise.all([
-      admin
-        .from("sf_mandate")
-        .select("name")
-        .in("status", [...OFFENE_PHASEN])
-        .limit(5000),
-      admin
-        .from("postfach_exposes")
-        .select("id", { count: "exact", head: true })
-        .in("status", ["neu", "analysiert"]),
-      radar("kaeufer"),
-      radar("verkaeufer"),
-    ]);
+    const heute = new Date().toISOString().slice(0, 10);
+    const [mandate, exposes, kaeufer, verkaeufer, aufgaben] = await Promise.all(
+      [
+        admin
+          .from("sf_mandate")
+          .select("name")
+          .in("status", [...OFFENE_PHASEN])
+          .limit(5000),
+        admin
+          .from("postfach_exposes")
+          .select("id", { count: "exact", head: true })
+          .in("status", ["neu", "analysiert"]),
+        radar("kaeufer"),
+        radar("verkaeufer"),
+        admin
+          .from("aufgaben")
+          .select("id, aufgaben_spalten!inner(erledigt)", {
+            count: "exact",
+            head: true,
+          })
+          .eq("archiviert", false)
+          .eq("aufgaben_spalten.erledigt", false)
+          .lt("faellig_am", heute),
+      ],
+    );
     return {
       mandate: (mandate.data ?? []).filter((m) => !istTest(m.name)).length,
       angebotseingang: exposes.count ?? 0,
       // Vor der Migration gibt es die Radar-Tabelle noch nicht: dann kein Badge.
       investoren: kaeufer.count ?? 0,
       verkaeufer: verkaeufer.count ?? 0,
+      aufgaben: aufgaben.count ?? 0,
     };
   });
