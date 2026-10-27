@@ -4,7 +4,7 @@ import { createServiceRoleClient, microsoftCallerAusJwt } from "@/lib/microsoft/
 
 /** Rollen mit Schreibrecht, wie public.jwt_darf_schreiben(). */
 const SCHREIBENDE_ROLLEN = new Set(["op_admin", "administrator", "manager", "mitarbeiter"]);
-const ADMIN_ROLLEN = new Set(["op_admin", "administrator"]);
+export const ADMIN_ROLLEN: ReadonlySet<string> = new Set(["op_admin", "administrator"]);
 
 export type Aufrufer = { userId: string; rolle: string };
 

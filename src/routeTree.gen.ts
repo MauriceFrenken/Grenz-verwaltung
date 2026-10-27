@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnmeldenRouteImport } from './routes/anmelden'
 import { Route as AufgabenRouteImport } from './routes/aufgaben'
+import { Route as GesellschafterberichtRouteImport } from './routes/gesellschafterbericht'
 import { Route as DatenschutzRouteImport } from './routes/datenschutz'
 import { Route as EbicsRouteImport } from './routes/ebics'
 import { Route as EinladungRouteImport } from './routes/einladung'
@@ -77,6 +78,11 @@ const AnmeldenRoute = AnmeldenRouteImport.update({
 const AufgabenRoute = AufgabenRouteImport.update({
   id: '/aufgaben',
   path: '/aufgaben',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GesellschafterberichtRoute = GesellschafterberichtRouteImport.update({
+  id: '/gesellschafterbericht',
+  path: '/gesellschafterbericht',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DatenschutzRoute = DatenschutzRouteImport.update({
@@ -344,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
   '/aufgaben': typeof AufgabenRoute
+  '/gesellschafterbericht': typeof GesellschafterberichtRoute
   '/datenschutz': typeof DatenschutzRoute
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
@@ -400,6 +407,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
   '/aufgaben': typeof AufgabenRoute
+  '/gesellschafterbericht': typeof GesellschafterberichtRoute
   '/datenschutz': typeof DatenschutzRoute
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
@@ -454,6 +462,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/anmelden': typeof AnmeldenRoute
   '/aufgaben': typeof AufgabenRoute
+  '/gesellschafterbericht': typeof GesellschafterberichtRoute
   '/datenschutz': typeof DatenschutzRoute
   '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
@@ -512,6 +521,7 @@ export interface FileRouteTypes {
     | '/'
     | '/anmelden'
     | '/aufgaben'
+    | '/gesellschafterbericht'
     | '/datenschutz'
     | '/ebics'
     | '/einladung'
@@ -568,6 +578,7 @@ export interface FileRouteTypes {
     | '/'
     | '/anmelden'
     | '/aufgaben'
+    | '/gesellschafterbericht'
     | '/datenschutz'
     | '/ebics'
     | '/einladung'
@@ -621,6 +632,7 @@ export interface FileRouteTypes {
     | '/'
     | '/anmelden'
     | '/aufgaben'
+    | '/gesellschafterbericht'
     | '/datenschutz'
     | '/ebics'
     | '/einladung'
@@ -678,6 +690,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnmeldenRoute: typeof AnmeldenRoute
   AufgabenRoute: typeof AufgabenRoute
+  GesellschafterberichtRoute: typeof GesellschafterberichtRoute
   DatenschutzRoute: typeof DatenschutzRoute
   EbicsRoute: typeof EbicsRoute
   EinladungRoute: typeof EinladungRoute
@@ -741,6 +754,13 @@ declare module '@tanstack/react-router' {
       path: '/aufgaben'
       fullPath: '/aufgaben'
       preLoaderRoute: typeof AufgabenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gesellschafterbericht': {
+      id: '/gesellschafterbericht'
+      path: '/gesellschafterbericht'
+      fullPath: '/gesellschafterbericht'
+      preLoaderRoute: typeof GesellschafterberichtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/datenschutz': {
@@ -1158,6 +1178,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnmeldenRoute: AnmeldenRoute,
   AufgabenRoute: AufgabenRoute,
+  GesellschafterberichtRoute: GesellschafterberichtRoute,
   DatenschutzRoute: DatenschutzRoute,
   EbicsRoute: EbicsRoute,
   EinladungRoute: EinladungRoute,
