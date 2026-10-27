@@ -5,7 +5,8 @@ import { createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
 
 /**
  * Täglich: eine fällige Quelle nach neuen Marktberichten durchsuchen und offene Berichte auslesen.
- * Ab 1. August bzw. 1. Februar legt der Lauf einmalig den Berichtsentwurf der Periode an.
+ * Ab 1. August bzw. 1. Februar legt der Lauf einmalig den Berichtsentwurf der Periode an;
+ * Entwürfe ohne Texte schreibt er komplett vor.
  */
 export const Route = createFileRoute("/api/cron/marktbericht-quellen")({
   server: {
@@ -19,12 +20,22 @@ export const Route = createFileRoute("/api/cron/marktbericht-quellen")({
         try {
           // Entwurf zuerst: meist nur eine kurze Prüfung, zweimal im Jahr ca. 1–2 Minuten.
           // Ein Fehler hier darf die Suche nicht aufhalten.
-          const { automatischerEntwurf, entwuerfeAktualisieren } =
-            await import("@/lib/marktbericht/server-fn");
+          const {
+            automatischerEntwurf,
+            entwuerfeAktualisieren,
+            entwurfTexteNachziehen,
+          } = await import("@/lib/marktbericht/server-fn");
           const entwurf = await automatischerEntwurf(admin).catch((e) => {
             console.error("[cron/marktbericht-quellen] Entwurf:", e);
             return null;
           });
+          // Offene Entwürfe ohne Texte (oder mit veralteten KI-Texten) komplett schreiben.
+          const texte = entwurf
+            ? null
+            : await entwurfTexteNachziehen(admin).catch((e) => {
+                console.error("[cron/marktbericht-quellen] Texte:", e);
+                return null;
+              });
           const { quellenLauf } =
             await import("@/lib/marktbericht/quellen-lauf");
           const lauf = await quellenLauf(admin, {
@@ -37,7 +48,13 @@ export const Route = createFileRoute("/api/cron/marktbericht-quellen")({
               return 0;
             },
           );
-          return Response.json({ ok: true, ...lauf, entwurf, aktualisiert });
+          return Response.json({
+            ok: true,
+            ...lauf,
+            entwurf,
+            texte,
+            aktualisiert,
+          });
         } catch (err) {
           console.error("[cron/marktbericht-quellen]", err);
           return Response.json(

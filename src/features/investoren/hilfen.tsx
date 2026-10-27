@@ -16,6 +16,7 @@ const STATUS_TON: Record<string, string> = {
   kein_interesse: "bg-warn-soft text-warn",
   gesperrt: "bg-bad-soft text-bad",
   erloschen: "bg-bad-soft text-bad",
+  neu: "bg-accent-soft text-brand-text",
 };
 
 export function StatusMarke({ status }: { status: string }) {

@@ -20,7 +20,14 @@ import type { ReactNode } from "react";
 import logoWeiss from "@/assets/grenz-co-logo-weiss.png?inline";
 import wortmarkeWeiss from "@/assets/grenz-co-wortmarke-weiss.png?inline";
 
-import { fmt, kacheln, median, spanne, type Kachel } from "./bericht";
+import {
+  erhebungZeitraum,
+  fmt,
+  kacheln,
+  median,
+  spanne,
+  type Kachel,
+} from "./bericht";
 import { zinsStand } from "./bundesbank";
 import type { MarktberichtVoll } from "./server-fn";
 import { MINDEST_FALLZAHL, periodeText, type Trend } from "./typen";
@@ -753,7 +760,7 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
             />
             <Text style={{ fontSize: 7, color: F.textHell, lineHeight: 1.35 }}>
               {t(
-                `Faktor = Angebotspreis / Jahresnettokaltmiete (Ist). Spanne = mittlere 50 % der Angebote. Werte erst ab ${MINDEST_FALLZAHL} Angeboten je Zelle. Erfassung seit ${k.angebot.ersterEingang ? fmt.datum(k.angebot.ersterEingang) : "–"}.`,
+                `Faktor = Angebotspreis / Jahresnettokaltmiete (Ist). Spanne = mittlere 50 % der Angebote. Werte erst ab ${MINDEST_FALLZAHL} Angeboten je Zelle. Erfassung seit ${k.angebot.ersterEingang ? fmt.datum(k.angebot.ersterEingang) : "–"}.${erhebungZeitraum(k, "angebot") ? ` Für die Berichtsperiode liegen zu wenige Fälle vor; gezeigt wird die laufende Erhebung ${erhebungZeitraum(k, "angebot")}.` : ""}`,
               )}
             </Text>
           </>
@@ -845,7 +852,11 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
         stempel={stempel}
         rand={
           <Randliste
-            titel="Markt-Radar"
+            titel={
+              erhebungZeitraum(k, "radar")
+                ? `Markt-Radar ${erhebungZeitraum(k, "radar")}`
+                : "Markt-Radar"
+            }
             eintraege={[
               {
                 label: "Meldungen aktive Käufer",

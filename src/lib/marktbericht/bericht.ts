@@ -49,6 +49,16 @@ export function median(v: Verteilung | null, f: (w: number) => string): string {
   return v ? f(v.median) : `n < ${MINDEST_FALLZAHL}`;
 }
 
+/** Zeitraum der laufenden Erhebung, falls der Bericht sie statt der Periode zeigt. */
+export function erhebungZeitraum(
+  k: MarktberichtKennzahlen,
+  teil: "angebot" | "radar",
+): string | null {
+  const e = k.erhebung;
+  if (!e?.[teil]) return null;
+  return `${fmt.datum(e.von)} bis ${fmt.datum(e.bis)}`;
+}
+
 export type Kachel = {
   wert: string;
   label: string;
@@ -70,6 +80,10 @@ export function kacheln(
   const liste: Kachel[] = [];
   const gesamt = k.angebot.zeilen.find((z) => z.teilmarkt === "Gesamt");
   const vor = k.angebot.vorperiode;
+  const laufend = erhebungZeitraum(k, "angebot");
+  const exposeQuelle = laufend
+    ? `Grenz Exposé-Eingang ${laufend}`
+    : "Grenz Exposé-Eingang";
   if (gesamt?.faktor) {
     const delta = vor?.faktor ? gesamt.faktor.median - vor.faktor.median : null;
     liste.push({
@@ -80,7 +94,7 @@ export function kacheln(
           ? `${delta >= 0 ? "+" : "-"}${fmt.faktor(Math.abs(delta))} ggü. Vorjahr`
           : null,
       richtung: richtungAus(delta),
-      quelle: `Grenz Exposé-Eingang, n = ${gesamt.faktor.n}`,
+      quelle: `${exposeQuelle}, n = ${gesamt.faktor.n}`,
     });
   }
   if (gesamt?.preisM2)
@@ -89,7 +103,7 @@ export function kacheln(
       label: "Angebotspreis (Median)",
       veraenderung: null,
       richtung: null,
-      quelle: `Grenz Exposé-Eingang, n = ${gesamt.preisM2.n}`,
+      quelle: `${exposeQuelle}, n = ${gesamt.preisM2.n}`,
     });
   if (gesamt)
     liste.push({
@@ -97,7 +111,7 @@ export function kacheln(
       label: "Angebote im Eingang",
       veraenderung: vor ? `${vor.angebote} im Vorjahreszeitraum` : null,
       richtung: vor ? richtungAus(gesamt.angebote - vor.angebote) : null,
-      quelle: "Grenz Exposé-Eingang",
+      quelle: exposeQuelle,
     });
   const bauzins = zinsStand(k.zinsen.reihen.find((r) => r.id === "bauzins"));
   if (bauzins)
@@ -143,7 +157,9 @@ export function kennzahlenText(
   const z: string[] = [
     `Bericht: Marktbericht Zinshäuser Rheinland, ${periodeText(k.periode)} (${fmt.datum(k.von)} bis ${fmt.datum(k.bis)}), Stichtag ${fmt.datum(k.stichtag)}${k.vorlaeufig ? ", Periode läuft noch (vorläufige Zahlen)" : ""}.`,
     "",
-    `Angebotsmarkt (Grenz Exposé-Eingang, Zinshäuser von Maklern und Eigentümern, erster Eingang ${k.angebot.ersterEingang ? fmt.datum(k.angebot.ersterEingang) : "–"}; Werte nur ab ${MINDEST_FALLZAHL} Fällen):`,
+    erhebungZeitraum(k, "angebot")
+      ? `Angebotsmarkt (Grenz Exposé-Eingang, Zinshäuser von Maklern und Eigentümern; die Erfassung startete erst am ${k.angebot.ersterEingang ? fmt.datum(k.angebot.ersterEingang) : "–"}, für die Berichtsperiode gibt es zu wenige Fälle. Die Werte stammen deshalb aus der laufenden Erhebung ${erhebungZeitraum(k, "angebot")} und sind im Text ausdrücklich so zu bezeichnen, nicht als Wert der Periode; Werte nur ab ${MINDEST_FALLZAHL} Fällen):`
+      : `Angebotsmarkt (Grenz Exposé-Eingang, Zinshäuser von Maklern und Eigentümern, erster Eingang ${k.angebot.ersterEingang ? fmt.datum(k.angebot.ersterEingang) : "–"}; Werte nur ab ${MINDEST_FALLZAHL} Fällen):`,
   ];
   for (const r of k.angebot.zeilen)
     z.push(
@@ -180,7 +196,7 @@ export function kennzahlenText(
   if (k.zinsen.fehler) z.push(`- Hinweis: ${k.zinsen.fehler}`);
   z.push(
     "",
-    `Markt-Radar (Pressemeldungen): ${k.radar.kaeufer} Käufer-Meldungen, ${k.radar.verkaeufer} Verkäufer-Meldungen.`,
+    `Markt-Radar (Pressemeldungen${erhebungZeitraum(k, "radar") ? `, laufende Erhebung ${erhebungZeitraum(k, "radar")}, da das Radar erst nach der Berichtsperiode startete; so bezeichnen` : ""}): ${k.radar.kaeufer} Käufer-Meldungen, ${k.radar.verkaeufer} Verkäufer-Meldungen.`,
   );
   for (const m of k.radar.auswahl.slice(0, 5))
     z.push(

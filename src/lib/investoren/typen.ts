@@ -117,6 +117,7 @@ export const STATUS_LABEL: Record<string, string> = {
   kein_interesse: "Kein Interesse",
   gesperrt: "Gesperrt",
   erloschen: "Erloschen",
+  neu: "Neu, nicht in Salesforce",
 };
 
 export const PRUEF_LABEL: Record<string, string> = {
@@ -126,6 +127,12 @@ export const PRUEF_LABEL: Record<string, string> = {
   geloescht: "Gelöscht",
   unklar: "Unklar",
 };
+
+/** Nutzungsarten, die das Salesforce-Ankaufsprofil kennt (Picklist Nutzungsarten__c). */
+export const NUTZUNGSARTEN = [
+  "Wohnen", "Wohn-/ Geschäftshaus", "Büro", "Einzelhandel", "Grundstück", "Pflege", "Studentenwohnen",
+  "Serviced Apartments", "Mirco-Apartments", "Kita", "Behördenimmobilien",
+] as const;
 
 export const FELD_LABEL: Record<string, string> = {
   typ: "Investorentyp",
@@ -139,4 +146,6 @@ export const FELD_LABEL: Record<string, string> = {
   account: "Account",
   profil: "Ankaufsprofil",
   erloschen: "Firma erloschen",
+  kontakt: "Ansprechpartner",
+  nutzungen: "Nutzungsarten",
 };

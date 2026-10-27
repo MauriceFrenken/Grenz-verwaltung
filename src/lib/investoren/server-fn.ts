@@ -8,13 +8,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { createServiceRoleClient, pruefeAufrufer, tokenAus } from "@/lib/server/aufrufer";
 
 import { ACCOUNT_TYPE_JE_TYP, type InvestorTyp } from "./bereinigung";
-import type {
-  InvestorAkte,
-  InvestorZeile,
-  JsonWert,
-  PruefungKurz,
-  QuelleZeile,
-  VorschlagZeile,
+import {
+  NUTZUNGSARTEN,
+  type InvestorAkte,
+  type InvestorZeile,
+  type JsonWert,
+  type PruefungKurz,
+  type QuelleZeile,
+  type VorschlagZeile,
 } from "./typen";
 
 type Roh = Record<string, unknown>;
@@ -94,8 +95,70 @@ export const investorenLadenFn = createServerFn({ method: "POST" })
       alle((von, bis) => admin.from("investor_pruefungen").select("*").like("schluessel", "acc:%").range(von, bis)),
     ]);
     const je = new Map(pruefungen.map((p) => [String(p.schluessel).slice(4), p]));
-    return zeilen.map((z) => zuInvestor(z, je.get(String(z.account_sf_id))));
+    const sf = zeilen.map((z) => zuInvestor(z, je.get(String(z.account_sf_id))));
+    // Dazu die Investoren aus den Listen, die (noch) nicht in Salesforce sind: je Firma der Haupteintrag.
+    const [quellen, qPruefungen] = await Promise.all([
+      alle((von, bis) =>
+        admin
+          .from("investor_quellen")
+          .select(QUELLE_SPALTEN)
+          .is("dublette_von", null)
+          .is("sf_account_sf_id", null)
+          .neq("bearbeitung", "verworfen")
+          .order("passung", { ascending: false })
+          .range(von, bis),
+      ),
+      alle((von, bis) => admin.from("investor_pruefungen").select("*").like("schluessel", "quelle:%").range(von, bis)),
+    ]);
+    const jeQ = new Map(qPruefungen.map((p) => [String(p.schluessel).slice(7), p]));
+    return [...sf, ...quellen.map((q) => quelleAlsInvestor(q, jeQ.get(String(q.schluessel))))];
   });
+
+const QUELLE_SPALTEN =
+  "schluessel, quelle, firma, person, typ, nutzungen, objektklassen, volumen_min, volumen_max, einheiten_min, regionen, nrw_bezug, emails, passung, bearbeitung, roh";
+
+/** Ein Listeneintrag in der Form der Datenbankzeile; Schlüssel „quelle:…“ statt Account-Id. */
+function quelleAlsInvestor(q: Roh, p?: Roh): InvestorZeile {
+  const pruefung = pruefungKurz(p);
+  const erloschen = pruefung && ["insolvenz", "liquidation", "geloescht"].includes(pruefung.status);
+  const regionen = (q.regionen as string[]) ?? [];
+  const nrw = q.nrw_bezug === "region" ? "NRW" : q.nrw_bezug === "sitz" ? "Sitz NRW" : null;
+  const kurz = regionen.length > 3 ? [...regionen.slice(0, 2), `+${regionen.length - 2} weitere`] : regionen;
+  const emails = (q.emails as string[]) ?? [];
+  return {
+    accountSfId: `quelle:${q.schluessel}`,
+    name: String(q.firma ?? q.person ?? q.schluessel),
+    profilSfId: null,
+    typ: (q.typ as string) ?? null,
+    typQuelle: q.typ ? "liste" : null,
+    status: erloschen ? "erloschen" : "neu",
+    statusGrund: erloschen
+      ? (pruefung?.begruendung ?? null)
+      : `Aus Liste ${q.quelle}, noch nicht in Salesforce. Passung ${q.passung ?? 0}.`,
+    prioritaet: null,
+    herkunft: "nur_liste",
+    nutzungen: (q.nutzungen as string[]) ?? [],
+    objektklassen: (q.objektklassen as string[]) ?? [],
+    volumenMin: zahl(q.volumen_min),
+    volumenMax: zahl(q.volumen_max),
+    faktorMax: null,
+    einheitenMin: zahl(q.einheiten_min),
+    regionsebene: nrw,
+    regionenKurz: nrw && !kurz.length ? [nrw] : kurz,
+    bemerkung: ((q.roh as Roh | null)?.beleg as string | undefined) ?? null,
+    kriterienHerkunft: {},
+    letzterKontaktAm: null,
+    aktivitaeten12m: 0,
+    dealsAnzahl: 0,
+    dealsGewonnen: 0,
+    kampagnenAnzahl: 0,
+    radarAnzahl: 0,
+    letzteMarktaktivitaetAm: null,
+    kontakteAnzahl: q.person || emails.length ? 1 : 0,
+    kontakteMitEmail: emails.length ? 1 : 0,
+    pruefung,
+  };
+}
 
 function zuVorschlag(v: Roh, namen: Map<string, string>): VorschlagZeile {
   return {
@@ -127,6 +190,7 @@ export const investorAkteFn = createServerFn({ method: "POST" })
     await pruefeAufrufer(data.supabaseAccessToken);
     const admin = createServiceRoleClient();
     const id = data.accountSfId;
+    if (id.startsWith("quelle:")) return quellenAkte(admin, id.slice(7));
     const [inv, pr, ereignisse, vorschlaege, kontakte, quellen] = await Promise.all([
       admin.from("investoren").select("*").eq("account_sf_id", id).maybeSingle(),
       admin.from("investor_pruefungen").select("*").eq("schluessel", `acc:${id}`).maybeSingle(),
@@ -165,6 +229,42 @@ export const investorAkteFn = createServerFn({ method: "POST" })
       })),
     };
   });
+
+/** Akte eines Listen-Investors: Haupteintrag plus alle zusammengeführten Einträge. */
+async function quellenAkte(admin: ReturnType<typeof createServiceRoleClient>, schluessel: string): Promise<InvestorAkte> {
+  const [q, pr, gruppe] = await Promise.all([
+    admin.from("investor_quellen").select(QUELLE_SPALTEN).eq("schluessel", schluessel).maybeSingle(),
+    admin.from("investor_pruefungen").select("*").eq("schluessel", `quelle:${schluessel}`).maybeSingle(),
+    admin
+      .from("investor_quellen")
+      .select("quelle, quelle_link, nutzungen, volumen_min, volumen_max, objekte_interesse, person, emails, telefon")
+      // Schlüssel enthalten Doppelpunkte und Leerzeichen, deshalb in Anführungszeichen.
+      .or(`schluessel.eq."${schluessel.replace(/"/g, '\\"')}",dublette_von.eq."${schluessel.replace(/"/g, '\\"')}"`),
+  ]);
+  if (q.error) throw new Error(q.error.message);
+  if (!q.data) throw new Error("Eintrag nicht gefunden.");
+  const zeilen = gruppe.data ?? [];
+  const kontakte = new Map<string, { sfId: string; name: string; email: string | null; telefon: string | null }>();
+  for (const z of zeilen) {
+    const email = (z.emails ?? [])[0] ?? null;
+    const name = z.person ?? email ?? "";
+    if (name && !kontakte.has(`${name}|${email}`)) kontakte.set(`${name}|${email}`, { sfId: `${name}|${email}`, name, email, telefon: z.telefon ?? null });
+  }
+  return {
+    investor: quelleAlsInvestor(q.data as Roh, pr.data ?? undefined),
+    ereignisse: [],
+    vorschlaege: [],
+    kontakte: [...kontakte.values()],
+    listen: zeilen.map((z) => ({
+      quelle: z.quelle,
+      link: z.quelle_link,
+      nutzungen: z.nutzungen ?? [],
+      volumenMin: zahl(z.volumen_min),
+      volumenMax: zahl(z.volumen_max),
+      objekteInteresse: z.objekte_interesse ?? [],
+    })),
+  };
+}
 
 export const vorschlaegeLadenFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => {
@@ -211,19 +311,75 @@ export const vorschlagEntscheidenFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Salesforce-Felder je übernommenem Vorschlag. Nur eindeutige Ein-Feld-Änderungen. */
-function sfAenderung(v: Roh): { objekt: "Account" | "Investorprofile__c"; id: string; felder: Record<string, unknown> } | null {
+type SfAenderung =
+  | { aktion: "aendern"; objekt: "Account" | "Investorprofile__c"; id: string; felder: Record<string, unknown> }
+  | { aktion: "anlegen"; objekt: "Contact" | "Investorprofile__c"; felder: Record<string, unknown> };
+
+/**
+ * Salesforce-Änderung je übernommenem Vorschlag: eindeutige Feldänderungen, dazu neue
+ * Ansprechpartner und Ankaufsprofile aus der Recherche als neue Datensätze.
+ */
+export function sfAenderung(v: Roh, ownerId: string): SfAenderung | null {
   const feld = String(v.feld ?? "");
   if (v.ziel !== "salesforce") return null;
+  if (feld === "kontakt" && v.sf_objekt === "Contact" && v.account_sf_id) {
+    const k = (v.neuer_wert ?? {}) as { name?: string | null; funktion?: string | null; email?: string | null; telefon?: string | null };
+    if (!k.email) return null;
+    const [vor, ...rest] = String(k.name ?? "").replace(/^(herr|frau|dr\.?|prof\.?)\s+/gi, "").trim().split(/\s+/).filter(Boolean);
+    return {
+      aktion: "anlegen",
+      objekt: "Contact",
+      felder: {
+        AccountId: String(v.account_sf_id),
+        OwnerId: ownerId,
+        FirstName: rest.length ? vor : undefined,
+        // Ohne Namen (z. B. ankauf@) die Funktion oder „Ankauf“ als Nachname.
+        LastName: (rest.length ? rest.join(" ") : vor) || k.funktion || "Ankauf",
+        Title: k.funktion ?? undefined,
+        Email: k.email,
+        Phone: k.telefon ?? undefined,
+        Description: v.beleg ? String(v.beleg) : undefined,
+      },
+    };
+  }
+  if (v.art === "neues_profil" && feld === "profil" && v.account_sf_id && !v.profil_sf_id) {
+    const p = (v.neuer_wert ?? {}) as {
+      nutzungen?: string[]; regionen?: string[]; volumen_min?: number | null; volumen_max?: number | null;
+      faktor_max?: number | null; einheiten_min?: number | null;
+    };
+    const nutzungen = (p.nutzungen ?? []).filter((n) => (NUTZUNGSARTEN as readonly string[]).includes(n));
+    return {
+      aktion: "anlegen",
+      objekt: "Investorprofile__c",
+      felder: {
+        Account__c: String(v.account_sf_id),
+        OwnerId: ownerId,
+        Nutzungsarten__c: nutzungen.join(";") || undefined,
+        Objektvolumen_Min_Mio__c: p.volumen_min ?? undefined,
+        Objektvolumen_Max_Mio__c: p.volumen_max ?? undefined,
+        Multiplikator_bis_fach__c: p.faktor_max ?? undefined,
+        AnzahlEinheitenMin__c: p.einheiten_min ?? undefined,
+        Bemerkungsfeld__c: [p.regionen?.length ? `Regionen laut Website: ${p.regionen.join(", ")}` : null, v.beleg ? String(v.beleg) : null]
+          .filter(Boolean)
+          .join("\n") || undefined,
+      },
+    };
+  }
+  if (feld === "nutzungen" && v.sf_objekt === "Investorprofile__c" && v.profil_sf_id) {
+    const nutzungen = ((v.neuer_wert ?? []) as string[]).filter((n) => (NUTZUNGSARTEN as readonly string[]).includes(n));
+    return nutzungen.length
+      ? { aktion: "aendern", objekt: "Investorprofile__c", id: String(v.profil_sf_id), felder: { Nutzungsarten__c: nutzungen.join(";") } }
+      : null;
+  }
   if (feld === "typ" && v.sf_objekt === "Account" && v.account_sf_id) {
     const wert = ACCOUNT_TYPE_JE_TYP[String(v.neuer_wert) as InvestorTyp];
-    return wert ? { objekt: "Account", id: String(v.account_sf_id), felder: { Type: wert } } : null;
+    return wert ? { aktion: "aendern", objekt: "Account", id: String(v.account_sf_id), felder: { Type: wert } } : null;
   }
   if (feld === "erloschen" && v.account_sf_id)
-    return { objekt: "Account", id: String(v.account_sf_id), felder: { DO_NOT_CONTACT__c: true } };
+    return { aktion: "aendern", objekt: "Account", id: String(v.account_sf_id), felder: { DO_NOT_CONTACT__c: true } };
   if (v.sf_objekt === "Investorprofile__c" && v.profil_sf_id && v.sf_feld && !String(v.sf_feld).includes(",")) {
     if (["faktor_max", "einheiten_min", "grundstueck_ab_m2", "bgf_ab_m2", "volumen_min", "volumen_max"].includes(feld))
-      return { objekt: "Investorprofile__c", id: String(v.profil_sf_id), felder: { [String(v.sf_feld)]: v.neuer_wert } };
+      return { aktion: "aendern", objekt: "Investorprofile__c", id: String(v.profil_sf_id), felder: { [String(v.sf_feld)]: v.neuer_wert } };
   }
   if (feld === "volumen" && v.profil_sf_id) {
     const n = (v.neuer_wert ?? {}) as { min?: number | null; max?: number | null };
@@ -231,7 +387,7 @@ function sfAenderung(v: Roh): { objekt: "Account" | "Investorprofile__c"; id: st
     const felder: Record<string, unknown> = {};
     if (a.min == null && n.min != null) felder.Objektvolumen_Min_Mio__c = n.min;
     if (a.max == null && n.max != null) felder.Objektvolumen_Max_Mio__c = n.max;
-    return Object.keys(felder).length ? { objekt: "Investorprofile__c", id: String(v.profil_sf_id), felder } : null;
+    return Object.keys(felder).length ? { aktion: "aendern", objekt: "Investorprofile__c", id: String(v.profil_sf_id), felder } : null;
   }
   return null;
 }
@@ -252,17 +408,19 @@ export const vorschlaegeZurueckschreibenFn = createServerFn({ method: "POST" })
     const admin = createServiceRoleClient();
     const { data: vs, error } = await admin.from("investor_vorschlaege").select("*").in("id", data.ids).eq("status", "uebernommen");
     if (error) throw new Error(error.message);
-    const { sfUpdate } = await import("@/lib/sf-sync/schreiben");
+    const { sfCreate, sfUpdate } = await import("@/lib/sf-sync/schreiben");
+    const { SEBASTIAN_SF_USER_ID } = await import("@/lib/sf-sync/config");
     let geschrieben = 0;
     const fehler: string[] = [];
     for (const v of vs ?? []) {
-      const a = sfAenderung(v);
+      const a = sfAenderung(v, SEBASTIAN_SF_USER_ID);
       if (!a) {
         fehler.push(`${v.feld}: lässt sich nicht automatisch schreiben.`);
         continue;
       }
       try {
-        await sfUpdate(admin, a.objekt, a.id, a.felder);
+        if (a.aktion === "aendern") await sfUpdate(admin, a.objekt, a.id, a.felder);
+        else await sfCreate(admin, a.objekt, a.felder);
         await admin.from("investor_vorschlaege").update({ status: "zurueckgeschrieben", zurueckgeschrieben_am: new Date().toISOString() }).eq("id", v.id);
         geschrieben++;
       } catch (e) {
@@ -457,7 +615,7 @@ export const quellenAnlegenFn = createServerFn({ method: "POST" })
               })
             : null;
         if ((q.nutzungen ?? []).length || q.volumen_min || q.volumen_max) {
-          const erlaubt = new Set(["Behördenimmobilien", "Büro", "Einzelhandel", "Grundstück", "Kita", "Mirco-Apartments", "Pflege", "Serviced Apartments", "Studentenwohnen", "Wohn-/ Geschäftshaus", "Wohnen"]);
+          const erlaubt = new Set<string>(NUTZUNGSARTEN);
           await sfCreate(admin, "Investorprofile__c", {
             Account__c: accountId,
             Hauptansprechpartner_Kontakt__c: kontaktId ?? undefined,
