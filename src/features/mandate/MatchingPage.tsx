@@ -57,6 +57,7 @@ export function MatchingPage({ sfId }: { sfId: string }) {
   const [busy, setBusy] = useState(false);
   const [marktAlle, setMarktAlle] = useState(false);
   const [marktSuche, setMarktSuche] = useState(false);
+  const [listenAuswahl, setListenAuswahl] = useState<Set<string>>(new Set());
 
   const laden = useCallback(async () => {
     if (!token) return;
@@ -87,6 +88,40 @@ export function MatchingPage({ sfId }: { sfId: string }) {
       ),
     [dto, mitAusschluss, mindestScore],
   );
+
+  const listenSichtbar = useMemo(
+    () => (dto?.listen ?? []).filter((t) => t.score >= mindestScore),
+    [dto, mindestScore],
+  );
+
+  const listenAnlegen = async () => {
+    const schluessel = [...listenAuswahl].slice(0, 25);
+    if (
+      !window.confirm(
+        `${schluessel.length} Investor(en) aus den Listen in Salesforce anlegen (Account, Kontakt und Ankaufsprofil, Owner Sebastian Grenz)? Dubletten und insolvente Firmen werden übersprungen. Danach stehen sie oben bei den Ankaufsprofilen und lassen sich zur Kampagne hinzufügen.`,
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const { quellenAnlegenFn } = await import("@/lib/investoren/server-fn");
+      const r = await quellenAnlegenFn({
+        data: { supabaseAccessToken: token, schluessel, bestaetigt: true },
+      });
+      toast.success(
+        `${r.angelegt} in Salesforce angelegt${r.fehler.length ? `, ${r.fehler.length} nicht: ${r.fehler[0]}` : ""}.`,
+        { duration: 12_000 },
+      );
+      setListenAuswahl(new Set());
+      await laden();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Anlegen fehlgeschlagen.", {
+        duration: 14_000,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const waehlbar = (t: MatchingDto["treffer"][number]) =>
     Boolean(t.kontaktSfId) && !t.bereitsAngesprochen;
@@ -268,8 +303,12 @@ export function MatchingPage({ sfId }: { sfId: string }) {
               <span className="pb-2 text-text-subtle">
                 {sichtbar.length} von {dto.profileGesamt}{" "}
                 {dto.profilQuelle === "investoren"
-                  ? "Investoren (bereinigte Datenbank, ohne erloschene und gesperrte Firmen)"
+                  ? "Investoren aus Salesforce"
                   : "Ankaufsprofilen"}
+                , dazu {listenSichtbar.length} von{" "}
+                {dto.listenGesamt.toLocaleString("de-DE")} aus den Listen
+                (gesamte Investorendatenbank, ohne erloschene, gesperrte und
+                insolvente Firmen)
               </span>
             </div>
 
@@ -278,12 +317,13 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                 Interne Datenbank
               </h2>
               <p className="text-xs text-text-subtle">
-                Ankaufsprofile aus Salesforce und Kontakte, die bei ähnlichen
-                Grenz-Mandaten Interesse gezeigt haben.
+                Ankaufsprofile aus Salesforce, Investoren aus den Listen und
+                Kontakte, die bei ähnlichen Grenz-Mandaten Interesse gezeigt
+                haben.
               </p>
             </div>
             <h3 className="text-sm font-semibold text-heading">
-              Ankaufsprofile
+              Ankaufsprofile in Salesforce
             </h3>
             <div className="overflow-x-auto border border-hairline bg-surface">
               <table className="w-full text-sm">
@@ -405,6 +445,96 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                 </tbody>
               </table>
             </div>
+
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold text-heading">
+                  Weitere Investoren aus der Datenbank, noch nicht in Salesforce
+                  ({listenSichtbar.length})
+                </h3>
+                <p className="text-xs text-text-subtle">
+                  Aus 7Plus, Leadliste, Suchkunden und Recherche, mindestens
+                  zwei Kernkriterien belegt. Für die Kampagne zuerst in
+                  Salesforce anlegen.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || listenAuswahl.size === 0}
+                onClick={() => void listenAnlegen()}
+              >
+                {Math.min(listenAuswahl.size, 25)} in Salesforce anlegen
+              </Button>
+            </div>
+            {listenSichtbar.length ? (
+              <div className="max-h-[480px] overflow-auto border border-hairline bg-surface">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-surface-muted text-left text-xs text-text-subtle">
+                    <tr>
+                      <th className="w-8 px-2 py-2" />
+                      <th className="px-2 py-2">Investor</th>
+                      <th className="px-2 py-2">Score</th>
+                      <th className="px-2 py-2 text-right">Abdeckung</th>
+                      <th className="px-2 py-2">Warum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {listenSichtbar.map((t) => (
+                      <tr
+                        key={t.schluessel}
+                        className="border-t border-hairline align-top hover:bg-surface-muted"
+                      >
+                        <td className="px-2 py-2">
+                          <input
+                            type="checkbox"
+                            checked={listenAuswahl.has(t.schluessel)}
+                            onChange={(e) =>
+                              setListenAuswahl((a) => {
+                                const n = new Set(a);
+                                if (e.target.checked) n.add(t.schluessel);
+                                else n.delete(t.schluessel);
+                                return n;
+                              })
+                            }
+                            aria-label="Zum Anlegen auswählen"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <span className="font-medium text-heading">
+                            {t.firma ?? t.person ?? "k. A."}
+                          </span>
+                          <span className="block text-xs text-text-subtle">
+                            {[
+                              t.person && t.person !== t.firma
+                                ? t.person
+                                : null,
+                              t.ort,
+                              t.quelle,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2">
+                          <ScoreBalken wert={t.score} />
+                        </td>
+                        <td className="px-2 py-2 text-right tabular-nums text-text-subtle">
+                          {t.abdeckung} %
+                        </td>
+                        <td className="px-2 py-2 text-xs text-text-muted">
+                          {t.gruende.join(" ")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">
+                Keine passenden Investoren in den Listen.
+              </p>
+            )}
 
             <h3 className="text-sm font-semibold text-heading">
               Interessenten ähnlicher Mandate ({dto.historie.length})
