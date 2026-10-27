@@ -411,6 +411,28 @@ function statusBonus(i: InvestorInfo | undefined): number {
   return (i.status === "aktiv" ? 1 : 0) + prio;
 }
 
+/** Matching-Merkmale eines Mandats aus Mandat und verknüpftem Objekt (Cache-Zeilen). */
+function objektMerkmale(
+  m: Record<string, unknown>,
+  o: Record<string, unknown> | null,
+  objektklasse: string | null,
+): MatchingDto["objekt"] {
+  const sfDaten = ((o?.sf_daten ?? {}) as Record<string, unknown>) ?? {};
+  const n = (v: unknown) => (v == null || Number(v) === 0 ? null : Number(v));
+  return {
+    name: (o?.name as string) ?? (m.name as string),
+    objektart: (o?.objektart as string) ?? null,
+    orte: [o?.ort, sfDaten.Stadtbezirk__c, sfDaten.Gemeinde__c].filter(
+      (x): x is string => typeof x === "string" && !!x.trim(),
+    ),
+    preis: n(m.angebotspreis),
+    jahresmiete: n(o?.jahresnettokaltmiete),
+    einheiten: n(o?.einheiten),
+    baujahr: n(o?.baujahr),
+    objektklasse,
+  };
+}
+
 export const matchingFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => {
     const d = (data ?? {}) as { mandatSfId?: unknown; objektklasse?: unknown };
@@ -440,20 +462,7 @@ export const matchingFn = createServerFn({ method: "POST" })
             .maybeSingle()
         ).data ?? null)
       : null;
-    const sfDaten = ((o?.sf_daten ?? {}) as Record<string, unknown>) ?? {};
-    const n = (v: unknown) => (v == null || Number(v) === 0 ? null : Number(v));
-    const objekt: MatchingDto["objekt"] = {
-      name: (o?.name as string) ?? (m.name as string),
-      objektart: (o?.objektart as string) ?? null,
-      orte: [o?.ort, sfDaten.Stadtbezirk__c, sfDaten.Gemeinde__c].filter(
-        (x): x is string => typeof x === "string" && !!x.trim(),
-      ),
-      preis: n(m.angebotspreis),
-      jahresmiete: n(o?.jahresnettokaltmiete),
-      einheiten: n(o?.einheiten),
-      baujahr: n(o?.baujahr),
-      objektklasse: data.objektklasse,
-    };
+    const objekt = objektMerkmale(m, o, data.objektklasse);
 
     const { profile, quelle, info } = await profileLaden(admin);
     const reaktionen = await reaktionenJeProfil(admin, profile);
@@ -873,4 +882,265 @@ Finde Unternehmen und Personen, die in den letzten 12 Monaten vergleichbare Obje
       seiten: ["kaeufer"],
       auftrag,
     });
+  });
+
+export type VermarktungsTreffer = {
+  profilSfId: string;
+  score: number;
+  abdeckung: number;
+  gruende: string[];
+  firma: string | null;
+  kontaktSfId: string | null;
+  kontaktName: string | null;
+  email: string | null;
+  investorStatus: string | null;
+  prioritaet: string | null;
+  reaktionen: { deals: number; rueckmeldungen: number };
+};
+
+export type ListenVermarktungsTreffer = {
+  schluessel: string;
+  firma: string | null;
+  person: string | null;
+  ort: string | null;
+  quelle: string;
+  score: number;
+  abdeckung: number;
+  gruende: string[];
+};
+
+export type VermarktungZeile = {
+  mandatSfId: string;
+  objekt: MatchingDto["objekt"];
+  kampagne: { sfId: string; name: string } | null;
+  /** Kontakte, die schon in einer Kampagne dieses Mandats sind. */
+  angesprochen: number;
+  treffer: VermarktungsTreffer[];
+  listen: ListenVermarktungsTreffer[];
+};
+
+/**
+ * Alle laufenden Vermarktungen (Mandate in Beauftragung) gegen die Investorendatenbank: je Mandat
+ * qualifizierte Salesforce-Investoren, die noch nicht in der Kampagne sind, und passende
+ * Investoren aus den Listen. Schreibt nichts; Kampagne und Anlage laufen über die bestätigten
+ * Funktionen kampagneAusMatchingFn und quellenAnlegenFn.
+ */
+export const vermarktungsAbgleichFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => ({ supabaseAccessToken: tokenAus(data) }))
+  .handler(async ({ data }): Promise<VermarktungZeile[]> => {
+    await pruefeAufrufer(data.supabaseAccessToken);
+    const admin = createServiceRoleClient();
+    const { istTest } = await import("@/lib/uebersicht/berechnen");
+    const { listeAlsProfil, qualifizierteTreffer } =
+      await import("./vermarktung");
+
+    const { data: mRoh, error } = await admin
+      .from("sf_mandate")
+      .select("*")
+      .eq("status", "Beauftragung");
+    if (error) throw new Error(error.message);
+    const mandate = (mRoh ?? []).filter((m) => !istTest(String(m.name ?? "")));
+    if (!mandate.length) return [];
+    const reIds = mandate
+      .map((m) => m.real_estate_sf_id)
+      .filter(Boolean) as string[];
+    const mandatIds = mandate.map((m) => String(m.sf_id));
+
+    const [objekte, kampagnen, { profile, info }, listenRoh, negativ] =
+      await Promise.all([
+        reIds.length
+          ? admin
+              .from("sf_real_estate")
+              .select("*")
+              .in("sf_id", reIds)
+              .then((r) => r.data ?? [])
+          : Promise.resolve([]),
+        admin
+          .from("sf_kampagnen")
+          .select("sf_id, name, mandat_sf_id, start_am")
+          .in("mandat_sf_id", mandatIds)
+          .order("start_am", { ascending: false, nullsFirst: false })
+          .then((r) => r.data ?? []),
+        profileLaden(admin),
+        alle<Record<string, unknown>>((a, b) =>
+          admin
+            .from("investor_quellen")
+            .select(
+              "schluessel, quelle, firma, person, ort, typ, nutzungen, objektklassen, regionen, volumen_min, volumen_max, einheiten_min",
+            )
+            .is("dublette_von", null)
+            .is("sf_account_sf_id", null)
+            .eq("nicht_anlegen", false)
+            .eq("bearbeitung", "offen")
+            .order("schluessel")
+            .range(a, b),
+        ),
+        admin
+          .from("investor_pruefungen")
+          .select("schluessel")
+          .like("schluessel", "quelle:%")
+          .in("status", ["insolvenz", "liquidation", "geloescht"])
+          .limit(5000)
+          .then(
+            (r) => new Set((r.data ?? []).map((x) => String(x.schluessel))),
+          ),
+      ]);
+    const objektJeId = new Map(
+      objekte.map((o) => [String(o.sf_id), o as Record<string, unknown>]),
+    );
+    const reaktionen = await reaktionenJeProfil(admin, profile);
+    const gewichtung = new Map(
+      profile.map((p) => {
+        const r = reaktionen.get(p.sf_id);
+        return [
+          p.sf_id,
+          (r ? r.deals * 3 + r.rueckmeldungen : 0) +
+            statusBonus(info.get(p.sf_id)),
+        ];
+      }),
+    );
+    const listenJeSchluessel = new Map(
+      listenRoh.map((q) => [`quelle:${q.schluessel}`, q]),
+    );
+    const listenProfile = listenRoh
+      .filter((q) => !negativ.has(`quelle:${q.schluessel}`))
+      .map((q) => listeAlsProfil(q as Parameters<typeof listeAlsProfil>[0]));
+
+    // Schon angesprochene Kontakte je Mandat (alle Kampagnen des Mandats).
+    const kIds = kampagnen.map((k) => String(k.sf_id));
+    const mitglieder = kIds.length
+      ? await alle<{ kampagne_sf_id: string; kontakt_sf_id: string | null }>(
+          (a, b) =>
+            admin
+              .from("sf_kampagnen_mitglieder")
+              .select("kampagne_sf_id, kontakt_sf_id")
+              .in("kampagne_sf_id", kIds)
+              .order("sf_id")
+              .range(a, b),
+        )
+      : [];
+    const mandatJeKampagne = new Map(
+      kampagnen.map((k) => [String(k.sf_id), String(k.mandat_sf_id)]),
+    );
+    const angesprochen = new Map<string, Set<string>>();
+    for (const x of mitglieder) {
+      const mandat = mandatJeKampagne.get(x.kampagne_sf_id);
+      if (!mandat || !x.kontakt_sf_id) continue;
+      const s = angesprochen.get(mandat) ?? new Set<string>();
+      s.add(x.kontakt_sf_id);
+      angesprochen.set(mandat, s);
+    }
+
+    const profilJeId = new Map(profile.map((p) => [p.sf_id, p]));
+    const zeilen = mandate.map((m) => {
+      const mandatSfId = String(m.sf_id);
+      const objekt = objektMerkmale(
+        m,
+        m.real_estate_sf_id
+          ? (objektJeId.get(String(m.real_estate_sf_id)) ?? null)
+          : null,
+        null,
+      );
+      const schon = angesprochen.get(mandatSfId) ?? new Set<string>();
+      const treffer = qualifizierteTreffer(objekt, profile, {
+        gewichtung,
+        ausschliessen: (p) =>
+          info.get(p.sf_id)?.status === "kein_interesse" ||
+          Boolean(p.kontakt_sf_id && schon.has(p.kontakt_sf_id)),
+        max: 50,
+      });
+      const listen = qualifizierteTreffer(objekt, listenProfile, { max: 30 });
+      const kampagne =
+        kampagnen.find(
+          (k) =>
+            k.mandat_sf_id === mandatSfId &&
+            /^vermarktung/i.test(String(k.name)),
+        ) ?? kampagnen.find((k) => k.mandat_sf_id === mandatSfId);
+      return {
+        mandatSfId,
+        objekt,
+        kampagne,
+        angesprochen: schon.size,
+        treffer,
+        listen,
+      };
+    });
+
+    // Namen und E-Mails der Treffer in einem Rutsch.
+    const ids = new Set<string>();
+    for (const z of zeilen)
+      for (const t of z.treffer) {
+        const p = profilJeId.get(t.profilSfId)!;
+        if (p.kontakt_sf_id) ids.add(p.kontakt_sf_id);
+        if (p.account_sf_id) ids.add(p.account_sf_id);
+      }
+    const kontakte = new Map<
+      string,
+      { name: string; firma: string | null; email: string | null }
+    >();
+    const idListe = [...ids];
+    for (let i = 0; i < idListe.length; i += 300) {
+      const { data: k } = await admin
+        .from("sf_kontakte")
+        .select("sf_id, name, firma, email")
+        .in("sf_id", idListe.slice(i, i + 300));
+      for (const x of k ?? [])
+        kontakte.set(String(x.sf_id), {
+          name: String(x.name),
+          firma: (x.firma as string) ?? null,
+          email: (x.email as string) ?? null,
+        });
+    }
+
+    return zeilen
+      .map((z) => ({
+        mandatSfId: z.mandatSfId,
+        objekt: z.objekt,
+        kampagne: z.kampagne
+          ? { sfId: String(z.kampagne.sf_id), name: String(z.kampagne.name) }
+          : null,
+        angesprochen: z.angesprochen,
+        treffer: z.treffer.map((t): VermarktungsTreffer => {
+          const p = profilJeId.get(t.profilSfId)!;
+          const k = p.kontakt_sf_id ? kontakte.get(p.kontakt_sf_id) : undefined;
+          const a = p.account_sf_id ? kontakte.get(p.account_sf_id) : undefined;
+          return {
+            profilSfId: t.profilSfId,
+            score: t.score,
+            abdeckung: t.abdeckung,
+            gruende: t.gruende,
+            firma: a?.name ?? k?.firma ?? p.name,
+            kontaktSfId: p.kontakt_sf_id?.startsWith("003")
+              ? p.kontakt_sf_id
+              : null,
+            kontaktName: k?.name ?? null,
+            email: k?.email ?? null,
+            investorStatus: info.get(p.sf_id)?.status ?? null,
+            prioritaet: info.get(p.sf_id)?.prioritaet ?? null,
+            reaktionen: reaktionen.get(p.sf_id) ?? {
+              deals: 0,
+              rueckmeldungen: 0,
+            },
+          };
+        }),
+        listen: z.listen.map((t): ListenVermarktungsTreffer => {
+          const q = listenJeSchluessel.get(t.profilSfId)!;
+          return {
+            schluessel: String(q.schluessel),
+            firma: (q.firma as string) ?? null,
+            person: (q.person as string) ?? null,
+            ort: (q.ort as string) ?? null,
+            quelle: String(q.quelle),
+            score: t.score,
+            abdeckung: t.abdeckung,
+            gruende: t.gruende,
+          };
+        }),
+      }))
+      .sort(
+        (a, b) =>
+          b.treffer.length +
+          b.listen.length -
+          (a.treffer.length + a.listen.length),
+      );
   });

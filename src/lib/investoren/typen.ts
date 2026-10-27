@@ -128,6 +128,12 @@ export const PRUEF_LABEL: Record<string, string> = {
   unklar: "Unklar",
 };
 
+/** Nutzungsarten, die das Salesforce-Ankaufsprofil kennt (Picklist Nutzungsarten__c). */
+export const NUTZUNGSARTEN = [
+  "Wohnen", "Wohn-/ Geschäftshaus", "Büro", "Einzelhandel", "Grundstück", "Pflege", "Studentenwohnen",
+  "Serviced Apartments", "Mirco-Apartments", "Kita", "Behördenimmobilien",
+] as const;
+
 export const FELD_LABEL: Record<string, string> = {
   typ: "Investorentyp",
   faktor_max: "Faktor bis",
@@ -140,4 +146,6 @@ export const FELD_LABEL: Record<string, string> = {
   account: "Account",
   profil: "Ankaufsprofil",
   erloschen: "Firma erloschen",
+  kontakt: "Ansprechpartner",
+  nutzungen: "Nutzungsarten",
 };
