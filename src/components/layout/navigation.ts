@@ -2,6 +2,7 @@ import {
   Briefcase,
   CalendarCheck,
   ChartColumn,
+  Handshake,
   Cloud,
   Inbox,
   KanbanSquare,
@@ -48,6 +49,7 @@ export const NAVIGATION: NavSection[] = [
     items: [
       { to: "/", label: "Übersicht", icon: LayoutDashboard },
       { to: "/kennzahlen", label: "Kennzahlen", icon: ChartColumn },
+      { to: "/pipeline", label: "Deal-Pipeline", icon: Handshake },
       {
         to: "/aufgaben",
         label: "Aufgaben",
