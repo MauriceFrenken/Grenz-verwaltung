@@ -22,6 +22,7 @@ import { Route as InvestorenRouteImport } from './routes/investoren'
 import { Route as KennzahlenRouteImport } from './routes/kennzahlen'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
 import { Route as PersonalRouteImport } from './routes/personal'
+import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as VerkaeuferRouteImport } from './routes/verkaeufer'
 import { Route as AkquiseMassnahmenRouteImport } from './routes/akquise.massnahmen'
@@ -126,6 +127,11 @@ const PasswortZuruecksetzenRoute = PasswortZuruecksetzenRouteImport.update({
 const PersonalRoute = PersonalRouteImport.update({
   id: '/personal',
   path: '/personal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PipelineRoute = PipelineRouteImport.update({
+  id: '/pipeline',
+  path: '/pipeline',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -348,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/personal': typeof PersonalRoute
+  '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
   '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
@@ -401,6 +408,7 @@ export interface FileRoutesByTo {
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/personal': typeof PersonalRoute
+  '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
   '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
@@ -456,6 +464,7 @@ export interface FileRoutesById {
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
   '/personal': typeof PersonalRoute
+  '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
   '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
@@ -513,6 +522,7 @@ export interface FileRouteTypes {
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/personal'
+    | '/pipeline'
     | '/sitemap.xml'
     | '/verkaeufer'
     | '/akquise/massnahmen'
@@ -566,6 +576,7 @@ export interface FileRouteTypes {
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/personal'
+    | '/pipeline'
     | '/sitemap.xml'
     | '/verkaeufer'
     | '/akquise/massnahmen'
@@ -620,6 +631,7 @@ export interface FileRouteTypes {
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
     | '/personal'
+    | '/pipeline'
     | '/sitemap.xml'
     | '/verkaeufer'
     | '/akquise/massnahmen'
@@ -676,6 +688,7 @@ export interface RootRouteChildren {
   KennzahlenRoute: typeof KennzahlenRoute
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
   PersonalRoute: typeof PersonalRoute
+  PipelineRoute: typeof PipelineRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VerkaeuferRoute: typeof VerkaeuferRoute
   AkquiseMassnahmenRoute: typeof AkquiseMassnahmenRoute
@@ -798,6 +811,13 @@ declare module '@tanstack/react-router' {
       path: '/personal'
       fullPath: '/personal'
       preLoaderRoute: typeof PersonalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pipeline': {
+      id: '/pipeline'
+      path: '/pipeline'
+      fullPath: '/pipeline'
+      preLoaderRoute: typeof PipelineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -1148,6 +1168,7 @@ const rootRouteChildren: RootRouteChildren = {
   KennzahlenRoute: KennzahlenRoute,
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
   PersonalRoute: PersonalRoute,
+  PipelineRoute: PipelineRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VerkaeuferRoute: VerkaeuferRoute,
   AkquiseMassnahmenRoute: AkquiseMassnahmenRoute,
