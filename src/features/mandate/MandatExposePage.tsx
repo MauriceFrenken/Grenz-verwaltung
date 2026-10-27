@@ -29,6 +29,7 @@ import type {
   ExposeEntwurf,
   ExposeZeile,
 } from "@/lib/mandate/expose-server-fn";
+import { inTeilenHochladen, linkOeffnen } from "@/lib/mandate/pdf-client";
 import { cn } from "@/lib/utils";
 
 import { KiEingabe } from "../tools/KiEingabe";
@@ -52,15 +53,6 @@ type Foto = { id: string; name: string; bild: BildDatei; vorschau: string };
 
 function fehlerText(e: unknown, standard: string): string {
   return e instanceof Error ? e.message : standard;
-}
-
-function linkOeffnen(url: string) {
-  const a = document.createElement("a");
-  a.href = url;
-  a.rel = "noopener";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
 }
 
 /**
@@ -267,25 +259,15 @@ export function MandatExposePage({ sfId }: { sfId: string }) {
       const { teilBytes } = await fn.mandatExposePdfStartFn({
         data: { supabaseAccessToken: token, id: entwurf.id },
       });
-      const gesamt = datei.daten.byteLength;
-      for (let offset = 0; offset < gesamt; offset += teilBytes) {
-        const teil = datei.daten.subarray(offset, offset + teilBytes);
-        let binaer = "";
-        for (let i = 0; i < teil.length; i += 0x8000)
-          binaer += String.fromCharCode(...teil.subarray(i, i + 0x8000));
-        setSchritt(
-          `PDF wird erzeugt: Upload ${Math.round(((offset + teil.length) / gesamt) * 100)} % …`,
-        );
-        await fn.mandatExposePdfTeilFn({
-          data: {
-            supabaseAccessToken: token,
-            id: entwurf.id,
-            offset,
-            gesamt,
-            base64: btoa(binaer),
-          },
-        });
-      }
+      await inTeilenHochladen(
+        datei.daten,
+        teilBytes,
+        (teil) =>
+          fn.mandatExposePdfTeilFn({
+            data: { supabaseAccessToken: token, id: entwurf.id, ...teil },
+          }),
+        (p) => setSchritt(`PDF wird erzeugt: Upload ${p} % …`),
+      );
       setSchritt("PDF wird umgewandelt …");
       const { url } = await fn.mandatExposePdfFertigFn({
         data: { supabaseAccessToken: token, id: entwurf.id },
