@@ -21,6 +21,7 @@ import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as InvestorenRouteImport } from './routes/investoren'
 import { Route as KennzahlenRouteImport } from './routes/kennzahlen'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
+import { Route as PersonalRouteImport } from './routes/personal'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as VerkaeuferRouteImport } from './routes/verkaeufer'
 import { Route as AkquiseMassnahmenRouteImport } from './routes/akquise.massnahmen'
@@ -120,6 +121,11 @@ const KennzahlenRoute = KennzahlenRouteImport.update({
 const PasswortZuruecksetzenRoute = PasswortZuruecksetzenRouteImport.update({
   id: '/passwort-zuruecksetzen',
   path: '/passwort-zuruecksetzen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PersonalRoute = PersonalRouteImport.update({
+  id: '/personal',
+  path: '/personal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -341,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
+  '/personal': typeof PersonalRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
   '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
@@ -393,6 +400,7 @@ export interface FileRoutesByTo {
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
+  '/personal': typeof PersonalRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
   '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
@@ -447,6 +455,7 @@ export interface FileRoutesById {
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
+  '/personal': typeof PersonalRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verkaeufer': typeof VerkaeuferRoute
   '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
@@ -503,6 +512,7 @@ export interface FileRouteTypes {
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
+    | '/personal'
     | '/sitemap.xml'
     | '/verkaeufer'
     | '/akquise/massnahmen'
@@ -555,6 +565,7 @@ export interface FileRouteTypes {
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
+    | '/personal'
     | '/sitemap.xml'
     | '/verkaeufer'
     | '/akquise/massnahmen'
@@ -608,6 +619,7 @@ export interface FileRouteTypes {
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
+    | '/personal'
     | '/sitemap.xml'
     | '/verkaeufer'
     | '/akquise/massnahmen'
@@ -663,6 +675,7 @@ export interface RootRouteChildren {
   InvestorenRoute: typeof InvestorenRoute
   KennzahlenRoute: typeof KennzahlenRoute
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
+  PersonalRoute: typeof PersonalRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VerkaeuferRoute: typeof VerkaeuferRoute
   AkquiseMassnahmenRoute: typeof AkquiseMassnahmenRoute
@@ -778,6 +791,13 @@ declare module '@tanstack/react-router' {
       path: '/passwort-zuruecksetzen'
       fullPath: '/passwort-zuruecksetzen'
       preLoaderRoute: typeof PasswortZuruecksetzenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/personal': {
+      id: '/personal'
+      path: '/personal'
+      fullPath: '/personal'
+      preLoaderRoute: typeof PersonalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -1127,6 +1147,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvestorenRoute: InvestorenRoute,
   KennzahlenRoute: KennzahlenRoute,
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
+  PersonalRoute: PersonalRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VerkaeuferRoute: VerkaeuferRoute,
   AkquiseMassnahmenRoute: AkquiseMassnahmenRoute,

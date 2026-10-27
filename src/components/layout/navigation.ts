@@ -1,5 +1,6 @@
 import {
   Briefcase,
+  CalendarCheck,
   ChartColumn,
   Cloud,
   Inbox,
@@ -39,7 +40,7 @@ export interface NavSection {
 /**
  * Seitenleiste nach dem Vorbild von admin.buyanymachine.com:
  * Hauptmenü, dann die Käuferseite (Vermarktung) und die Verkäuferseite (Akquise), dann die
- * KI-Dokumentenerstellung und Tools (Register der KI-Tools in src/lib/ki-tools/tools.ts) und System.
+ * KI-Dokumentenerstellung und Tools (Register der KI-Tools in src/lib/ki-tools/tools.ts), Personal und System.
  */
 export const NAVIGATION: NavSection[] = [
   {
@@ -115,6 +116,18 @@ export const NAVIGATION: NavSection[] = [
         icon: t.icon,
         umbruch: true,
       })),
+    ],
+  },
+  {
+    label: "Personal",
+    items: [
+      {
+        to: "/personal",
+        label: "Team & Urlaub",
+        icon: CalendarCheck,
+        badge: "urlaubsantraege",
+        badgeTon: "amber",
+      },
     ],
   },
   {

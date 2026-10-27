@@ -16,6 +16,8 @@ export type NavZaehler = {
   verkaeufer: number;
   /** Überfällige Aufgaben auf dem Aufgabenboard. */
   aufgaben: number;
+  /** Offene Urlaubsanträge im Personalbereich. */
+  urlaubsantraege: number;
 };
 
 export const navZaehlerFn = createServerFn({ method: "POST" })
@@ -30,8 +32,8 @@ export const navZaehlerFn = createServerFn({ method: "POST" })
         .eq("seite", seite)
         .eq("status", "neu");
     const heute = new Date().toISOString().slice(0, 10);
-    const [mandate, exposes, kaeufer, verkaeufer, aufgaben] = await Promise.all(
-      [
+    const [mandate, exposes, kaeufer, verkaeufer, aufgaben, antraege] =
+      await Promise.all([
         admin
           .from("sf_mandate")
           .select("name")
@@ -52,8 +54,11 @@ export const navZaehlerFn = createServerFn({ method: "POST" })
           .eq("archiviert", false)
           .eq("aufgaben_spalten.erledigt", false)
           .lt("faellig_am", heute),
-      ],
-    );
+        admin
+          .from("personal_abwesenheiten")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "beantragt"),
+      ]);
     return {
       mandate: (mandate.data ?? []).filter((m) => !istTest(m.name)).length,
       angebotseingang: exposes.count ?? 0,
@@ -61,5 +66,6 @@ export const navZaehlerFn = createServerFn({ method: "POST" })
       investoren: kaeufer.count ?? 0,
       verkaeufer: verkaeufer.count ?? 0,
       aufgaben: aufgaben.count ?? 0,
+      urlaubsantraege: antraege.count ?? 0,
     };
   });
