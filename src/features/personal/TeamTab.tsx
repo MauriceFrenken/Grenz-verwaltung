@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 
+import { useNavigate } from "@tanstack/react-router";
+
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/format";
 import {
   abwesenheitAm,
@@ -42,7 +45,7 @@ function tageBis(heute: string, ziel: string): number {
   );
 }
 
-function Anstehend({
+export function Anstehend({
   mitarbeiter,
   heute,
 }: {
@@ -90,48 +93,35 @@ function Anstehend({
   );
 }
 
+/** Mitarbeiterliste wie in Personio: Klick öffnet das Profil. */
 export function TeamTab({ k }: { k: PersonalKontext }) {
   const { daten } = k;
   const heute = heuteIso();
   const [akte, setAkte] = useState<Mitarbeiter | null | "neu">(null);
   const [ehemalige, setEhemalige] = useState(false);
-  const liste = ehemalige
-    ? daten.mitarbeiter
-    : aktiveMitarbeiter(daten.mitarbeiter, heute);
-  const offeneAntraege = daten.abwesenheiten.filter(
-    (a) => a.status === "beantragt",
-  ).length;
-  const heuteWeg = liste.filter((m) => {
-    const a = abwesenheitAm(m.id, heute, daten.abwesenheiten);
-    return a && a.art !== "homeoffice";
-  }).length;
+  const [suche, setSuche] = useState("");
+  const navigate = useNavigate();
+  const q = suche.trim().toLowerCase();
+  const liste = (
+    ehemalige ? daten.mitarbeiter : aktiveMitarbeiter(daten.mitarbeiter, heute)
+  ).filter(
+    (m) =>
+      !q ||
+      [m.name, m.position, m.email].some((t) => t?.toLowerCase().includes(q)),
+  );
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          { wert: liste.length, text: "Mitarbeiter" },
-          { wert: heuteWeg, text: "heute abwesend" },
-          {
-            wert: offeneAntraege,
-            text: daten.verwalten
-              ? "offene Urlaubsanträge"
-              : "eigene offene Anträge",
-          },
-        ].map((z) => (
-          <div key={z.text} className="border border-hairline bg-surface p-4">
-            <div className="text-2xl font-light tabular-nums text-heading">
-              {z.wert}
-            </div>
-            <div className="text-xs text-text-muted">{z.text}</div>
-          </div>
-        ))}
-      </div>
-
       <Kasten
-        titel="Team"
+        titel={`Mitarbeiter (${liste.length})`}
         aktion={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Input
+              className="h-8 w-56"
+              placeholder="Name, Position, E-Mail"
+              value={suche}
+              onChange={(e) => setSuche(e.target.value)}
+            />
             <label className="flex items-center gap-2 text-xs text-text-muted">
               <input
                 type="checkbox"
@@ -188,7 +178,15 @@ export function TeamTab({ k }: { k: PersonalKontext }) {
                     <tr
                       key={m.id}
                       className={`border-t border-hairline align-top ${klickbar ? "cursor-pointer hover:bg-surface-muted" : ""}`}
-                      onClick={klickbar ? () => setAkte(m) : undefined}
+                      onClick={
+                        klickbar
+                          ? () =>
+                              void navigate({
+                                to: "/personal/$id",
+                                params: { id: m.id },
+                              })
+                          : undefined
+                      }
                     >
                       <td className="py-2 pr-3">
                         <div className="font-medium text-heading">
@@ -290,13 +288,6 @@ export function TeamTab({ k }: { k: PersonalKontext }) {
           </div>
         )}
       </Kasten>
-
-      <Anstehend
-        mitarbeiter={aktiveMitarbeiter(daten.mitarbeiter, heute).filter(
-          (m) => m.vollstaendig,
-        )}
-        heute={heute}
-      />
 
       <AkteDialog
         k={k}

@@ -9,7 +9,14 @@ import { Kasten } from "./bausteine";
 import type { PersonalKontext } from "./usePersonal";
 
 /** Abschlüsse, Provision und Aktivität je Makler aus dem Salesforce-Cache. */
-export function LeistungTab({ k }: { k: PersonalKontext }) {
+export function LeistungTab({
+  k,
+  nurId,
+}: {
+  k: PersonalKontext;
+  /** Nur diesen Mitarbeiter zeigen (Profilseite). */
+  nurId?: string;
+}) {
   const { daten, token } = k;
   const [leistung, setLeistung] = useState<LeistungDto | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -34,11 +41,14 @@ export function LeistungTab({ k }: { k: PersonalKontext }) {
 
   if (fehler) return <p className="text-sm text-danger">{fehler}</p>;
   if (!leistung) return <Loader2 className="size-4 animate-spin" />;
+  const zeilen = nurId
+    ? leistung.zeilen.filter((z) => z.mitarbeiterId === nurId)
+    : leistung.zeilen;
 
   return (
     <div className="flex flex-col gap-4">
       <Kasten titel={`Leistung ${leistung.jahr}`}>
-        {leistung.zeilen.length === 0 ? (
+        {zeilen.length === 0 ? (
           <p className="text-sm text-text-muted">
             Keine Mitarbeiter mit Salesforce-Verknüpfung. Verknüpfe in der Akte
             den Salesforce-Benutzer.
@@ -69,7 +79,7 @@ export function LeistungTab({ k }: { k: PersonalKontext }) {
                 </tr>
               </thead>
               <tbody>
-                {leistung.zeilen.map((z) => {
+                {zeilen.map((z) => {
                   const quote = z.zielEur
                     ? Math.min(1, z.provisionEur / z.zielEur)
                     : null;

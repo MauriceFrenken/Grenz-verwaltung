@@ -50,7 +50,7 @@ const ART_STIL: Record<
 
 const WOCHENTAG = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
-function artLabel(a: Abwesenheit): string {
+export function artLabel(a: Abwesenheit): string {
   return a.art ? ABWESENHEITSARTEN[a.art] : "Abwesend";
 }
 
@@ -190,14 +190,17 @@ function Kalender({ k }: { k: PersonalKontext }) {
   );
 }
 
-function EintragDialog({
+export function EintragDialog({
   k,
   offen,
   onClose,
+  fest,
 }: {
   k: PersonalKontext;
   offen: boolean;
   onClose: () => void;
+  /** Mitarbeiter vorgegeben (Profilseite). */
+  fest?: string;
 }) {
   const { daten, ausfuehren } = k;
   const heute = heuteIso();
@@ -205,7 +208,7 @@ function EintragDialog({
     ? aktiveMitarbeiter(daten.mitarbeiter, heute)
     : daten.mitarbeiter.filter((m) => m.id === daten.ichId);
   const [f, setF] = useState({
-    mitarbeiterId: daten.ichId ?? "",
+    mitarbeiterId: fest ?? daten.ichId ?? "",
     art: "urlaub" as Abwesenheitsart,
     von: heute,
     bis: heute,
