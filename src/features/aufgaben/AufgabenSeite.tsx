@@ -50,6 +50,7 @@ import {
   RueckspracheDialog,
   type RueckspracheEingabe,
 } from "./RueckspracheDialog";
+import { WiedervorlagenSpalte } from "./WiedervorlagenSpalte";
 
 function meldung(e: unknown, standard: string): string {
   return e instanceof Error ? e.message : standard;
@@ -542,6 +543,7 @@ export function AufgabenSeite() {
               onLoeschen={() => void spalteLoeschen(s)}
             />
           ))}
+          <WiedervorlagenSpalte filter={filter} personen={board.personen} />
         </div>
       )}
 

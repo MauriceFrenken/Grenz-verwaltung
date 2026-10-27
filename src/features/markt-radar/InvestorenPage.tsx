@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,8 +19,37 @@ import { VermarktungsAbgleich } from "@/features/investoren/VermarktungsAbgleich
 
 import { RadarListe } from "./RadarListe";
 
-export type InvestorenReiter = "datenbank" | "vermarktungen" | "pruefliste" | "listen" | "markt" | "profile";
-export const INVESTOREN_REITER: InvestorenReiter[] = ["datenbank", "vermarktungen", "pruefliste", "listen", "markt", "profile"];
+export type InvestorenReiter =
+  "datenbank" | "pruefen" | "nachfrage" | "vermarktungen";
+export const INVESTOREN_REITER: InvestorenReiter[] = [
+  "datenbank",
+  "pruefen",
+  "nachfrage",
+  "vermarktungen",
+];
+
+/** Frühere Reiter (bis 27.10.2026), damit Lesezeichen weiter funktionieren. */
+export const ALTE_INVESTOREN_REITER: Record<string, InvestorenReiter> = {
+  pruefliste: "pruefen",
+  listen: "pruefen",
+  markt: "nachfrage",
+  profile: "nachfrage",
+};
+
+function Abschnitt({
+  titel,
+  children,
+}: {
+  titel: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h2 className="text-sm font-semibold text-heading">{titel}</h2>
+      {children}
+    </div>
+  );
+}
 
 function volumen(p: AnkaufsprofilZeile): string {
   if (p.volumenMin && p.volumenMax)
@@ -127,14 +156,14 @@ function Ankaufsprofile() {
   );
 }
 
-/** Investorendatenbank, Prüfliste, neue Investoren aus Listen und Käufer am Markt. */
+/** Investorendatenbank, was zu prüfen ist (Korrekturen, neue aus Listen), Nachfrage am Markt und laufende Vermarktungen. */
 export function InvestorenPage({ reiter }: { reiter: InvestorenReiter }) {
   const navigate = useNavigate();
   return (
     <>
       <PageHeader
         titel="Investoren"
-        beschreibung="Bereinigte Investorendatenbank, Prüfliste für Salesforce und aktive Käufer am Markt"
+        beschreibung="Bereinigte Investorendatenbank, Vorschläge zum Prüfen, Nachfrage am Markt und Abgleich mit laufenden Vermarktungen"
       />
       <PageWrapper>
         <Tabs
@@ -149,29 +178,27 @@ export function InvestorenPage({ reiter }: { reiter: InvestorenReiter }) {
         >
           <TabsList>
             <TabsTrigger value="datenbank">Datenbank</TabsTrigger>
+            <TabsTrigger value="pruefen">Zu prüfen</TabsTrigger>
+            <TabsTrigger value="nachfrage">Nachfrage</TabsTrigger>
             <TabsTrigger value="vermarktungen">Vermarktungen</TabsTrigger>
-            <TabsTrigger value="pruefliste">Prüfliste</TabsTrigger>
-            <TabsTrigger value="listen">Neue aus Listen</TabsTrigger>
-            <TabsTrigger value="markt">Aktiv am Markt</TabsTrigger>
-            <TabsTrigger value="profile">Ankaufsprofile</TabsTrigger>
           </TabsList>
           <TabsContent value="datenbank" className="mt-4">
             <InvestorenListe />
           </TabsContent>
-          <TabsContent value="vermarktungen" className="mt-4">
-            <VermarktungsAbgleich />
+          <TabsContent value="pruefen" className="mt-4 flex flex-col gap-6">
+            <Abschnitt titel="Korrekturvorschläge zur Datenbank">
+              <Pruefliste />
+            </Abschnitt>
+            <Abschnitt titel="Neue Investoren aus Listen und Recherche">
+              <ListenInvestoren />
+            </Abschnitt>
           </TabsContent>
-          <TabsContent value="pruefliste" className="mt-4">
-            <Pruefliste />
-          </TabsContent>
-          <TabsContent value="listen" className="mt-4">
-            <ListenInvestoren />
-          </TabsContent>
-          <TabsContent value="markt" className="mt-4">
+          <TabsContent value="nachfrage" className="mt-4 flex flex-col gap-6">
+            <Ankaufsprofile />
             <RadarListe seite="kaeufer" />
           </TabsContent>
-          <TabsContent value="profile" className="mt-4">
-            <Ankaufsprofile />
+          <TabsContent value="vermarktungen" className="mt-4">
+            <VermarktungsAbgleich />
           </TabsContent>
         </Tabs>
       </PageWrapper>

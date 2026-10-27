@@ -1,7 +1,5 @@
 import { Link } from "@tanstack/react-router";
 
-import { PageWrapper } from "@/components/layout/PageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { prozent } from "@/features/kennzahlen/hilfen";
 import { aktivitaetenSicht } from "@/lib/akquise/berechnen";
 import type {
@@ -11,9 +9,6 @@ import type {
 } from "@/lib/akquise/typen";
 import { formatInt } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-import { Ladehinweis, StandLeiste } from "./bausteine";
-import { useAkquiseDaten } from "./useAkquiseDaten";
 
 type Stand = "läuft" | "ausbaufähig" | "offen";
 
@@ -74,7 +69,7 @@ const MASSNAHMEN: Massnahmenkarte[] = [
       stand: d.anschreiben.versendet12m > 0 ? "läuft" : "offen",
     }),
     link: {
-      to: "/akquise/salesforce/anschreiben",
+      to: "/akquise/anschreiben",
       label: "Auswertung Anschreiben",
     },
   },
@@ -88,7 +83,7 @@ const MASSNAHMEN: Massnahmenkarte[] = [
       text: `der Briefe nachgefasst · ${formatInt(d.nachfassen.gesamt)} Briefe warten auf einen Anruf`,
       stand: (d.anschreiben.nachfassquote ?? 0) >= 50 ? "läuft" : "ausbaufähig",
     }),
-    link: { to: "/akquise/salesforce/anschreiben", label: "Nachfassliste" },
+    link: { to: "/akquise/anschreiben", label: "Nachfassliste" },
   },
   {
     titel: "Wiedervorlage mit Anlass",
@@ -100,7 +95,7 @@ const MASSNAHMEN: Massnahmenkarte[] = [
       text: `offene Wiedervorlagen, davon ${formatInt(d.wiedervorlagen.ueberfaellig)} überfällig`,
       stand: d.wiedervorlagen.ueberfaellig > 10 ? "ausbaufähig" : "läuft",
     }),
-    link: { to: "/akquise/salesforce/wiedervorlagen", label: "Wiedervorlagen" },
+    link: { to: "/aufgaben", label: "Wiedervorlagen im Aufgabenboard" },
   },
   {
     titel: "Kostenlose Einwertung als Türöffner",
@@ -125,7 +120,7 @@ const MASSNAHMEN: Massnahmenkarte[] = [
       stand: "ausbaufähig",
     }),
     link: {
-      to: "/verkaeufer?tab=salesforce",
+      to: "/akquise/potenzial",
       label: "Potenzial aus Salesforce",
     },
   },
@@ -150,7 +145,7 @@ const MASSNAHMEN: Massnahmenkarte[] = [
       text: "automatische Suche, Treffer unter Verkäufer › Markt-Radar",
       stand: "läuft",
     }),
-    link: { to: "/verkaeufer", label: "Markt-Radar" },
+    link: { to: "/akquise/radar", label: "Markt-Radar" },
   },
   {
     titel: "Tippgeber-Netzwerk",
@@ -195,74 +190,51 @@ const STAND_STIL: Record<Stand, string> = {
 };
 
 /** Akquise › Maßnahmen: Best Practice der Verkäuferakquise mit dem Stand bei Grenz. */
-export function MassnahmenSeite() {
-  const { daten, laedt, fehler, neuLaden } = useAkquiseDaten();
+export function MassnahmenTab({ daten }: { daten: AkquiseDto }) {
   return (
-    <>
-      <PageHeader
-        titel="Akquise-Maßnahmen"
-        beschreibung="Wie Grenz & Co. Verkäufer gewinnt, mit dem aktuellen Stand aus Salesforce"
-      />
-      <PageWrapper>
-        <div className="flex flex-col gap-6">
-          <StandLeiste
-            daten={daten}
-            laedt={laedt}
-            fehler={fehler}
-            onNeuLaden={() => void neuLaden()}
-          />
-          {!daten ? (
-            <Ladehinweis laedt={laedt} fehler={fehler} />
-          ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {MASSNAHMEN.map((m) => {
-                const k = m.kennzahl(daten);
-                return (
-                  <section
-                    key={m.titel}
-                    className="flex flex-col gap-3 border border-hairline bg-surface p-5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <h2 className="text-[15px] font-medium text-heading">
-                        {m.titel}
-                      </h2>
-                      <span
-                        className={cn(
-                          "shrink-0 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-                          STAND_STIL[k.stand],
-                        )}
-                      >
-                        {k.stand}
-                      </span>
-                    </div>
-                    <p className="text-sm text-text-muted">{m.was}</p>
-                    <div className="flex items-baseline gap-3 border-l-[3px] border-l-[var(--gc-hellblau)] pl-3">
-                      <span className="text-2xl font-light tabular-nums text-heading">
-                        {k.wert}
-                      </span>
-                      <span className="text-xs text-text-muted">{k.text}</span>
-                    </div>
-                    <p className="text-sm">
-                      <span className="font-medium text-heading">
-                        So geht es gut:{" "}
-                      </span>
-                      {m.praxis}
-                    </p>
-                    {m.link ? (
-                      <Link
-                        to={m.link.to}
-                        className="text-sm text-heading underline-offset-2 hover:underline"
-                      >
-                        {m.link.label} →
-                      </Link>
-                    ) : null}
-                  </section>
-                );
-              })}
+    <div className="grid gap-4 lg:grid-cols-2">
+      {MASSNAHMEN.map((m) => {
+        const k = m.kennzahl(daten);
+        return (
+          <section
+            key={m.titel}
+            className="flex flex-col gap-3 border border-hairline bg-surface p-5"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-[15px] font-medium text-heading">
+                {m.titel}
+              </h2>
+              <span
+                className={cn(
+                  "shrink-0 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+                  STAND_STIL[k.stand],
+                )}
+              >
+                {k.stand}
+              </span>
             </div>
-          )}
-        </div>
-      </PageWrapper>
-    </>
+            <p className="text-sm text-text-muted">{m.was}</p>
+            <div className="flex items-baseline gap-3 border-l-[3px] border-l-[var(--gc-hellblau)] pl-3">
+              <span className="text-2xl font-light tabular-nums text-heading">
+                {k.wert}
+              </span>
+              <span className="text-xs text-text-muted">{k.text}</span>
+            </div>
+            <p className="text-sm">
+              <span className="font-medium text-heading">So geht es gut: </span>
+              {m.praxis}
+            </p>
+            {m.link ? (
+              <Link
+                to={m.link.to}
+                className="text-sm text-heading underline-offset-2 hover:underline"
+              >
+                {m.link.label} →
+              </Link>
+            ) : null}
+          </section>
+        );
+      })}
+    </div>
   );
 }

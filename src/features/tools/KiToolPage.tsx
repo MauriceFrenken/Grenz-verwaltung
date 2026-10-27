@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Download, Globe, Loader2, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -167,6 +168,17 @@ export function KiToolPage({
       />
       <PageWrapper>
         <div className="mx-auto flex max-w-4xl flex-col gap-4">
+          {tool.id === "expose" && verlauf.length === 0 && (
+            <p className="border-l-[3px] border-l-[var(--gc-hellblau)] bg-surface px-4 py-3 text-sm text-text-muted">
+              Für ein Mandat aus Salesforce das Exposé besser in der{" "}
+              <Link to="/mandate" className="text-heading underline">
+                Mandatsakte › Exposé
+              </Link>{" "}
+              erstellen: Objektdaten, Objektordner, Freigabe und Ablage in
+              Salesforce sind dort schon verbunden. Dieses Tool ist für Objekte
+              ohne Mandat.
+            </p>
+          )}
           {verlauf.length > 0 && (
             <div className="flex flex-col items-end gap-2">
               {verlauf.map((n, i) => (

@@ -6,53 +6,22 @@ import {
   Briefcase,
   ChartColumn,
   CircleDot,
-  FileText,
+  Handshake,
   Inbox,
   MapPin,
+  Radar,
   RefreshCw,
 } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  type ChartConfig,
-} from "@/components/ui/chart";
-import {
-  AnzahlTooltip,
-  EuroTooltip,
-  Kachel,
-  KachelReihe,
-  Karte,
-} from "@/features/kennzahlen/bausteine";
-import { VIZ, euroKurz, monatLabel } from "@/features/kennzahlen/hilfen";
+import { Kachel, KachelReihe, Karte } from "@/features/kennzahlen/bausteine";
+import { VIZ, euroKurz } from "@/features/kennzahlen/hilfen";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import { formatDate, formatInt } from "@/lib/format";
-import type { KennzahlenDto } from "@/lib/kennzahlen/types";
 import type { UebersichtDto, ZuTun } from "@/lib/uebersicht/berechnen";
 import { cn } from "@/lib/utils";
-
-const aktivitaetConfig = {
-  Anruf: { label: "Anruf", color: VIZ[0] },
-  "E-Mail": { label: "E-Mail", color: VIZ[1] },
-  Termin: { label: "Termin", color: VIZ[2] },
-  Aufgabe: { label: "Aufgabe", color: VIZ[3] },
-} satisfies ChartConfig;
-
-const provisionConfig = {
-  provisionen: { label: "Provisionseingang", color: VIZ[0] },
-} satisfies ChartConfig;
-
-function labels(config: ChartConfig): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(config).map(([k, v]) => [k, String(v.label ?? k)]),
-  );
-}
 
 function tagesgruss(): string {
   const h = new Date().getHours();
@@ -68,17 +37,12 @@ function vergleich(jetzt: number, vorher: number): string {
   return `${zeichen}${Math.abs(diff)} ggü. 4 Wochen davor`;
 }
 
-function wocheLabel(iso: string): string {
-  return `${iso.slice(8, 10)}.${iso.slice(5, 7)}.`;
-}
-
 /** Startseite: das Geschäft von Grenz & Co. auf einen Blick. */
 export function UebersichtPage() {
   const { benutzer, session } = useAuth();
   const token = session?.access_token ?? "";
   const vorname = benutzer?.name?.trim().split(/\s+/)[0];
   const [daten, setDaten] = useState<UebersichtDto | null>(null);
-  const [finanzen, setFinanzen] = useState<KennzahlenDto | null>(null);
   const [laedt, setLaedt] = useState(false);
 
   useEffect(() => {
@@ -86,23 +50,17 @@ export function UebersichtPage() {
     let aktiv = true;
     setLaedt(true);
     void (async () => {
-      const [u, k] = await Promise.allSettled([
-        import("@/lib/uebersicht/server-fn").then(({ uebersichtLadenFn }) =>
-          uebersichtLadenFn({ data: { supabaseAccessToken: token } }),
-        ),
-        import("@/lib/kennzahlen/server-fn").then(({ kennzahlenLadenFn }) =>
-          kennzahlenLadenFn({
-            data: {
-              supabaseAccessToken: token,
-              jahr: new Date().getFullYear(),
-            },
-          }),
-        ),
-      ]);
+      try {
+        const { uebersichtLadenFn } =
+          await import("@/lib/uebersicht/server-fn");
+        const u = await uebersichtLadenFn({
+          data: { supabaseAccessToken: token },
+        });
+        if (aktiv) setDaten(u);
+      } catch (e) {
+        if (aktiv) toast.error(apiFehlermeldung(e));
+      }
       if (!aktiv) return;
-      if (u.status === "fulfilled") setDaten(u.value);
-      else toast.error(apiFehlermeldung(u.reason));
-      if (k.status === "fulfilled") setFinanzen(k.value);
       setLaedt(false);
     })();
     return () => {
@@ -126,8 +84,8 @@ export function UebersichtPage() {
           {vorname ? `, ${vorname}` : ""}
         </h1>
         <p className="text-sm text-text-muted">
-          Was heute ansteht, was gerade läuft und wie sich das Geschäft
-          entwickelt.
+          Was heute ansteht und was gerade läuft. Die Auswertungen stehen unter
+          Kennzahlen.
         </p>
       </header>
       <PageWrapper>
@@ -136,20 +94,14 @@ export function UebersichtPage() {
             {laedt ? "Lädt…" : "Keine Daten."}
           </p>
         ) : (
-          <Dashboard daten={daten} finanzen={finanzen} />
+          <Dashboard daten={daten} />
         )}
       </PageWrapper>
     </>
   );
 }
 
-function Dashboard({
-  daten,
-  finanzen,
-}: {
-  daten: UebersichtDto;
-  finanzen: KennzahlenDto | null;
-}) {
+function Dashboard({ daten }: { daten: UebersichtDto }) {
   const k = daten.kacheln;
   const jahr = daten.heute.slice(0, 4);
 
@@ -204,7 +156,7 @@ function Dashboard({
         </Karte>
         <Karte
           titel="Mandats-Pipeline"
-          hinweis="Offene Mandate nach Phase, Volumen = Summe der Exposé-Preise."
+          hinweis="Offene Mandate nach Phase, Volumen = Summe der Exposé-Preise. Einzelne Deals in der Deal-Pipeline."
           className="lg:col-span-2"
         >
           <Pipeline daten={daten} />
@@ -213,57 +165,11 @@ function Dashboard({
 
       <div className="grid gap-6 lg:grid-cols-5">
         <Karte
-          titel="Vertriebsaktivität"
-          hinweis={`Salesforce-Aktivitäten je Woche · ${daten.aktivitaetGesamt4W} in den letzten 4 Wochen (${vergleich(daten.aktivitaetGesamt4W, daten.aktivitaetVor4W)})`}
-          className="lg:col-span-3"
-        >
-          <ChartContainer config={aktivitaetConfig} className="h-64 w-full">
-            <BarChart data={daten.aktivitaetWochen}>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="woche"
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={wocheLabel}
-              />
-              <YAxis
-                allowDecimals={false}
-                tickLine={false}
-                axisLine={false}
-                width={32}
-              />
-              <ChartTooltip
-                labelFormatter={(w) => `Woche ab ${wocheLabel(String(w))}`}
-                content={<AnzahlTooltip labels={labels(aktivitaetConfig)} />}
-              />
-              <ChartLegend content={<ChartLegendContent />} />
-              {Object.keys(aktivitaetConfig).map((key) => (
-                <Bar
-                  key={key}
-                  dataKey={key}
-                  stackId="a"
-                  fill={`var(--color-${key})`}
-                />
-              ))}
-            </BarChart>
-          </ChartContainer>
-        </Karte>
-        <Karte
           titel="Letzte Aktivität"
           hinweis="Neueste Anrufe, E-Mails, Termine und Aufgaben"
-          className="lg:col-span-2"
-        >
-          <AktivitaetsListe daten={daten} />
-        </Karte>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Karte
-          titel="Größte beauftragte Mandate"
-          hinweis="Nach erwarteter Provision"
           className="lg:col-span-3"
         >
-          <TopMandate daten={daten} />
+          <AktivitaetsListe daten={daten} />
         </Karte>
         <Karte
           titel="Letzte Abschlüsse"
@@ -302,26 +208,12 @@ function Dashboard({
         </Karte>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Karte
-          titel={`Liquidität und Provisionseingang ${jahr}`}
-          hinweis="Aus den Bankumsätzen (EBICS / Kontoauszüge)"
-          className="lg:col-span-3"
-        >
-          {finanzen ? (
-            <Finanzen finanzen={finanzen} />
-          ) : (
-            <p className="text-sm text-text-muted">Keine Bankdaten.</p>
-          )}
-        </Karte>
-        <Karte
-          titel="Markt & Schnellzugriff"
-          hinweis="Ein Klick öffnet die passende Liste."
-          className="lg:col-span-2"
-        >
-          <Schnellzugriff daten={daten} />
-        </Karte>
-      </div>
+      <Karte
+        titel="Schnellzugriff"
+        hinweis="Auswertungen, Liquidität und Vertriebsaktivität stehen unter Kennzahlen."
+      >
+        <Schnellzugriff daten={daten} />
+      </Karte>
 
       <p className="text-xs text-text-muted">
         Quelle: Salesforce (Stand{" "}
@@ -511,123 +403,6 @@ function AktivitaetsListe({ daten }: { daten: UebersichtDto }) {
   );
 }
 
-function TopMandate({ daten }: { daten: UebersichtDto }) {
-  if (daten.topMandate.length === 0)
-    return (
-      <p className="text-sm text-text-muted">Keine beauftragten Mandate.</p>
-    );
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="text-left text-xs text-text-muted">
-          <tr className="border-b border-hairline">
-            <th className="px-2 py-2 font-medium">Objekt</th>
-            <th className="px-2 py-2 text-right font-medium">Preis</th>
-            <th className="px-2 py-2 text-right font-medium">Provision</th>
-            <th className="px-2 py-2 text-right font-medium">Interessenten</th>
-            <th className="whitespace-nowrap px-2 py-2 text-right font-medium">
-              Letzte Aktivität
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-hairline">
-          {daten.topMandate.map((m) => (
-            <tr key={m.sfId}>
-              <td className="max-w-64 truncate px-2 py-2">
-                <Link
-                  to="/mandate/$sfId"
-                  params={{ sfId: m.sfId }}
-                  className="text-heading hover:text-brand-text hover:underline"
-                >
-                  {m.objekt ?? m.name}
-                </Link>
-              </td>
-              <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
-                {m.preis ? euroKurz(m.preis) : "–"}
-              </td>
-              <td className="whitespace-nowrap px-2 py-2 text-right font-medium tabular-nums">
-                {m.provision ? euroKurz(m.provision) : "–"}
-              </td>
-              <td className="px-2 py-2 text-right tabular-nums">
-                {m.interessenten}
-              </td>
-              <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-text-muted">
-                {formatDate(m.letzteAktivitaet?.slice(0, 10))}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function Finanzen({ finanzen }: { finanzen: KennzahlenDto }) {
-  const monate = finanzen.monate.filter((m) => m.saldo !== null);
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-3">
-        <MiniWert titel="Liquidität" wert={euroKurz(finanzen.liquiditaet)} />
-        <MiniWert
-          titel="Provision netto"
-          wert={euroKurz(finanzen.provisionNetto)}
-        />
-        <MiniWert
-          titel="Reichweite"
-          wert={
-            finanzen.reichweiteMonate === null
-              ? "–"
-              : `${Math.round(finanzen.reichweiteMonate)} Monate`
-          }
-        />
-      </div>
-      <ChartContainer config={provisionConfig} className="h-44 w-full">
-        <BarChart data={monate}>
-          <CartesianGrid vertical={false} />
-          <XAxis
-            dataKey="monat"
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(m) => monatLabel(String(m))}
-          />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            width={48}
-            tickFormatter={(n) => euroKurz(Number(n))}
-          />
-          <ChartTooltip
-            labelFormatter={(m) => monatLabel(String(m), true)}
-            content={<EuroTooltip labels={labels(provisionConfig)} />}
-          />
-          <Bar
-            dataKey="provisionen"
-            fill="var(--color-provisionen)"
-            radius={[1, 1, 0, 0]}
-          />
-        </BarChart>
-      </ChartContainer>
-      <Link
-        to="/kennzahlen"
-        className="self-start text-xs font-medium text-brand-text hover:underline"
-      >
-        Alle Kennzahlen →
-      </Link>
-    </div>
-  );
-}
-
-function MiniWert({ titel, wert }: { titel: string; wert: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="label-caps text-text-muted">{titel}</span>
-      <span className="text-lg font-semibold tabular-nums text-heading">
-        {wert}
-      </span>
-    </div>
-  );
-}
-
 function Schnellzugriff({ daten }: { daten: UebersichtDto }) {
   const x = daten.exposes;
   const links = [
@@ -650,20 +425,26 @@ function Schnellzugriff({ daten }: { daten: UebersichtDto }) {
       icon: MapPin,
     },
     {
-      to: "/exposes/auswertung",
-      label: "Marktanalyse",
-      zusatz: "Preise und Faktoren",
-      icon: FileText,
+      to: "/pipeline",
+      label: "Deal-Pipeline",
+      zusatz: "Vom Erstkontakt bis zum Notartermin",
+      icon: Handshake,
+    },
+    {
+      to: "/akquise",
+      label: "Akquise",
+      zusatz: "Verkäufer, Anschreiben und Termine",
+      icon: Radar,
     },
     {
       to: "/kennzahlen",
       label: "Kennzahlen",
-      zusatz: "Finanzen und Maklergeschäft",
+      zusatz: "Wachstum, Liquidität und Markt",
       icon: ChartColumn,
     },
   ] as const;
   return (
-    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {links.map((l) => (
         <li key={l.to}>
           <Link

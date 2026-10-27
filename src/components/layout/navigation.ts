@@ -3,16 +3,12 @@ import {
   CalendarCheck,
   ChartColumn,
   Handshake,
-  Cloud,
   Inbox,
   KanbanSquare,
   LayoutDashboard,
-  ListChecks,
-  MapPin,
-  Plug,
   Radar,
-  ScrollText,
-  UserCog,
+  Settings,
+  Sparkles,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -40,8 +36,9 @@ export interface NavSection {
 
 /**
  * Seitenleiste nach dem Vorbild von admin.buyanymachine.com:
- * Hauptmenü, dann die Käuferseite (Vermarktung) und die Verkäuferseite (Akquise), dann die
- * KI-Dokumentenerstellung und Tools (Register der KI-Tools in src/lib/ki-tools/tools.ts), Personal und System.
+ * Hauptmenü, dann die Käuferseite (Vermarktung) und die Verkäuferseite (Akquise), dann Tools
+ * (KI-Dokumente als Kachelseite, Register in src/lib/ki-tools/tools.ts), Personal und System.
+ * Ein Eintrag je Bereich; Unterseiten sind Reiter auf der Seite selbst.
  */
 export const NAVIGATION: NavSection[] = [
   {
@@ -82,28 +79,18 @@ export const NAVIGATION: NavSection[] = [
     label: "Akquise",
     items: [
       {
-        to: "/verkaeufer",
-        label: "Verkäufer",
+        to: "/akquise",
+        label: "Verkäufer-Akquise",
         icon: Radar,
         badge: "verkaeufer",
         badgeTon: "violet",
       },
-      { to: "/akquise/salesforce", label: "Salesforce", icon: Cloud },
-      { to: "/akquise/massnahmen", label: "Maßnahmen", icon: ListChecks },
     ],
-  },
-  {
-    label: "KI-Dokumentenerstellung",
-    items: KI_TOOLS.filter((t) => t.bereich === "dokumente").map((t) => ({
-      to: t.pfad,
-      label: t.label,
-      icon: t.icon,
-      umbruch: true,
-    })),
   },
   {
     label: "Tools",
     items: [
+      { to: "/tools", label: "KI-Dokumente", icon: Sparkles },
       {
         to: "/exposes",
         label: "Exposéanalyse",
@@ -111,7 +98,6 @@ export const NAVIGATION: NavSection[] = [
         badge: "angebotseingang",
         badgeTon: "amber",
       },
-      { to: "/exposes/karte", label: "Marktkarte", icon: MapPin },
       ...KI_TOOLS.filter((t) => t.bereich === "berichte").map((t) => ({
         to: t.pfad,
         label: t.label,
@@ -125,7 +111,7 @@ export const NAVIGATION: NavSection[] = [
     items: [
       {
         to: "/personal",
-        label: "Team & Urlaub",
+        label: "Personal",
         icon: CalendarCheck,
         badge: "urlaubsantraege",
         badgeTon: "amber",
@@ -134,14 +120,6 @@ export const NAVIGATION: NavSection[] = [
   },
   {
     label: "System",
-    items: [
-      { to: "/einstellungen/benutzer", label: "Benutzer", icon: UserCog },
-      {
-        to: "/einstellungen/integrationen",
-        label: "Integrationen",
-        icon: Plug,
-      },
-      { to: "/einstellungen/audit", label: "Audit-Trail", icon: ScrollText },
-    ],
+    items: [{ to: "/einstellungen", label: "Einstellungen", icon: Settings }],
   },
 ];

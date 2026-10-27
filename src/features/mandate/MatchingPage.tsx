@@ -7,6 +7,7 @@ import {
   Megaphone,
   Radar,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { PageWrapper } from "@/components/layout/PageWrapper";
@@ -257,6 +258,13 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                 .filter(Boolean)
                 .join(" · ")
             : undefined
+        }
+        aktionen={
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/investoren" search={{ tab: "vermarktungen" }}>
+              Alle Vermarktungen
+            </Link>
+          </Button>
         }
         reiter={<MandatReiter sfId={sfId} aktiv="matching" />}
       />
