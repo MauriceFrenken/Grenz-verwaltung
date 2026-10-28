@@ -7,9 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EbicsAktionenPanel } from "@/features/ebics/EbicsAktionenPanel";
 import { EbicsUmsaetze } from "@/features/ebics/EbicsUmsaetze";
 
-import { ExposeMarktTab } from "./ExposeMarktTab";
 import { FinanzenTab } from "./FinanzenTab";
 import { MaklerTab } from "./MaklerTab";
+import { MarktumfeldTab } from "./MarktumfeldTab";
 
 export const KENNZAHLEN_REITER = [
   { id: "wachstum", label: "Wachstum" },
@@ -19,7 +19,7 @@ export const KENNZAHLEN_REITER = [
 
 export type KennzahlenReiter = (typeof KENNZAHLEN_REITER)[number]["id"];
 
-/** Kennzahlen des Maklerunternehmens: Wachstum, Liquidität und angebotener Markt. */
+/** Kennzahlen: Wachstum und Liquidität von Grenz & Co., dazu der Immobilienmarkt fürs Kundengespräch. */
 export function KennzahlenSeite({ reiter }: { reiter: KennzahlenReiter }) {
   const navigate = useNavigate();
   const [neuLaden, setNeuLaden] = useState(0);
@@ -63,7 +63,7 @@ export function KennzahlenSeite({ reiter }: { reiter: KennzahlenReiter }) {
             </div>
           </TabsContent>
           <TabsContent value="markt" className="mt-4">
-            <ExposeMarktTab />
+            <MarktumfeldTab />
           </TabsContent>
         </Tabs>
       </PageWrapper>

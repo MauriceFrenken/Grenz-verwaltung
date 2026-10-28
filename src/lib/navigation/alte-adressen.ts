@@ -37,10 +37,6 @@ const ALTE_ADRESSEN: Array<{
     ziel: (m) => ({ pfad: `/mandate/${m[1]}/expose` }),
   },
   {
-    muster: /^\/exposes\/auswertung$/,
-    ziel: () => ({ pfad: "/kennzahlen", suche: { tab: "markt" } }),
-  },
-  {
     muster: /^\/ebics$/,
     ziel: () => ({ pfad: "/kennzahlen", suche: { tab: "liquiditaet" } }),
   },

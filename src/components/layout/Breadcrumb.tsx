@@ -19,6 +19,7 @@ const LABELS: Record<string, string> = {
   "/exposes/import": "Exposé-Import",
   "/exposes/import/salesforce": "Salesforce-Export",
   "/exposes/karte": "Marktkarte",
+  "/exposes/auswertung": "Auswertung",
   "/tools": "KI-Dokumente",
   "/tools/expose": "Exposé-Erstellung",
   "/tools/marktpreis": "Marktpreisanalyse",

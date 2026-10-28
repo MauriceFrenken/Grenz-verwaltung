@@ -30,6 +30,7 @@ import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.a
 import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
 import { Route as EinstellungenIntegrationenRouteImport } from './routes/einstellungen.integrationen'
 import { Route as ExposesIndexRouteImport } from './routes/exposes.index'
+import { Route as ExposesAuswertungRouteImport } from './routes/exposes.auswertung'
 import { Route as ExposesImportRouteImport } from './routes/exposes.import'
 import { Route as ExposesKarteRouteImport } from './routes/exposes.karte'
 import { Route as MandateIndexRouteImport } from './routes/mandate.index'
@@ -162,6 +163,11 @@ const EinstellungenIntegrationenRoute =
 const ExposesIndexRoute = ExposesIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => ExposesRoute,
+} as any)
+const ExposesAuswertungRoute = ExposesAuswertungRouteImport.update({
+  id: '/auswertung',
+  path: '/auswertung',
   getParentRoute: () => ExposesRoute,
 } as any)
 const ExposesImportRoute = ExposesImportRouteImport.update({
@@ -323,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
@@ -371,6 +378,7 @@ export interface FileRoutesByTo {
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/personal/$id': typeof PersonalIdRoute
@@ -421,6 +429,7 @@ export interface FileRoutesById {
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/exposes/karte': typeof ExposesKarteRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
@@ -473,6 +482,7 @@ export interface FileRouteTypes {
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/exposes/auswertung'
     | '/exposes/import'
     | '/exposes/karte'
     | '/microsoft/callback'
@@ -521,6 +531,7 @@ export interface FileRouteTypes {
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/exposes/auswertung'
     | '/exposes/karte'
     | '/microsoft/callback'
     | '/personal/$id'
@@ -570,6 +581,7 @@ export interface FileRouteTypes {
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/exposes/auswertung'
     | '/exposes/import'
     | '/exposes/karte'
     | '/microsoft/callback'
@@ -791,6 +803,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/exposes/'
       preLoaderRoute: typeof ExposesIndexRouteImport
+      parentRoute: typeof ExposesRoute
+    }
+    '/exposes/auswertung': {
+      id: '/exposes/auswertung'
+      path: '/auswertung'
+      fullPath: '/exposes/auswertung'
+      preLoaderRoute: typeof ExposesAuswertungRouteImport
       parentRoute: typeof ExposesRoute
     }
     '/exposes/import': {
@@ -1018,12 +1037,14 @@ const ExposesImportRouteWithChildren = ExposesImportRoute._addFileChildren(
 )
 
 interface ExposesRouteChildren {
+  ExposesAuswertungRoute: typeof ExposesAuswertungRoute
   ExposesImportRoute: typeof ExposesImportRouteWithChildren
   ExposesKarteRoute: typeof ExposesKarteRoute
   ExposesIndexRoute: typeof ExposesIndexRoute
 }
 
 const ExposesRouteChildren: ExposesRouteChildren = {
+  ExposesAuswertungRoute: ExposesAuswertungRoute,
   ExposesImportRoute: ExposesImportRouteWithChildren,
   ExposesKarteRoute: ExposesKarteRoute,
   ExposesIndexRoute: ExposesIndexRoute,
