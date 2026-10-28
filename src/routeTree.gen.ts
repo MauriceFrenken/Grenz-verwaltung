@@ -51,6 +51,8 @@ import { Route as ApiCronMarktRadarRouteImport } from './routes/api.cron.markt-r
 import { Route as ApiCronMarktberichtQuellenRouteImport } from './routes/api.cron.marktbericht-quellen'
 import { Route as ApiCronObjektordnerRouteImport } from './routes/api.cron.objektordner'
 import { Route as ApiCronSalesforceSyncRouteImport } from './routes/api.cron.salesforce-sync'
+import { Route as ApiCronTrelloAbgleichRouteImport } from './routes/api.cron.trello-abgleich'
+import { Route as ApiTrelloWebhookRouteImport } from './routes/api.trello.webhook'
 import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.index'
 import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
 import { Route as MandateSfIdIndexRouteImport } from './routes/mandate.$sfId.index'
@@ -279,6 +281,16 @@ const ApiCronSalesforceSyncRoute = ApiCronSalesforceSyncRouteImport.update({
   path: '/api/cron/salesforce-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronTrelloAbgleichRoute = ApiCronTrelloAbgleichRouteImport.update({
+  id: '/api/cron/trello-abgleich',
+  path: '/api/cron/trello-abgleich',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTrelloWebhookRoute = ApiTrelloWebhookRouteImport.update({
+  id: '/api/trello/webhook',
+  path: '/api/trello/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExposesImportIndexRoute = ExposesImportIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -388,6 +400,8 @@ export interface FileRoutesByFullPath {
   '/api/cron/marktbericht-quellen': typeof ApiCronMarktberichtQuellenRoute
   '/api/cron/objektordner': typeof ApiCronObjektordnerRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
+  '/api/cron/trello-abgleich': typeof ApiCronTrelloAbgleichRoute
+  '/api/trello/webhook': typeof ApiTrelloWebhookRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
   '/mandate/$sfId/expose': typeof MandateSfIdExposeRoute
@@ -442,6 +456,8 @@ export interface FileRoutesByTo {
   '/api/cron/marktbericht-quellen': typeof ApiCronMarktberichtQuellenRoute
   '/api/cron/objektordner': typeof ApiCronObjektordnerRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
+  '/api/cron/trello-abgleich': typeof ApiCronTrelloAbgleichRoute
+  '/api/trello/webhook': typeof ApiTrelloWebhookRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
   '/mandate/$sfId/expose': typeof MandateSfIdExposeRoute
@@ -500,6 +516,8 @@ export interface FileRoutesById {
   '/api/cron/marktbericht-quellen': typeof ApiCronMarktberichtQuellenRoute
   '/api/cron/objektordner': typeof ApiCronObjektordnerRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
+  '/api/cron/trello-abgleich': typeof ApiCronTrelloAbgleichRoute
+  '/api/trello/webhook': typeof ApiTrelloWebhookRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
   '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
   '/mandate/$sfId/expose': typeof MandateSfIdExposeRoute
@@ -559,6 +577,8 @@ export interface FileRouteTypes {
     | '/api/cron/marktbericht-quellen'
     | '/api/cron/objektordner'
     | '/api/cron/salesforce-sync'
+    | '/api/cron/trello-abgleich'
+    | '/api/trello/webhook'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
     | '/mandate/$sfId/expose'
@@ -613,6 +633,8 @@ export interface FileRouteTypes {
     | '/api/cron/marktbericht-quellen'
     | '/api/cron/objektordner'
     | '/api/cron/salesforce-sync'
+    | '/api/cron/trello-abgleich'
+    | '/api/trello/webhook'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
     | '/mandate/$sfId/expose'
@@ -670,6 +692,8 @@ export interface FileRouteTypes {
     | '/api/cron/marktbericht-quellen'
     | '/api/cron/objektordner'
     | '/api/cron/salesforce-sync'
+    | '/api/cron/trello-abgleich'
+    | '/api/trello/webhook'
     | '/exposes/import/salesforce'
     | '/mandate/$sfId/bewertung'
     | '/mandate/$sfId/expose'
@@ -719,6 +743,8 @@ export interface RootRouteChildren {
   ApiCronMarktberichtQuellenRoute: typeof ApiCronMarktberichtQuellenRoute
   ApiCronObjektordnerRoute: typeof ApiCronObjektordnerRoute
   ApiCronSalesforceSyncRoute: typeof ApiCronSalesforceSyncRoute
+  ApiCronTrelloAbgleichRoute: typeof ApiCronTrelloAbgleichRoute
+  ApiTrelloWebhookRoute: typeof ApiTrelloWebhookRoute
   MandateSfIdBewertungRoute: typeof MandateSfIdBewertungRoute
   MandateSfIdExposeRoute: typeof MandateSfIdExposeRoute
   MandateSfIdExposesRoute: typeof MandateSfIdExposesRoute
@@ -1029,6 +1055,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronSalesforceSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/trello-abgleich': {
+      id: '/api/cron/trello-abgleich'
+      path: '/api/cron/trello-abgleich'
+      fullPath: '/api/cron/trello-abgleich'
+      preLoaderRoute: typeof ApiCronTrelloAbgleichRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/trello/webhook': {
+      id: '/api/trello/webhook'
+      path: '/api/trello/webhook'
+      fullPath: '/api/trello/webhook'
+      preLoaderRoute: typeof ApiTrelloWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/exposes/import/': {
       id: '/exposes/import/'
       path: '/'
@@ -1207,6 +1247,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronMarktberichtQuellenRoute: ApiCronMarktberichtQuellenRoute,
   ApiCronObjektordnerRoute: ApiCronObjektordnerRoute,
   ApiCronSalesforceSyncRoute: ApiCronSalesforceSyncRoute,
+  ApiCronTrelloAbgleichRoute: ApiCronTrelloAbgleichRoute,
+  ApiTrelloWebhookRoute: ApiTrelloWebhookRoute,
   MandateSfIdBewertungRoute: MandateSfIdBewertungRoute,
   MandateSfIdExposeRoute: MandateSfIdExposeRoute,
   MandateSfIdExposesRoute: MandateSfIdExposesRoute,

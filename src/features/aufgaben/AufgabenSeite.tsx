@@ -5,7 +5,9 @@ import {
   Archive,
   CheckCheck,
   Loader2,
+  ExternalLink,
   MessagesSquare,
+  RefreshCw,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -85,6 +87,38 @@ export function AufgabenSeite() {
   useEffect(() => {
     void laden();
   }, [laden]);
+
+  // Änderungen aus Trello (und von Kollegen) regelmäßig nachladen, solange die Seite sichtbar ist.
+  useEffect(() => {
+    if (!board?.trello.verbunden) return;
+    const t = window.setInterval(() => {
+      if (document.visibilityState === "visible" && !ziehId && !offenId)
+        void laden();
+    }, 60_000);
+    return () => window.clearInterval(t);
+  }, [board?.trello.verbunden, laden, ziehId, offenId]);
+
+  const [abgleich, setAbgleich] = useState(false);
+  const trelloAbgleichen = async () => {
+    setAbgleich(true);
+    try {
+      const { trelloAbgleichFn } = await fn();
+      const e = await trelloAbgleichFn({
+        data: { supabaseAccessToken: token },
+      });
+      const summe = e.nachTrello + e.ausTrello + e.neuInTrello + e.neuInApp;
+      toast.success(
+        summe === 0
+          ? "App und Trello sind identisch."
+          : `Abgeglichen: ${e.neuInTrello + e.nachTrello} nach Trello, ${e.neuInApp + e.ausTrello} aus Trello.`,
+      );
+      await laden();
+    } catch (e) {
+      toast.error(meldung(e, "Der Trello-Abgleich ist fehlgeschlagen."));
+    } finally {
+      setAbgleich(false);
+    }
+  };
 
   const spalten = useMemo(() => nachPosition(board?.spalten ?? []), [board]);
   const spalteVon = useMemo(
@@ -358,6 +392,33 @@ export function AufgabenSeite() {
         beschreibung="Die in Rücksprachen festgelegten Aufgaben als Board. Karten per Drag & Drop zwischen den Spalten verschieben."
         aktionen={
           <div className="flex gap-2">
+            {board?.trello.verbunden && (
+              <>
+                {board.trello.boardUrl && (
+                  <Button variant="outline" asChild>
+                    <a
+                      href={board.trello.boardUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ExternalLink className="size-4" />
+                      Trello
+                    </a>
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => void trelloAbgleichen()}
+                  disabled={abgleich}
+                  title="Mit Trello abgleichen"
+                >
+                  <RefreshCw
+                    className={cn("size-4", abgleich && "animate-spin")}
+                  />
+                  Abgleichen
+                </Button>
+              </>
+            )}
             <Button
               variant="outline"
               onClick={() => void spalteSpeichern({ titel: "Neue Spalte" })}
@@ -401,6 +462,15 @@ export function AufgabenSeite() {
                 </span>{" "}
                 fällig in den nächsten 7 Tagen
               </span>
+              {board.trello.verbunden && (
+                <span className={cn(board.trello.fehler && "text-bad")}>
+                  {board.trello.fehler
+                    ? `Trello-Abgleich gestört: ${board.trello.fehler}`
+                    : board.trello.letzterAbgleich
+                      ? `Mit Trello abgeglichen um ${new Date(board.trello.letzterAbgleich).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`
+                      : "Mit Trello verbunden"}
+                </span>
+              )}
             </div>
           )
         }
