@@ -26,6 +26,7 @@ create table if not exists public.personal_stellen (
 comment on table public.personal_stellen is 'Ausgeschriebene oder geplante Stellen mit Anzeigentext.';
 create index if not exists personal_stellen_verantwortlich_idx on public.personal_stellen (verantwortlich_id);
 
+drop trigger if exists personal_stellen_set_updated_at on public.personal_stellen;
 create trigger personal_stellen_set_updated_at
   before update on public.personal_stellen
   for each row execute function public.set_updated_at();
@@ -61,6 +62,7 @@ create index if not exists personal_bewerber_stelle_idx on public.personal_bewer
 create index if not exists personal_bewerber_phase_idx on public.personal_bewerber (phase, reihenfolge);
 create index if not exists personal_bewerber_mitarbeiter_idx on public.personal_bewerber (mitarbeiter_id);
 
+drop trigger if exists personal_bewerber_set_updated_at on public.personal_bewerber;
 create trigger personal_bewerber_set_updated_at
   before update on public.personal_bewerber
   for each row execute function public.set_updated_at();
