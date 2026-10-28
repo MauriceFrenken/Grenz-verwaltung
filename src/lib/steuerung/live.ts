@@ -11,6 +11,8 @@ import type { MaklerDto } from "./types";
 
 export type LiveMandat = {
   sfId: string;
+  /** Eigentümer ist ein Test-Account („Test GmbH“). */
+  test?: boolean;
   name: string;
   status: string | null;
   art: string | null;
@@ -135,7 +137,7 @@ function aktivitaetsTyp(
 
 export function berechneMaklerLive(e: LiveEingabe): MaklerLive {
   const mandate = e.mandate.filter(
-    (m) => !istTestName(m.name) && !istTestName(m.objekt ?? ""),
+    (m) => !m.test && !istTestName(m.name) && !istTestName(m.objekt ?? ""),
   );
   const deals = e.deals.filter((d) => !istTestName(d.name));
 

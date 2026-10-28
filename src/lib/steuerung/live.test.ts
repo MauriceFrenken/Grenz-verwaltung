@@ -39,6 +39,7 @@ describe("berechneMaklerLive", () => {
       mandat({ name: "M-3", art: "Off-Market Freigabe" }),
       mandat({ name: "M-4", status: "Gewonnen" }),
       mandat({ name: "M-5", status: "Verloren" }),
+      mandat({ name: "M-7", status: "Verloren", test: true }),
       mandat({
         name: "M-6",
         status: "Akquisition",

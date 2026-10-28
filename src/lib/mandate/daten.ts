@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { testEigentuemer } from "@/lib/server/test-eigentuemer";
 import { istGeplant, stattgefundenZeilen } from "@/lib/sf-sync/zaehlen";
 
 import type {
@@ -63,7 +64,7 @@ export async function ladeMandatsliste(
     admin
       .from("sf_mandate")
       .select(
-        "sf_id, name, status, art, angebotspreis, provision_prozent, beauftragt_am, real_estate_sf_id, sf_geaendert_am",
+        "sf_id, name, status, art, angebotspreis, provision_prozent, beauftragt_am, real_estate_sf_id, eigentuemer_account_sf_id, sf_geaendert_am",
       )
       .order("sf_geaendert_am", { ascending: false, nullsFirst: false })
       .range(a, b),
@@ -153,30 +154,37 @@ export async function ladeMandatsliste(
     if (!letzterReport.has(String(r.mandat_sf_id)))
       letzterReport.set(String(r.mandat_sf_id), String(r.created_at));
 
-  return mandate.map((m) => {
-    const o = m.real_estate_sf_id
-      ? objektJeId.get(String(m.real_estate_sf_id))
-      : undefined;
-    return {
-      sfId: String(m.sf_id),
-      name: String(m.name),
-      status: (m.status as string) ?? null,
-      art: (m.art as string) ?? null,
-      angebotspreis: m.angebotspreis == null ? null : Number(m.angebotspreis),
-      provisionProzent:
-        m.provision_prozent == null ? null : Number(m.provision_prozent),
-      beauftragtAm: (m.beauftragt_am as string) ?? null,
-      objekt: (o?.name as string) ?? null,
-      objektart: (o?.objektart as string) ?? null,
-      ort: (o?.ort as string) ?? null,
-      kampagnen: kampagnenJeMandat.get(String(m.sf_id)) ?? 0,
-      interessenten: interessenten.get(String(m.sf_id))?.alle ?? 0,
-      interessentenOffen: interessenten.get(String(m.sf_id))?.offen ?? 0,
-      letzteAktivitaet: letzteAktivitaet.get(String(m.sf_id)) ?? null,
-      letzterReport: letzterReport.get(String(m.sf_id)) ?? null,
-      sfGeaendertAm: (m.sf_geaendert_am as string) ?? null,
-    };
-  });
+  // Testdatensätze („Test GmbH“ als Eigentümer) gehören nicht in die Arbeitsliste.
+  const testIds = await testEigentuemer(
+    admin,
+    mandate.map((m) => m.eigentuemer_account_sf_id as string | null),
+  );
+  return mandate
+    .filter((m) => !testIds.has(String(m.eigentuemer_account_sf_id ?? "")))
+    .map((m) => {
+      const o = m.real_estate_sf_id
+        ? objektJeId.get(String(m.real_estate_sf_id))
+        : undefined;
+      return {
+        sfId: String(m.sf_id),
+        name: String(m.name),
+        status: (m.status as string) ?? null,
+        art: (m.art as string) ?? null,
+        angebotspreis: m.angebotspreis == null ? null : Number(m.angebotspreis),
+        provisionProzent:
+          m.provision_prozent == null ? null : Number(m.provision_prozent),
+        beauftragtAm: (m.beauftragt_am as string) ?? null,
+        objekt: (o?.name as string) ?? null,
+        objektart: (o?.objektart as string) ?? null,
+        ort: (o?.ort as string) ?? null,
+        kampagnen: kampagnenJeMandat.get(String(m.sf_id)) ?? 0,
+        interessenten: interessenten.get(String(m.sf_id))?.alle ?? 0,
+        interessentenOffen: interessenten.get(String(m.sf_id))?.offen ?? 0,
+        letzteAktivitaet: letzteAktivitaet.get(String(m.sf_id)) ?? null,
+        letzterReport: letzterReport.get(String(m.sf_id)) ?? null,
+        sfGeaendertAm: (m.sf_geaendert_am as string) ?? null,
+      };
+    });
 }
 
 export type MandatRohdaten = {
