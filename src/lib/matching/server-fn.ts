@@ -210,10 +210,9 @@ async function mandateKurz(
 }
 
 /** Aktive Käufer aus dem Markt-Radar der letzten 180 Tage, außer verworfenen. */
-async function marktKaeufer(
+async function radarKaeuferLaden(
   admin: ReturnType<typeof createServiceRoleClient>,
-  objekt: { objektart: string | null; orte: string[]; preis: number | null },
-): Promise<MarktTreffer[]> {
+): Promise<RadarKaeufer[]> {
   const ab = new Date(Date.now() - 180 * 86_400_000).toISOString();
   const { data, error } = await admin
     .from("markt_radar_meldungen")
@@ -226,9 +225,8 @@ async function marktKaeufer(
     .order("created_at", { ascending: false })
     .limit(1000);
   if (error) throw new Error(error.message);
-  const besteJeAkteur = new Map<string, MarktTreffer>();
-  for (const r of data ?? []) {
-    const k: RadarKaeufer = {
+  return (data ?? []).map(
+    (r): RadarKaeufer => ({
       id: String(r.id),
       akteur: String(r.akteur),
       akteurTyp: (r.akteur_typ as string) ?? null,
@@ -245,7 +243,18 @@ async function marktKaeufer(
       sfKontaktSfId: (r.sf_kontakt_sf_id as string) ?? null,
       sfBekanntAls: (r.sf_bekannt_als as string) ?? null,
       status: String(r.status),
-    };
+    }),
+  );
+}
+
+/** Je Akteur die beste Passung zum Objekt, absteigend. */
+function besteMarktTreffer(
+  kaeufer: RadarKaeufer[],
+  objekt: { objektart: string | null; orte: string[]; preis: number | null },
+  max: number,
+): MarktTreffer[] {
+  const besteJeAkteur = new Map<string, MarktTreffer>();
+  for (const k of kaeufer) {
     const t = marktPassung(k, objekt);
     const schluessel = k.akteur.toLowerCase();
     const bisher = besteJeAkteur.get(schluessel);
@@ -253,7 +262,14 @@ async function marktKaeufer(
   }
   return [...besteJeAkteur.values()]
     .sort((a, b) => b.score - a.score)
-    .slice(0, 60);
+    .slice(0, max);
+}
+
+async function marktKaeufer(
+  admin: ReturnType<typeof createServiceRoleClient>,
+  objekt: { objektart: string | null; orte: string[]; preis: number | null },
+): Promise<MarktTreffer[]> {
+  return besteMarktTreffer(await radarKaeuferLaden(admin), objekt, 60);
 }
 
 async function alle<T>(
@@ -1181,5 +1197,71 @@ export const vermarktungsAbgleichFn = createServerFn({ method: "POST" })
           b.treffer.length +
           b.listen.length -
           (a.treffer.length + a.listen.length),
+      );
+  });
+
+export type MarktVermarktungZeile = {
+  mandatSfId: string;
+  objekt: MatchingDto["objekt"];
+  treffer: MarktTreffer[];
+};
+
+/** Ab dieser Passung zeigt der Abgleich einen Marktkäufer an (wie im Käufer-Matching). */
+const MARKT_MINDESTSCORE = 40;
+
+/**
+ * Alle laufenden Vermarktungen (Mandate in Beauftragung) gegen die gerade aktiven Käufer aus der
+ * Online-Recherche (Markt-Radar, letzte 180 Tage, nur belegte Quellen). Schreibt nichts.
+ */
+export const marktVermarktungFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => ({ supabaseAccessToken: tokenAus(data) }))
+  .handler(async ({ data }): Promise<MarktVermarktungZeile[]> => {
+    await pruefeAufrufer(data.supabaseAccessToken);
+    const admin = createServiceRoleClient();
+    const { istTest } = await import("@/lib/uebersicht/berechnen");
+    const { data: mRoh, error } = await admin
+      .from("sf_mandate")
+      .select("*")
+      .eq("status", "Beauftragung");
+    if (error) throw new Error(error.message);
+    const mandate = (mRoh ?? []).filter((m) => !istTest(String(m.name ?? "")));
+    if (!mandate.length) return [];
+    const reIds = mandate
+      .map((m) => m.real_estate_sf_id)
+      .filter(Boolean) as string[];
+    const [objekte, kaeufer] = await Promise.all([
+      reIds.length
+        ? admin
+            .from("sf_real_estate")
+            .select("*")
+            .in("sf_id", reIds)
+            .then((r) => r.data ?? [])
+        : Promise.resolve([]),
+      radarKaeuferLaden(admin),
+    ]);
+    const objektJeId = new Map(
+      objekte.map((o) => [String(o.sf_id), o as Record<string, unknown>]),
+    );
+    return mandate
+      .map((m) => {
+        const objekt = objektMerkmale(
+          m,
+          m.real_estate_sf_id
+            ? (objektJeId.get(String(m.real_estate_sf_id)) ?? null)
+            : null,
+          null,
+        );
+        return {
+          mandatSfId: String(m.sf_id),
+          objekt,
+          treffer: besteMarktTreffer(kaeufer, objekt, 25).filter(
+            (t) => t.score >= MARKT_MINDESTSCORE,
+          ),
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.treffer.length - a.treffer.length ||
+          a.objekt.name.localeCompare(b.objekt.name, "de"),
       );
   });

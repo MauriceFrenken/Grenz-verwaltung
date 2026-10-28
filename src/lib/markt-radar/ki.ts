@@ -41,6 +41,7 @@ ${AUFTRAG[seite]}
 
 Arbeitsweise:
 - Suche in deutschsprachigen Immobiliennews der letzten 7 Tage (z. B. Immobilien Zeitung, Thomas Daily, Property Magazine, immobilienmanager, Börsen-Zeitung, Handelsblatt, Rheinische Post, WAZ, Pressemitteilungen von Maklern und Investoren).
+- Nutze auch öffentlich sichtbare Beiträge von Investoren und Unternehmen auf LinkedIn und Instagram (z. B. „Wir haben erworben …“, neue Ankaufsprofile) sowie frei zugängliche Research- und Transaktionsdatenbanken und Deal-Meldungen. Nur was ohne Anmeldung lesbar ist: keine Logins, Paywalls oder Zugangssperren umgehen.
 - Schwerpunkt Düsseldorf, Rheinland und NRW. Bundesweite Akteure nur, wenn sie in NRW aktiv sind oder ins Profil passen.
 - Nenne nur Akteure, die in einer gefundenen Quelle konkret genannt werden. Erfinde nichts.
 - Bewerte die Relevanz für Grenz & Co. von 0 bis 100: Passen Region, Objektart und Größe? Ist ein Mandat oder eine Käuferansprache realistisch? Große Konzerndeals jenseits von 100 Mio. € oder Akteure ohne NRW-Bezug sind wenig relevant.

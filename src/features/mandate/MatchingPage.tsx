@@ -639,8 +639,8 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                   Extern: gerade aktiv am Markt
                 </h2>
                 <p className="text-xs text-text-subtle">
-                  Käufer aus dem Markt-Radar (Immobiliennews, nur mit belegter
-                  Quelle), bewertet nach Nutzung, Region, Ticketgröße und
+                  Käufer aus der Online-Recherche (Immobiliennews, öffentliche
+                  LinkedIn- und Instagram-Beiträge, nur mit belegter Quelle), bewertet nach Nutzung, Region, Ticketgröße und
                   Aktualität.
                 </p>
               </div>
@@ -708,7 +708,7 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                               title={
                                 sfKontakt
                                   ? undefined
-                                  : "Erst als Kontakt in Salesforce anlegen (Investoren › Markt-Radar)"
+                                  : "Erst als Kontakt in Salesforce anlegen (Investoren › Vermarktungen gegen aktive Käufer › Alle Funde)"
                               }
                             />
                           </td>
