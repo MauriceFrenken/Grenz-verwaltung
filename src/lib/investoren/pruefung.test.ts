@@ -73,6 +73,8 @@ describe("quellenErgaenzung", () => {
       nutzungen: ["Wohnen", "Logistik"],
       volumen_min: 5_000_000,
       volumen_max: 30_000_000,
+      // Leeres Suchgebiet wird aus dem Webprofil gefüllt (seit #39).
+      regionen: ["NRW"],
     });
   });
 });

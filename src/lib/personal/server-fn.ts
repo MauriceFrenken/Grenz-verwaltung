@@ -7,7 +7,9 @@
 
 import { createServerFn } from "@tanstack/react-start";
 
+import { alleSeiten } from "@/lib/server/alle-seiten";
 import { createServiceRoleClient, tokenAus } from "@/lib/server/aufrufer";
+import { stattgefundenZeilen } from "@/lib/sf-sync/zaehlen";
 
 import { datum, kontext, pruefe, text, url, zahl } from "./hilfen.server";
 import { STANDARD_CHECKLISTEN } from "./berechnen";
@@ -593,15 +595,24 @@ export const personalLeistungFn = createServerFn({ method: "POST" })
         .map(async (m): Promise<LeistungZeile> => {
           const sf = String(m.sf_user_id);
           const [akt, termine, mandate, deals] = await Promise.all([
-            admin
-              .from("sf_aktivitaeten")
-              .select("sf_id", { count: "exact", head: true })
-              .eq("owner_sf_user_id", sf)
-              // Erledigte Aufgaben, Termine und E-Mails; offene Aufgaben sind Planung,
-              // E-Mail-Tasks doppeln die EmailMessage (siehe sf-sync/zaehlen.ts).
-              .or("sf_typ.neq.Task,and(status.eq.Completed,art.neq.E-Mail)")
-              .gte("datum", von)
-              .lte("datum", `${bis}T23:59:59Z`),
+            // Zeilen statt count: offene Aufgaben und doppelte E-Mails fallen in
+            // stattgefundenZeilen heraus (siehe sf-sync/zaehlen.ts).
+            alleSeiten<{
+              sf_typ: string | null;
+              art: string | null;
+              status: string | null;
+              betreff: string | null;
+              datum: string | null;
+            }>((a, b) =>
+              admin
+                .from("sf_aktivitaeten")
+                .select("sf_typ, art, status, betreff, datum")
+                .eq("owner_sf_user_id", sf)
+                .gte("datum", von)
+                .lte("datum", `${bis}T23:59:59Z`)
+                .order("sf_id")
+                .range(a, b),
+            ),
             admin
               .from("sf_aktivitaeten")
               .select("sf_id", { count: "exact", head: true })
@@ -631,7 +642,7 @@ export const personalLeistungFn = createServerFn({ method: "POST" })
             mitarbeiterId: String(m.id),
             name: String(m.name),
             sfUserId: sf,
-            aktivitaeten: akt.count ?? 0,
+            aktivitaeten: stattgefundenZeilen(akt).length,
             termine: termine.count ?? 0,
             mandateNeu: mandate.count ?? 0,
             abschluesse: d.length,

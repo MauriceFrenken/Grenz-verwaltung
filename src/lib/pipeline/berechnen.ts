@@ -172,7 +172,11 @@ export type ManuelleStufe = {
 };
 
 export type BasisQuelle =
-  "beurkundet" | "deal" | "exposepreis" | "preisvorstellung" | null;
+  | "beurkundet"
+  | "deal"
+  | "exposepreis"
+  | "preisvorstellung"
+  | null;
 
 export type PipelineDeal = {
   /** Mandat-Id, ohne Mandat die Opportunity-Id. */

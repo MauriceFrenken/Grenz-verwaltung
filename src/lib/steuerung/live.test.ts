@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { zaehltAlsAktivitaet } from "@/lib/sf-sync/zaehlen";
+import { stattgefunden } from "@/lib/sf-sync/zaehlen";
 
 import { berechneMaklerLive, type LiveMandat } from "./live";
 
@@ -186,30 +186,57 @@ describe("berechneMaklerLive", () => {
   });
 });
 
-describe("zaehltAlsAktivitaet", () => {
-  it("unterscheidet Planung, Doppel-E-Mails und Termine", () => {
-    expect(
-      zaehltAlsAktivitaet({ sfTyp: "Task", art: "Anruf", status: "Completed" }),
-    ).toBe(true);
-    expect(
-      zaehltAlsAktivitaet({ sfTyp: "Task", art: "Aufgabe", status: "Open" }),
-    ).toBe(false);
-    expect(
-      zaehltAlsAktivitaet({
+describe("stattgefunden", () => {
+  it("lässt Planung weg und zählt jede E-Mail einmal", () => {
+    const liste = stattgefunden([
+      {
+        sfTyp: "Task",
+        art: "Anruf",
+        status: "Completed",
+        betreff: "Anruf",
+        datum: "2026-10-01T12:00:00Z",
+      },
+      {
+        sfTyp: "Task",
+        art: "Aufgabe",
+        status: "Open",
+        betreff: "Send Letter",
+        datum: "2026-10-01T12:00:00Z",
+      },
+      {
         sfTyp: "Task",
         art: "E-Mail",
         status: "Completed",
-      }),
-    ).toBe(false);
-    expect(
-      zaehltAlsAktivitaet({
+        betreff: "E-Mail: Exposé Birkenstr.",
+        datum: "2026-10-02T12:00:00Z",
+      },
+      {
         sfTyp: "EmailMessage",
         art: "E-Mail",
         status: "3",
-      }),
-    ).toBe(true);
-    expect(
-      zaehltAlsAktivitaet({ sfTyp: "Event", art: "Termin", status: null }),
-    ).toBe(true);
+        betreff: "Exposé Birkenstr.",
+        datum: "2026-10-01T22:30:00Z",
+      },
+      {
+        sfTyp: "EmailMessage",
+        art: "E-Mail",
+        status: "3",
+        betreff: "Alte Mail",
+        datum: "2025-01-10T09:00:00Z",
+      },
+      {
+        sfTyp: "Event",
+        art: "Termin",
+        status: null,
+        betreff: "Besichtigung",
+        datum: "2026-10-03T09:00:00Z",
+      },
+    ]);
+    expect(liste.map((a) => a.betreff)).toEqual([
+      "Anruf",
+      "E-Mail: Exposé Birkenstr.",
+      "Alte Mail",
+      "Besichtigung",
+    ]);
   });
 });

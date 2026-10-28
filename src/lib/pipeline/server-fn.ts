@@ -10,6 +10,7 @@ import {
   pruefeAufrufer,
   tokenAus,
 } from "@/lib/server/aufrufer";
+import { istGeplant } from "@/lib/sf-sync/zaehlen";
 
 import {
   berechnePipeline,
@@ -112,16 +113,27 @@ export const pipelineLadenFn = createServerFn({ method: "POST" })
         "sf_deals",
         "sf_id, name, phase, betrag, abschluss_am, mandat_sf_id, record_type, sf_daten",
       ),
-      alle(admin, "sf_aktivitaeten", "sf_id, mandat_sf_id, datum", [
-        "mandat_sf_id",
-        "datum",
-      ]),
+      alle(
+        admin,
+        "sf_aktivitaeten",
+        "sf_id, mandat_sf_id, datum, sf_typ, art, status",
+        ["mandat_sf_id", "datum"],
+      ),
       ladeManuell(admin),
     ]);
 
     const letzteAktivitaet = new Map<string, string>();
     const heute = new Date().toISOString().slice(0, 10);
     for (const a of aktivitaeten) {
+      // Geplante (offene) Aufgaben sind keine Aktivität, sonst ruht kein Mandat.
+      if (
+        istGeplant({
+          sfTyp: a.sf_typ as string | null,
+          art: a.art as string | null,
+          status: a.status as string | null,
+        })
+      )
+        continue;
       const id = String(a.mandat_sf_id);
       const datum = String(a.datum).slice(0, 10);
       if (datum <= heute && datum > (letzteAktivitaet.get(id) ?? ""))
@@ -132,33 +144,39 @@ export const pipelineLadenFn = createServerFn({ method: "POST" })
       heute,
       letzteAktivitaet,
       manuell: manuell ?? undefined,
-      mandate: mandate.map((m): MandatEingabe => ({
-        sfId: String(m.sf_id),
-        name: String(m.name),
-        status: (m.status as string) ?? null,
-        art: (m.art as string) ?? null,
-        angebotspreis: zahl(m.angebotspreis),
-        provisionProzent: zahl(m.provision_prozent),
-        realEstateSfId: (m.real_estate_sf_id as string) ?? null,
-        daten: daten(m.sf_daten),
-      })),
-      objekte: objekte.map((o): ObjektEingabe => ({
-        sfId: String(o.sf_id),
-        name: String(o.name),
-        ort: (o.ort as string) ?? null,
-        daten: daten(o.sf_daten),
-      })),
+      mandate: mandate.map(
+        (m): MandatEingabe => ({
+          sfId: String(m.sf_id),
+          name: String(m.name),
+          status: (m.status as string) ?? null,
+          art: (m.art as string) ?? null,
+          angebotspreis: zahl(m.angebotspreis),
+          provisionProzent: zahl(m.provision_prozent),
+          realEstateSfId: (m.real_estate_sf_id as string) ?? null,
+          daten: daten(m.sf_daten),
+        }),
+      ),
+      objekte: objekte.map(
+        (o): ObjektEingabe => ({
+          sfId: String(o.sf_id),
+          name: String(o.name),
+          ort: (o.ort as string) ?? null,
+          daten: daten(o.sf_daten),
+        }),
+      ),
       deals: deals
         .filter((d) => !d.record_type || d.record_type === "Real_Estate_Broker")
-        .map((d): DealEingabe => ({
-          sfId: String(d.sf_id),
-          name: String(d.name),
-          phase: (d.phase as string) ?? null,
-          betrag: zahl(d.betrag),
-          abschlussAm: (d.abschluss_am as string) ?? null,
-          mandatSfId: (d.mandat_sf_id as string) ?? null,
-          daten: daten(d.sf_daten),
-        })),
+        .map(
+          (d): DealEingabe => ({
+            sfId: String(d.sf_id),
+            name: String(d.name),
+            phase: (d.phase as string) ?? null,
+            betrag: zahl(d.betrag),
+            abschlussAm: (d.abschluss_am as string) ?? null,
+            mandatSfId: (d.mandat_sf_id as string) ?? null,
+            daten: daten(d.sf_daten),
+          }),
+        ),
     });
     return { ...dto, manuellMoeglich: manuell !== null };
   });

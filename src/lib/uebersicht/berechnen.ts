@@ -4,7 +4,7 @@
  */
 
 import { hatSchriftlichenMaklervertrag } from "@/lib/mandate/maklervertrag";
-import { zaehltAlsAktivitaet } from "@/lib/sf-sync/zaehlen";
+import { stattgefunden } from "@/lib/sf-sync/zaehlen";
 
 export type MandatRoh = {
   sfId: string;
@@ -191,7 +191,7 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
   const mandate = e.mandate.filter((m) => !istTest(m.name));
   const deals = e.deals.filter((d) => !istTest(d.name));
   const mandatJeId = new Map(mandate.map((m) => [m.sfId, m]));
-  const aktivitaeten = e.aktivitaeten.filter(zaehltAlsAktivitaet);
+  const aktivitaeten = stattgefunden(e.aktivitaeten);
 
   const beauftragt = mandate.filter((m) => m.status === "Beauftragung");
   const aktiv = mandate.filter((m) =>

@@ -2,7 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { zaehltAlsAktivitaet } from "@/lib/sf-sync/zaehlen";
+import { istGeplant, stattgefundenZeilen } from "@/lib/sf-sync/zaehlen";
 
 import type {
   AktivitaetZeile,
@@ -128,7 +128,7 @@ export async function ladeMandatsliste(
   for (const a of aktivitaeten) {
     // Nur stattgefundene Aktivität; geplante Aufgaben in der Zukunft zählen nicht.
     if (
-      !zaehltAlsAktivitaet({
+      istGeplant({
         sfTyp: a.sf_typ as string | null,
         art: a.art as string | null,
         status: a.status as string | null,
@@ -443,7 +443,11 @@ export async function ladeVermarktung(
   const objekt = roh.objekt;
   const heute = new Date().toISOString().slice(0, 10);
   const verlauf = beginn
-    ? aktivitaetenJeMonat(roh.aktivitaeten, beginn.slice(0, 10), heute)
+    ? aktivitaetenJeMonat(
+        stattgefundenZeilen(roh.aktivitaeten),
+        beginn.slice(0, 10),
+        heute,
+      )
     : [];
   return {
     ...berechneVermarktung({

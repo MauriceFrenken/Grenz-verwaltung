@@ -234,6 +234,6 @@ describe("Provision mit Maklervertrag", () => {
         ],
       }),
     );
-    expect(u.aktivitaetGesamt4W).toBe(2);
+    expect(u.aktivitaetGesamt4W).toBe(2); // Anruf + eine E-Mail
   });
 });
