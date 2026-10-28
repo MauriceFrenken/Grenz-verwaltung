@@ -174,9 +174,16 @@ async function holeObjekt(
     }
     case "Real_Estate__c": {
       // Nur Objekte mit Mandat.
-      const r = await sfAbfrage(
-        `SELECT ${FELDER.Real_Estate__c} FROM Real_Estate__c WHERE Id IN (SELECT Real_Estate__c FROM Mandate__c)${s}`,
-      );
+      // Ein neues Mandat an einem älteren Objekt ändert dessen SystemModstamp nicht: solche Objekte
+      // fehlen sonst im Cache, bis sie in Salesforce bearbeitet werden. Deshalb vollständig nachholen.
+      const vorhanden = new Set(await idsAus(admin, "sf_real_estate", "sf_id"));
+      const neu = (await idsAus(admin, "sf_mandate", "real_estate_sf_id")).filter((id) => !vorhanden.has(id));
+      const r = eindeutig([
+        ...(await sfAbfrage(
+          `SELECT ${FELDER.Real_Estate__c} FROM Real_Estate__c WHERE Id IN (SELECT Real_Estate__c FROM Mandate__c)${s}`,
+        )),
+        ...(await perIds("Real_Estate__c", FELDER.Real_Estate__c, neu)),
+      ]);
       return { records: r, zeilen: r.map(mappeRealEstate) };
     }
     case "Opportunity": {
