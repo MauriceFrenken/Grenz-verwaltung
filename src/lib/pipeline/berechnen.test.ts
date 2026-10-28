@@ -4,6 +4,7 @@ import {
   berechnePipeline,
   monatPlus,
   prognose,
+  stufeAendern,
   type DealEingabe,
   type MandatEingabe,
 } from "./berechnen";
@@ -152,5 +153,64 @@ describe("prognose", () => {
     expect(monate[0].monat).toBe(monatPlus("2026-10", -6));
     expect(monate.find((m) => m.monat === "2026-12")?.gewichtet).toBe(40_000);
     expect(monate.find((m) => m.monat === "2026-07")?.ist).toBe(50_000);
+  });
+});
+
+describe("manuelle Stufe", () => {
+  const eingabe = {
+    ...basis,
+    mandate: [mandat("a", "Beauftragung", { angebotspreis: 1_000_000 })],
+    deals: [],
+  };
+
+  it("übersteuert die automatische Stufe", () => {
+    const dto = berechnePipeline({
+      ...eingabe,
+      manuell: new Map([
+        [
+          "a",
+          {
+            stufe: "verhandlung",
+            autoStufe: "beauftragt",
+            gesetztAm: "2026-10-27T10:00:00Z",
+            gesetztVon: "Sebastian Grenz",
+          },
+        ],
+      ]),
+    });
+    const d = dto.deals[0];
+    expect(d.stufe).toBe("verhandlung");
+    expect(d.autoStufe).toBe("beauftragt");
+    expect(d.wahrscheinlichkeit).toBe(0.8);
+    expect(d.notarMonat).toBe("2026-12");
+    expect(d.manuell?.gesetztVon).toBe("Sebastian Grenz");
+  });
+
+  it("verfällt, wenn Salesforce die Stufe inzwischen geändert hat", () => {
+    const dto = berechnePipeline({
+      ...eingabe,
+      manuell: new Map([
+        [
+          "a",
+          {
+            stufe: "verhandlung",
+            autoStufe: "einwertung",
+            gesetztAm: "2026-10-01T10:00:00Z",
+            gesetztVon: null,
+          },
+        ],
+      ]),
+    });
+    expect(dto.deals[0].stufe).toBe("beauftragt");
+    expect(dto.deals[0].manuell).toBeNull();
+  });
+
+  it("stufeAendern setzt sofort und hebt bei der automatischen Stufe auf", () => {
+    const dto = berechnePipeline(eingabe);
+    const verschoben = stufeAendern(dto, "a", "notar");
+    expect(verschoben.deals[0].stufe).toBe("notar");
+    expect(verschoben.deals[0].manuell).not.toBeNull();
+    const zurueck = stufeAendern(verschoben, "a", "beauftragt");
+    expect(zurueck.deals[0].manuell).toBeNull();
   });
 });

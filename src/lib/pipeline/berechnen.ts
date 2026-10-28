@@ -158,6 +158,17 @@ export type PipelineEingabe = {
   letzteAktivitaet: Map<string, string>;
   /** ISO-Datum. */
   heute: string;
+  /** In der App gesetzte Stufen je Karten-Id. */
+  manuell?: Map<string, ManuelleStufe>;
+};
+
+/** Von Hand im Board gesetzte Stufe. Gilt, solange Salesforce dieselbe automatische Stufe liefert. */
+export type ManuelleStufe = {
+  stufe: StufeId;
+  /** Automatische Stufe beim Verschieben. */
+  autoStufe: StufeId;
+  gesetztAm: string;
+  gesetztVon: string | null;
 };
 
 export type BasisQuelle =
@@ -191,6 +202,9 @@ export type PipelineDeal = {
   letzteAktivitaet: string | null;
   ruht: boolean;
   hinweise: string[];
+  /** Stufe aus Salesforce, bevor eine manuelle Stufe greift. */
+  autoStufe: StufeId;
+  manuell: { gesetztAm: string; gesetztVon: string | null } | null;
 };
 
 export type PipelineAbschluss = {
@@ -209,6 +223,8 @@ export type PipelineDto = {
   deals: PipelineDeal[];
   abschluesse: PipelineAbschluss[];
   datenhinweise: Datenhinweis[];
+  /** Ob Karten von Hand verschoben werden können (Tabelle pipeline_stufen vorhanden). */
+  manuellMoeglich?: boolean;
 };
 
 function text(v: unknown): string | null {
@@ -353,6 +369,12 @@ export function berechnePipeline(e: PipelineEingabe): PipelineDto {
     }
     if (bester && (s === null || weiter(bester.s, s))) s = bester.s;
     if (s === null) return;
+    const id = m?.sfId ?? fallback?.sfId ?? "";
+    const autoStufe: StufeId = s;
+    const hand = e.manuell?.get(id);
+    // Hat Salesforce die Stufe seit dem Verschieben geändert, gilt wieder Salesforce.
+    const manuell = hand && hand.autoStufe === autoStufe ? hand : null;
+    if (manuell) s = manuell.stufe;
 
     const objekt = m?.realEstateSfId
       ? objektJeId.get(m.realEstateSfId)
@@ -360,6 +382,10 @@ export function berechnePipeline(e: PipelineEingabe): PipelineDto {
         ? objektJeId.get(realEstateVon(fallback) as string)
         : undefined;
     const hinweise: string[] = [];
+    if (hand && !manuell)
+      hinweise.push(
+        "Salesforce hat die Stufe geändert, manuelle Verschiebung aufgehoben",
+      );
 
     // Kaufpreis: beurkundet → Deal → Exposépreis → Preisvorstellung am Objekt.
     let kaufpreis: number | null = null;
@@ -424,7 +450,6 @@ export function berechnePipeline(e: PipelineEingabe): PipelineDto {
         );
     }
 
-    const id = m?.sfId ?? fallback?.sfId ?? "";
     const letzteAktivitaet =
       [
         e.letzteAktivitaet.get(id) ?? null,
@@ -446,6 +471,10 @@ export function berechnePipeline(e: PipelineEingabe): PipelineDto {
       objekt: objekt?.name ?? fallback?.name ?? m?.name ?? "Objekt unbekannt",
       ort: objekt?.ort ?? null,
       stufe: s,
+      autoStufe,
+      manuell: manuell
+        ? { gesetztAm: manuell.gesetztAm, gesetztVon: manuell.gesetztVon }
+        : null,
       sfPhase: bester
         ? (bester.d.phase ?? "ohne Phase")
         : (m?.status ?? "ohne Phase"),
@@ -553,4 +582,34 @@ export function prognose(
     for (const s of STUFEN) m.stufen[s.id] = Math.round(m.stufen[s.id]);
   }
   return monate;
+}
+
+/** Karte im Board auf eine andere Stufe setzen (für die sofortige Anzeige; gespeichert wird serverseitig). */
+export function stufeAendern(
+  dto: PipelineDto,
+  id: string,
+  ziel: StufeId,
+  gesetztVon: string | null = null,
+): PipelineDto {
+  const heuteMonat = dto.heute.slice(0, 7);
+  return {
+    ...dto,
+    deals: dto.deals.map((d) =>
+      d.id !== id
+        ? d
+        : {
+            ...d,
+            stufe: ziel,
+            wahrscheinlichkeit: stufe(ziel).wahrscheinlichkeit,
+            notarMonat:
+              d.notarQuelle === "geschaetzt"
+                ? monatPlus(heuteMonat, stufe(ziel).restMonate)
+                : d.notarMonat,
+            manuell:
+              ziel === d.autoStufe
+                ? null
+                : { gesetztAm: new Date().toISOString(), gesetztVon },
+          },
+    ),
+  };
 }
