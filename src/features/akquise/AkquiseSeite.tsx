@@ -6,7 +6,6 @@ import { RadarListe } from "@/features/markt-radar/RadarListe";
 import { AktivitaetenTab } from "./AktivitaetenTab";
 import { AnschreibenTab } from "./AnschreibenTab";
 import { Ladehinweis, StandLeiste } from "./bausteine";
-import { MassnahmenTab } from "./MassnahmenTab";
 import { PotenzialListe } from "./PotenzialListe";
 import { UebersichtTab } from "./UebersichtTab";
 import { useAkquiseDaten } from "./useAkquiseDaten";
@@ -18,7 +17,6 @@ export const AKQUISE_REITER = [
   { id: "radar", label: "Markt-Radar" },
   { id: "anschreiben", label: "Anschreiben" },
   { id: "aktivitaeten", label: "Aktivitäten" },
-  { id: "massnahmen", label: "Maßnahmen" },
 ] as const;
 
 export type AkquiseReiter = (typeof AKQUISE_REITER)[number]["id"];
@@ -27,7 +25,7 @@ export function akquisePfad(reiter: AkquiseReiter): string {
   return reiter === "uebersicht" ? "/akquise" : `/akquise/${reiter}`;
 }
 
-/** Akquise: Verkäufer aus Salesforce und dem Markt-Radar, Anschreiben, Anrufe, Termine und Maßnahmen. */
+/** Akquise: Verkäufer aus Salesforce und dem Markt-Radar, Anschreiben, Anrufe und Termine. */
 export function AkquiseSeite({ reiter }: { reiter: AkquiseReiter }) {
   return (
     <>
@@ -75,8 +73,6 @@ function SalesforceInhalt({ reiter }: { reiter: AkquiseReiter }) {
         <AnschreibenTab daten={daten} />
       ) : reiter === "aktivitaeten" ? (
         <AktivitaetenTab daten={daten} />
-      ) : reiter === "massnahmen" ? (
-        <MassnahmenTab daten={daten} />
       ) : (
         <UebersichtTab daten={daten} />
       )}

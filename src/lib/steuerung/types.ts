@@ -1,11 +1,17 @@
 export type MaklerDto = {
   /** Jüngster Datenstand (ISO) und Quelle der Auszüge. */
   stand: string | null;
+  /** Salesforce-Zahlen live aus dem Cache (sonst aus dem importierten Auszug). */
+  salesforceLive?: { letzterAbruf: string | null };
   quellen: string[];
   kacheln: {
+    /** Provision beauftragter Mandate mit schriftlichem Maklervertrag (netto). */
     pipelineProvision: number;
+    /** Provision aller beauftragten Mandate mit Preis, inkl. loser Beauftragung und Off-Market. */
+    pipelineProvisionAlle?: number;
     pipelinePreise: number;
     beauftragt: number;
+    beauftragtMitVertrag?: number;
     beauftragtOhnePreis: number;
     gewinnquote: number | null;
     vermittelterKaufpreis: number;

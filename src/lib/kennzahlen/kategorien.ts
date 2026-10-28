@@ -143,6 +143,9 @@ export function kategorisiere(
 ): Kategorie {
   const gegen = b.gegenkontoIban?.replace(/\s+/g, "").toUpperCase() ?? "";
   if (gegen && eigeneIbans.has(gegen)) return "intern";
+  // Umbuchungen von Tagesgeld-/Unterkonten der Gesellschaft, deren IBAN nicht hinterlegt ist.
+  if (/^grenz\s*&\s*co\b/i.test((b.auftraggeberName ?? "").trim()))
+    return "intern";
 
   const t = text(b);
   if (b.betrag > 0) {

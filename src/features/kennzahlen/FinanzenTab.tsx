@@ -279,7 +279,7 @@ export function FinanzenTab() {
             <Kachel
               titel={`Provisionen ${daten.jahr}`}
               wert={formatEuro(daten.provisionNetto)}
-              unterzeile={`${daten.anzahlProvisionen} Zahlungen · brutto ${formatEuro(daten.provisionBrutto)}`}
+              unterzeile={`netto, ohne USt · ${daten.anzahlProvisionen} ${daten.anzahlProvisionen === 1 ? "Zahlung" : "Zahlungen"}`}
             />
             <Kachel
               titel={`Ausgaben ${daten.jahr}`}
@@ -519,8 +519,7 @@ export function FinanzenTab() {
                 kopf={[
                   { titel: "Datum" },
                   { titel: "Zahler / Objekt" },
-                  { titel: "Netto", rechts: true },
-                  { titel: "Brutto", rechts: true },
+                  { titel: "Provision netto", rechts: true },
                 ]}
                 leer={
                   daten.provisionen.length
@@ -539,19 +538,18 @@ export function FinanzenTab() {
                         </div>
                       ) : null}
                     </td>
-                    <td className={zelleRechts}>{formatEuro(p.netto)}</td>
                     <td className={`${zelleRechts} font-medium`}>
-                      {formatEuro(p.brutto)}
+                      {formatEuro(p.netto)}
                     </td>
                   </tr>
                 ))}
               </Tabelle>
             </Karte>
-            <Karte titel="Provisionen nach Zahler">
+            <Karte titel="Provisionen nach Zahler" hinweis="netto, ohne USt">
               <BalkenListe
                 zeilen={daten.provisionsZahler.map((z) => ({
                   name: z.name,
-                  wert: z.brutto,
+                  wert: z.netto,
                   zusatz: z.anzahl > 1 ? `${z.anzahl}×` : undefined,
                 }))}
                 format={formatEuro}

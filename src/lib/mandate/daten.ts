@@ -2,6 +2,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { zaehltAlsAktivitaet } from "@/lib/sf-sync/zaehlen";
+
 import type {
   AktivitaetZeile,
   DealZeile,
@@ -100,7 +102,7 @@ export async function ladeMandatsliste(
     alleZeilen<Record<string, unknown>>((a, b) =>
       admin
         .from("sf_aktivitaeten")
-        .select("mandat_sf_id, datum")
+        .select("mandat_sf_id, datum, sf_typ, art, status")
         .not("mandat_sf_id", "is", null)
         .not("datum", "is", null)
         .order("sf_id")
@@ -112,13 +114,30 @@ export async function ladeMandatsliste(
     const id = String(d.mandat_sf_id);
     const x = interessenten.get(id) ?? { alle: 0, offen: 0 };
     x.alle += 1;
-    if (String(d.phase ?? "").toLowerCase() !== "closed lost") x.offen += 1;
+    // Offen = weder verloren noch bezahlt/gewonnen.
+    if (
+      !["closed lost", "invoice paid", "closed won"].includes(
+        String(d.phase ?? "").toLowerCase(),
+      )
+    )
+      x.offen += 1;
     interessenten.set(id, x);
   }
   const letzteAktivitaet = new Map<string, string>();
+  const jetzt = new Date().toISOString();
   for (const a of aktivitaeten) {
+    // Nur stattgefundene Aktivität; geplante Aufgaben in der Zukunft zählen nicht.
+    if (
+      !zaehltAlsAktivitaet({
+        sfTyp: a.sf_typ as string | null,
+        art: a.art as string | null,
+        status: a.status as string | null,
+      })
+    )
+      continue;
     const id = String(a.mandat_sf_id);
     const datum = String(a.datum);
+    if (datum > jetzt) continue;
     if (datum > (letzteAktivitaet.get(id) ?? ""))
       letzteAktivitaet.set(id, datum);
   }

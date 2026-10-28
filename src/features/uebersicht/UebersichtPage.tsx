@@ -125,24 +125,29 @@ function Dashboard({ daten }: { daten: UebersichtDto }) {
 
       <KachelReihe>
         <Kachel
-          titel="Provision in der Pipeline"
-          wert={euroKurz(k.provisionPipeline)}
-          unterzeile={`aus ${k.mandateMitProvision} beauftragten Mandaten mit Preis`}
+          titel="Provision mit Maklervertrag"
+          wert={euroKurz(k.provisionVertrag)}
+          unterzeile={`${k.mandateMitVertrag} beauftragte ${k.mandateMitVertrag === 1 ? "Mandat" : "Mandate"} mit schriftlichem Maklervertrag, netto`}
+          nebenwert={`Alle ${k.beauftragtGesamt} beauftragten Mandate: ${euroKurz(k.provisionPipeline)} (${k.mandateMitProvision} mit Preis, inkl. lose Beauftragung und Off-Market)`}
         />
         <Kachel
           titel="Aktive Mandate"
           wert={formatInt(k.aktiveMandate)}
-          unterzeile={`${k.neueMandate4W} neu in 4 Wochen (${vergleich(k.neueMandate4W, k.neueMandateVor4W)})`}
+          unterzeile={k.aktivJePhase
+            .map((p) => `${p.anzahl} ${p.phase}`)
+            .join(" · ")}
+          nebenwert={`${k.neueMandate4W} neu in 4 Wochen (${vergleich(k.neueMandate4W, k.neueMandateVor4W)})`}
         />
         <Kachel
-          titel={`Provision ${jahr} (Abschlüsse)`}
+          titel={`Provision ${jahr} netto`}
           wert={euroKurz(k.provisionJahr)}
-          unterzeile={`${k.abschluesseJahr} ${k.abschluesseJahr === 1 ? "Verkauf" : "Verkäufe"} · ${euroKurz(k.kaufpreisJahr)} Kaufpreis vermittelt`}
+          unterzeile={`${k.abschluesseJahr} ${k.abschluesseJahr === 1 ? "Verkauf" : "Verkäufe"} bezahlt, ohne USt · ${euroKurz(k.kaufpreisJahr)} Kaufpreis vermittelt`}
         />
         <Kachel
-          titel="Offene Interessenten"
+          titel="Kaufinteressenten mit Deal"
           wert={formatInt(k.offeneInteressenten)}
           unterzeile={`${k.imDatenraum} im Datenraum`}
+          nebenwert="Offene Interessenten-Deals (Opportunities) in Salesforce, noch nicht gewonnen oder verloren"
         />
       </KachelReihe>
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { akquiseBerechnen, aktivitaetenSicht } from "./berechnen";
-import { klassifiziere } from "./klassifizieren";
+import { bereichVon, klassifiziere } from "./klassifizieren";
 import type { RohAufgabe, RohPerson, Rohdaten } from "./typen";
 
 function lead(id: string, extra: Partial<RohPerson> = {}): RohPerson {
@@ -244,5 +244,58 @@ describe("akquiseBerechnen", () => {
       heute,
     );
     expect(niemand.summen).toEqual([]);
+  });
+});
+
+describe("bereichVon", () => {
+  const anruf = (
+    wer: Partial<RohPerson> | null,
+    worauf: RohAufgabe["worauf"] = null,
+  ): RohAufgabe => ({
+    id: "00T1",
+    typ: "Task",
+    betreff: "Anruf",
+    subtyp: "Call",
+    status: "Completed",
+    faelligAm: null,
+    erledigtAm: "2026-10-01T10:00:00.000Z",
+    erstelltAm: "2026-10-01T10:00:00.000Z",
+    bearbeiter: "Sebastian Grenz",
+    wer: wer
+      ? ({
+          id: "003X",
+          typ: "Contact",
+          name: "Eigentümer",
+          ...wer,
+        } as RohPerson)
+      : null,
+    worauf,
+  });
+
+  it("ordnet Anrufe bei Mandats-Eigentümern der Akquise zu", () => {
+    const eigentuemer = new Set(["001E"]);
+    expect(bereichVon(anruf({ accountId: "001E" }), "anruf", eigentuemer)).toBe(
+      "akquise",
+    );
+    expect(bereichVon(anruf({ accountId: "001K" }), "anruf", eigentuemer)).toBe(
+      "allgemein",
+    );
+    expect(
+      bereichVon(
+        anruf(null, { id: "a06M", typ: "Mandate__c", name: "M-1" }),
+        "anruf",
+        eigentuemer,
+      ),
+    ).toBe("akquise");
+    expect(
+      bereichVon(
+        anruf(
+          { accountId: "001E" },
+          { id: "701C", typ: "Campaign", name: "Vermarktung" },
+        ),
+        "anruf",
+        eigentuemer,
+      ),
+    ).toBe("vermarktung");
   });
 });

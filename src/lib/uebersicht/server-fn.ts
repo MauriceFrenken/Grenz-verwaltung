@@ -8,6 +8,8 @@ import {
   tokenAus,
 } from "@/lib/server/aufrufer";
 
+import { alleSeiten } from "@/lib/server/alle-seiten";
+
 import { berechneUebersicht, type UebersichtDto } from "./berechnen";
 
 export type { UebersichtDto };
@@ -35,7 +37,7 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
         admin
           .from("sf_mandate")
           .select(
-            "sf_id, name, status, angebotspreis, provision_prozent, real_estate_sf_id, prognose:sf_daten->Prognostizierte_Provision__c, erstellt:sf_daten->>CreatedDate",
+            "sf_id, name, status, art, angebotspreis, provision_prozent, real_estate_sf_id, prognose:sf_daten->Prognostizierte_Provision__c, erstellt:sf_daten->>CreatedDate",
           )
           .limit(5000),
         admin.from("sf_real_estate").select("sf_id, name").limit(5000),
@@ -45,34 +47,31 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
             "sf_id, name, phase, betrag, abschluss_am, mandat_sf_id, geschlossen:sf_daten->IsClosed, gewonnen:sf_daten->IsWon, provision:sf_daten->Provision_in__c, kaufpreis:sf_daten->Beurkundeter_Kaufpreis_in__c, erstellt:sf_daten->>CreatedDate",
           )
           .limit(5000),
-        admin
-          .from("sf_aktivitaeten")
-          .select("datum, art, betreff, mandat_sf_id")
-          .gte("datum", ab)
-          .order("datum", { ascending: false })
-          .limit(5000),
+        alleSeiten<Record<string, unknown>>((a, b) =>
+          admin
+            .from("sf_aktivitaeten")
+            .select("datum, sf_typ, status, art, betreff, mandat_sf_id")
+            .gte("datum", ab)
+            .order("sf_id")
+            .range(a, b),
+        ),
         admin
           .from("eigentuemer_reports")
           .select("mandat_sf_id, created_at")
           .limit(5000),
-        admin
-          .from("postfach_exposes")
-          .select("status, eingegangen_am")
-          .limit(5000),
+        alleSeiten<Record<string, unknown>>((a, b) =>
+          admin
+            .from("postfach_exposes")
+            .select("status, eingegangen_am")
+            .order("id")
+            .range(a, b),
+        ),
         admin
           .from("sf_sync_stand")
           .select("letzter_abruf_am")
           .not("letzter_abruf_am", "is", null),
       ]);
-    for (const r of [
-      mandate,
-      objekte,
-      deals,
-      aktivitaeten,
-      reports,
-      exposes,
-      stand,
-    ])
+    for (const r of [mandate, objekte, deals, reports, stand])
       if (r.error) throw new Error(r.error.message);
 
     const objektName = new Map(
@@ -95,6 +94,7 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
         sfId: String(m.sf_id),
         name: String(m.name),
         status: text(m.status),
+        art: text(m.art),
         angebotspreis: zahl(m.angebotspreis),
         provisionProzent: zahl(m.provision_prozent),
         provisionPrognose: zahl(m.prognose),
@@ -116,14 +116,16 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
         kaufpreis: zahl(d.kaufpreis),
         erstelltAm: text(d.erstellt),
       })),
-      aktivitaeten: (aktivitaeten.data ?? []).map((a) => ({
+      aktivitaeten: aktivitaeten.map((a) => ({
         datum: String(a.datum),
+        sfTyp: text(a.sf_typ),
+        status: text(a.status),
         art: text(a.art),
         betreff: text(a.betreff),
         mandatSfId: text(a.mandat_sf_id),
       })),
       letzterReport,
-      exposes: (exposes.data ?? []).map((x) => ({
+      exposes: exposes.map((x) => ({
         status: text(x.status),
         eingegangenAm: text(x.eingegangen_am),
       })),

@@ -10,6 +10,11 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDate, formatEuro } from "@/lib/format";
 import type { MandatListenEintrag } from "@/lib/mandate/daten";
+import {
+  beauftragungsartKurz,
+  hatSchriftlichenMaklervertrag,
+} from "@/lib/mandate/maklervertrag";
+import { cn } from "@/lib/utils";
 
 import { MandateBereichReiter } from "./MandateBereichReiter";
 
@@ -116,6 +121,7 @@ export function MandateListePage() {
                   <th className="px-3 py-2">Mandat</th>
                   <th className="px-3 py-2">Objekt</th>
                   <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2">Beauftragung</th>
                   <th className="px-3 py-2 text-right">Angebotspreis</th>
                   <th className="px-3 py-2 text-right">Provision</th>
                   <th className="px-3 py-2">Beauftragt</th>
@@ -147,6 +153,19 @@ export function MandateListePage() {
                       ) : null}
                     </td>
                     <td className="px-3 py-2">{m.status ?? "k. A."}</td>
+                    <td
+                      className={cn(
+                        "px-3 py-2",
+                        hatSchriftlichenMaklervertrag(m.art)
+                          ? "font-medium text-heading"
+                          : "text-text-muted",
+                      )}
+                      title={
+                        m.art ?? "Beauftragungsart in Salesforce nicht gepflegt"
+                      }
+                    >
+                      {beauftragungsartKurz(m.art)}
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {m.angebotspreis
                         ? formatEuro(m.angebotspreis)

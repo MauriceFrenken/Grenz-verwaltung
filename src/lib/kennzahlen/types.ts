@@ -88,7 +88,7 @@ export type KennzahlenDto = {
   /** Laufende Summen über das Jahr (für Break-even-Sicht). */
   kumuliert: Array<{ monat: string; provisionen: number; ausgaben: number }>;
   /** Provisionen gruppiert nach Zahler. */
-  provisionsZahler: Array<{ name: string; anzahl: number; brutto: number }>;
+  provisionsZahler: Array<{ name: string; anzahl: number; netto: number }>;
   provisionen: Array<{
     datum: string;
     zahler: string;

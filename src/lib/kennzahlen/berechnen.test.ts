@@ -112,6 +112,14 @@ describe("kategorisiere", () => {
       { betrag: 301.61, auftraggeberName: "STEUERVERWALTUNG NRW" },
       "erstattung",
     ],
+    [
+      {
+        betrag: 50000,
+        auftraggeberName: "Grenz & Co. Immobilienberatungs - GmbH",
+        verwendungszweck: "Überweisungsgutschrift",
+      },
+      "intern",
+    ],
   ])("%o → %s", (teil, erwartet) => {
     expect(kategorisiere(b(teil), eigene)).toBe(erwartet);
   });

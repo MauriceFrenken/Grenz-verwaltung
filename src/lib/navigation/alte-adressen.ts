@@ -27,6 +27,8 @@ const ALTE_ADRESSEN: Array<{
     muster: /^\/akquise\/salesforce(?:\/(anschreiben|aktivitaeten))?$/,
     ziel: (m) => ({ pfad: m[1] ? `/akquise/${m[1]}` : "/akquise" }),
   },
+  // Reiter Maßnahmen der Akquise am 28.10.2026 entfernt (Wunsch Maurice).
+  { muster: /^\/akquise\/massnahmen$/, ziel: () => ({ pfad: "/akquise" }) },
   // Deal-Pipeline ist seit 28.10.2026 ein Reiter von Mandate & Pipeline (Akquise).
   { muster: /^\/pipeline$/, ziel: () => ({ pfad: "/mandate/pipeline" }) },
   // Mandatsakte: Bewertung entfernt, Exposé-Editor und „Exposé & Teaser“ im Reiter Exposé.
