@@ -5,48 +5,76 @@
  */
 
 import {
-  rangliste,
+  KEINE_SIGNALE,
+  kaeuferScore,
+  nachKreis,
+  type InvestorSignale,
+  type KaeuferScore,
+} from "./kaeufer-score";
+import {
+  bewerteProfil,
   type MatchErgebnis,
   type ObjektMerkmale,
   type ProfilZeile,
 } from "./score";
 
-/** Ab hier gilt ein Treffer als qualifiziert: guter Score und mindestens zwei der Kernkriterien belegt. */
-export const MIN_SCORE = 70;
-export const MIN_ABDECKUNG = 50;
+/** Qualifiziert für eine Vermarktung sind A- und B-Kreis (Scoring-Modell kaeufer-score.ts). */
+export const QUALIFIZIERTE_KREISE = ["A", "B"] as const;
 
-export type Qualifiziert = MatchErgebnis & { gruende: string[] };
+export type Qualifiziert = MatchErgebnis & {
+  /** Reine Objektpassung aus den Ankaufskriterien (score.ts), score ist das Scoring-Modell. */
+  passung: number;
+  gruende: string[];
+  bewertung: KaeuferScore;
+};
 
-/** Was für den Treffer spricht, in Kurzform für die Liste. */
-export function gruende(e: MatchErgebnis): string[] {
-  return e.kriterien
-    .filter((k) => k.punkte != null && k.punkte >= 70)
-    .map((k) => k.begruendung);
+/** Was für den Treffer spricht, in Kurzform für die Liste: Bausteine mit mindestens 70 % der Punkte. */
+export function gruende(b: KaeuferScore): string[] {
+  return b.bausteine
+    .filter((x) => x.belegt && x.punkte >= x.max * 0.7)
+    .map((x) => x.begruendung);
+}
+
+/** Profil bewerten: Passung je Kriterium plus Scoring-Modell, Score und Ausschluss aus dem Modell. */
+export function bewerteMitScore(
+  objekt: ObjektMerkmale,
+  p: ProfilZeile,
+  signale: InvestorSignale = KEINE_SIGNALE,
+  heute = new Date(),
+): Qualifiziert {
+  const e = bewerteProfil(objekt, p);
+  const bewertung = kaeuferScore(objekt, e, signale, heute);
+  return {
+    ...e,
+    passung: e.score,
+    score: bewertung.score,
+    ausschluss: bewertung.ausschluss != null,
+    bewertung,
+    gruende: gruende(bewertung),
+  };
 }
 
 /**
- * Qualifizierte Treffer eines Objekts: kein Ausschluss, Score und Abdeckung über der Schwelle,
- * ohne die schon angesprochenen Profile. Reihenfolge wie im Käufer-Matching.
+ * Qualifizierte Treffer eines Objekts: A- und B-Kreis laut Scoring-Modell, ohne die schon
+ * angesprochenen Profile. Reihenfolge: Kreis, dann Score.
  */
 export function qualifizierteTreffer(
   objekt: ObjektMerkmale,
   profile: ProfilZeile[],
   opts: {
-    gewichtung?: Map<string, number>;
+    signale?: (p: ProfilZeile) => InvestorSignale;
     ausschliessen?: (p: ProfilZeile) => boolean;
+    kreise?: readonly string[];
     max?: number;
   } = {},
 ): Qualifiziert[] {
-  const kandidaten = opts.ausschliessen
-    ? profile.filter((p) => !opts.ausschliessen!(p))
-    : profile;
-  return rangliste(objekt, kandidaten, opts.gewichtung)
-    .filter(
-      (e) =>
-        !e.ausschluss && e.score >= MIN_SCORE && e.abdeckung >= MIN_ABDECKUNG,
-    )
-    .slice(0, opts.max ?? 50)
-    .map((e) => ({ ...e, gruende: gruende(e) }));
+  const kreise = opts.kreise ?? QUALIFIZIERTE_KREISE;
+  return profile
+    .filter((p) => !opts.ausschliessen?.(p))
+    .map((p) => bewerteMitScore(objekt, p, opts.signale?.(p)))
+    .filter((e) => kreise.includes(e.bewertung.kreis))
+    .sort(nachKreis)
+    .slice(0, opts.max ?? 50);
 }
 
 type ListenRoh = {

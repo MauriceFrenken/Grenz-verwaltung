@@ -18,7 +18,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatDate, formatEuro } from "@/lib/format";
 import type { MatchingDto } from "@/lib/matching/server-fn";
 
+import {
+  KreisMarke,
+  ScoreAufschluesselung,
+  ScoreModellHinweis,
+} from "./KaeuferScore";
 import { MandatReiter } from "./MandatReiter";
+
+const KREIS_FILTER: Record<string, { label: string; kreise: string[] }> = {
+  A: { label: "nur A-Kreis", kreise: ["A"] },
+  AB: { label: "A und B", kreise: ["A", "B"] },
+  ABC: { label: "A, B und C", kreise: ["A", "B", "C"] },
+  alle: { label: "alle", kreise: ["A", "B", "C", "unter"] },
+};
 
 function ScoreBalken({ wert, gedimmt }: { wert: number; gedimmt?: boolean }) {
   return (
@@ -53,7 +65,7 @@ export function MatchingPage({ sfId }: { sfId: string }) {
   const [offen, setOffen] = useState<string | null>(null);
   const [auswahl, setAuswahl] = useState<Set<string>>(new Set());
   const [mitAusschluss, setMitAusschluss] = useState(false);
-  const [mindestScore, setMindestScore] = useState(60);
+  const [kreisFilter, setKreisFilter] = useState("ABC");
   const [kampagnenName, setKampagnenName] = useState("");
   const [busy, setBusy] = useState(false);
   const [marktAlle, setMarktAlle] = useState(false);
@@ -84,15 +96,20 @@ export function MatchingPage({ sfId }: { sfId: string }) {
 
   const sichtbar = useMemo(
     () =>
-      (dto?.treffer ?? []).filter(
-        (t) => (mitAusschluss || !t.ausschluss) && t.score >= mindestScore,
+      (dto?.treffer ?? []).filter((t) =>
+        t.ausschluss
+          ? mitAusschluss
+          : KREIS_FILTER[kreisFilter].kreise.includes(t.bewertung.kreis),
       ),
-    [dto, mitAusschluss, mindestScore],
+    [dto, mitAusschluss, kreisFilter],
   );
 
   const listenSichtbar = useMemo(
-    () => (dto?.listen ?? []).filter((t) => t.score >= mindestScore),
-    [dto, mindestScore],
+    () =>
+      (dto?.listen ?? []).filter((t) =>
+        KREIS_FILTER[kreisFilter].kreise.includes(t.kreis),
+      ),
+    [dto, kreisFilter],
   );
 
   const listenAnlegen = async () => {
@@ -290,15 +307,18 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                 </select>
               </label>
               <label className="flex flex-col gap-1 text-text-subtle">
-                Mindest-Score
-                <Input
-                  type="number"
-                  className="w-24"
-                  min={0}
-                  max={100}
-                  value={mindestScore}
-                  onChange={(e) => setMindestScore(Number(e.target.value) || 0)}
-                />
+                Kreis
+                <select
+                  className="h-9 border border-input bg-background px-2 text-sm"
+                  value={kreisFilter}
+                  onChange={(e) => setKreisFilter(e.target.value)}
+                >
+                  {Object.entries(KREIS_FILTER).map(([k, f]) => (
+                    <option key={k} value={k}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="flex items-center gap-2 pb-2">
                 <input
@@ -306,7 +326,8 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                   checked={mitAusschluss}
                   onChange={(e) => setMitAusschluss(e.target.checked)}
                 />
-                Ausschlüsse zeigen (falsche Nutzung oder Region)
+                Ausschlüsse zeigen (DO_NOT_CONTACT, Absage, falsche Nutzung oder
+                Region)
               </label>
               <span className="pb-2 text-text-subtle">
                 {sichtbar.length} von {dto.profileGesamt}{" "}
@@ -329,6 +350,13 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                 Kontakte, die bei ähnlichen Grenz-Mandaten Interesse gezeigt
                 haben.
               </p>
+              <ScoreModellHinweis />
+              {!o?.preis ? (
+                <p className="text-xs font-medium text-warn">
+                  Angebotspreis fehlt im Mandat: Volumen und Faktor zählen nur
+                  mit 40 %, dadurch erreicht kaum ein Investor den A-Kreis.
+                </p>
+              ) : null}
             </div>
             <h3 className="text-sm font-semibold text-heading">
               Ankaufsprofile in Salesforce
@@ -338,10 +366,16 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                 <thead className="bg-surface-muted text-left text-xs text-text-subtle">
                   <tr>
                     <th className="w-8 px-2 py-2" />
+                    <th className="px-2 py-2">Kreis</th>
                     <th className="px-2 py-2">Investor</th>
                     <th className="px-2 py-2">Profil</th>
                     <th className="px-2 py-2">Score</th>
-                    <th className="px-2 py-2 text-right">Abdeckung</th>
+                    <th
+                      className="px-2 py-2 text-right"
+                      title="Reine Objektpassung aus den Ankaufskriterien und deren Abdeckung"
+                    >
+                      Passung
+                    </th>
                     <th className="px-2 py-2">Hinweis</th>
                   </tr>
                 </thead>
@@ -364,6 +398,9 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                             }
                             aria-label="Für Kampagne auswählen"
                           />
+                        </td>
+                        <td className="px-2 py-2">
+                          <KreisMarke kreis={t.bewertung.kreis} />
                         </td>
                         <td className="px-2 py-2">
                           <button
@@ -410,8 +447,9 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                         <td className="px-2 py-2">
                           <ScoreBalken wert={t.score} gedimmt={t.ausschluss} />
                         </td>
-                        <td className="px-2 py-2 text-right tabular-nums text-text-subtle">
-                          {t.abdeckung} %
+                        <td className="px-2 py-2 text-right tabular-nums text-xs text-text-subtle">
+                          {t.passung}
+                          <span className="block">{t.abdeckung} % belegt</span>
                         </td>
                         <td className="px-2 py-2 text-xs">
                           {t.bereitsAngesprochen
@@ -431,20 +469,8 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                       {offen === t.profilSfId ? (
                         <tr className="bg-surface-muted/50">
                           <td />
-                          <td colSpan={5} className="px-2 pb-3 text-xs">
-                            <ul className="flex flex-col gap-1">
-                              {t.kriterien.map((k) => (
-                                <li key={k.id} className="flex gap-3">
-                                  <span className="w-24 shrink-0 text-text-subtle">
-                                    {k.label} ({k.gewicht})
-                                  </span>
-                                  <span className="w-10 shrink-0 text-right tabular-nums">
-                                    {k.punkte ?? "k. A."}
-                                  </span>
-                                  <span>{k.begruendung}</span>
-                                </li>
-                              ))}
-                            </ul>
+                          <td colSpan={6} className="px-2 pb-3">
+                            <ScoreAufschluesselung b={t.bewertung} />
                           </td>
                         </tr>
                       ) : null}
@@ -461,9 +487,9 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                   ({listenSichtbar.length})
                 </h3>
                 <p className="text-xs text-text-subtle">
-                  Aus 7Plus, Leadliste, Suchkunden und Recherche, mindestens
-                  zwei Kernkriterien belegt. Für die Kampagne zuerst in
-                  Salesforce anlegen.
+                  Aus 7Plus, Leadliste, Suchkunden und Recherche, gleiches
+                  Scoring-Modell (ohne Historie bei Grenz meist B- oder
+                  C-Kreis). Für die Kampagne zuerst in Salesforce anlegen.
                 </p>
               </div>
               <Button
@@ -481,9 +507,9 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                   <thead className="sticky top-0 bg-surface-muted text-left text-xs text-text-subtle">
                     <tr>
                       <th className="w-8 px-2 py-2" />
+                      <th className="px-2 py-2">Kreis</th>
                       <th className="px-2 py-2">Investor</th>
                       <th className="px-2 py-2">Score</th>
-                      <th className="px-2 py-2 text-right">Abdeckung</th>
                       <th className="px-2 py-2">Warum</th>
                     </tr>
                   </thead>
@@ -509,6 +535,9 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                           />
                         </td>
                         <td className="px-2 py-2">
+                          <KreisMarke kreis={t.kreis} />
+                        </td>
+                        <td className="px-2 py-2">
                           <span className="font-medium text-heading">
                             {t.firma ?? t.person ?? "k. A."}
                           </span>
@@ -527,10 +556,15 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                         <td className="px-2 py-2">
                           <ScoreBalken wert={t.score} />
                         </td>
-                        <td className="px-2 py-2 text-right tabular-nums text-text-subtle">
-                          {t.abdeckung} %
-                        </td>
-                        <td className="px-2 py-2 text-xs text-text-muted">
+                        <td
+                          className="px-2 py-2 text-xs text-text-muted"
+                          title={t.bewertung.bausteine
+                            .map(
+                              (b) =>
+                                `${b.label}: ${b.punkte}/${b.max} – ${b.begruendung}`,
+                            )
+                            .join("\n")}
+                        >
                           {t.gruende.join(" ")}
                         </td>
                       </tr>
@@ -640,8 +674,8 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                 </h2>
                 <p className="text-xs text-text-subtle">
                   Käufer aus der Online-Recherche (Immobiliennews, öffentliche
-                  LinkedIn- und Instagram-Beiträge, nur mit belegter Quelle), bewertet nach Nutzung, Region, Ticketgröße und
-                  Aktualität.
+                  LinkedIn- und Instagram-Beiträge, nur mit belegter Quelle),
+                  bewertet nach Nutzung, Region, Ticketgröße und Aktualität.
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs">

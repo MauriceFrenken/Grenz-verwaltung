@@ -15,11 +15,22 @@ import { GRENZ_DEAL_RECORD_TYPE } from "@/lib/sf-sync/config";
 import { mitSfZugangOderSitzung, sfSitzungAus } from "@/lib/sf-sync/zugang";
 
 import {
-  rangliste,
+  KEINE_SIGNALE,
+  nachKreis,
+  type InvestorSignale,
+  type KaeuferScore,
+  type Kreis,
+} from "./kaeufer-score";
+import {
   type MatchErgebnis,
   type ObjektMerkmale,
   type ProfilZeile,
 } from "./score";
+import {
+  bewerteMitScore,
+  qualifizierteTreffer,
+  type Qualifiziert,
+} from "./vermarktung";
 import {
   historieTreffer,
   marktPassung,
@@ -37,6 +48,9 @@ function text(wert: unknown, max = 200): string {
 }
 
 export type MatchTreffer = MatchErgebnis & {
+  /** Reine Objektpassung aus den Ankaufskriterien (bisheriger Score); score ist das Scoring-Modell. */
+  passung: number;
+  bewertung: KaeuferScore;
   profilName: string | null;
   investorTyp: string | null;
   kontaktSfId: string | null;
@@ -225,26 +239,24 @@ async function radarKaeuferLaden(
     .order("created_at", { ascending: false })
     .limit(1000);
   if (error) throw new Error(error.message);
-  return (data ?? []).map(
-    (r): RadarKaeufer => ({
-      id: String(r.id),
-      akteur: String(r.akteur),
-      akteurTyp: (r.akteur_typ as string) ?? null,
-      ereignis: String(r.ereignis),
-      objektart: (r.objektart as string) ?? null,
-      ort: (r.ort as string) ?? null,
-      volumenEur: r.volumen_eur != null ? Number(r.volumen_eur) : null,
-      ereignisAm: (r.ereignis_am as string) ?? null,
-      createdAt: String(r.created_at),
-      relevanz: Number(r.relevanz) || 0,
-      quelleUrl: String(r.quelle_url),
-      quelleTitel: (r.quelle_titel as string) ?? null,
-      quelleMedium: (r.quelle_medium as string) ?? null,
-      sfKontaktSfId: (r.sf_kontakt_sf_id as string) ?? null,
-      sfBekanntAls: (r.sf_bekannt_als as string) ?? null,
-      status: String(r.status),
-    }),
-  );
+  return (data ?? []).map((r): RadarKaeufer => ({
+    id: String(r.id),
+    akteur: String(r.akteur),
+    akteurTyp: (r.akteur_typ as string) ?? null,
+    ereignis: String(r.ereignis),
+    objektart: (r.objektart as string) ?? null,
+    ort: (r.ort as string) ?? null,
+    volumenEur: r.volumen_eur != null ? Number(r.volumen_eur) : null,
+    ereignisAm: (r.ereignis_am as string) ?? null,
+    createdAt: String(r.created_at),
+    relevanz: Number(r.relevanz) || 0,
+    quelleUrl: String(r.quelle_url),
+    quelleTitel: (r.quelle_titel as string) ?? null,
+    quelleMedium: (r.quelle_medium as string) ?? null,
+    sfKontaktSfId: (r.sf_kontakt_sf_id as string) ?? null,
+    sfBekanntAls: (r.sf_bekannt_als as string) ?? null,
+    status: String(r.status),
+  }));
 }
 
 /** Je Akteur die beste Passung zum Objekt, absteigend. */
@@ -340,11 +352,21 @@ async function reaktionenJeProfil(
   return ergebnis;
 }
 
-type InvestorInfo = { status: string; prioritaet: string | null };
+type InvestorInfo = {
+  status: string;
+  prioritaet: string | null;
+  bemerkung: string | null;
+  aktivitaeten12m: number | null;
+  letzterKontaktAm: string | null;
+  letzteMarktaktivitaetAm: string | null;
+  deals: number;
+  dealsGewonnen: number;
+};
 
 /**
- * Profile für das Matching: bevorzugt die bereinigte Investorendatenbank (ohne erloschene
- * und gesperrte Firmen), sonst die Salesforce-Ankaufsprofile wie bisher.
+ * Profile für das Matching: bevorzugt die bereinigte Investorendatenbank (erloschene und
+ * gesperrte Firmen kommen mit, das Scoring-Modell schließt sie mit Begründung aus), sonst
+ * die Salesforce-Ankaufsprofile wie bisher.
  */
 async function profileLaden(
   admin: ReturnType<typeof createServiceRoleClient>,
@@ -371,13 +393,18 @@ async function profileLaden(
       einheiten_min: number | null;
       baujahr_ab: number | null;
       baujahr_bis: number | null;
+      bemerkung: string | null;
+      aktivitaeten_12m: number | null;
+      letzter_kontakt_am: string | null;
+      letzte_marktaktivitaet_am: string | null;
+      deals_anzahl: number | null;
+      deals_gewonnen: number | null;
     }>((a, b) =>
       admin
         .from("investoren")
         .select(
-          "account_sf_id, name, profil_sf_id, hauptkontakt_sf_id, typ, status, prioritaet, nutzungen, objektklassen, regionen, volumen_min, volumen_max, faktor_max, einheiten_min, baujahr_ab, baujahr_bis",
+          "account_sf_id, name, profil_sf_id, hauptkontakt_sf_id, typ, status, prioritaet, nutzungen, objektklassen, regionen, volumen_min, volumen_max, faktor_max, einheiten_min, baujahr_ab, baujahr_bis, bemerkung, aktivitaeten_12m, letzter_kontakt_am, letzte_marktaktivitaet_am, deals_anzahl, deals_gewonnen",
         )
-        .not("status", "in", "(erloschen,gesperrt)")
         .order("account_sf_id")
         .range(a, b),
     );
@@ -386,7 +413,16 @@ async function profileLaden(
       const info = new Map<string, InvestorInfo>();
       const profile = zeilen.map((z): ProfilZeile => {
         const sfId = z.profil_sf_id ?? z.account_sf_id;
-        info.set(sfId, { status: z.status, prioritaet: z.prioritaet });
+        info.set(sfId, {
+          status: z.status,
+          prioritaet: z.prioritaet,
+          bemerkung: z.bemerkung,
+          aktivitaeten12m: z.aktivitaeten_12m,
+          letzterKontaktAm: z.letzter_kontakt_am,
+          letzteMarktaktivitaetAm: z.letzte_marktaktivitaet_am,
+          deals: Number(z.deals_anzahl) || 0,
+          dealsGewonnen: Number(z.deals_gewonnen) || 0,
+        });
         return {
           sf_id: sfId,
           name: z.name,
@@ -422,12 +458,73 @@ async function profileLaden(
   return { profile, quelle: "ankaufsprofile", info: new Map() };
 }
 
-/** Aktive und priorisierte Investoren zählen bei der Sortierung wie zusätzliche Reaktionen. */
-function statusBonus(i: InvestorInfo | undefined): number {
-  if (!i) return 0;
-  const prio =
-    i.prioritaet === "Tier 1" ? 2 : i.prioritaet === "Tier 2" ? 1 : 0;
-  return (i.status === "aktiv" ? 1 : 0) + prio;
+type KontaktKurz = {
+  name: string;
+  firma: string | null;
+  email: string | null;
+  telefon: boolean;
+};
+
+/** Name, Firma, E-Mail und ob eine Telefonnummer da ist, für Kontakte und Accounts. */
+async function kontakteLaden(
+  admin: ReturnType<typeof createServiceRoleClient>,
+  ids: Iterable<string>,
+  ziel: Map<string, KontaktKurz> = new Map(),
+): Promise<Map<string, KontaktKurz>> {
+  const liste = [...new Set(ids)].filter((id) => !ziel.has(id));
+  for (let i = 0; i < liste.length; i += 300) {
+    const { data: k, error } = await admin
+      .from("sf_kontakte")
+      .select("sf_id, name, firma, email, telefon, mobil, sf_daten")
+      .in("sf_id", liste.slice(i, i + 300));
+    if (error) throw new Error(error.message);
+    for (const x of k ?? [])
+      ziel.set(String(x.sf_id), {
+        name: String(x.name),
+        firma: (x.firma as string) ?? null,
+        email: (x.email as string) ?? null,
+        telefon: Boolean(x.telefon || x.mobil),
+      });
+  }
+  return ziel;
+}
+
+/** Signale eines Salesforce-Investors fürs Scoring-Modell. */
+function sfSignale(
+  p: ProfilZeile,
+  i: InvestorInfo | undefined,
+  r: { deals: number; rueckmeldungen: number } | undefined,
+  kontakte: Map<string, KontaktKurz>,
+  opts: {
+    aehnlicheMandate?: Map<string, number>;
+    mandatStatus?: Map<string, string>;
+  } = {},
+): InvestorSignale {
+  const k = p.kontakt_sf_id ? kontakte.get(p.kontakt_sf_id) : undefined;
+  const a = p.account_sf_id ? kontakte.get(p.account_sf_id) : undefined;
+  const ids = [p.kontakt_sf_id, p.account_sf_id].filter(Boolean) as string[];
+  const aehnlich = ids
+    .map((id) => opts.aehnlicheMandate?.get(id))
+    .filter((x): x is number => x != null);
+  return {
+    ...KEINE_SIGNALE,
+    status: i?.status ?? null,
+    doNotContact: i?.status === "gesperrt",
+    aktivitaeten12m: i ? i.aktivitaeten12m : null,
+    letzterKontaktAm: i?.letzterKontaktAm ?? null,
+    letzteMarktaktivitaetAm: i?.letzteMarktaktivitaetAm ?? null,
+    deals: Math.max(r?.deals ?? 0, i?.deals ?? 0),
+    dealsGewonnen: i?.dealsGewonnen ?? 0,
+    rueckmeldungen: r?.rueckmeldungen ?? 0,
+    aehnlicheMandate: aehnlich.length ? Math.max(...aehnlich) : null,
+    ansprechpartner: Boolean(p.kontakt_sf_id?.startsWith("003") && k),
+    email: Boolean(k?.email ?? a?.email),
+    telefon: Boolean(k?.telefon || a?.telefon),
+    bemerkung: i?.bemerkung ?? null,
+    mandatStatus: p.kontakt_sf_id
+      ? (opts.mandatStatus?.get(p.kontakt_sf_id) ?? null)
+      : null,
+  };
 }
 
 /**
@@ -439,14 +536,15 @@ async function listenProfileLaden(
 ): Promise<{
   profile: ProfilZeile[];
   jeSchluessel: Map<string, Record<string, unknown>>;
+  signale: (p: ProfilZeile) => InvestorSignale;
 }> {
   const { listeAlsProfil } = await import("./vermarktung");
-  const [roh, negativ] = await Promise.all([
+  const [roh, pruefungen] = await Promise.all([
     alle<Record<string, unknown>>((a, b) =>
       admin
         .from("investor_quellen")
         .select(
-          "schluessel, quelle, firma, person, ort, typ, nutzungen, objektklassen, regionen, volumen_min, volumen_max, einheiten_min",
+          "schluessel, quelle, firma, person, emails, telefon, ort, typ, nutzungen, objektklassen, regionen, volumen_min, volumen_max, einheiten_min, objekte_interesse",
         )
         .is("dublette_von", null)
         .is("sf_account_sf_id", null)
@@ -455,27 +553,56 @@ async function listenProfileLaden(
         .order("schluessel")
         .range(a, b),
     ),
-    alle<{ schluessel: string }>((a, b) =>
+    alle<{
+      schluessel: string;
+      status: string;
+      aktiv_2026: boolean | null;
+      letzte_aktivitaet: string | null;
+    }>((a, b) =>
       admin
         .from("investor_pruefungen")
-        .select("schluessel")
+        .select("schluessel, status, aktiv_2026, letzte_aktivitaet")
         .like("schluessel", "quelle:%")
-        .in("status", ["insolvenz", "liquidation", "geloescht"])
         .order("schluessel")
         .range(a, b),
-    ).then((r) => new Set(r.map((x) => x.schluessel))),
+    ),
   ]);
+  const negativ = new Set(
+    pruefungen
+      .filter((x) =>
+        ["insolvenz", "liquidation", "geloescht"].includes(x.status),
+      )
+      .map((x) => x.schluessel),
+  );
+  const aktiv = new Set(
+    pruefungen.filter((x) => x.aktiv_2026 === true).map((x) => x.schluessel),
+  );
+  const jeSchluessel = new Map(roh.map((q) => [`quelle:${q.schluessel}`, q]));
   return {
     profile: roh
       .filter((q) => !negativ.has(`quelle:${q.schluessel}`))
       .map((q) => listeAlsProfil(q as Parameters<typeof listeAlsProfil>[0])),
-    jeSchluessel: new Map(roh.map((q) => [`quelle:${q.schluessel}`, q])),
+    jeSchluessel,
+    signale: (p) => {
+      const q = jeSchluessel.get(p.sf_id) ?? {};
+      const emails = (q.emails as string[] | null) ?? [];
+      return {
+        ...KEINE_SIGNALE,
+        // Laut KI-Prüfung 2025/2026 aktiv; sonst ist die Aktivität unbekannt.
+        status: aktiv.has(p.sf_id) ? "aktiv" : null,
+        interesseObjekte: ((q.objekte_interesse as string[] | null) ?? [])
+          .length,
+        ansprechpartner: Boolean(q.person),
+        email: emails.length > 0,
+        telefon: Boolean(q.telefon),
+      };
+    },
   };
 }
 
 /** Listen-Treffer für die Anzeige. */
 function listenTreffer(
-  e: MatchErgebnis & { gruende?: string[] },
+  e: Qualifiziert,
   q: Record<string, unknown>,
 ): ListenVermarktungsTreffer {
   return {
@@ -486,11 +613,9 @@ function listenTreffer(
     quelle: String(q.quelle),
     score: e.score,
     abdeckung: e.abdeckung,
-    gruende:
-      e.gruende ??
-      e.kriterien
-        .filter((k) => k.punkte != null && k.punkte >= 70)
-        .map((k) => k.begruendung),
+    kreis: e.bewertung.kreis,
+    bewertung: e.bewertung,
+    gruende: e.gruende,
   };
 }
 
@@ -547,77 +672,77 @@ export const matchingFn = createServerFn({ method: "POST" })
       : null;
     const objekt = objektMerkmale(m, o, data.objektklasse);
 
-    const { profile, quelle, info } = await profileLaden(admin);
-    const reaktionen = await reaktionenJeProfil(admin, profile);
-    const summe = new Map(
-      profile.map((p) => {
-        const r = reaktionen.get(p.sf_id);
-        return [
-          p.sf_id,
-          (r ? r.deals * 3 + r.rueckmeldungen : 0) +
-            statusBonus(info.get(p.sf_id)),
-        ];
-      }),
-    );
-    // „Kein Interesse“ bleibt sichtbar, steht aber hinter allen anderen Treffern.
-    const keinInteresse = (id: string) =>
-      Number(info.get(id)?.status === "kein_interesse");
-    const ergebnis = rangliste(objekt, profile, summe)
-      .map((e, i) => ({ e, i }))
-      .sort(
-        (a, b) =>
-          keinInteresse(a.e.profilSfId) - keinInteresse(b.e.profilSfId) ||
-          a.i - b.i,
-      )
-      .map((x) => x.e)
-      .slice(0, 300);
-    const profilJeId = new Map(profile.map((p) => [p.sf_id, p]));
+    const [{ profile, quelle, info }, kampagnen] = await Promise.all([
+      profileLaden(admin),
+      admin
+        .from("sf_kampagnen")
+        .select("sf_id")
+        .eq("mandat_sf_id", data.mandatSfId)
+        .then((r) => r.data ?? []),
+    ]);
 
-    const kontaktIds = new Set<string>();
-    for (const e of ergebnis) {
-      const p = profilJeId.get(e.profilSfId)!;
-      if (p.kontakt_sf_id) kontaktIds.add(p.kontakt_sf_id);
-      if (p.account_sf_id) kontaktIds.add(p.account_sf_id);
-    }
-    const kontakte = new Map<
-      string,
-      { name: string; firma: string | null; email: string | null }
-    >();
-    const ids = [...kontaktIds];
-    for (let i = 0; i < ids.length; i += 300) {
-      const { data: k } = await admin
-        .from("sf_kontakte")
-        .select("sf_id, name, firma, email")
-        .in("sf_id", ids.slice(i, i + 300));
-      for (const x of k ?? [])
-        kontakte.set(x.sf_id as string, {
-          name: x.name as string,
-          firma: (x.firma as string) ?? null,
-          email: (x.email as string) ?? null,
-        });
-    }
-
-    const { data: kampagnen } = await admin
-      .from("sf_kampagnen")
-      .select("sf_id")
-      .eq("mandat_sf_id", data.mandatSfId);
-    const angesprochen = new Set<string>();
-    const kIds = (kampagnen ?? []).map((k) => k.sf_id as string);
+    // Kontakte in Kampagnen dieses Mandats, mit Status (Absage schließt aus).
+    const mandatStatus = new Map<string, string>();
+    const kIds = kampagnen.map((k) => k.sf_id as string);
     if (kIds.length) {
-      const mitglieder = await alle<{ kontakt_sf_id: string | null }>((a, b) =>
+      const mitglieder = await alle<{
+        kontakt_sf_id: string | null;
+        status: string | null;
+      }>((a, b) =>
         admin
           .from("sf_kampagnen_mitglieder")
-          .select("kontakt_sf_id")
+          .select("kontakt_sf_id, status")
           .in("kampagne_sf_id", kIds)
           .order("sf_id")
           .range(a, b),
       );
       for (const x of mitglieder)
-        if (x.kontakt_sf_id) angesprochen.add(x.kontakt_sf_id);
+        if (x.kontakt_sf_id)
+          mandatStatus.set(x.kontakt_sf_id, x.status ?? "angesprochen");
     }
 
-    const treffer: MatchTreffer[] = ergebnis.map((e) => {
-      const p = profilJeId.get(e.profilSfId)!;
+    const [reaktionen, ereignisse, mandate, markt, kontakte] =
+      await Promise.all([
+        reaktionenJeProfil(admin, profile),
+        interesseEreignisse(admin),
+        mandateKurz(admin),
+        marktKaeufer(admin, objekt),
+        kontakteLaden(
+          admin,
+          profile.flatMap(
+            (p) =>
+              [p.kontakt_sf_id, p.account_sf_id].filter(Boolean) as string[],
+          ),
+        ),
+      ]);
+    // Interne Historie: Interesse an ähnlichen Grenz-Mandaten, fließt in den Score ein.
+    const historieAlle = historieTreffer(
+      objekt,
+      data.mandatSfId,
+      ereignisse,
+      mandate,
+    );
+    const aehnlicheMandate = new Map(
+      historieAlle.map((h) => [h.kontaktSfId, h.score]),
+    );
+
+    const ergebnis = profile
+      .map((p) => ({
+        p,
+        e: bewerteMitScore(
+          objekt,
+          p,
+          sfSignale(p, info.get(p.sf_id), reaktionen.get(p.sf_id), kontakte, {
+            aehnlicheMandate,
+            mandatStatus,
+          }),
+        ),
+      }))
+      .map((x) => ({ ...x, bewertung: x.e.bewertung }))
+      .sort(nachKreis)
+      .slice(0, 300);
+
+    const treffer: MatchTreffer[] = ergebnis.map(({ p, e }) => {
       const kontakt = p.kontakt_sf_id
         ? kontakte.get(p.kontakt_sf_id)
         : undefined;
@@ -633,7 +758,7 @@ export const matchingFn = createServerFn({ method: "POST" })
         firma: kontakt?.firma ?? account?.name ?? null,
         email: kontakt?.email ?? null,
         bereitsAngesprochen: Boolean(
-          p.kontakt_sf_id && angesprochen.has(p.kontakt_sf_id),
+          p.kontakt_sf_id && mandatStatus.has(p.kontakt_sf_id),
         ),
         reaktionen: reaktionen.get(p.sf_id) ?? { deals: 0, rueckmeldungen: 0 },
         investorStatus: info.get(p.sf_id)?.status ?? null,
@@ -642,39 +767,17 @@ export const matchingFn = createServerFn({ method: "POST" })
     });
 
     // Interne Datenbank über die Profile hinaus: Interessenten ähnlicher Mandate.
-    const [ereignisse, mandate, markt] = await Promise.all([
-      interesseEreignisse(admin),
-      mandateKurz(admin),
-      marktKaeufer(admin, objekt),
-    ]);
     const mitProfil = new Set(
       profile
         .flatMap((p) => [p.kontakt_sf_id, p.account_sf_id])
         .filter(Boolean),
     );
-    const historieRoh = historieTreffer(
-      objekt,
-      data.mandatSfId,
-      ereignisse,
-      mandate,
-    )
-      .filter((h) => h.score >= 40)
-      .slice(0, 80);
-    const fehlend = historieRoh
-      .map((h) => h.kontaktSfId)
-      .filter((id) => !kontakte.has(id));
-    for (let i = 0; i < fehlend.length; i += 300) {
-      const { data: k } = await admin
-        .from("sf_kontakte")
-        .select("sf_id, name, firma, email")
-        .in("sf_id", fehlend.slice(i, i + 300));
-      for (const x of k ?? [])
-        kontakte.set(x.sf_id as string, {
-          name: x.name as string,
-          firma: (x.firma as string) ?? null,
-          email: (x.email as string) ?? null,
-        });
-    }
+    const historieRoh = historieAlle.filter((h) => h.score >= 40).slice(0, 80);
+    await kontakteLaden(
+      admin,
+      historieRoh.map((h) => h.kontaktSfId),
+      kontakte,
+    );
     const historie: HistorieZeile[] = historieRoh.map((h) => {
       const k = kontakte.get(h.kontaktSfId);
       return {
@@ -684,7 +787,7 @@ export const matchingFn = createServerFn({ method: "POST" })
         email: k?.email ?? null,
         waehlbar: h.kontaktSfId.startsWith("003"),
         hatAnkaufsprofil: mitProfil.has(h.kontaktSfId),
-        bereitsAngesprochen: angesprochen.has(h.kontaktSfId),
+        bereitsAngesprochen: mandatStatus.has(h.kontaktSfId),
       };
     });
 
@@ -711,10 +814,11 @@ export const matchingFn = createServerFn({ method: "POST" })
 
     // Ganze Investorendatenbank: passende Investoren aus den Listen, die noch nicht in Salesforce sind.
     const listen = await listenProfileLaden(admin);
-    const listenErgebnis = rangliste(objekt, listen.profile)
-      .filter((e) => !e.ausschluss && e.score >= 50 && e.abdeckung >= 50)
-      .slice(0, 200)
-      .map((e) => listenTreffer(e, listen.jeSchluessel.get(e.profilSfId)!));
+    const listenErgebnis = qualifizierteTreffer(objekt, listen.profile, {
+      signale: listen.signale,
+      kreise: ["A", "B", "C"],
+      max: 200,
+    }).map((e) => listenTreffer(e, listen.jeSchluessel.get(e.profilSfId)!));
 
     return {
       objekt,
@@ -980,6 +1084,8 @@ export type VermarktungsTreffer = {
   profilSfId: string;
   score: number;
   abdeckung: number;
+  kreis: Kreis;
+  bewertung: KaeuferScore;
   gruende: string[];
   firma: string | null;
   kontaktSfId: string | null;
@@ -998,6 +1104,8 @@ export type ListenVermarktungsTreffer = {
   quelle: string;
   score: number;
   abdeckung: number;
+  kreis: Kreis;
+  bewertung: KaeuferScore;
   gruende: string[];
 };
 
@@ -1023,8 +1131,6 @@ export const vermarktungsAbgleichFn = createServerFn({ method: "POST" })
     await pruefeAufrufer(data.supabaseAccessToken);
     const admin = createServiceRoleClient();
     const { istTest } = await import("@/lib/uebersicht/berechnen");
-    const { listeAlsProfil, qualifizierteTreffer } =
-      await import("./vermarktung");
 
     const { data: mRoh, error } = await admin
       .from("sf_mandate")
@@ -1058,18 +1164,22 @@ export const vermarktungsAbgleichFn = createServerFn({ method: "POST" })
     const objektJeId = new Map(
       objekte.map((o) => [String(o.sf_id), o as Record<string, unknown>]),
     );
-    const reaktionen = await reaktionenJeProfil(admin, profile);
-    const gewichtung = new Map(
-      profile.map((p) => {
-        const r = reaktionen.get(p.sf_id);
-        return [
-          p.sf_id,
-          (r ? r.deals * 3 + r.rueckmeldungen : 0) +
-            statusBonus(info.get(p.sf_id)),
-        ];
-      }),
-    );
-    const { profile: listenProfile, jeSchluessel: listenJeSchluessel } = listen;
+    const [reaktionen, ereignisse, mandateAlle, kontakte] = await Promise.all([
+      reaktionenJeProfil(admin, profile),
+      interesseEreignisse(admin),
+      mandateKurz(admin),
+      kontakteLaden(
+        admin,
+        profile.flatMap(
+          (p) => [p.kontakt_sf_id, p.account_sf_id].filter(Boolean) as string[],
+        ),
+      ),
+    ]);
+    const {
+      profile: listenProfile,
+      jeSchluessel: listenJeSchluessel,
+      signale: listenSignale,
+    } = listen;
 
     // Schon angesprochene Kontakte je Mandat (alle Kampagnen des Mandats).
     const kIds = kampagnen.map((k) => String(k.sf_id));
@@ -1107,14 +1217,26 @@ export const vermarktungsAbgleichFn = createServerFn({ method: "POST" })
         null,
       );
       const schon = angesprochen.get(mandatSfId) ?? new Set<string>();
+      const aehnlicheMandate = new Map(
+        historieTreffer(objekt, mandatSfId, ereignisse, mandateAlle).map(
+          (h) => [h.kontaktSfId, h.score],
+        ),
+      );
       const treffer = qualifizierteTreffer(objekt, profile, {
-        gewichtung,
+        signale: (p) =>
+          sfSignale(p, info.get(p.sf_id), reaktionen.get(p.sf_id), kontakte, {
+            aehnlicheMandate,
+          }),
         ausschliessen: (p) =>
-          info.get(p.sf_id)?.status === "kein_interesse" ||
           Boolean(p.kontakt_sf_id && schon.has(p.kontakt_sf_id)),
         max: 50,
       });
-      const listen = qualifizierteTreffer(objekt, listenProfile, { max: 30 });
+      // Listen-Investoren haben noch keine Historie bei Grenz: hier zählt auch der C-Kreis.
+      const listen = qualifizierteTreffer(objekt, listenProfile, {
+        signale: listenSignale,
+        kreise: ["A", "B", "C"],
+        max: 30,
+      });
       const kampagne =
         kampagnen.find(
           (k) =>
@@ -1130,32 +1252,6 @@ export const vermarktungsAbgleichFn = createServerFn({ method: "POST" })
         listen,
       };
     });
-
-    // Namen und E-Mails der Treffer in einem Rutsch.
-    const ids = new Set<string>();
-    for (const z of zeilen)
-      for (const t of z.treffer) {
-        const p = profilJeId.get(t.profilSfId)!;
-        if (p.kontakt_sf_id) ids.add(p.kontakt_sf_id);
-        if (p.account_sf_id) ids.add(p.account_sf_id);
-      }
-    const kontakte = new Map<
-      string,
-      { name: string; firma: string | null; email: string | null }
-    >();
-    const idListe = [...ids];
-    for (let i = 0; i < idListe.length; i += 300) {
-      const { data: k } = await admin
-        .from("sf_kontakte")
-        .select("sf_id, name, firma, email")
-        .in("sf_id", idListe.slice(i, i + 300));
-      for (const x of k ?? [])
-        kontakte.set(String(x.sf_id), {
-          name: String(x.name),
-          firma: (x.firma as string) ?? null,
-          email: (x.email as string) ?? null,
-        });
-    }
 
     return zeilen
       .map((z) => ({
@@ -1173,6 +1269,8 @@ export const vermarktungsAbgleichFn = createServerFn({ method: "POST" })
             profilSfId: t.profilSfId,
             score: t.score,
             abdeckung: t.abdeckung,
+            kreis: t.bewertung.kreis,
+            bewertung: t.bewertung,
             gruende: t.gruende,
             firma: a?.name ?? k?.firma ?? p.name,
             kontaktSfId: p.kontakt_sf_id?.startsWith("003")

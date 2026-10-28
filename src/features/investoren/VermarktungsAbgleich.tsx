@@ -18,6 +18,8 @@ import { euroKurz } from "@/features/kennzahlen/hilfen";
 import { useAuth } from "@/hooks/useAuth";
 import type { VermarktungZeile } from "@/lib/matching/server-fn";
 
+import { KreisMarke, ScoreAufschluesselung, ScoreModellHinweis } from "@/features/mandate/KaeuferScore";
+
 import { StatusMarke } from "./hilfen";
 
 type Frage = { art: "kampagne"; zeile: VermarktungZeile; ids: string[] } | { art: "anlegen"; zeile: VermarktungZeile; ids: string[] };
@@ -119,9 +121,10 @@ export function VermarktungsAbgleich() {
         <div>
           <h2 className="text-sm font-semibold text-heading">Laufende Vermarktungen gegen die Investorendatenbank</h2>
           <p className="text-xs text-text-subtle">
-            Mandate in Beauftragung. Qualifiziert heißt: Score ab 70, mindestens zwei Kernkriterien belegt, kein Ausschluss,
-            noch nicht in einer Kampagne des Mandats, kein „kein Interesse“. In Salesforce wird erst nach Bestätigung geschrieben.
+            Mandate in Beauftragung. Gezeigt werden Salesforce-Investoren im A- und B-Kreis, die noch nicht in einer Kampagne des
+            Mandats sind, und Listen-Investoren ab C-Kreis. In Salesforce wird erst nach Bestätigung geschrieben.
           </p>
+          <ScoreModellHinweis />
         </div>
         <Button variant="outline" size="sm" onClick={() => void laden()} disabled={!zeilen}>
           <RefreshCw className="mr-1 h-4 w-4" /> Neu abgleichen
@@ -181,6 +184,7 @@ export function VermarktungsAbgleich() {
                         <thead>
                           <tr className="text-left text-xs text-text-subtle">
                             <th className="w-8 py-1" />
+                            <th className="py-1 pr-3 font-medium">Kreis</th>
                             <th className="py-1 pr-3 font-medium">Investor</th>
                             <th className="py-1 pr-3 font-medium">Score</th>
                             <th className="py-1 pr-3 font-medium">Warum</th>
@@ -200,6 +204,9 @@ export function VermarktungsAbgleich() {
                                 />
                               </td>
                               <td className="py-2 pr-3">
+                                <KreisMarke kreis={t.kreis} />
+                              </td>
+                              <td className="py-2 pr-3">
                                 <div className="font-medium text-heading">{t.firma ?? "k. A."}</div>
                                 <div className="text-xs text-text-subtle">
                                   {t.kontaktName ?? "kein Hauptkontakt"}
@@ -212,7 +219,14 @@ export function VermarktungsAbgleich() {
                               <td className="py-2 pr-3">
                                 <Score wert={t.score} />
                               </td>
-                              <td className="py-2 pr-3 text-xs text-text-muted">{t.gruende.join(" ")}</td>
+                              <td className="py-2 pr-3 text-xs text-text-muted">
+                                <details>
+                                  <summary className="cursor-pointer">{t.gruende.join(" ") || "Aufschlüsselung"}</summary>
+                                  <div className="mt-2">
+                                    <ScoreAufschluesselung b={t.bewertung} />
+                                  </div>
+                                </details>
+                              </td>
                               <td className="py-2">
                                 {t.investorStatus ? <StatusMarke status={t.investorStatus} /> : null}
                                 {t.prioritaet ? <div className="mt-1 text-xs text-text-subtle">{t.prioritaet}</div> : null}
@@ -250,6 +264,9 @@ export function VermarktungsAbgleich() {
                                   onChange={() => umschalten(listenAuswahl, setListenAuswahl, z.mandatSfId, t.schluessel)}
                                 />
                               </td>
+                              <td className="w-10 py-2 pr-3">
+                                <KreisMarke kreis={t.kreis} />
+                              </td>
                               <td className="py-2 pr-3">
                                 <div className="font-medium text-heading">{t.firma ?? t.person ?? "k. A."}</div>
                                 <div className="text-xs text-text-subtle">{[t.person !== t.firma ? t.person : null, t.ort, t.quelle].filter(Boolean).join(" · ")}</div>
@@ -257,7 +274,14 @@ export function VermarktungsAbgleich() {
                               <td className="py-2 pr-3">
                                 <Score wert={t.score} />
                               </td>
-                              <td className="py-2 text-xs text-text-muted">{t.gruende.join(" ")}</td>
+                              <td className="py-2 text-xs text-text-muted">
+                                <details>
+                                  <summary className="cursor-pointer">{t.gruende.join(" ") || "Aufschlüsselung"}</summary>
+                                  <div className="mt-2">
+                                    <ScoreAufschluesselung b={t.bewertung} />
+                                  </div>
+                                </details>
+                              </td>
                             </tr>
                           ))}
                         </tbody>

@@ -79,6 +79,9 @@ describe("qualifizierteTreffer", () => {
       volumen_min: 1_000_000,
       kontakt_sf_id: null,
     });
-    expect(qualifizierteTreffer(objekt, [p])).toHaveLength(1);
+    // Ohne Kontaktdaten und Reaktionen reicht es für den C-Kreis, nicht für A oder B.
+    expect(qualifizierteTreffer(objekt, [p])).toHaveLength(0);
+    const c = qualifizierteTreffer(objekt, [p], { kreise: ["A", "B", "C"] });
+    expect(c.map((x) => x.bewertung.kreis)).toEqual(["C"]);
   });
 });
