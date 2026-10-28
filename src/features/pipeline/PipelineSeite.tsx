@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ExternalLink, Loader2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ExternalLink,
+  GripVertical,
+  Hand,
+  Loader2,
+  RotateCcw,
+} from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
@@ -30,6 +37,7 @@ import {
   zelle,
   zelleRechts,
 } from "@/features/kennzahlen/hilfen";
+import { MandateBereichReiter } from "@/features/mandate/MandateBereichReiter";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDate, formatEuro } from "@/lib/format";
 import {
@@ -37,6 +45,8 @@ import {
   STANDARD_PROVISION_PROZENT,
   STUFEN,
   prognose,
+  stufe as stufeInfo,
+  stufeAendern,
   type PipelineDeal,
   type PipelineDto,
   type StufeId,
@@ -115,6 +125,34 @@ export function PipelineSeite() {
     })();
   }, [token]);
 
+  const verschieben = async (d: PipelineDeal, ziel: StufeId) => {
+    if (!dto || d.stufe === ziel) return;
+    const vorher = dto;
+    setDto(stufeAendern(dto, d.id, ziel));
+    try {
+      const { pipelineStufeSetzenFn } =
+        await import("@/lib/pipeline/server-fn");
+      await pipelineStufeSetzenFn({
+        data: {
+          supabaseAccessToken: token,
+          karteId: d.id,
+          autoStufe: d.autoStufe,
+          stufe: ziel,
+        },
+      });
+      toast.success(
+        ziel === d.autoStufe
+          ? `${d.objekt}: wieder Stufe aus Salesforce`
+          : `${d.objekt} → ${stufeInfo(ziel).label}`,
+      );
+    } catch (e) {
+      setDto(vorher);
+      toast.error(
+        e instanceof Error ? e.message : "Verschieben fehlgeschlagen.",
+      );
+    }
+  };
+
   const deals = useMemo(
     () => (dto?.deals ?? []).filter((d) => !ohneRuhende || !d.ruht),
     [dto, ohneRuhende],
@@ -143,7 +181,10 @@ export function PipelineSeite() {
   if (!dto) {
     return (
       <>
-        <PageHeader titel="Deal-Pipeline" />
+        <PageHeader
+          titel="Mandate & Pipeline"
+          reiter={<MandateBereichReiter aktiv="pipeline" />}
+        />
         <PageWrapper>
           <Loader2 className="h-4 w-4 animate-spin" />
         </PageWrapper>
@@ -172,7 +213,8 @@ export function PipelineSeite() {
   return (
     <>
       <PageHeader
-        titel="Deal-Pipeline"
+        titel="Mandate & Pipeline"
+        reiter={<MandateBereichReiter aktiv="pipeline" />}
         beschreibung="Alle laufenden Objekte vom Erstkontakt bis zum Notartermin, mit erwarteter Provision je Monat. Daten aus Salesforce (Mandate und Interessenten-Deals)."
       />
       <PageWrapper>
@@ -269,7 +311,11 @@ export function PipelineSeite() {
             Integrationen › Salesforce-Sync ausführen.
           </p>
         ) : ansicht === "board" ? (
-          <Board deals={deals} />
+          <Board
+            deals={deals}
+            verschiebbar={dto.manuellMoeglich === true}
+            onVerschieben={verschieben}
+          />
         ) : (
           <Liste deals={deals} />
         )}
@@ -371,40 +417,92 @@ export function PipelineSeite() {
   );
 }
 
-function Board({ deals }: { deals: PipelineDeal[] }) {
+function Board({
+  deals,
+  verschiebbar,
+  onVerschieben,
+}: {
+  deals: PipelineDeal[];
+  verschiebbar: boolean;
+  onVerschieben: (d: PipelineDeal, ziel: StufeId) => void;
+}) {
+  const [gezogen, setGezogen] = useState<PipelineDeal | null>(null);
+  const [ueber, setUeber] = useState<StufeId | null>(null);
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
-      {STUFEN.map((s) => {
-        const liste = deals.filter((d) => d.stufe === s.id);
-        const summe = liste.reduce(
-          (x, d) => x + (d.provision ?? 0) * d.wahrscheinlichkeit,
-          0,
-        );
-        return (
-          <section
-            key={s.id}
-            className="flex w-64 shrink-0 flex-col gap-2 border border-hairline bg-surface-muted p-2"
-          >
-            <header className="px-1">
-              <div className="flex items-baseline justify-between gap-2">
-                <h3 className="text-[13px] font-medium uppercase tracking-[0.06em] text-heading">
-                  {s.label}
-                </h3>
-                <span className="text-xs tabular-nums text-text-muted">
-                  {liste.length}
-                </span>
-              </div>
-              <p className="text-xs tabular-nums text-text-muted">
-                {euroKurz(summe)} gewichtet ·{" "}
-                {prozent(s.wahrscheinlichkeit * 100)}
-              </p>
-            </header>
-            {liste.map((d) => (
-              <DealKarte key={d.id} d={d} />
-            ))}
-          </section>
-        );
-      })}
+    <div className="flex flex-col gap-2">
+      <p className="text-xs text-text-muted">
+        {verschiebbar
+          ? "Karten lassen sich per Drag & Drop in eine andere Stufe ziehen. Das gilt nur in der App und ist als „manuell“ markiert; ändert Salesforce später die Stufe, gilt wieder Salesforce."
+          : "Verschieben ist noch nicht eingerichtet (Datenbank-Migration pipeline_stufen fehlt). Die Stufen kommen automatisch aus Salesforce."}
+      </p>
+      <div className="flex gap-3 overflow-x-auto pb-2">
+        {STUFEN.map((s) => {
+          const liste = deals.filter((d) => d.stufe === s.id);
+          const summe = liste.reduce(
+            (x, d) => x + (d.provision ?? 0) * d.wahrscheinlichkeit,
+            0,
+          );
+          return (
+            <section
+              key={s.id}
+              className={cn(
+                "flex w-64 shrink-0 flex-col gap-2 border border-hairline bg-surface-muted p-2 transition-colors",
+                ueber === s.id &&
+                  gezogen?.stufe !== s.id &&
+                  "border-[var(--gc-hellblau)] bg-[var(--gc-hellblau)]/10",
+              )}
+              onDragOver={(e) => {
+                if (!gezogen) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setUeber(s.id);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+                  setUeber(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (gezogen) onVerschieben(gezogen, s.id);
+                setGezogen(null);
+                setUeber(null);
+              }}
+            >
+              <header className="px-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="text-[13px] font-medium uppercase tracking-[0.06em] text-heading">
+                    {s.label}
+                  </h3>
+                  <span className="text-xs tabular-nums text-text-muted">
+                    {liste.length}
+                  </span>
+                </div>
+                <p className="text-xs tabular-nums text-text-muted">
+                  {euroKurz(summe)} gewichtet ·{" "}
+                  {prozent(s.wahrscheinlichkeit * 100)}
+                </p>
+              </header>
+              {liste.map((d) => (
+                <DealKarte
+                  key={d.id}
+                  d={d}
+                  verschiebbar={verschiebbar}
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", d.id);
+                    setGezogen(d);
+                  }}
+                  onDragEnd={() => {
+                    setGezogen(null);
+                    setUeber(null);
+                  }}
+                  onZuruecksetzen={() => onVerschieben(d, d.autoStufe)}
+                />
+              ))}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -414,6 +512,7 @@ function ObjektTitel({ d }: { d: PipelineDeal }) {
     <Link
       to="/mandate/$sfId"
       params={{ sfId: d.mandatSfId }}
+      draggable={false}
       className="font-medium text-heading hover:underline"
     >
       {d.objekt}
@@ -423,6 +522,7 @@ function ObjektTitel({ d }: { d: PipelineDeal }) {
       href={sfLink("Opportunity", d.id)}
       target="_blank"
       rel="noreferrer"
+      draggable={false}
       className="font-medium text-heading hover:underline"
     >
       {d.objekt}
@@ -437,15 +537,57 @@ function ProvisionText({ d }: { d: PipelineDeal }) {
   return <>{formatEuro(d.provision)}</>;
 }
 
-function DealKarte({ d }: { d: PipelineDeal }) {
+function DealKarte({
+  d,
+  verschiebbar,
+  onDragStart,
+  onDragEnd,
+  onZuruecksetzen,
+}: {
+  d: PipelineDeal;
+  verschiebbar: boolean;
+  onDragStart: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+  onZuruecksetzen: () => void;
+}) {
   return (
     <article
+      draggable={verschiebbar}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       className={cn(
         "flex flex-col gap-1 border border-hairline bg-surface p-2 text-sm",
+        verschiebbar && "cursor-grab active:cursor-grabbing",
         d.ruht && "opacity-70",
+        d.manuell && "border-l-[3px] border-l-[var(--gc-hellblau)]",
       )}
     >
-      <ObjektTitel d={d} />
+      <div className="flex items-start gap-1">
+        {verschiebbar ? (
+          <GripVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-subtle" />
+        ) : null}
+        <ObjektTitel d={d} />
+      </div>
+      {d.manuell ? (
+        <div className="flex items-center justify-between gap-2 text-xs text-text-muted">
+          <span
+            className="flex items-center gap-1"
+            title={`Von Hand verschoben${d.manuell.gesetztVon ? ` von ${d.manuell.gesetztVon}` : ""} am ${formatDate(d.manuell.gesetztAm)}`}
+          >
+            <Hand className="h-3 w-3" />
+            manuell · Salesforce: {stufeInfo(d.autoStufe).label}
+          </span>
+          <button
+            type="button"
+            onClick={onZuruecksetzen}
+            className="flex items-center gap-0.5 hover:text-heading"
+            title="Stufe wieder aus Salesforce übernehmen"
+          >
+            <RotateCcw className="h-3 w-3" />
+            zurück
+          </button>
+        </div>
+      ) : null}
       <span className="text-xs text-text-muted">
         {[d.ort, d.mandat, d.art].filter(Boolean).join(" · ")}
       </span>
@@ -546,6 +688,9 @@ function Liste({ deals }: { deals: PipelineDeal[] }) {
             </td>
             <td className={zelle} title={`Salesforce: ${d.sfPhase}`}>
               {STUFEN.find((s) => s.id === d.stufe)?.label}
+              {d.manuell ? (
+                <span className="text-text-muted"> (manuell)</span>
+              ) : null}
             </td>
             <td className={cn(zelle, "max-w-56 truncate")}>
               {d.interessent

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import type { MicrosoftStatusPayload } from "@/lib/microsoft/connect";
 
+import { EinstellungenReiter } from "./EinstellungenReiter";
 import { SalesforceSyncKarte } from "./SalesforceSyncKarte";
 
 function formatDatum(iso: string | null): string {
@@ -117,7 +118,10 @@ export function IntegrationenPage() {
 
   return (
     <>
-      <PageHeader titel="Integrationen" />
+      <PageHeader
+        titel="Einstellungen"
+        reiter={<EinstellungenReiter aktiv="integrationen" />}
+      />
       <PageWrapper>
         <div className="flex max-w-3xl flex-col gap-6">
           <article className="flex flex-col gap-5 border border-hairline bg-surface p-5">

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import {
+  ALTE_INVESTOREN_REITER,
   INVESTOREN_REITER,
   InvestorenPage,
   type InvestorenReiter,
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/investoren")({
   validateSearch: (search: Record<string, unknown>): InvestorenSearch => ({
     tab: INVESTOREN_REITER.includes(search.tab as InvestorenReiter)
       ? (search.tab as InvestorenReiter)
-      : undefined,
+      : ALTE_INVESTOREN_REITER[String(search.tab)],
   }),
   head: () => ({ meta: [{ title: "Investoren — Grenz & Co." }] }),
   component: function InvestorenRoute() {

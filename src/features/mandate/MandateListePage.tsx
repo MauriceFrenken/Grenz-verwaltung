@@ -11,6 +11,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatDate, formatEuro } from "@/lib/format";
 import type { MandatListenEintrag } from "@/lib/mandate/daten";
 
+import { MandateBereichReiter } from "./MandateBereichReiter";
+
 const STATUS = [
   "Beauftragung",
   "Einwertung",
@@ -68,8 +70,9 @@ export function MandateListePage() {
   return (
     <>
       <PageHeader
-        titel="Mandate"
+        titel="Mandate & Pipeline"
         beschreibung="Alle Mandate aus Salesforce. Hier entstehen Vermarktungsberichte für Eigentümer."
+        reiter={<MandateBereichReiter aktiv="liste" />}
       />
       <PageWrapper>
         <div className="flex flex-wrap items-center gap-2">

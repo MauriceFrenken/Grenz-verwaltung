@@ -36,6 +36,7 @@ import {
 } from "@/lib/salesforce";
 
 import { SalesforceConnectDialog } from "./expose-import/SalesforceConnectDialog";
+import { ExposeReiter } from "./ExposeReiter";
 
 type Zeile = {
   nachricht: GraphNachricht;
@@ -432,6 +433,7 @@ export function ExposeListePage() {
       <PageHeader
         titel="Exposéanalyse"
         beschreibung="Exposés anderer Makler aus dem Ankauf-Postfach: prüfen und nach Salesforce übernehmen."
+        reiter={<ExposeReiter aktiv="eingang" />}
         aktionen={
           <Button variant="outline" asChild>
             <Link to="/exposes/import">

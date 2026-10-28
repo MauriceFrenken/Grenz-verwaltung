@@ -65,7 +65,15 @@ export const kennzahlenLadenFn = createServerFn({ method: "POST" })
       }
     }
 
-    // Alle Buchungen ab Jahresbeginn: auch spätere Jahre, für die Saldo-Rückrechnung.
+    // Alle Buchungen ab Jahresbeginn (spätere Jahre für die Saldo-Rückrechnung),
+    // mindestens aber die letzten 13 Monate für Runway und offene USt.
+    const heute = heuteIso();
+    const vor13 = new Date(`${heute.slice(0, 7)}-01T00:00:00Z`);
+    vor13.setUTCMonth(vor13.getUTCMonth() - 13);
+    const ab = [
+      `${data.jahr}-01-01`,
+      vor13.toISOString().slice(0, 10),
+    ].sort()[0];
     const buchungen: RohBuchung[] = [];
     const SEITE = 1000;
     for (let von = 0; ibans.length; von += SEITE) {
@@ -75,7 +83,7 @@ export const kennzahlenLadenFn = createServerFn({ method: "POST" })
           "konto_iban, buchungsdatum, betrag, gegenkonto_iban, auftraggeber_name, verwendungszweck, bankauszuege(dateiname)",
         )
         .in("konto_iban", ibans)
-        .gte("buchungsdatum", `${data.jahr}-01-01`)
+        .gte("buchungsdatum", ab)
         .order("buchungsdatum")
         .order("id")
         .range(von, von + SEITE - 1);
@@ -101,7 +109,7 @@ export const kennzahlenLadenFn = createServerFn({ method: "POST" })
 
     return berechneKennzahlen({
       jahr: data.jahr,
-      heute: heuteIso(),
+      heute,
       konten: (konten ?? []).map((k) => {
         const s = letzterSaldo.get(String(k.iban));
         return {

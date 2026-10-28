@@ -16,6 +16,7 @@ import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
 import { ROLLEN } from "@/lib/constants";
 import type { Benutzer, Gesellschaft } from "@/types";
 import { BenutzerForm } from "./BenutzerForm";
+import { EinstellungenReiter } from "./EinstellungenReiter";
 
 function gesellschaftSpalte(b: Benutzer, gesellschaften: Gesellschaft[]) {
   const zugriff = gesellschaftIdsAusBenutzer(b);
@@ -107,7 +108,8 @@ export function BenutzerPage() {
   return (
     <>
       <PageHeader
-        titel="Benutzer"
+        titel="Einstellungen"
+        reiter={<EinstellungenReiter aktiv="benutzer" />}
         aktionen={
           <Dialog open={dialogOffen} onOpenChange={setDialogOffen}>
             <DialogTrigger asChild>

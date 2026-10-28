@@ -40,11 +40,19 @@ export type Aufgabe = {
 export type Person = { id: string; name: string; initialen: string };
 export type MandatKurz = { sfId: string; name: string };
 
+export type TrelloStatus = {
+  verbunden: boolean;
+  boardUrl: string | null;
+  letzterAbgleich: string | null;
+  fehler: string | null;
+};
+
 export type Board = {
   spalten: Spalte[];
   aufgaben: Aufgabe[];
   personen: Person[];
   mandate: MandatKurz[];
+  trello: TrelloStatus;
 };
 
 /** Felder, die beim Anlegen und Bearbeiten einer Karte gesetzt werden. */

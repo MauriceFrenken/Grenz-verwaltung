@@ -16,6 +16,8 @@ import type {
 import { formatDate, formatInt } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+import { ExposeReiter } from "./ExposeReiter";
+
 /* Leaflet kommt zur Laufzeit vom CDN, damit kein Build-Abhängigkeit nötig ist. */
 const LEAFLET_JS =
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
@@ -316,8 +318,9 @@ export function ExposeKartePage() {
   return (
     <>
       <PageHeader
-        titel="Marktkarte"
+        titel="Exposéanalyse"
         beschreibung="Lage und Eckdaten aller eingegangenen Exposés, z. B. als Vergleichsobjekte im Kundengespräch"
+        reiter={<ExposeReiter aktiv="karte" />}
       />
       <PageWrapper>
         <div className="flex flex-col gap-4">

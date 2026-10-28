@@ -6,7 +6,9 @@
 import {
   EINNAHME_KATEGORIEN,
   KATEGORIE_LABEL,
-  kategorisiere,
+  UST_SATZ,
+  ustZeitraumEnde,
+  zerlege,
   type Kategorie,
 } from "./kategorien";
 import type { KennzahlenDto } from "./types";
@@ -52,7 +54,166 @@ export function ohneDoppelte(buchungen: RohBuchung[]): RohBuchung[] {
   });
 }
 
-const USt_FAKTOR = 1.19;
+/** Anteil einer Buchung nach Zerlegung, mit Nettobetrag (USt herausgerechnet). */
+type Anteil = {
+  b: RohBuchung;
+  kategorie: Kategorie;
+  brutto: number;
+  netto: number;
+  /** Empfänger/Zahler für Fixkosten und Rankings. */
+  name: string;
+};
+
+function anteile(b: RohBuchung, eigene: ReadonlySet<string>): Anteil[] {
+  const name = (b.auftraggeberName ?? "Unbekannt").trim();
+  return zerlege(b, eigene).map((t) => ({
+    b,
+    kategorie: t.kategorie,
+    brutto: t.betrag,
+    netto: t.betrag / (1 + UST_SATZ[t.kategorie]),
+    name:
+      t.kategorie === "personal" && /steuerverwaltung|finanzamt/i.test(name)
+        ? "Lohnsteuer (Finanzamt)"
+        : name,
+  }));
+}
+
+/** true = zählt weder als Einnahme noch als Ausgabe. */
+function neutral(k: Kategorie): boolean {
+  return k === "intern" || k === "umsatzsteuer";
+}
+
+function istEinnahme(a: Anteil): boolean {
+  return EINNAHME_KATEGORIEN.has(a.kategorie) || a.brutto > 0;
+}
+
+/** „2026-10“ + n Monate. */
+function monatPlus(monat: string, n: number): string {
+  const j = Number(monat.slice(0, 4));
+  const m = Number(monat.slice(5, 7)) - 1 + n;
+  const jahr = j + Math.floor(m / 12);
+  return `${jahr}-${String((((m % 12) + 12) % 12) + 1).padStart(2, "0")}`;
+}
+
+/**
+ * Runway: Wie lange reicht die Liquidität (ohne noch abzuführende USt) bei den
+ * aktuellen Fixkosten? Unabhängig vom gewählten Jahr, immer ab heute.
+ */
+export function berechneRunway(input: {
+  heute: string;
+  liquiditaet: number;
+  eigene: ReadonlySet<string>;
+  buchungen: RohBuchung[];
+}): KennzahlenDto["runway"] {
+  const { heute, liquiditaet, eigene } = input;
+  const dieserMonat = heute.slice(0, 7);
+  const start12 = monatPlus(dieserMonat, -12);
+  const start3 = monatPlus(dieserMonat, -3);
+  const alle = ohneDoppelte(input.buchungen)
+    .filter((b) => b.buchungsdatum <= heute)
+    .flatMap((b) => anteile(b, eigene));
+
+  // Bis wann ist die USt abgerechnet? Danach angefallene USt ist noch offen.
+  let ustBis: string | null = null;
+  for (const a of alle) {
+    if (a.kategorie !== "umsatzsteuer") continue;
+    const ende = ustZeitraumEnde(a.b.verwendungszweck);
+    if (ende && (!ustBis || ende > ustBis)) ustBis = ende;
+  }
+  const ustOffenAb = ustBis ? monatPlus(ustBis, 1) : monatPlus(dieserMonat, -1);
+  const offeneUst = alle
+    .filter((a) => a.b.buchungsdatum.slice(0, 7) >= ustOffenAb)
+    .reduce((s, a) => s + (a.brutto - a.netto), 0);
+
+  // Wiederkehrende Empfänger: in mind. 3 der letzten 12 Monate bezahlt.
+  const empfaenger = new Map<
+    string,
+    {
+      monate: Set<string>;
+      summe12: number;
+      summe3: number;
+      kategorie: Kategorie;
+    }
+  >();
+  let ausgaben12 = 0;
+  let ertragsteuern12 = 0;
+  let ersterMonat: string | null = null;
+  for (const a of alle) {
+    const monat = a.b.buchungsdatum.slice(0, 7);
+    if (!ersterMonat || monat < ersterMonat) ersterMonat = monat;
+    if (monat < start12 || monat >= dieserMonat) continue;
+    if (neutral(a.kategorie) || istEinnahme(a)) continue;
+    if (a.kategorie === "steuern") {
+      ertragsteuern12 += -a.netto;
+      continue;
+    }
+    ausgaben12 += -a.netto;
+    const e = empfaenger.get(a.name) ?? {
+      monate: new Set<string>(),
+      summe12: 0,
+      summe3: 0,
+      kategorie: a.kategorie,
+    };
+    e.monate.add(monat);
+    e.summe12 += -a.netto;
+    if (monat >= start3) e.summe3 += -a.netto;
+    empfaenger.set(a.name, e);
+  }
+  const fix = [...empfaenger.entries()].filter(([, e]) => e.monate.size >= 3);
+  const fixProMonat = fix.reduce((s, [, e]) => s + e.summe3, 0) / 3;
+  const monate12 = Math.max(
+    1,
+    Math.min(
+      12,
+      ersterMonat
+        ? (Number(dieserMonat.slice(0, 4)) - Number(ersterMonat.slice(0, 4))) *
+            12 +
+            Number(dieserMonat.slice(5, 7)) -
+            Number(ersterMonat.slice(5, 7))
+        : 12,
+    ),
+  );
+  const fix12 = fix.reduce((s, [, e]) => s + e.summe12, 0);
+  const variabelProMonat = Math.max(0, (ausgaben12 - fix12) / monate12);
+
+  const netto = liquiditaet - offeneUst;
+  const monate = fixProMonat > 0 ? Math.max(0, netto / fixProMonat) : null;
+  const horizont =
+    monate === null ? 12 : Math.min(60, Math.max(12, Math.ceil(monate) + 3));
+  const verlauf = Array.from({ length: horizont + 1 }, (_, k) => ({
+    monat: monatPlus(dieserMonat, k),
+    nurFix: runde(Math.max(0, netto - k * fixProMonat)),
+    mitVariabel: runde(
+      Math.max(0, netto - k * (fixProMonat + variabelProMonat)),
+    ),
+  }));
+
+  return {
+    kontostand: runde(liquiditaet),
+    offeneUst: runde(offeneUst),
+    ustOffenAb,
+    liquiditaetNetto: runde(netto),
+    fixProMonat: runde(fixProMonat),
+    variabelProMonat: runde(variabelProMonat),
+    ertragsteuern12Monate: runde(ertragsteuern12),
+    monate: monate === null ? null : runde(monate),
+    monateMitVariabel:
+      fixProMonat + variabelProMonat > 0
+        ? runde(Math.max(0, netto / (fixProMonat + variabelProMonat)))
+        : null,
+    reichtBis:
+      monate === null ? null : monatPlus(dieserMonat, Math.floor(monate)),
+    posten: fix
+      .map(([name, e]) => ({
+        name,
+        kategorie: KATEGORIE_LABEL[e.kategorie],
+        proMonat: runde(e.summe3 / 3),
+      }))
+      .filter((p) => p.proMonat > 0)
+      .sort((a, b) => b.proMonat - a.proMonat),
+    verlauf,
+  };
+}
 
 function runde(n: number): number {
   return Math.round(n * 100) / 100;
@@ -93,38 +254,40 @@ export function berechneKennzahlen(input: {
   const provisionen: KennzahlenDto["provisionen"] = [];
   let steuern = 0;
 
-  for (const b of imJahr) {
-    const kategorie = kategorisiere(b, eigene);
-    if (kategorie === "intern") continue;
-    const m = monate[Number(b.buchungsdatum.slice(5, 7)) - 1];
-    jeKategorie.set(kategorie, (jeKategorie.get(kategorie) ?? 0) + b.betrag);
+  let ustSaldo = 0;
 
-    if (EINNAHME_KATEGORIEN.has(kategorie) || b.betrag > 0) {
-      m.einnahmen += b.betrag;
+  for (const a of imJahr.flatMap((b) => anteile(b, eigene))) {
+    const { b, kategorie } = a;
+    if (kategorie === "umsatzsteuer") ustSaldo += -a.brutto;
+    if (neutral(kategorie)) continue;
+    const m = monate[Number(b.buchungsdatum.slice(5, 7)) - 1];
+    jeKategorie.set(kategorie, (jeKategorie.get(kategorie) ?? 0) + a.netto);
+
+    if (istEinnahme(a)) {
+      m.einnahmen += a.netto;
     } else {
-      m.ausgaben += -b.betrag;
-      const name = (b.auftraggeberName ?? "Unbekannt").trim();
-      const e = jeEmpfaenger.get(name) ?? {
+      m.ausgaben += -a.netto;
+      const e = jeEmpfaenger.get(a.name) ?? {
         betrag: 0,
         kategorie,
         monate: new Set<string>(),
       };
-      e.betrag += -b.betrag;
+      e.betrag += -a.netto;
       e.monate.add(m.monat);
-      jeEmpfaenger.set(name, e);
+      jeEmpfaenger.set(a.name, e);
       const km = kategorieJeMonat.get(m.monat) ?? new Map<Kategorie, number>();
-      km.set(kategorie, (km.get(kategorie) ?? 0) - b.betrag);
+      km.set(kategorie, (km.get(kategorie) ?? 0) - a.netto);
       kategorieJeMonat.set(m.monat, km);
     }
-    if (kategorie === "steuern") steuern += -b.betrag;
+    if (kategorie === "steuern") steuern += -a.netto;
     if (kategorie === "provision") {
-      m.provisionen += b.betrag;
+      m.provisionen += a.netto;
       provisionen.push({
         datum: b.buchungsdatum,
         zahler: (b.auftraggeberName ?? "").trim(),
         objekt: provisionObjekt(b.verwendungszweck),
-        brutto: runde(b.betrag),
-        netto: runde(b.betrag / USt_FAKTOR),
+        brutto: runde(a.brutto),
+        netto: runde(a.netto),
       });
     }
   }
@@ -143,7 +306,14 @@ export function berechneKennzahlen(input: {
   const ausgabenOhneSteuern = ausgaben - steuern;
 
   const liquiditaet = input.konten.reduce((s, k) => s + (k.saldo ?? 0), 0);
-  const kostenProMonat = monateBisher > 0 ? ausgaben / monateBisher : 0;
+  const kostenProMonat =
+    monateBisher > 0 ? ausgabenOhneSteuern / monateBisher : 0;
+  const runway = berechneRunway({
+    heute,
+    liquiditaet,
+    eigene,
+    buchungen: input.buchungen,
+  });
 
   // Liquiditätsverlauf: vom aktuellen Saldo rückwärts über alle Buchungen.
   let laufend = liquiditaet;
@@ -235,6 +405,8 @@ export function berechneKennzahlen(input: {
   return {
     jahr,
     stand: heute,
+    runway,
+    ustSaldo: runde(ustSaldo),
     kategorienMonat,
     fixkosten: {
       fixSumme: runde(fixSumme),
@@ -259,12 +431,11 @@ export function berechneKennzahlen(input: {
     steuern: runde(steuern),
     ausgabenOhneSteuern: runde(ausgabenOhneSteuern),
     provisionBrutto: runde(provisionBrutto),
-    provisionNetto: runde(provisionBrutto / USt_FAKTOR),
+    provisionNetto: runde(provisionen.reduce((s, p) => s + p.netto, 0)),
     anzahlProvisionen: provisionen.length,
     monateBisher,
     kostenProMonat: runde(kostenProMonat),
-    reichweiteMonate:
-      kostenProMonat > 0 ? runde(liquiditaet / kostenProMonat) : null,
+    reichweiteMonate: runway.monate,
     monate: monate.map((m) => ({
       monat: m.monat,
       einnahmen: runde(m.einnahmen),

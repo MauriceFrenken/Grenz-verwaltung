@@ -20,11 +20,6 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { useAuth } from "@/hooks/useAuth";
-import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
-import type { ExposeAnalyseDto } from "@/lib/expose-analyse/types";
-import { formatDate, formatEuro, formatInt, formatNumber } from "@/lib/format";
-
 import {
   AnzahlTooltip,
   BalkenListe,
@@ -32,8 +27,12 @@ import {
   KachelReihe,
   Karte,
   Tabelle,
-} from "./bausteine";
-import { VIZ, euroKurz, prozent, zahl1, zelle, zelleRechts } from "./hilfen";
+} from "@/features/kennzahlen/bausteine";
+import { VIZ, euroKurz, prozent, zahl1, zelle, zelleRechts } from "@/features/kennzahlen/hilfen";
+import { useAuth } from "@/hooks/useAuth";
+import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
+import type { ExposeAnalyseDto } from "@/lib/expose-analyse/types";
+import { formatDate, formatEuro, formatInt, formatNumber } from "@/lib/format";
 
 const wochenConfig = {
   anzahl: { label: "Exposés", color: VIZ[0] },
@@ -114,8 +113,8 @@ function Heatmap({ werte }: { werte: number[][] }) {
   );
 }
 
-/** Markt-Sicht auf die eingegangenen Ankauf-Exposés. */
-export function ExposeMarktTab() {
+/** Auswertung der eingegangenen Ankauf-Exposés (Reiter der Exposéanalyse). */
+export function ExposeAuswertung() {
   const { session } = useAuth();
   const token = session?.access_token ?? "";
   const [daten, setDaten] = useState<ExposeAnalyseDto | null>(null);

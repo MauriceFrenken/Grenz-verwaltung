@@ -213,7 +213,7 @@ const RHEINLAND =
   /(köln|koeln|düsseldorf|duesseldorf|bonn|rheinland|nrw|nordrhein|leverkusen|neuss|bergisch|rhein-)/i;
 const DEUTSCHLAND = /(deutschland|bund|top[- ]?7|a-städte|germany)/i;
 
-function regionsRang(region: string): number {
+export function regionsRang(region: string): number {
   if (RHEINLAND.test(region)) return 0;
   if (DEUTSCHLAND.test(region)) return 1;
   return 2;

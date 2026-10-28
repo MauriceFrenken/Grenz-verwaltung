@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -37,7 +39,7 @@ import {
   Karte,
   Tabelle,
 } from "./bausteine";
-import { VIZ, euroKurz, monatLabel, zelle, zelleRechts } from "./hilfen";
+import { VIZ, euroKurz, monatLabel, zahl1, zelle, zelleRechts } from "./hilfen";
 
 const ERSTES_JAHR = 2025;
 
@@ -48,6 +50,11 @@ const flussConfig = {
 
 const saldoConfig = {
   saldo: { label: "Liquidität", color: VIZ[0] },
+} satisfies ChartConfig;
+
+const runwayConfig = {
+  nurFix: { label: "Nur Fixkosten", color: VIZ[0] },
+  mitVariabel: { label: "Fix + Ø variable Kosten", color: VIZ[1] },
 } satisfies ChartConfig;
 
 const kumuliertConfig = {
@@ -62,6 +69,131 @@ function ibanFormatiert(iban: string): string {
 function labels(config: ChartConfig): Record<string, string> {
   return Object.fromEntries(
     Object.entries(config).map(([k, v]) => [k, String(v.label ?? k)]),
+  );
+}
+
+function monatJahr(monat: string): string {
+  return `${monatLabel(monat)} ${monat.slice(0, 4)}`;
+}
+
+function Zeile({
+  titel,
+  wert,
+  stark,
+}: {
+  titel: string;
+  wert: string;
+  stark?: boolean;
+}) {
+  return (
+    <div
+      className={`flex justify-between gap-4 py-1 text-sm ${stark ? "border-t border-hairline font-medium text-heading" : "text-text-muted"}`}
+    >
+      <span>{titel}</span>
+      <span className="tabular-nums">{wert}</span>
+    </div>
+  );
+}
+
+/** Runway: Wie lange reicht die Liquidität bei den aktuellen Fixkosten? */
+function RunwayKarte({ runway }: { runway: KennzahlenDto["runway"] }) {
+  const daten = runway.verlauf.map((v) => ({
+    ...v,
+    name: monatLabel(v.monat, true),
+  }));
+  return (
+    <Karte
+      titel="Runway"
+      hinweis="Wie lange reicht die Liquidität, wenn keine Provision mehr eingeht? Alles netto, USt als durchlaufender Posten."
+    >
+      <div className="grid gap-6 lg:grid-cols-[minmax(240px,300px)_1fr]">
+        <div className="flex flex-col gap-3">
+          <div>
+            <div className="text-[2.75rem] font-light leading-none tabular-nums text-heading">
+              {runway.monate === null ? "–" : `${zahl1(runway.monate)} Monate`}
+            </div>
+            <div className="mt-1 text-sm text-text-muted">
+              {runway.reichtBis
+                ? `bei aktuellen Fixkosten gedeckt bis ${monatJahr(runway.reichtBis)}`
+                : "Keine wiederkehrenden Kosten erkannt."}
+            </div>
+            {runway.monateMitVariabel !== null &&
+            runway.variabelProMonat > 0 ? (
+              <div className="text-sm text-text-muted">
+                mit Ø variablen Kosten {zahl1(runway.monateMitVariabel)} Monate
+              </div>
+            ) : null}
+          </div>
+          <div>
+            <Zeile titel="Kontostand" wert={formatEuro(runway.kontostand)} />
+            <Zeile
+              titel={
+                runway.offeneUst >= 0
+                  ? `− offene USt ab ${monatLabel(runway.ustOffenAb, true)}`
+                  : `+ USt-Erstattung ab ${monatLabel(runway.ustOffenAb, true)}`
+              }
+              wert={formatEuro(Math.abs(runway.offeneUst))}
+            />
+            <Zeile
+              titel="Liquidität netto"
+              wert={formatEuro(runway.liquiditaetNetto)}
+              stark
+            />
+            <Zeile
+              titel="Fixkosten je Monat"
+              wert={formatEuro(runway.fixProMonat)}
+            />
+            <Zeile
+              titel="Ø variable Kosten je Monat"
+              wert={formatEuro(runway.variabelProMonat)}
+            />
+          </div>
+          <p className="text-xs text-text-muted">
+            Fixkosten: Empfänger, die in mind. 3 der letzten 12 Monate bezahlt
+            wurden, Ø der letzten 3 vollen Monate. Ertragsteuern sind nicht
+            eingerechnet (letzte 12 Monate:{" "}
+            {formatEuro(runway.ertragsteuern12Monate)}).
+          </p>
+        </div>
+        <ChartContainer config={runwayConfig} className="h-72 w-full">
+          <AreaChart data={daten}>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="name"
+              tickLine={false}
+              axisLine={false}
+              minTickGap={16}
+            />
+            <YAxis
+              tickFormatter={euroKurz}
+              tickLine={false}
+              axisLine={false}
+              width={56}
+            />
+            <ChartTooltip
+              content={<EuroTooltip labels={labels(runwayConfig)} />}
+            />
+            <ChartLegend content={<ChartLegendContent />} />
+            <Area
+              dataKey="nurFix"
+              type="linear"
+              stroke="var(--color-nurFix)"
+              fill="var(--color-nurFix)"
+              fillOpacity={0.12}
+              strokeWidth={2}
+            />
+            <Area
+              dataKey="mitVariabel"
+              type="linear"
+              stroke="var(--color-mitVariabel)"
+              strokeDasharray="5 4"
+              fill="none"
+              strokeWidth={2}
+            />
+          </AreaChart>
+        </ChartContainer>
+      </div>
+    </Karte>
   );
 }
 
@@ -117,7 +249,8 @@ export function FinanzenTab() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-text-muted">
-          Aus den Bankbuchungen, Beträge brutto, ohne Umbuchungen zwischen den
+          Aus den Bankbuchungen, Beträge netto: Umsatzsteuer ist als
+          durchlaufender Posten herausgerechnet, ohne Umbuchungen zwischen den
           eigenen Konten.
         </p>
         <Select value={String(jahr)} onValueChange={(v) => setJahr(Number(v))}>
@@ -140,59 +273,57 @@ export function FinanzenTab() {
         </p>
       ) : (
         <>
+          <RunwayKarte runway={daten.runway} />
+
           <KachelReihe>
             <Kachel
-              titel="Liquidität"
-              wert={formatEuro(daten.liquiditaet)}
-              unterzeile={
-                daten.reichweiteMonate !== null
-                  ? `reicht ca. ${daten.reichweiteMonate.toLocaleString("de-DE", { maximumFractionDigits: 1 })} Monate`
-                  : undefined
-              }
-            />
-            <Kachel
               titel={`Provisionen ${daten.jahr}`}
-              wert={formatEuro(daten.provisionBrutto)}
-              unterzeile={`${daten.anzahlProvisionen} Zahlungen · netto ${formatEuro(daten.provisionNetto)}`}
+              wert={formatEuro(daten.provisionNetto)}
+              unterzeile={`${daten.anzahlProvisionen} Zahlungen · brutto ${formatEuro(daten.provisionBrutto)}`}
             />
             <Kachel
               titel={`Ausgaben ${daten.jahr}`}
               wert={formatEuro(daten.ausgaben)}
-              unterzeile={`davon Steuern ${formatEuro(daten.steuern)} · Ø ${formatEuro(daten.kostenProMonat)}/Monat`}
+              unterzeile={`davon Ertragsteuern ${formatEuro(daten.steuern)} · Ø ${formatEuro(daten.kostenProMonat)}/Monat`}
             />
             <Kachel
-              titel="Ergebnis (Cash)"
+              titel="Ergebnis (Cash, netto)"
               wert={formatEuro(daten.ergebnis)}
-              unterzeile="Einnahmen minus Ausgaben"
+              unterzeile="Einnahmen minus Ausgaben, ohne USt"
               ton={daten.ergebnis >= 0 ? "gut" : "schlecht"}
+            />
+            <Kachel
+              titel={`USt ans Finanzamt ${daten.jahr}`}
+              wert={formatEuro(daten.ustSaldo)}
+              unterzeile="Zahlungen minus Erstattungen, durchlaufend"
             />
           </KachelReihe>
 
           <KachelReihe>
             <Kachel
               titel="Fixkosten je Monat"
-              wert={formatEuro(daten.fixkosten.fixProMonat)}
-              unterzeile={`${daten.fixkosten.posten.length} wiederkehrende Empfänger`}
+              wert={formatEuro(daten.runway.fixProMonat)}
+              unterzeile={`aktuell, netto · ${daten.runway.posten.length} wiederkehrende Empfänger`}
             />
             <Kachel
               titel="Fix vs. variabel"
               wert={`${formatEuro(daten.fixkosten.fixSumme)}`}
-              unterzeile={`variabel ${formatEuro(daten.fixkosten.variabelSumme)} (ohne Steuern)`}
+              unterzeile={`variabel ${formatEuro(daten.fixkosten.variabelSumme)} (ohne Ertragsteuern)`}
             />
             <Kachel
               titel="Break-even je Monat"
-              wert={formatEuro(daten.kostenProMonat * 1.19)}
-              unterzeile="nötige Bruttoprovision, um Ø-Kosten zu decken"
+              wert={formatEuro(daten.kostenProMonat)}
+              unterzeile="nötige Nettoprovision, um Ø-Kosten zu decken"
             />
             <Kachel
               titel="Deckung bisher"
               wert={
                 daten.ausgaben > 0
-                  ? `${Math.round((daten.provisionBrutto / daten.ausgaben) * 100)} %`
+                  ? `${Math.round((daten.provisionNetto / daten.ausgaben) * 100)} %`
                   : "–"
               }
-              unterzeile="Provisionen ÷ Ausgaben im Jahr"
-              ton={daten.provisionBrutto >= daten.ausgaben ? "gut" : "schlecht"}
+              unterzeile="Nettoprovisionen ÷ Ausgaben im Jahr"
+              ton={daten.provisionNetto >= daten.ausgaben ? "gut" : "schlecht"}
             />
           </KachelReihe>
 
@@ -259,7 +390,7 @@ export function FinanzenTab() {
           <div className="grid gap-6 xl:grid-cols-2">
             <Karte
               titel="Provisionen vs. Ausgaben (laufende Summe)"
-              hinweis="Liegt die blaue Linie über der orangen, tragen die Provisionen das Jahr."
+              hinweis="Liegt die dunkle Linie über der hellen, tragen die Provisionen das Jahr."
             >
               <ChartContainer config={kumuliertConfig} className="h-64 w-full">
                 <LineChart
