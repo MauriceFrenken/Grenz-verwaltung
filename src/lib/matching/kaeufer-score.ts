@@ -94,6 +94,10 @@ export type InvestorSignale = {
   ansprechpartner: boolean;
   email: boolean;
   telefon: boolean;
+  /** Firmensitz (Ort), Ersatz für ein fehlendes Suchgebiet. */
+  sitz: string | null;
+  /** NRW-Bezug laut externer Liste: Suchgebiet NRW („region“) oder Sitz in NRW („sitz“). */
+  nrwBezug: string | null;
   /** Freitext aus dem Ankaufsprofil (Bemerkungsfeld__c), dort stehen oft die Kriterien. */
   bemerkung: string | null;
   /** Status des Kontakts in einer Kampagne dieses Mandats (z. B. „Absage“), sonst null. */
@@ -114,6 +118,8 @@ export const KEINE_SIGNALE: InvestorSignale = {
   ansprechpartner: false,
   email: false,
   telefon: false,
+  sitz: null,
+  nrwBezug: null,
   bemerkung: null,
   mandatStatus: null,
 };
@@ -183,11 +189,13 @@ export function kaeuferScore(
       baustein("objektart", null, nutzung?.begruendung ?? "Keine Angabe."),
     );
 
-  // Region: Profil, sonst Bemerkung.
+  // Region: Profil, sonst Bemerkung, sonst NRW-Bezug laut Liste oder Firmensitz.
   const region = aus(match, "region");
   const bemerkungRegion = bemerkung
     ? regionsNaehe(objekt.orte, bemerkung)
     : null;
+  const objektInNrw = (regionsNaehe(objekt.orte, "NRW") ?? 0) >= 0.6;
+  const sitzNaehe = s.sitz ? regionsNaehe(objekt.orte, s.sitz) : null;
   if (region?.punkte != null)
     bausteine.push(baustein("region", region.punkte / 100, region.begruendung));
   else if (bemerkungRegion)
@@ -196,6 +204,16 @@ export function kaeuferScore(
         "region",
         bemerkungRegion >= 1 ? 0.8 : bemerkungRegion >= 0.6 ? 0.6 : 0.4,
         `Laut Bemerkung ${zitat(bemerkung!)} ${bemerkungRegion >= 1 ? "am Standort" : "in der Region"} aktiv.`,
+      ),
+    );
+  else if (s.nrwBezug === "region" && objektInNrw)
+    bausteine.push(baustein("region", 0.6, "Sucht laut Liste in NRW."));
+  else if (sitzNaehe != null && sitzNaehe >= 0.6)
+    bausteine.push(
+      baustein(
+        "region",
+        sitzNaehe >= 1 ? 0.6 : 0.45,
+        `Kein Suchgebiet angegeben, Sitz in ${s.sitz} (${sitzNaehe >= 1 ? "am Standort" : "in der Region"}).`,
       ),
     );
   else

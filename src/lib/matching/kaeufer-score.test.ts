@@ -120,4 +120,21 @@ describe("kaeuferScore", () => {
     );
     expect(b.kreis).toBe("C");
   });
+
+  it("nutzt ohne Suchgebiet den NRW-Bezug der Liste oder den Firmensitz", () => {
+    const ohne = profil({ regionen: null });
+    const unbekannt = bewerte(ohne, {}).bausteine.find(
+      (x) => x.id === "region",
+    )!;
+    expect(unbekannt.belegt).toBe(false);
+    const nrw = bewerte(ohne, { nrwBezug: "region" }).bausteine.find(
+      (x) => x.id === "region",
+    )!;
+    expect(nrw).toMatchObject({ belegt: true, punkte: 12 });
+    const sitz = bewerte(ohne, { sitz: "Düsseldorf" }).bausteine.find(
+      (x) => x.id === "region",
+    )!;
+    expect(sitz.begruendung).toContain("Sitz in Düsseldorf");
+    expect(sitz.punkte).toBeGreaterThan(unbekannt.punkte);
+  });
 });
