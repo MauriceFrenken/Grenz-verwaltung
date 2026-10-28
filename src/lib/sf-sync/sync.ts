@@ -156,11 +156,22 @@ async function perIds(objekt: string, felder: string, ids: string[], filter = ""
   return ergebnis;
 }
 
+/** Ids der Datensätze (Deals, Kampagnen), die an den angegebenen Objekten hängen. */
+async function neuReferenziert(objekt: "Opportunity" | "Campaign", objekte: string[]): Promise<string[]> {
+  const ids: string[] = [];
+  for (const teil of inHaeppchen(objekte, 200)) {
+    const r = await sfAbfrage(`SELECT Id FROM ${objekt} WHERE Real_Estate__c IN (${soqlIdListe(teil)})`);
+    ids.push(...r.map((x) => x.Id));
+  }
+  return ids;
+}
+
 async function holeObjekt(
   admin: SupabaseClient,
   objekt: SfSyncObjekt,
   stand: Stand | undefined,
   voll: boolean,
+  lauf: { neueObjekte: string[] } = { neueObjekte: [] },
 ): Promise<{ records: SfRoh[]; zeilen: Record<string, unknown>[] }> {
   const user = soqlIdListe(grenzSfUserIds());
   const s = seit(stand, voll);
@@ -173,16 +184,34 @@ async function holeObjekt(
       return { records: r, zeilen: r.map(mappeMandat) };
     }
     case "Real_Estate__c": {
-      // Nur Objekte mit Mandat.
-      const r = await sfAbfrage(
-        `SELECT ${FELDER.Real_Estate__c} FROM Real_Estate__c WHERE Id IN (SELECT Real_Estate__c FROM Mandate__c)${s}`,
-      );
+      // Nur Objekte mit Mandat. Ein neues Mandat kann auf ein lange unverändertes Objekt
+      // zeigen, das der inkrementelle Abruf nie liefert: fehlende Objekte daher vollständig holen.
+      const referenziert = await idsAus(admin, "sf_mandate", "real_estate_sf_id");
+      const vorhanden = new Set(await idsAus(admin, "sf_real_estate", "sf_id"));
+      lauf.neueObjekte = referenziert.filter((id) => !vorhanden.has(id));
+      const r = eindeutig([
+        ...(await sfAbfrage(
+          `SELECT ${FELDER.Real_Estate__c} FROM Real_Estate__c WHERE Id IN (SELECT Real_Estate__c FROM Mandate__c)${s}`,
+        )),
+        ...(s ? await perIds("Real_Estate__c", FELDER.Real_Estate__c, lauf.neueObjekte) : []),
+      ]);
       return { records: r, zeilen: r.map(mappeRealEstate) };
     }
     case "Opportunity": {
-      const r = await sfAbfrage(
-        `SELECT ${FELDER.Opportunity} FROM Opportunity WHERE RecordType.DeveloperName = '${GRENZ_DEAL_RECORD_TYPE}'${s}`,
-      );
+      // Deals zu neu hinzugekommenen Objekten vollständig, damit sie dem Mandat zugeordnet werden.
+      const r = eindeutig([
+        ...(await sfAbfrage(
+          `SELECT ${FELDER.Opportunity} FROM Opportunity WHERE RecordType.DeveloperName = '${GRENZ_DEAL_RECORD_TYPE}'${s}`,
+        )),
+        ...(s
+          ? await perIds(
+              "Opportunity",
+              FELDER.Opportunity,
+              await neuReferenziert("Opportunity", lauf.neueObjekte),
+              ` AND RecordType.DeveloperName = '${GRENZ_DEAL_RECORD_TYPE}'`,
+            )
+          : []),
+      ]);
       const kontext = await mandatsBezug(admin);
       return { records: r, zeilen: r.map((x) => mappeDeal(x, kontext)) };
     }
@@ -192,7 +221,8 @@ async function holeObjekt(
         `SELECT ${FELDER.Campaign} FROM Campaign WHERE Real_Estate__c IN (SELECT Real_Estate__c FROM Mandate__c)${s}`,
       );
       const b = await sfAbfrage(`SELECT ${FELDER.Campaign} FROM Campaign WHERE OwnerId IN (${user})${s}`);
-      const r = eindeutig([...a, ...b]);
+      const c = s ? await perIds("Campaign", FELDER.Campaign, await neuReferenziert("Campaign", lauf.neueObjekte)) : [];
+      const r = eindeutig([...a, ...b, ...c]);
       const kontext = await mandatsBezug(admin);
       return { records: r, zeilen: r.map((x) => mappeKampagne(x, kontext)) };
     }
@@ -330,6 +360,7 @@ export async function salesforceSyncAusfuehren(
     "Lead",
   ];
   const ergebnisse: SyncErgebnis[] = [];
+  const lauf = { neueObjekte: [] as string[] };
 
   for (const objekt of reihenfolge) {
     if (optionen.nur && !optionen.nur.includes(objekt)) continue;
@@ -337,7 +368,7 @@ export async function salesforceSyncAusfuehren(
     const voll = Boolean(optionen.voll) || !stand?.hoechster_systemmodstamp;
     const start = new Date().toISOString();
     try {
-      const { records, zeilen } = await holeObjekt(admin, objekt, stand, voll);
+      const { records, zeilen } = await holeObjekt(admin, objekt, stand, voll, lauf);
       await upsert(admin, TABELLE[objekt], zeilen);
       const geloescht = await loescheGeloeschte(admin, objekt, stand);
       const { error: standFehler } = await admin.from("sf_sync_stand").upsert(

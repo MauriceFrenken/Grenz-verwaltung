@@ -41,14 +41,19 @@ export function useMandatDetail(sfId: string) {
 
 export function mandatTitel(detail: MandatDetail | null): string {
   const m = detail?.mandat;
-  return m ? (m.objekt ?? m.name) : "Mandat";
+  return m ? (m.adresse ?? m.objekt ?? m.name) : "Mandat";
 }
 
 export function mandatBeschreibung(
   detail: MandatDetail | null,
 ): string | undefined {
   const m = detail?.mandat;
-  return m
-    ? [m.name, m.adresse, m.status].filter(Boolean).join(" · ")
-    : undefined;
+  if (!m) return undefined;
+  // Objektname nur zeigen, wenn er nicht schon in der Adresse (Titel) steckt.
+  const objekt =
+    m.objekt && m.adresse && !m.adresse.includes(m.objekt) ? m.objekt : null;
+  const titel = mandatTitel(detail);
+  return [m.name !== titel ? m.name : null, objekt, m.status]
+    .filter(Boolean)
+    .join(" · ");
 }
