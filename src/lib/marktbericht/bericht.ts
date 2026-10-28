@@ -5,6 +5,12 @@
 
 import { zinsStand } from "./bundesbank";
 import {
+  bruttorendite,
+  deutschland,
+  standortZeilen,
+  type MarktArt,
+} from "./standorte";
+import {
   MINDEST_FALLZAHL,
   periodeText,
   type Benchmark,
@@ -27,6 +33,8 @@ export const fmt = {
   euroM2: (w: number) => `${de0.format(Math.round(w / 10) * 10)} €/m²`,
   mieteM2: (w: number) => `${de2.format(w)} €/m²`,
   prozent: (w: number) => `${de2.format(w)} %`,
+  /** Renditen mit einer Nachkommastelle, z. B. „4,7 %“. */
+  rendite: (w: number) => `${de1.format(w)} %`,
   ganz: (w: number) => de0.format(w),
   mio: (w: number) => `${de1.format(w / 1_000_000)} Mio. €`,
   bp: (w: number) => `${w > 0 ? "+" : w < 0 ? "-" : "±"}${Math.abs(w)} bp`,
@@ -72,120 +80,166 @@ function richtungAus(delta: number | null): Kachel["richtung"] {
   return delta > 0 ? "hoch" : "runter";
 }
 
-/** Bis zu sechs Kennzahlen für „Auf einen Blick“: zuerst eigene Daten, dann Zins, dann zitierte Werte. */
+function richtungAusText(v: string | null): Kachel["richtung"] {
+  if (!v) return null;
+  if (/^\s*\+/.test(v)) return "hoch";
+  if (/^\s*[-−]/.test(v)) return "runter";
+  return null;
+}
+
+/** „06/2026“ aus einem ISO-Datum. */
+export function monatJahr(iso: string): string {
+  return `${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+}
+
+/**
+ * Sechs Kennzahlen für „Auf einen Blick“, ausgewählt für Privatanleger: Faktoren und Mieten in
+ * Köln und Düsseldorf, Bauzins, Rendite im Angebot. Ohne Herausgeber, nur mit Stand.
+ */
 export function kacheln(
   k: MarktberichtKennzahlen,
   benchmarks: Benchmark[],
 ): Kachel[] {
   const liste: Kachel[] = [];
-  const gesamt = k.angebot.zeilen.find((z) => z.teilmarkt === "Gesamt");
-  const vor = k.angebot.vorperiode;
+  const zeilen = standortZeilen(k, benchmarks);
+  const top = zeilen.filter(
+    (z) => z.standort === "Köln" || z.standort === "Düsseldorf",
+  );
   const laufend = erhebungZeitraum(k, "angebot");
-  const exposeQuelle = laufend
-    ? `Grenz Exposé-Eingang ${laufend}`
-    : "Grenz Exposé-Eingang";
-  if (gesamt?.faktor) {
-    const delta = vor?.faktor ? gesamt.faktor.median - vor.faktor.median : null;
-    liste.push({
-      wert: fmt.faktor(gesamt.faktor.median),
-      label: "Angebotsfaktor (Median)",
-      veraenderung:
-        delta != null
-          ? `${delta >= 0 ? "+" : "-"}${fmt.faktor(Math.abs(delta))} ggü. Vorjahr`
-          : null,
-      richtung: richtungAus(delta),
-      quelle: `${exposeQuelle}, n = ${gesamt.faktor.n}`,
-    });
+  const angebotsStand = laufend
+    ? `Angebote ${laufend}`
+    : `Angebote ${periodeText(k.periode)}`;
+  for (const z of top) {
+    const f = z.markt.faktor;
+    if (f)
+      liste.push({
+        wert: f.text,
+        label: `Kaufpreisfaktor ${z.standort}`,
+        veraenderung: f.veraenderung ?? "Mehrfamilienhäuser Bestand",
+        richtung: richtungAusText(f.veraenderung),
+        quelle: `Stand ${monatJahr(f.stichtag)}`,
+      });
+    else if (z.angebotsfaktor)
+      liste.push({
+        wert: fmt.faktor(z.angebotsfaktor),
+        label: `Angebotsfaktor ${z.standort}`,
+        veraenderung: null,
+        richtung: null,
+        quelle: angebotsStand,
+      });
   }
-  if (gesamt?.preisM2)
-    liste.push({
-      wert: fmt.euroM2(gesamt.preisM2.median),
-      label: "Angebotspreis (Median)",
-      veraenderung: null,
-      richtung: null,
-      quelle: `${exposeQuelle}, n = ${gesamt.preisM2.n}`,
-    });
-  if (gesamt)
-    liste.push({
-      wert: fmt.ganz(gesamt.angebote),
-      label: "Angebote im Eingang",
-      veraenderung: vor ? `${vor.angebote} im Vorjahreszeitraum` : null,
-      richtung: vor ? richtungAus(gesamt.angebote - vor.angebote) : null,
-      quelle: exposeQuelle,
-    });
+  for (const z of top) {
+    const m = z.markt.miete;
+    if (m)
+      liste.push({
+        wert: m.text,
+        label: `Angebotsmiete ${z.standort}`,
+        veraenderung: m.veraenderung,
+        richtung: richtungAusText(m.veraenderung),
+        quelle: `Stand ${monatJahr(m.stichtag)}`,
+      });
+  }
   const bauzins = zinsStand(k.zinsen.reihen.find((r) => r.id === "bauzins"));
   if (bauzins)
     liste.push({
       wert: fmt.prozent(bauzins.wert),
       label: "Bauzins 10 Jahre",
       veraenderung:
-        bauzins.deltaBp != null ? `${fmt.bp(bauzins.deltaBp)} y/y` : null,
-      richtung: richtungAus(bauzins.deltaBp),
-      quelle: "Deutsche Bundesbank",
-    });
-  liste.push({
-    wert: fmt.ganz(k.kaeufer.profile),
-    label: "Ankaufsprofile im Bestand",
-    veraenderung: k.kaeufer.medianVolumenMax
-      ? `Median bis ${fmt.mio(k.kaeufer.medianVolumenMax)}`
-      : null,
-    richtung: null,
-    quelle: "Grenz Investorendatenbank",
-  });
-  for (const b of benchmarks.filter((b) => b.geprueft)) {
-    if (liste.length >= 6) break;
-    liste.push({
-      wert: fmt.wert(b.wert, b.einheit),
-      label: `${b.kennzahl}${b.region ? ` ${b.region}` : ""}`,
-      veraenderung: b.veraenderung ?? null,
-      richtung: /^\+/.test(b.veraenderung ?? "")
-        ? "hoch"
-        : /^[-−]/.test(b.veraenderung ?? "")
-          ? "runter"
+        bauzins.deltaBp != null
+          ? `${fmt.bp(bauzins.deltaBp)} ggü. Vorjahr`
           : null,
-      quelle: `zitiert: ${b.quelle}`,
+      richtung: richtungAus(bauzins.deltaBp),
+      quelle: `Stand ${bauzins.monat.slice(5, 7)}/${bauzins.monat.slice(0, 4)}`,
+    });
+  const gesamt = k.angebot.zeilen.find((z) => z.teilmarkt === "Gesamt");
+  const rendite = bruttorendite(gesamt?.faktor?.median);
+  if (rendite != null)
+    liste.push({
+      wert: fmt.rendite(rendite),
+      label: "Bruttorendite im Angebot",
+      veraenderung: `Faktor ${fmt.faktor(gesamt!.faktor!.median)}`,
+      richtung: null,
+      quelle: angebotsStand,
+    });
+  const d = deutschland(benchmarks);
+  for (const [w, label] of [
+    [d.rendite, "Spitzenrendite Wohnen Top-7"],
+    [d.umsatz, "Wohninvestment Deutschland"],
+  ] as const) {
+    if (liste.length >= 6 || !w) continue;
+    liste.push({
+      wert: w.text,
+      label,
+      veraenderung: w.veraenderung,
+      richtung: richtungAusText(w.veraenderung),
+      quelle: `Stand ${monatJahr(w.stichtag)}`,
     });
   }
   return liste.slice(0, 6);
 }
 
-/** Alle Kennzahlen als Text für die KI. Jede Zahl, die im Bericht stehen darf, steht hier. */
+const ART_TEXT: Record<MarktArt, string> = {
+  faktor: "Kaufpreisfaktor Mehrfamilienhäuser (Bestand)",
+  kaufpreis: "Kaufpreis Mehrfamilienhäuser je m² Wohnfläche",
+  miete: "Angebotsmiete Wohnen (Neuvermietung)",
+  rendite: "Spitzenrendite Wohnen",
+  liegenschaftszins: "Liegenschaftszins Mietwohnhäuser",
+  umsatz: "Umsatz Zinshäuser/Mehrfamilienhäuser",
+};
+
+/**
+ * Alle Kennzahlen als Text für die KI, ohne Herausgeber. Jede Zahl, die im Bericht stehen darf,
+ * steht hier (abgeleitete Renditen inklusive).
+ */
 export function kennzahlenText(
   k: MarktberichtKennzahlen,
   benchmarks: Benchmark[],
 ): string {
+  const laufend = erhebungZeitraum(k, "angebot");
   const z: string[] = [
-    `Bericht: Marktbericht Zinshäuser Rheinland, ${periodeText(k.periode)} (${fmt.datum(k.von)} bis ${fmt.datum(k.bis)}), Stichtag ${fmt.datum(k.stichtag)}${k.vorlaeufig ? ", Periode läuft noch (vorläufige Zahlen)" : ""}.`,
+    `Bericht: Marktbericht Zinshäuser Rheinland, ${periodeText(k.periode)} (${fmt.datum(k.von)} bis ${fmt.datum(k.bis)}), Stand ${fmt.datum(k.stichtag)}${k.vorlaeufig ? ", Periode läuft noch (vorläufige Zahlen)" : ""}.`,
     "",
-    erhebungZeitraum(k, "angebot")
-      ? `Angebotsmarkt (Grenz Exposé-Eingang, Zinshäuser von Maklern und Eigentümern; die Erfassung startete erst am ${k.angebot.ersterEingang ? fmt.datum(k.angebot.ersterEingang) : "–"}, für die Berichtsperiode gibt es zu wenige Fälle. Die Werte stammen deshalb aus der laufenden Erhebung ${erhebungZeitraum(k, "angebot")} und sind im Text ausdrücklich so zu bezeichnen, nicht als Wert der Periode; Werte nur ab ${MINDEST_FALLZAHL} Fällen):`
-      : `Angebotsmarkt (Grenz Exposé-Eingang, Zinshäuser von Maklern und Eigentümern, erster Eingang ${k.angebot.ersterEingang ? fmt.datum(k.angebot.ersterEingang) : "–"}; Werte nur ab ${MINDEST_FALLZAHL} Fällen):`,
+    "Standorte (Marktdaten, Stand jeweils in Klammern):",
   ];
-  for (const r of k.angebot.zeilen)
+  const zeilen = standortZeilen(k, benchmarks);
+  for (const s of zeilen) {
+    const teile = (Object.keys(ART_TEXT) as MarktArt[])
+      .filter((a) => s.markt[a])
+      .map((a) => {
+        const w = s.markt[a]!;
+        return `${ART_TEXT[a]} ${w.text}${w.veraenderung ? ` (${w.veraenderung})` : ""} (${monatJahr(w.stichtag)})`;
+      });
+    if (s.angebotsfaktor)
+      teile.push(
+        `Angebotsfaktor ${fmt.faktor(s.angebotsfaktor)}, entspricht Bruttorendite ${fmt.rendite(s.bruttorendite!)}${s.angebotspreisM2 ? `, Angebotspreis ${fmt.euroM2(s.angebotspreisM2)}` : ""} (eigene Angebotsdaten)`,
+      );
+    z.push(`- ${s.standort}: ${teile.join("; ") || "keine belastbaren Werte"}`);
+  }
+  const d = deutschland(benchmarks);
+  if (d.rendite)
     z.push(
-      `- ${r.teilmarkt}: ${r.angebote} Angebote, davon ${r.mitPreis} mit Preis; Faktor Median ${median(r.faktor, fmt.faktor)} (Spanne ${spanne(r.faktor, fmt.faktor)}); Preis ${median(r.preisM2, fmt.euroM2)} (Spanne ${spanne(r.preisM2, fmt.euroM2)}); Ist-Miete ${median(r.mieteM2, fmt.mieteM2)}`,
+      `- Deutschland Top-7: Spitzenrendite Wohnen ${d.rendite.text}${d.rendite.veraenderung ? ` (${d.rendite.veraenderung})` : ""} (${monatJahr(d.rendite.stichtag)})`,
     );
-  if (k.angebot.vorperiode) {
-    const v = k.angebot.vorperiode;
+  if (d.umsatz)
     z.push(
-      `- Vorjahreszeitraum gesamt: ${v.angebote} Angebote; Faktor Median ${median(v.faktor, fmt.faktor)}`,
+      `- Deutschland: Wohninvestment-Transaktionsvolumen ${d.umsatz.text}${d.umsatz.veraenderung ? ` (${d.umsatz.veraenderung})` : ""} (${monatJahr(d.umsatz.stichtag)})`,
     );
-  } else
-    z.push("- Vorjahreszeitraum: keine Daten (Erfassung lief noch nicht).");
+
   z.push(
-    `- Objektarten: ${k.angebot.objektarten.map((o) => `${o.label} ${o.wert}`).join(", ")}`,
     "",
-    `Nachfrage (Grenz Investorendatenbank, Ankaufsprofile aus Salesforce): ${k.kaeufer.profile} Profile, ${k.kaeufer.mitVolumen} mit Volumenangabe${k.kaeufer.medianVolumenMax ? `, Median-Höchstvolumen ${fmt.mio(k.kaeufer.medianVolumenMax)}` : ""}.`,
-    `- Suchregionen: ${k.kaeufer.regionen.map((r) => `${r.label} ${r.wert}`).join(", ")}`,
-    `- Volumenbänder: ${k.kaeufer.volumenbaender.map((r) => `${r.label} ${r.wert}`).join(", ") || "–"}`,
-    `- Strategien: ${k.kaeufer.assetklassen.map((r) => `${r.label} ${r.wert}`).join(", ") || "–"}`,
-    `- Investorentypen (soweit gepflegt): ${k.kaeufer.investorTypen.map((r) => `${r.label} ${r.wert}`).join(", ") || "–"}`,
-    "",
-    `Grenz-Vermarktung im Zeitraum (Salesforce): ${k.vermarktung.neueMandate} neue Mandate, ${k.vermarktung.abschluesse} Abschlüsse${k.vermarktung.abschlussVolumen ? ` (${fmt.mio(k.vermarktung.abschlussVolumen)})` : ""}, ${k.vermarktung.verloren} verlorene Interessenten.`,
-    `Vorjahreszeitraum: ${k.vermarktungVorperiode.neueMandate} neue Mandate, ${k.vermarktungVorperiode.abschluesse} Abschlüsse${k.vermarktungVorperiode.abschlussVolumen ? ` (${fmt.mio(k.vermarktungVorperiode.abschlussVolumen)})` : ""}, ${k.vermarktungVorperiode.verloren} verlorene Interessenten.`,
-    "",
-    "Zinsumfeld (Deutsche Bundesbank):",
+    laufend
+      ? `Eigene Angebotsdaten (Zinshaus-Angebote, die Grenz & Co. erhalten hat; Werte der letzten sechs Monate ${laufend}, nicht der Berichtsperiode, im Text als „aktuelle Angebote“ bezeichnen; Werte nur ab ${MINDEST_FALLZAHL} Fällen):`
+      : `Eigene Angebotsdaten (Zinshaus-Angebote, die Grenz & Co. erhalten hat; Werte nur ab ${MINDEST_FALLZAHL} Fällen):`,
   );
+  for (const r of k.angebot.zeilen) {
+    const br = bruttorendite(r.faktor?.median);
+    z.push(
+      `- ${r.teilmarkt}: ${r.angebote} Angebote; Faktor Median ${median(r.faktor, fmt.faktor)} (Spanne ${spanne(r.faktor, fmt.faktor)})${br != null ? `, Bruttorendite ${fmt.rendite(br)}` : ""}; Preis ${median(r.preisM2, fmt.euroM2)}; Ist-Miete ${median(r.mieteM2, fmt.mieteM2)}`,
+    );
+  }
+
+  z.push("", "Finanzierung:");
+  const bauzins = zinsStand(k.zinsen.reihen.find((r) => r.id === "bauzins"));
   for (const r of k.zinsen.reihen) {
     const s = zinsStand(r);
     if (s)
@@ -193,24 +247,29 @@ export function kennzahlenText(
         `- ${r.label}: ${fmt.prozent(s.wert)} im ${s.monat}${s.deltaBp != null ? `, ${fmt.bp(s.deltaBp)} gegenüber Vorjahresmonat` : ""}`,
       );
   }
-  if (k.zinsen.fehler) z.push(`- Hinweis: ${k.zinsen.fehler}`);
-  z.push(
-    "",
-    `Markt-Radar (Pressemeldungen${erhebungZeitraum(k, "radar") ? `, laufende Erhebung ${erhebungZeitraum(k, "radar")}, da das Radar erst nach der Berichtsperiode startete; so bezeichnen` : ""}): ${k.radar.kaeufer} Käufer-Meldungen, ${k.radar.verkaeufer} Verkäufer-Meldungen.`,
-  );
-  for (const m of k.radar.auswahl.slice(0, 5))
+  const gesamt = k.angebot.zeilen.find((r) => r.teilmarkt === "Gesamt");
+  const br = bruttorendite(gesamt?.faktor?.median);
+  if (bauzins && br != null) {
+    const abstand = Math.round((br - bauzins.wert) * 100) / 100;
     z.push(
-      `- ${m.akteur}: ${m.ereignis}${m.ort ? ` (${m.ort})` : ""}${m.volumen ? `, ${fmt.mio(m.volumen)}` : ""}`,
+      `- Abstand Bruttorendite im Angebot (${fmt.rendite(br)}) zum Bauzins (${fmt.prozent(bauzins.wert)}): ${abstand >= 0 ? "+" : "-"}${fmt.prozent(Math.abs(abstand)).replace(" %", "")} Prozentpunkte`,
     );
-  const gepr = benchmarks.filter((b) => b.geprueft);
+  }
+
   z.push(
     "",
-    "Zitierte Vergleichswerte anderer Häuser (nur mit Quelle nennen):",
+    `Nachfrage (Investorenbasis von Grenz & Co., ${k.kaeufer.profile} Ankaufsprofile, ${k.kaeufer.mitVolumen} mit Volumen${k.kaeufer.medianVolumenMax ? `, mittleres Höchstvolumen ${fmt.mio(k.kaeufer.medianVolumenMax)}` : ""}):`,
+    `- Gesuchte Volumina: ${k.kaeufer.volumenbaender.map((r) => `${r.label} ${r.wert}`).join(", ") || "–"}`,
+    `- Strategien: ${k.kaeufer.assetklassen.map((r) => `${r.label} ${r.wert}`).join(", ") || "–"}`,
+    `- Suchregionen: ${k.kaeufer.regionen.map((r) => `${r.label} ${r.wert}`).join(", ") || "–"}`,
   );
+
+  const gepr = benchmarks.filter((b) => b.geprueft);
+  z.push("", "Weitere Marktdaten (ohne Herausgeber verwenden):");
   if (!gepr.length) z.push("- keine");
   for (const b of gepr)
     z.push(
-      `- ${b.kennzahl}${b.region ? ` ${b.region}` : ""}: ${fmt.wert(b.wert, b.einheit)}${b.veraenderung ? ` (${b.veraenderung})` : ""}, Quelle ${b.quelle}, Stand ${fmt.datum(b.stichtag)}`,
+      `- ${b.kennzahl}${b.region ? `, ${b.region}` : ""}: ${fmt.wert(b.wert, b.einheit)}${b.veraenderung ? ` (${b.veraenderung})` : ""} (${monatJahr(b.stichtag)})`,
     );
   return z.join("\n");
 }

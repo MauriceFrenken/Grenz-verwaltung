@@ -24,6 +24,7 @@ import {
 import {
   periodeSchluessel,
   periodeText,
+  TEXT_FASSUNG,
   texteLeer,
   type Benchmark,
   type MarktberichtInhalt,
@@ -75,6 +76,9 @@ function inhaltAus(roh: unknown): MarktberichtInhalt {
       : {}),
     ...(i.texteAutomatisch === true ? { texteAutomatisch: true } : {}),
     ...(i.texteFaellig === true ? { texteFaellig: true } : {}),
+    ...(typeof i.textFassung === "number"
+      ? { textFassung: i.textFassung }
+      : {}),
   };
 }
 
@@ -179,6 +183,7 @@ function texteAus(roh: unknown): MarktberichtTexte {
     nachfrage: text(t.nachfrage, 3000),
     vermarktung: text(t.vermarktung, 3000),
     ausblick: text(t.ausblick, 3000),
+    empfehlungen: liste(t.empfehlungen, 300),
     ausblickTrends: trends,
     pruefhinweise: liste(t.pruefhinweise, 400),
   };
@@ -444,6 +449,7 @@ export async function automatischSchreiben(
     ...jetzt.inhalt,
     texte,
     texteAutomatisch: true,
+    textFassung: TEXT_FASSUNG,
   };
   delete inhalt.texteFaellig;
   const { error } = await admin
@@ -456,7 +462,7 @@ export async function automatischSchreiben(
 
 /**
  * Cron: höchstens einen offenen Entwurf vervollständigen, der noch keine Texte hat oder dessen
- * unveränderte KI-Texte neue Vergleichswerte noch nicht kennen.
+ * unveränderte KI-Texte neue Vergleichswerte oder neue KI-Vorgaben (TEXT_FASSUNG) noch nicht kennen.
  */
 export async function entwurfTexteNachziehen(
   admin: SupabaseClient,
@@ -469,7 +475,11 @@ export async function entwurfTexteNachziehen(
   if (error) throw fehler(error.message);
   const offen = (data ?? []).find((r) => {
     const i = inhaltAus(r.inhalt);
-    return texteLeer(i.texte) || (i.texteAutomatisch && i.texteFaellig);
+    return (
+      texteLeer(i.texte) ||
+      (i.texteAutomatisch &&
+        (i.texteFaellig || (i.textFassung ?? 1) < TEXT_FASSUNG))
+    );
   });
   if (!offen) return null;
   await automatischSchreiben(admin, String(offen.id));
@@ -592,6 +602,9 @@ export const marktberichtSpeichernFn = createServerFn({ method: "POST" })
         ? {
             texteAutomatisch: true,
             ...(vorher.inhalt.texteFaellig ? { texteFaellig: true } : {}),
+            ...(vorher.inhalt.textFassung
+              ? { textFassung: vorher.inhalt.textFassung }
+              : {}),
           }
         : {}),
     };

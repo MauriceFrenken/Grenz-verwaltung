@@ -36,7 +36,11 @@ const EBICS_BUNDLE = [
 ];
 
 export default defineConfig({
-  plugins: [exposeAiDevPlugin(), salesforceOauthDevPlugin(), microsoftOauthDevPlugin()],
+  plugins: [
+    exposeAiDevPlugin(),
+    salesforceOauthDevPlugin(),
+    microsoftOauthDevPlugin(),
+  ],
   vite: {
     // Grenz-Vorlagen der KI-Tools (src/lib/ki-tools/vorlagen) als ?inline-Assets.
     assetsInclude: ["**/*.pptx", "**/*.xlsx"],
@@ -63,8 +67,13 @@ export default defineConfig({
     externals: {
       inline: EBICS_BUNDLE,
     },
+    // pdfkit lädt seine Standardschriften zur Laufzeit über "#standard-fonts/*" (package.json
+    // "imports"). Gebündelt in _libs fehlt diese Zuordnung → "Cannot find module
+    // '#standard-fonts/Helvetica'" auf Vercel. Daher pdfkit komplett als Paket mitliefern.
+    traceDeps: ["pdfkit*"],
   } as {
     preset?: string;
     externals?: { inline?: string[] };
+    traceDeps?: string[];
   },
 });
