@@ -10,13 +10,41 @@ export type KennzahlenDto = {
     saldo: number | null;
     saldoStichtag: string | null;
   }>;
+  /** Runway ab heute (unabhängig vom gewählten Jahr), alles netto. */
+  runway: {
+    /** Summe der letzten Salden aller Konten. */
+    kontostand: number;
+    /** Geschätzte, noch nicht abgeführte USt (negativ = Erstattung). */
+    offeneUst: number;
+    /** Erster Monat, dessen USt noch nicht abgerechnet ist (JJJJ-MM). */
+    ustOffenAb: string;
+    /** Kontostand minus offene USt. */
+    liquiditaetNetto: number;
+    /** Wiederkehrende Kosten netto, Ø der letzten drei vollen Monate. */
+    fixProMonat: number;
+    /** Übrige Kosten netto, Ø der letzten zwölf Monate. */
+    variabelProMonat: number;
+    /** Ertragsteuern der letzten zwölf Monate (nicht in der Runway). */
+    ertragsteuern12Monate: number;
+    /** Liquidität netto ÷ Fixkosten je Monat. */
+    monate: number | null;
+    /** Reichweite, wenn auch die variablen Kosten weiterlaufen. */
+    monateMitVariabel: number | null;
+    /** Letzter Monat, der noch gedeckt ist (JJJJ-MM). */
+    reichtBis: string | null;
+    posten: Array<{ name: string; kategorie: string; proMonat: number }>;
+    verlauf: Array<{ monat: string; nurFix: number; mitVariabel: number }>;
+  };
+  /** USt-Zahlungen ans Finanzamt minus Erstattungen im Jahr (durchlaufend). */
+  ustSaldo: number;
   /** Summe der letzten Salden aller Konten. */
   liquiditaet: number;
-  /** Zuflüsse ohne interne Umbuchungen (brutto). */
+  /** Zuflüsse netto, ohne interne Umbuchungen und USt-Erstattungen. */
   einnahmen: number;
-  /** Abflüsse ohne interne Umbuchungen (brutto, inkl. Steuern). */
+  /** Abflüsse netto (Vorsteuer herausgerechnet), ohne USt-Zahlungen, inkl. Ertragsteuern. */
   ausgaben: number;
   ergebnis: number;
+  /** Ertragsteuern (Kapitalertrag-, Gewerbe-, Körperschaftsteuer …). */
   steuern: number;
   ausgabenOhneSteuern: number;
   provisionBrutto: number;
@@ -25,9 +53,9 @@ export type KennzahlenDto = {
   anzahlProvisionen: number;
   /** Abgelaufene Monate im gewählten Jahr (für Durchschnitte). */
   monateBisher: number;
-  /** Ø Ausgaben je Monat inkl. Steuern. */
+  /** Ø Ausgaben netto je Monat ohne Ertragsteuern. */
   kostenProMonat: number;
-  /** Liquidität ÷ Ø Ausgaben je Monat. */
+  /** Runway in Monaten (= runway.monate). */
   reichweiteMonate: number | null;
   monate: Array<{
     monat: string;
