@@ -10,10 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SplatRouteImport } from './routes/$'
 import { Route as AnmeldenRouteImport } from './routes/anmelden'
 import { Route as AufgabenRouteImport } from './routes/aufgaben'
 import { Route as DatenschutzRouteImport } from './routes/datenschutz'
+import { Route as EbicsRouteImport } from './routes/ebics'
 import { Route as EinladungRouteImport } from './routes/einladung'
 import { Route as EinstellungenRouteImport } from './routes/einstellungen'
 import { Route as ExposesRouteImport } from './routes/exposes'
@@ -21,25 +21,28 @@ import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as InvestorenRouteImport } from './routes/investoren'
 import { Route as KennzahlenRouteImport } from './routes/kennzahlen'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
+import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as AkquiseIndexRouteImport } from './routes/akquise.index'
-import { Route as AkquiseReiterRouteImport } from './routes/akquise.$reiter'
+import { Route as VerkaeuferRouteImport } from './routes/verkaeufer'
+import { Route as AkquiseMassnahmenRouteImport } from './routes/akquise.massnahmen'
 import { Route as EinstellungenIndexRouteImport } from './routes/einstellungen.index'
 import { Route as EinstellungenAuditRouteImport } from './routes/einstellungen.audit'
 import { Route as EinstellungenBenutzerRouteImport } from './routes/einstellungen.benutzer'
 import { Route as EinstellungenIntegrationenRouteImport } from './routes/einstellungen.integrationen'
+import { Route as EinstellungenVorlagenRouteImport } from './routes/einstellungen.vorlagen'
 import { Route as ExposesIndexRouteImport } from './routes/exposes.index'
 import { Route as ExposesAuswertungRouteImport } from './routes/exposes.auswertung'
 import { Route as ExposesImportRouteImport } from './routes/exposes.import'
 import { Route as ExposesKarteRouteImport } from './routes/exposes.karte'
 import { Route as MandateIndexRouteImport } from './routes/mandate.index'
-import { Route as MandatePipelineRouteImport } from './routes/mandate.pipeline'
 import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
 import { Route as PersonalIndexRouteImport } from './routes/personal.index'
 import { Route as PersonalIdRouteImport } from './routes/personal.$id'
 import { Route as SalesforceCallbackRouteImport } from './routes/salesforce.callback'
 import { Route as ToolsIndexRouteImport } from './routes/tools.index'
 import { Route as ToolsToolRouteImport } from './routes/tools.$tool'
+import { Route as AkquiseSalesforceIndexRouteImport } from './routes/akquise.salesforce.index'
+import { Route as AkquiseSalesforceReiterRouteImport } from './routes/akquise.salesforce.$reiter'
 import { Route as ApiCronEbicsUmsaetzeRouteImport } from './routes/api.cron.ebics-umsaetze'
 import { Route as ApiCronExposeAnalyseRouteImport } from './routes/api.cron.expose-analyse'
 import { Route as ApiCronInvestorenEntdeckungRouteImport } from './routes/api.cron.investoren-entdeckung'
@@ -48,25 +51,25 @@ import { Route as ApiCronMarktRadarRouteImport } from './routes/api.cron.markt-r
 import { Route as ApiCronMarktberichtQuellenRouteImport } from './routes/api.cron.marktbericht-quellen'
 import { Route as ApiCronObjektordnerRouteImport } from './routes/api.cron.objektordner'
 import { Route as ApiCronSalesforceSyncRouteImport } from './routes/api.cron.salesforce-sync'
+import { Route as ApiCronTrelloAbgleichRouteImport } from './routes/api.cron.trello-abgleich'
+import { Route as ApiTrelloWebhookRouteImport } from './routes/api.trello.webhook'
 import { Route as ExposesImportIndexRouteImport } from './routes/exposes.import.index'
 import { Route as ExposesImportSalesforceRouteImport } from './routes/exposes.import.salesforce'
 import { Route as MandateSfIdIndexRouteImport } from './routes/mandate.$sfId.index'
+import { Route as MandateSfIdBewertungRouteImport } from './routes/mandate.$sfId.bewertung'
 import { Route as MandateSfIdExposeRouteImport } from './routes/mandate.$sfId.expose'
+import { Route as MandateSfIdExposesRouteImport } from './routes/mandate.$sfId.exposes'
 import { Route as MandateSfIdInteressentenRouteImport } from './routes/mandate.$sfId.interessenten'
 import { Route as MandateSfIdMatchingRouteImport } from './routes/mandate.$sfId.matching'
 import { Route as MandateSfIdReportsRouteImport } from './routes/mandate.$sfId.reports'
 import { Route as ToolsMarktberichtIndexRouteImport } from './routes/tools.marktbericht.index'
 import { Route as ToolsMarktberichtIdRouteImport } from './routes/tools.marktbericht.$id'
+import { Route as MandateSfIdDokumentIdRouteImport } from './routes/mandate.$sfId.dokument.$id'
 import { Route as MandateSfIdReportIdRouteImport } from './routes/mandate.$sfId.report.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SplatRoute = SplatRouteImport.update({
-  id: '/$',
-  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnmeldenRoute = AnmeldenRouteImport.update({
@@ -82,6 +85,11 @@ const AufgabenRoute = AufgabenRouteImport.update({
 const DatenschutzRoute = DatenschutzRouteImport.update({
   id: '/datenschutz',
   path: '/datenschutz',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EbicsRoute = EbicsRouteImport.update({
+  id: '/ebics',
+  path: '/ebics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EinladungRoute = EinladungRouteImport.update({
@@ -119,19 +127,24 @@ const PasswortZuruecksetzenRoute = PasswortZuruecksetzenRouteImport.update({
   path: '/passwort-zuruecksetzen',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PipelineRoute = PipelineRouteImport.update({
+  id: '/pipeline',
+  path: '/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AkquiseIndexRoute = AkquiseIndexRouteImport.update({
-  id: '/akquise/',
-  path: '/akquise/',
+const VerkaeuferRoute = VerkaeuferRouteImport.update({
+  id: '/verkaeufer',
+  path: '/verkaeufer',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AkquiseReiterRoute = AkquiseReiterRouteImport.update({
-  id: '/akquise/$reiter',
-  path: '/akquise/$reiter',
+const AkquiseMassnahmenRoute = AkquiseMassnahmenRouteImport.update({
+  id: '/akquise/massnahmen',
+  path: '/akquise/massnahmen',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EinstellungenIndexRoute = EinstellungenIndexRouteImport.update({
@@ -155,6 +168,11 @@ const EinstellungenIntegrationenRoute =
     path: '/integrationen',
     getParentRoute: () => EinstellungenRoute,
   } as any)
+const EinstellungenVorlagenRoute = EinstellungenVorlagenRouteImport.update({
+  id: '/vorlagen',
+  path: '/vorlagen',
+  getParentRoute: () => EinstellungenRoute,
+} as any)
 const ExposesIndexRoute = ExposesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -178,11 +196,6 @@ const ExposesKarteRoute = ExposesKarteRouteImport.update({
 const MandateIndexRoute = MandateIndexRouteImport.update({
   id: '/mandate/',
   path: '/mandate/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MandatePipelineRoute = MandatePipelineRouteImport.update({
-  id: '/mandate/pipeline',
-  path: '/mandate/pipeline',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MicrosoftCallbackRoute = MicrosoftCallbackRouteImport.update({
@@ -213,6 +226,16 @@ const ToolsIndexRoute = ToolsIndexRouteImport.update({
 const ToolsToolRoute = ToolsToolRouteImport.update({
   id: '/tools/$tool',
   path: '/tools/$tool',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AkquiseSalesforceIndexRoute = AkquiseSalesforceIndexRouteImport.update({
+  id: '/akquise/salesforce/',
+  path: '/akquise/salesforce/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AkquiseSalesforceReiterRoute = AkquiseSalesforceReiterRouteImport.update({
+  id: '/akquise/salesforce/$reiter',
+  path: '/akquise/salesforce/$reiter',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCronEbicsUmsaetzeRoute = ApiCronEbicsUmsaetzeRouteImport.update({
@@ -258,6 +281,16 @@ const ApiCronSalesforceSyncRoute = ApiCronSalesforceSyncRouteImport.update({
   path: '/api/cron/salesforce-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronTrelloAbgleichRoute = ApiCronTrelloAbgleichRouteImport.update({
+  id: '/api/cron/trello-abgleich',
+  path: '/api/cron/trello-abgleich',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTrelloWebhookRoute = ApiTrelloWebhookRouteImport.update({
+  id: '/api/trello/webhook',
+  path: '/api/trello/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExposesImportIndexRoute = ExposesImportIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -273,9 +306,19 @@ const MandateSfIdIndexRoute = MandateSfIdIndexRouteImport.update({
   path: '/mandate/$sfId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MandateSfIdBewertungRoute = MandateSfIdBewertungRouteImport.update({
+  id: '/mandate/$sfId/bewertung',
+  path: '/mandate/$sfId/bewertung',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MandateSfIdExposeRoute = MandateSfIdExposeRouteImport.update({
   id: '/mandate/$sfId/expose',
   path: '/mandate/$sfId/expose',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MandateSfIdExposesRoute = MandateSfIdExposesRouteImport.update({
+  id: '/mandate/$sfId/exposes',
+  path: '/mandate/$sfId/exposes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MandateSfIdInteressentenRoute =
@@ -304,6 +347,11 @@ const ToolsMarktberichtIdRoute = ToolsMarktberichtIdRouteImport.update({
   path: '/tools/marktbericht/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MandateSfIdDokumentIdRoute = MandateSfIdDokumentIdRouteImport.update({
+  id: '/mandate/$sfId/dokument/$id',
+  path: '/mandate/$sfId/dokument/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MandateSfIdReportIdRoute = MandateSfIdReportIdRouteImport.update({
   id: '/mandate/$sfId/report/$id',
   path: '/mandate/$sfId/report/$id',
@@ -312,10 +360,10 @@ const MandateSfIdReportIdRoute = MandateSfIdReportIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/$': typeof SplatRoute
   '/anmelden': typeof AnmeldenRoute
   '/aufgaben': typeof AufgabenRoute
   '/datenschutz': typeof DatenschutzRoute
+  '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
   '/exposes': typeof ExposesRouteWithChildren
@@ -323,25 +371,27 @@ export interface FileRoutesByFullPath {
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
+  '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/akquise/$reiter': typeof AkquiseReiterRoute
+  '/verkaeufer': typeof VerkaeuferRoute
+  '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/einstellungen/vorlagen': typeof EinstellungenVorlagenRoute
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/exposes/karte': typeof ExposesKarteRoute
-  '/mandate/pipeline': typeof MandatePipelineRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/personal/$id': typeof PersonalIdRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/tools/$tool': typeof ToolsToolRoute
-  '/akquise/': typeof AkquiseIndexRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
   '/mandate/': typeof MandateIndexRoute
   '/personal/': typeof PersonalIndexRoute
   '/tools/': typeof ToolsIndexRoute
+  '/akquise/salesforce/$reiter': typeof AkquiseSalesforceReiterRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/investoren-entdeckung': typeof ApiCronInvestorenEntdeckungRoute
@@ -350,46 +400,54 @@ export interface FileRoutesByFullPath {
   '/api/cron/marktbericht-quellen': typeof ApiCronMarktberichtQuellenRoute
   '/api/cron/objektordner': typeof ApiCronObjektordnerRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
+  '/api/cron/trello-abgleich': typeof ApiCronTrelloAbgleichRoute
+  '/api/trello/webhook': typeof ApiTrelloWebhookRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
   '/mandate/$sfId/expose': typeof MandateSfIdExposeRoute
+  '/mandate/$sfId/exposes': typeof MandateSfIdExposesRoute
   '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
+  '/akquise/salesforce/': typeof AkquiseSalesforceIndexRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
   '/tools/marktbericht/': typeof ToolsMarktberichtIndexRoute
+  '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/$': typeof SplatRoute
   '/anmelden': typeof AnmeldenRoute
   '/aufgaben': typeof AufgabenRoute
   '/datenschutz': typeof DatenschutzRoute
+  '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
   '/impressum': typeof ImpressumRoute
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
+  '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/akquise/$reiter': typeof AkquiseReiterRoute
+  '/verkaeufer': typeof VerkaeuferRoute
+  '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/einstellungen/vorlagen': typeof EinstellungenVorlagenRoute
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/karte': typeof ExposesKarteRoute
-  '/mandate/pipeline': typeof MandatePipelineRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/personal/$id': typeof PersonalIdRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/tools/$tool': typeof ToolsToolRoute
-  '/akquise': typeof AkquiseIndexRoute
   '/einstellungen': typeof EinstellungenIndexRoute
   '/exposes': typeof ExposesIndexRoute
   '/mandate': typeof MandateIndexRoute
   '/personal': typeof PersonalIndexRoute
   '/tools': typeof ToolsIndexRoute
+  '/akquise/salesforce/$reiter': typeof AkquiseSalesforceReiterRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/investoren-entdeckung': typeof ApiCronInvestorenEntdeckungRoute
@@ -398,24 +456,30 @@ export interface FileRoutesByTo {
   '/api/cron/marktbericht-quellen': typeof ApiCronMarktberichtQuellenRoute
   '/api/cron/objektordner': typeof ApiCronObjektordnerRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
+  '/api/cron/trello-abgleich': typeof ApiCronTrelloAbgleichRoute
+  '/api/trello/webhook': typeof ApiTrelloWebhookRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
   '/mandate/$sfId/expose': typeof MandateSfIdExposeRoute
+  '/mandate/$sfId/exposes': typeof MandateSfIdExposesRoute
   '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
+  '/akquise/salesforce': typeof AkquiseSalesforceIndexRoute
   '/exposes/import': typeof ExposesImportIndexRoute
   '/mandate/$sfId': typeof MandateSfIdIndexRoute
   '/tools/marktbericht': typeof ToolsMarktberichtIndexRoute
+  '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/$': typeof SplatRoute
   '/anmelden': typeof AnmeldenRoute
   '/aufgaben': typeof AufgabenRoute
   '/datenschutz': typeof DatenschutzRoute
+  '/ebics': typeof EbicsRoute
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
   '/exposes': typeof ExposesRouteWithChildren
@@ -423,25 +487,27 @@ export interface FileRoutesById {
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
+  '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/akquise/$reiter': typeof AkquiseReiterRoute
+  '/verkaeufer': typeof VerkaeuferRoute
+  '/akquise/massnahmen': typeof AkquiseMassnahmenRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
   '/einstellungen/benutzer': typeof EinstellungenBenutzerRoute
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
+  '/einstellungen/vorlagen': typeof EinstellungenVorlagenRoute
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/exposes/karte': typeof ExposesKarteRoute
-  '/mandate/pipeline': typeof MandatePipelineRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/personal/$id': typeof PersonalIdRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
   '/tools/$tool': typeof ToolsToolRoute
-  '/akquise/': typeof AkquiseIndexRoute
   '/einstellungen/': typeof EinstellungenIndexRoute
   '/exposes/': typeof ExposesIndexRoute
   '/mandate/': typeof MandateIndexRoute
   '/personal/': typeof PersonalIndexRoute
   '/tools/': typeof ToolsIndexRoute
+  '/akquise/salesforce/$reiter': typeof AkquiseSalesforceReiterRoute
   '/api/cron/ebics-umsaetze': typeof ApiCronEbicsUmsaetzeRoute
   '/api/cron/expose-analyse': typeof ApiCronExposeAnalyseRoute
   '/api/cron/investoren-entdeckung': typeof ApiCronInvestorenEntdeckungRoute
@@ -450,25 +516,31 @@ export interface FileRoutesById {
   '/api/cron/marktbericht-quellen': typeof ApiCronMarktberichtQuellenRoute
   '/api/cron/objektordner': typeof ApiCronObjektordnerRoute
   '/api/cron/salesforce-sync': typeof ApiCronSalesforceSyncRoute
+  '/api/cron/trello-abgleich': typeof ApiCronTrelloAbgleichRoute
+  '/api/trello/webhook': typeof ApiTrelloWebhookRoute
   '/exposes/import/salesforce': typeof ExposesImportSalesforceRoute
+  '/mandate/$sfId/bewertung': typeof MandateSfIdBewertungRoute
   '/mandate/$sfId/expose': typeof MandateSfIdExposeRoute
+  '/mandate/$sfId/exposes': typeof MandateSfIdExposesRoute
   '/mandate/$sfId/interessenten': typeof MandateSfIdInteressentenRoute
   '/mandate/$sfId/matching': typeof MandateSfIdMatchingRoute
   '/mandate/$sfId/reports': typeof MandateSfIdReportsRoute
   '/tools/marktbericht/$id': typeof ToolsMarktberichtIdRoute
+  '/akquise/salesforce/': typeof AkquiseSalesforceIndexRoute
   '/exposes/import/': typeof ExposesImportIndexRoute
   '/mandate/$sfId/': typeof MandateSfIdIndexRoute
   '/tools/marktbericht/': typeof ToolsMarktberichtIndexRoute
+  '/mandate/$sfId/dokument/$id': typeof MandateSfIdDokumentIdRoute
   '/mandate/$sfId/report/$id': typeof MandateSfIdReportIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/$'
     | '/anmelden'
     | '/aufgaben'
     | '/datenschutz'
+    | '/ebics'
     | '/einladung'
     | '/einstellungen'
     | '/exposes'
@@ -476,25 +548,27 @@ export interface FileRouteTypes {
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
+    | '/pipeline'
     | '/sitemap.xml'
-    | '/akquise/$reiter'
+    | '/verkaeufer'
+    | '/akquise/massnahmen'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/einstellungen/vorlagen'
     | '/exposes/auswertung'
     | '/exposes/import'
     | '/exposes/karte'
-    | '/mandate/pipeline'
     | '/microsoft/callback'
     | '/personal/$id'
     | '/salesforce/callback'
     | '/tools/$tool'
-    | '/akquise/'
     | '/einstellungen/'
     | '/exposes/'
     | '/mandate/'
     | '/personal/'
     | '/tools/'
+    | '/akquise/salesforce/$reiter'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/investoren-entdeckung'
@@ -503,46 +577,54 @@ export interface FileRouteTypes {
     | '/api/cron/marktbericht-quellen'
     | '/api/cron/objektordner'
     | '/api/cron/salesforce-sync'
+    | '/api/cron/trello-abgleich'
+    | '/api/trello/webhook'
     | '/exposes/import/salesforce'
+    | '/mandate/$sfId/bewertung'
     | '/mandate/$sfId/expose'
+    | '/mandate/$sfId/exposes'
     | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
     | '/tools/marktbericht/$id'
+    | '/akquise/salesforce/'
     | '/exposes/import/'
     | '/mandate/$sfId/'
     | '/tools/marktbericht/'
+    | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/$'
     | '/anmelden'
     | '/aufgaben'
     | '/datenschutz'
+    | '/ebics'
     | '/einladung'
     | '/impressum'
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
+    | '/pipeline'
     | '/sitemap.xml'
-    | '/akquise/$reiter'
+    | '/verkaeufer'
+    | '/akquise/massnahmen'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/einstellungen/vorlagen'
     | '/exposes/auswertung'
     | '/exposes/karte'
-    | '/mandate/pipeline'
     | '/microsoft/callback'
     | '/personal/$id'
     | '/salesforce/callback'
     | '/tools/$tool'
-    | '/akquise'
     | '/einstellungen'
     | '/exposes'
     | '/mandate'
     | '/personal'
     | '/tools'
+    | '/akquise/salesforce/$reiter'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/investoren-entdeckung'
@@ -551,23 +633,29 @@ export interface FileRouteTypes {
     | '/api/cron/marktbericht-quellen'
     | '/api/cron/objektordner'
     | '/api/cron/salesforce-sync'
+    | '/api/cron/trello-abgleich'
+    | '/api/trello/webhook'
     | '/exposes/import/salesforce'
+    | '/mandate/$sfId/bewertung'
     | '/mandate/$sfId/expose'
+    | '/mandate/$sfId/exposes'
     | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
     | '/tools/marktbericht/$id'
+    | '/akquise/salesforce'
     | '/exposes/import'
     | '/mandate/$sfId'
     | '/tools/marktbericht'
+    | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   id:
     | '__root__'
     | '/'
-    | '/$'
     | '/anmelden'
     | '/aufgaben'
     | '/datenschutz'
+    | '/ebics'
     | '/einladung'
     | '/einstellungen'
     | '/exposes'
@@ -575,25 +663,27 @@ export interface FileRouteTypes {
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
+    | '/pipeline'
     | '/sitemap.xml'
-    | '/akquise/$reiter'
+    | '/verkaeufer'
+    | '/akquise/massnahmen'
     | '/einstellungen/audit'
     | '/einstellungen/benutzer'
     | '/einstellungen/integrationen'
+    | '/einstellungen/vorlagen'
     | '/exposes/auswertung'
     | '/exposes/import'
     | '/exposes/karte'
-    | '/mandate/pipeline'
     | '/microsoft/callback'
     | '/personal/$id'
     | '/salesforce/callback'
     | '/tools/$tool'
-    | '/akquise/'
     | '/einstellungen/'
     | '/exposes/'
     | '/mandate/'
     | '/personal/'
     | '/tools/'
+    | '/akquise/salesforce/$reiter'
     | '/api/cron/ebics-umsaetze'
     | '/api/cron/expose-analyse'
     | '/api/cron/investoren-entdeckung'
@@ -602,24 +692,30 @@ export interface FileRouteTypes {
     | '/api/cron/marktbericht-quellen'
     | '/api/cron/objektordner'
     | '/api/cron/salesforce-sync'
+    | '/api/cron/trello-abgleich'
+    | '/api/trello/webhook'
     | '/exposes/import/salesforce'
+    | '/mandate/$sfId/bewertung'
     | '/mandate/$sfId/expose'
+    | '/mandate/$sfId/exposes'
     | '/mandate/$sfId/interessenten'
     | '/mandate/$sfId/matching'
     | '/mandate/$sfId/reports'
     | '/tools/marktbericht/$id'
+    | '/akquise/salesforce/'
     | '/exposes/import/'
     | '/mandate/$sfId/'
     | '/tools/marktbericht/'
+    | '/mandate/$sfId/dokument/$id'
     | '/mandate/$sfId/report/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  SplatRoute: typeof SplatRoute
   AnmeldenRoute: typeof AnmeldenRoute
   AufgabenRoute: typeof AufgabenRoute
   DatenschutzRoute: typeof DatenschutzRoute
+  EbicsRoute: typeof EbicsRoute
   EinladungRoute: typeof EinladungRoute
   EinstellungenRoute: typeof EinstellungenRouteWithChildren
   ExposesRoute: typeof ExposesRouteWithChildren
@@ -627,17 +723,18 @@ export interface RootRouteChildren {
   InvestorenRoute: typeof InvestorenRoute
   KennzahlenRoute: typeof KennzahlenRoute
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
+  PipelineRoute: typeof PipelineRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  AkquiseReiterRoute: typeof AkquiseReiterRoute
-  MandatePipelineRoute: typeof MandatePipelineRoute
+  VerkaeuferRoute: typeof VerkaeuferRoute
+  AkquiseMassnahmenRoute: typeof AkquiseMassnahmenRoute
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
   PersonalIdRoute: typeof PersonalIdRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
   ToolsToolRoute: typeof ToolsToolRoute
-  AkquiseIndexRoute: typeof AkquiseIndexRoute
   MandateIndexRoute: typeof MandateIndexRoute
   PersonalIndexRoute: typeof PersonalIndexRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
+  AkquiseSalesforceReiterRoute: typeof AkquiseSalesforceReiterRoute
   ApiCronEbicsUmsaetzeRoute: typeof ApiCronEbicsUmsaetzeRoute
   ApiCronExposeAnalyseRoute: typeof ApiCronExposeAnalyseRoute
   ApiCronInvestorenEntdeckungRoute: typeof ApiCronInvestorenEntdeckungRoute
@@ -646,13 +743,19 @@ export interface RootRouteChildren {
   ApiCronMarktberichtQuellenRoute: typeof ApiCronMarktberichtQuellenRoute
   ApiCronObjektordnerRoute: typeof ApiCronObjektordnerRoute
   ApiCronSalesforceSyncRoute: typeof ApiCronSalesforceSyncRoute
+  ApiCronTrelloAbgleichRoute: typeof ApiCronTrelloAbgleichRoute
+  ApiTrelloWebhookRoute: typeof ApiTrelloWebhookRoute
+  MandateSfIdBewertungRoute: typeof MandateSfIdBewertungRoute
   MandateSfIdExposeRoute: typeof MandateSfIdExposeRoute
+  MandateSfIdExposesRoute: typeof MandateSfIdExposesRoute
   MandateSfIdInteressentenRoute: typeof MandateSfIdInteressentenRoute
   MandateSfIdMatchingRoute: typeof MandateSfIdMatchingRoute
   MandateSfIdReportsRoute: typeof MandateSfIdReportsRoute
   ToolsMarktberichtIdRoute: typeof ToolsMarktberichtIdRoute
+  AkquiseSalesforceIndexRoute: typeof AkquiseSalesforceIndexRoute
   MandateSfIdIndexRoute: typeof MandateSfIdIndexRoute
   ToolsMarktberichtIndexRoute: typeof ToolsMarktberichtIndexRoute
+  MandateSfIdDokumentIdRoute: typeof MandateSfIdDokumentIdRoute
   MandateSfIdReportIdRoute: typeof MandateSfIdReportIdRoute
 }
 
@@ -663,13 +766,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/$': {
-      id: '/$'
-      path: '/$'
-      fullPath: '/$'
-      preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/anmelden': {
@@ -691,6 +787,13 @@ declare module '@tanstack/react-router' {
       path: '/datenschutz'
       fullPath: '/datenschutz'
       preLoaderRoute: typeof DatenschutzRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ebics': {
+      id: '/ebics'
+      path: '/ebics'
+      fullPath: '/ebics'
+      preLoaderRoute: typeof EbicsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/einladung': {
@@ -742,6 +845,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PasswortZuruecksetzenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pipeline': {
+      id: '/pipeline'
+      path: '/pipeline'
+      fullPath: '/pipeline'
+      preLoaderRoute: typeof PipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -749,18 +859,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/akquise/': {
-      id: '/akquise/'
-      path: '/akquise'
-      fullPath: '/akquise/'
-      preLoaderRoute: typeof AkquiseIndexRouteImport
+    '/verkaeufer': {
+      id: '/verkaeufer'
+      path: '/verkaeufer'
+      fullPath: '/verkaeufer'
+      preLoaderRoute: typeof VerkaeuferRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/akquise/$reiter': {
-      id: '/akquise/$reiter'
-      path: '/akquise/$reiter'
-      fullPath: '/akquise/$reiter'
-      preLoaderRoute: typeof AkquiseReiterRouteImport
+    '/akquise/massnahmen': {
+      id: '/akquise/massnahmen'
+      path: '/akquise/massnahmen'
+      fullPath: '/akquise/massnahmen'
+      preLoaderRoute: typeof AkquiseMassnahmenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/einstellungen/': {
@@ -789,6 +899,13 @@ declare module '@tanstack/react-router' {
       path: '/integrationen'
       fullPath: '/einstellungen/integrationen'
       preLoaderRoute: typeof EinstellungenIntegrationenRouteImport
+      parentRoute: typeof EinstellungenRoute
+    }
+    '/einstellungen/vorlagen': {
+      id: '/einstellungen/vorlagen'
+      path: '/vorlagen'
+      fullPath: '/einstellungen/vorlagen'
+      preLoaderRoute: typeof EinstellungenVorlagenRouteImport
       parentRoute: typeof EinstellungenRoute
     }
     '/exposes/': {
@@ -824,13 +941,6 @@ declare module '@tanstack/react-router' {
       path: '/mandate'
       fullPath: '/mandate/'
       preLoaderRoute: typeof MandateIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mandate/pipeline': {
-      id: '/mandate/pipeline'
-      path: '/mandate/pipeline'
-      fullPath: '/mandate/pipeline'
-      preLoaderRoute: typeof MandatePipelineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/microsoft/callback': {
@@ -873,6 +983,20 @@ declare module '@tanstack/react-router' {
       path: '/tools/$tool'
       fullPath: '/tools/$tool'
       preLoaderRoute: typeof ToolsToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/akquise/salesforce/': {
+      id: '/akquise/salesforce/'
+      path: '/akquise/salesforce'
+      fullPath: '/akquise/salesforce/'
+      preLoaderRoute: typeof AkquiseSalesforceIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/akquise/salesforce/$reiter': {
+      id: '/akquise/salesforce/$reiter'
+      path: '/akquise/salesforce/$reiter'
+      fullPath: '/akquise/salesforce/$reiter'
+      preLoaderRoute: typeof AkquiseSalesforceReiterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cron/ebics-umsaetze': {
@@ -931,6 +1055,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronSalesforceSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/trello-abgleich': {
+      id: '/api/cron/trello-abgleich'
+      path: '/api/cron/trello-abgleich'
+      fullPath: '/api/cron/trello-abgleich'
+      preLoaderRoute: typeof ApiCronTrelloAbgleichRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/trello/webhook': {
+      id: '/api/trello/webhook'
+      path: '/api/trello/webhook'
+      fullPath: '/api/trello/webhook'
+      preLoaderRoute: typeof ApiTrelloWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/exposes/import/': {
       id: '/exposes/import/'
       path: '/'
@@ -952,11 +1090,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MandateSfIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mandate/$sfId/bewertung': {
+      id: '/mandate/$sfId/bewertung'
+      path: '/mandate/$sfId/bewertung'
+      fullPath: '/mandate/$sfId/bewertung'
+      preLoaderRoute: typeof MandateSfIdBewertungRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mandate/$sfId/expose': {
       id: '/mandate/$sfId/expose'
       path: '/mandate/$sfId/expose'
       fullPath: '/mandate/$sfId/expose'
       preLoaderRoute: typeof MandateSfIdExposeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mandate/$sfId/exposes': {
+      id: '/mandate/$sfId/exposes'
+      path: '/mandate/$sfId/exposes'
+      fullPath: '/mandate/$sfId/exposes'
+      preLoaderRoute: typeof MandateSfIdExposesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mandate/$sfId/interessenten': {
@@ -994,6 +1146,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsMarktberichtIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mandate/$sfId/dokument/$id': {
+      id: '/mandate/$sfId/dokument/$id'
+      path: '/mandate/$sfId/dokument/$id'
+      fullPath: '/mandate/$sfId/dokument/$id'
+      preLoaderRoute: typeof MandateSfIdDokumentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mandate/$sfId/report/$id': {
       id: '/mandate/$sfId/report/$id'
       path: '/mandate/$sfId/report/$id'
@@ -1008,6 +1167,7 @@ interface EinstellungenRouteChildren {
   EinstellungenAuditRoute: typeof EinstellungenAuditRoute
   EinstellungenBenutzerRoute: typeof EinstellungenBenutzerRoute
   EinstellungenIntegrationenRoute: typeof EinstellungenIntegrationenRoute
+  EinstellungenVorlagenRoute: typeof EinstellungenVorlagenRoute
   EinstellungenIndexRoute: typeof EinstellungenIndexRoute
 }
 
@@ -1015,6 +1175,7 @@ const EinstellungenRouteChildren: EinstellungenRouteChildren = {
   EinstellungenAuditRoute: EinstellungenAuditRoute,
   EinstellungenBenutzerRoute: EinstellungenBenutzerRoute,
   EinstellungenIntegrationenRoute: EinstellungenIntegrationenRoute,
+  EinstellungenVorlagenRoute: EinstellungenVorlagenRoute,
   EinstellungenIndexRoute: EinstellungenIndexRoute,
 }
 
@@ -1055,10 +1216,10 @@ const ExposesRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  SplatRoute: SplatRoute,
   AnmeldenRoute: AnmeldenRoute,
   AufgabenRoute: AufgabenRoute,
   DatenschutzRoute: DatenschutzRoute,
+  EbicsRoute: EbicsRoute,
   EinladungRoute: EinladungRoute,
   EinstellungenRoute: EinstellungenRouteWithChildren,
   ExposesRoute: ExposesRouteWithChildren,
@@ -1066,17 +1227,18 @@ const rootRouteChildren: RootRouteChildren = {
   InvestorenRoute: InvestorenRoute,
   KennzahlenRoute: KennzahlenRoute,
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
+  PipelineRoute: PipelineRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
-  AkquiseReiterRoute: AkquiseReiterRoute,
-  MandatePipelineRoute: MandatePipelineRoute,
+  VerkaeuferRoute: VerkaeuferRoute,
+  AkquiseMassnahmenRoute: AkquiseMassnahmenRoute,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
   PersonalIdRoute: PersonalIdRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,
   ToolsToolRoute: ToolsToolRoute,
-  AkquiseIndexRoute: AkquiseIndexRoute,
   MandateIndexRoute: MandateIndexRoute,
   PersonalIndexRoute: PersonalIndexRoute,
   ToolsIndexRoute: ToolsIndexRoute,
+  AkquiseSalesforceReiterRoute: AkquiseSalesforceReiterRoute,
   ApiCronEbicsUmsaetzeRoute: ApiCronEbicsUmsaetzeRoute,
   ApiCronExposeAnalyseRoute: ApiCronExposeAnalyseRoute,
   ApiCronInvestorenEntdeckungRoute: ApiCronInvestorenEntdeckungRoute,
@@ -1085,13 +1247,19 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronMarktberichtQuellenRoute: ApiCronMarktberichtQuellenRoute,
   ApiCronObjektordnerRoute: ApiCronObjektordnerRoute,
   ApiCronSalesforceSyncRoute: ApiCronSalesforceSyncRoute,
+  ApiCronTrelloAbgleichRoute: ApiCronTrelloAbgleichRoute,
+  ApiTrelloWebhookRoute: ApiTrelloWebhookRoute,
+  MandateSfIdBewertungRoute: MandateSfIdBewertungRoute,
   MandateSfIdExposeRoute: MandateSfIdExposeRoute,
+  MandateSfIdExposesRoute: MandateSfIdExposesRoute,
   MandateSfIdInteressentenRoute: MandateSfIdInteressentenRoute,
   MandateSfIdMatchingRoute: MandateSfIdMatchingRoute,
   MandateSfIdReportsRoute: MandateSfIdReportsRoute,
   ToolsMarktberichtIdRoute: ToolsMarktberichtIdRoute,
+  AkquiseSalesforceIndexRoute: AkquiseSalesforceIndexRoute,
   MandateSfIdIndexRoute: MandateSfIdIndexRoute,
   ToolsMarktberichtIndexRoute: ToolsMarktberichtIndexRoute,
+  MandateSfIdDokumentIdRoute: MandateSfIdDokumentIdRoute,
   MandateSfIdReportIdRoute: MandateSfIdReportIdRoute,
 }
 export const routeTree = rootRouteImport

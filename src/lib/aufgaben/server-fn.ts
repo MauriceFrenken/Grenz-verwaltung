@@ -13,6 +13,16 @@ import {
 import { OFFENE_PHASEN, istTest } from "@/lib/uebersicht/berechnen";
 
 import {
+  trelloAbgleich,
+  trelloAbgleichFallsFaellig,
+  trelloKarteLoeschen,
+  trelloListeArchivieren,
+  trelloNachAenderung,
+  trelloStatus,
+  type AbgleichErgebnis,
+} from "./trello-abgleich";
+
+import {
   PRIORITAETEN,
   type Aufgabe,
   type AufgabeFelder,
@@ -183,7 +193,9 @@ export const aufgabenBoardFn = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<Board> => {
     await pruefeAufrufer(data.supabaseAccessToken);
     const admin = createServiceRoleClient();
-    const [spalten, aufgaben, personen, mandate] = await Promise.all([
+    // Änderungen aus Trello mitnehmen, höchstens alle 20 Sekunden.
+    await trelloAbgleichFallsFaellig(admin, 20_000);
+    const [spalten, aufgaben, personen, mandate, trello] = await Promise.all([
       admin
         .from("aufgaben_spalten")
         .select("id, titel, position, erledigt")
@@ -201,6 +213,7 @@ export const aufgabenBoardFn = createServerFn({ method: "POST" })
         .in("status", [...OFFENE_PHASEN])
         .order("name")
         .limit(1000),
+      trelloStatus(admin),
     ]);
     if (spalten.error) throw fehler(spalten.error.message);
     if (aufgaben.error) throw fehler(aufgaben.error.message);
@@ -215,6 +228,7 @@ export const aufgabenBoardFn = createServerFn({ method: "POST" })
       mandate: (mandate.data ?? [])
         .filter((m) => !istTest(String(m.name)))
         .map((m) => ({ sfId: String(m.sf_id), name: String(m.name) })),
+      trello,
     };
   });
 
@@ -248,6 +262,7 @@ export const aufgabeAnlegenFn = createServerFn({ method: "POST" })
       .select(AUFGABE_SPALTEN)
       .single();
     if (error) throw fehler(error.message);
+    await trelloNachAenderung(admin);
     return aufgabeAus(zeile);
   });
 
@@ -298,6 +313,7 @@ export const ruecksprachErfassenFn = createServerFn({ method: "POST" })
       )
       .select(AUFGABE_SPALTEN);
     if (error) throw fehler(error.message);
+    await trelloNachAenderung(admin);
     return (zeilen ?? []).map(aufgabeAus);
   });
 
@@ -312,13 +328,15 @@ export const aufgabeSpeichernFn = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<Aufgabe> => {
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
-    const { data: zeile, error } = await createServiceRoleClient()
+    const admin = createServiceRoleClient();
+    const { data: zeile, error } = await admin
       .from("aufgaben")
       .update(zeileAus(data.felder))
       .eq("id", data.id)
       .select(AUFGABE_SPALTEN)
       .single();
     if (error) throw fehler(error.message);
+    await trelloNachAenderung(admin);
     return aufgabeAus(zeile);
   });
 
@@ -357,6 +375,7 @@ export const aufgabeVerschiebenFn = createServerFn({ method: "POST" })
       .select(AUFGABE_SPALTEN)
       .single();
     if (error) throw fehler(error.message);
+    await trelloNachAenderung(admin);
     return aufgabeAus(zeile);
   });
 
@@ -367,11 +386,14 @@ export const aufgabeLoeschenFn = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<{ ok: true }> => {
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
-    const { error } = await createServiceRoleClient()
+    const admin = createServiceRoleClient();
+    const { data: zeilen, error } = await admin
       .from("aufgaben")
       .delete()
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .select("trello_id");
     if (error) throw fehler(error.message);
+    await trelloKarteLoeschen((zeilen?.[0]?.trello_id as string) ?? null);
     return { ok: true };
   });
 
@@ -386,13 +408,15 @@ export const spalteArchivierenFn = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<{ anzahl: number }> => {
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
-    const { data: zeilen, error } = await createServiceRoleClient()
+    const admin = createServiceRoleClient();
+    const { data: zeilen, error } = await admin
       .from("aufgaben")
       .update({ archiviert: true })
       .eq("spalte_id", data.spalteId)
       .eq("archiviert", false)
       .select("id");
     if (error) throw fehler(error.message);
+    await trelloNachAenderung(admin);
     return { anzahl: zeilen?.length ?? 0 };
   });
 
@@ -424,6 +448,7 @@ export const spalteSpeichernFn = createServerFn({ method: "POST" })
         .select("id, titel, position, erledigt")
         .single();
       if (error) throw fehler(error.message);
+      await trelloNachAenderung(admin);
       return spalteAus(zeile);
     }
     const { data: letzte } = await admin
@@ -443,6 +468,7 @@ export const spalteSpeichernFn = createServerFn({ method: "POST" })
       .select("id, titel, position, erledigt")
       .single();
     if (error) throw fehler(error.message);
+    await trelloNachAenderung(admin);
     return spalteAus(zeile);
   });
 
@@ -474,10 +500,30 @@ export const spalteLoeschenFn = createServerFn({ method: "POST" })
       .from("aufgaben")
       .update({ spalte_id: andere[0].id })
       .eq("spalte_id", data.id);
-    const { error } = await admin
+    const { data: geloescht, error } = await admin
       .from("aufgaben_spalten")
       .delete()
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .select("trello_id");
     if (error) throw fehler(error.message);
+    await trelloListeArchivieren((geloescht?.[0]?.trello_id as string) ?? null);
     return { ok: true };
+  });
+
+// --- Trello ------------------------------------------------------------------
+
+/** „Jetzt abgleichen“ auf dem Board. */
+export const trelloAbgleichFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => ({ supabaseAccessToken: tokenAus(data) }))
+  .handler(async ({ data }): Promise<AbgleichErgebnis> => {
+    await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
+    const ergebnis = await trelloAbgleich(createServiceRoleClient(), {
+      webhookPruefen: true,
+    });
+    if (!ergebnis) {
+      throw new Error(
+        "Trello ist nicht eingerichtet (TRELLO_API_KEY, TRELLO_TOKEN, TRELLO_BOARD_ID).",
+      );
+    }
+    return ergebnis;
   });

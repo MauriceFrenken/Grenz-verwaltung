@@ -136,6 +136,14 @@
     {
       "path": "/api/cron/marktbericht-quellen",
       "schedule": "15 23 * * *"
+    },
+    {
+      "path": "/api/cron/trello-abgleich",
+      "schedule": "45 5 * * *"
+    },
+    {
+      "path": "/api/cron/trello-abgleich",
+      "schedule": "45 17 * * *"
     }
   ]
 }
