@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { ObjektMerkmale, ProfilZeile } from "./score";
-import { listeAlsProfil, qualifizierteTreffer } from "./vermarktung";
+import {
+  listeAlsProfil,
+  qualifizierteTreffer,
+  regionenAusInteresse,
+} from "./vermarktung";
 
 const objekt: ObjektMerkmale = {
   objektart: "Mehrfamilienhaus",
@@ -83,5 +87,39 @@ describe("qualifizierteTreffer", () => {
     expect(qualifizierteTreffer(objekt, [p])).toHaveLength(0);
     const c = qualifizierteTreffer(objekt, [p], { kreise: ["A", "B", "C"] });
     expect(c.map((x) => x.bewertung.kreis)).toEqual(["C"]);
+  });
+});
+
+describe("regionenAusInteresse", () => {
+  it("liest die Städte aus den Objektnamen der Suchkunden-Liste", () => {
+    expect(
+      regionenAusInteresse([
+        "2 D Art Noveau",
+        "16 K Roddergasse 68",
+        "19 Brühl Andi",
+      ]),
+    ).toEqual(["Düsseldorf", "Köln", "Brühl", "NRW"]);
+    expect(regionenAusInteresse(["12 Mountain Portfolio"])).toEqual([]);
+  });
+
+  it("macht einen Kölner Suchkunden für Düsseldorf nicht zum Ausschluss", () => {
+    const p = listeAlsProfil({
+      schluessel: "suchkunden:1",
+      firma: null,
+      person: "Max Muster",
+      typ: null,
+      nutzungen: [],
+      objektklassen: [],
+      regionen: [],
+      volumen_min: null,
+      volumen_max: null,
+      einheiten_min: null,
+      objekte_interesse: ["16 K Roddergasse 68"],
+    });
+    expect(p.regionen).toEqual(["Köln", "NRW"]);
+    const [t] = qualifizierteTreffer(objekt, [p], {
+      kreise: ["A", "B", "C", "unter"],
+    });
+    expect(t.ausschluss).toBe(false);
   });
 });
