@@ -24,6 +24,7 @@ import {
 
 import {
   PRIORITAETEN,
+  istThemenfeld,
   type Aufgabe,
   type AufgabeFelder,
   type Board,
@@ -33,7 +34,41 @@ import {
 } from "./typen";
 
 const AUFGABE_SPALTEN =
-  "id, spalte_id, position, titel, beschreibung, verantwortlich_id, faellig_am, prioritaet, ruecksprache, ruecksprache_am, mandat_sf_id, checkliste, erledigt_am, erstellt_von, created_at, updated_at";
+  "id, spalte_id, position, titel, beschreibung, verantwortlich_id, faellig_am, prioritaet, themenfeld, ruecksprache, ruecksprache_am, mandat_sf_id, checkliste, erledigt_am, erstellt_von, created_at, updated_at";
+const OHNE_THEMENFELD = AUFGABE_SPALTEN.replace(" themenfeld,", "");
+
+type Ergebnis<T> = { data: T | null; error: { message: string } | null };
+
+/**
+ * Bis die Migration 20261028120000_aufgaben_themenfeld eingespielt ist, fehlt die Spalte
+ * themenfeld. Dann ohne sie lesen und schreiben, damit das Board weiter funktioniert.
+ */
+async function mitThemenfeld<T>(
+  lauf: (spalten: string, mitThemenfeld: boolean) => PromiseLike<Ergebnis<T>>,
+): Promise<Ergebnis<T> & { mitThemenfeld: boolean }> {
+  const r = await lauf(AUFGABE_SPALTEN, true);
+  if (
+    r.error &&
+    /themenfeld/.test(r.error.message) &&
+    /does not exist|schema cache|could not find/i.test(r.error.message)
+  ) {
+    return { ...(await lauf(OHNE_THEMENFELD, false)), mitThemenfeld: false };
+  }
+  return { ...r, mitThemenfeld: true };
+}
+
+/** Ohne Migration 20261028100000_aufgaben_trello fehlt trello_id: dann ohne sie löschen. */
+async function ohneTrelloSpalte(
+  mit: () => PromiseLike<Ergebnis<Record<string, unknown>[]>>,
+  ohne: () => PromiseLike<Ergebnis<Record<string, unknown>[]>>,
+): Promise<Ergebnis<Record<string, unknown>[]>> {
+  const r = await mit();
+  return r.error &&
+    /trello_id/.test(r.error.message) &&
+    /does not exist|schema cache|could not find/i.test(r.error.message)
+    ? ohne()
+    : r;
+}
 
 function fehler(message: string): Error {
   return new Error(
@@ -80,6 +115,7 @@ function aufgabeAus(r: Record<string, unknown>): Aufgabe {
     verantwortlichId: (r.verantwortlich_id as string) ?? null,
     faelligAm: (r.faellig_am as string) ?? null,
     prioritaet: r.prioritaet as Prioritaet,
+    themenfeld: istThemenfeld(r.themenfeld) ? r.themenfeld : "",
     ruecksprache: String(r.ruecksprache ?? ""),
     ruecksprachAm: (r.ruecksprache_am as string) ?? null,
     mandatSfId: (r.mandat_sf_id as string) ?? null,
@@ -140,6 +176,7 @@ function felderAus(roh: unknown): AufgabeFelder {
     verantwortlichId: uuidOderNull(d.verantwortlichId, "Person"),
     faelligAm: datumOderNull(d.faelligAm),
     prioritaet: prio,
+    themenfeld: istThemenfeld(d.themenfeld) ? d.themenfeld : "",
     ruecksprache: text(d.ruecksprache, 200),
     ruecksprachAm: datumOderNull(d.ruecksprachAm),
     mandatSfId: mandat || null,
@@ -147,13 +184,14 @@ function felderAus(roh: unknown): AufgabeFelder {
   };
 }
 
-function zeileAus(f: AufgabeFelder) {
+function zeileAus(f: AufgabeFelder, mitThemenfeld = true) {
   return {
     titel: f.titel,
     beschreibung: f.beschreibung,
     verantwortlich_id: f.verantwortlichId,
     faellig_am: f.faelligAm,
     prioritaet: f.prioritaet,
+    ...(mitThemenfeld ? { themenfeld: f.themenfeld } : {}),
     ruecksprache: f.ruecksprache,
     ruecksprache_am: f.ruecksprachAm,
     mandat_sf_id: f.mandatSfId,
@@ -200,12 +238,14 @@ export const aufgabenBoardFn = createServerFn({ method: "POST" })
         .from("aufgaben_spalten")
         .select("id, titel, position, erledigt")
         .order("position"),
-      admin
-        .from("aufgaben")
-        .select(AUFGABE_SPALTEN)
-        .eq("archiviert", false)
-        .order("position")
-        .limit(2000),
+      mitThemenfeld((spalten) =>
+        admin
+          .from("aufgaben")
+          .select(spalten)
+          .eq("archiviert", false)
+          .order("position")
+          .limit(2000),
+      ),
       admin.from("profiles").select("id, name, initialen").order("name"),
       admin
         .from("sf_mandate")
@@ -219,7 +259,9 @@ export const aufgabenBoardFn = createServerFn({ method: "POST" })
     if (aufgaben.error) throw fehler(aufgaben.error.message);
     return {
       spalten: (spalten.data ?? []).map(spalteAus),
-      aufgaben: (aufgaben.data ?? []).map(aufgabeAus),
+      aufgaben: (
+        (aufgaben.data ?? []) as unknown as Record<string, unknown>[]
+      ).map(aufgabeAus),
       personen: (personen.data ?? []).map((p) => ({
         id: String(p.id),
         name: String(p.name || "Ohne Namen"),
@@ -229,6 +271,7 @@ export const aufgabenBoardFn = createServerFn({ method: "POST" })
         .filter((m) => !istTest(String(m.name)))
         .map((m) => ({ sfId: String(m.sf_id), name: String(m.name) })),
       trello,
+      themenfelder: aufgaben.mitThemenfeld,
     };
   });
 
@@ -250,20 +293,23 @@ export const aufgabeAnlegenFn = createServerFn({ method: "POST" })
     );
     const admin = createServiceRoleClient();
     const spalte = await spalteLaden(admin, data.spalteId);
-    const { data: zeile, error } = await admin
-      .from("aufgaben")
-      .insert({
-        ...zeileAus(data.felder),
-        spalte_id: spalte.id,
-        position: await letztePosition(admin, spalte.id),
-        erledigt_am: spalte.erledigt ? new Date().toISOString() : null,
-        erstellt_von: aufrufer.userId === "cron" ? null : aufrufer.userId,
-      })
-      .select(AUFGABE_SPALTEN)
-      .single();
-    if (error) throw fehler(error.message);
+    const position = await letztePosition(admin, spalte.id);
+    const { data: zeile, error } = await mitThemenfeld((spalten, mit) =>
+      admin
+        .from("aufgaben")
+        .insert({
+          ...zeileAus(data.felder, mit),
+          spalte_id: spalte.id,
+          position,
+          erledigt_am: spalte.erledigt ? new Date().toISOString() : null,
+          erstellt_von: aufrufer.userId === "cron" ? null : aufrufer.userId,
+        })
+        .select(spalten)
+        .single(),
+    );
+    if (error || !zeile) throw fehler(error?.message ?? "Keine Antwort.");
     await trelloNachAenderung(admin);
-    return aufgabeAus(zeile);
+    return aufgabeAus(zeile as unknown as Record<string, unknown>);
   });
 
 /** Mehrere Aufgaben aus einer Rücksprache auf einmal in die erste Spalte. */
@@ -286,6 +332,7 @@ export const ruecksprachErfassenFn = createServerFn({ method: "POST" })
       verantwortlichId: uuidOderNull(d.verantwortlichId, "Person"),
       faelligAm: datumOderNull(d.faelligAm),
       mandatSfId: text(d.mandatSfId, 40) || null,
+      themenfeld: istThemenfeld(d.themenfeld) ? d.themenfeld : "",
     };
   })
   .handler(async ({ data }): Promise<Aufgabe[]> => {
@@ -296,25 +343,30 @@ export const ruecksprachErfassenFn = createServerFn({ method: "POST" })
     const admin = createServiceRoleClient();
     const spalte = await spalteLaden(admin, data.spalteId);
     const start = await letztePosition(admin, spalte.id);
-    const { data: zeilen, error } = await admin
-      .from("aufgaben")
-      .insert(
-        data.titel.map((t, i) => ({
-          titel: t,
-          spalte_id: spalte.id,
-          position: start + i * 1000,
-          ruecksprache: data.ruecksprache,
-          ruecksprache_am: data.ruecksprachAm,
-          verantwortlich_id: data.verantwortlichId,
-          faellig_am: data.faelligAm,
-          mandat_sf_id: data.mandatSfId,
-          erstellt_von: aufrufer.userId === "cron" ? null : aufrufer.userId,
-        })),
-      )
-      .select(AUFGABE_SPALTEN);
+    const { data: zeilen, error } = await mitThemenfeld((spalten, mit) =>
+      admin
+        .from("aufgaben")
+        .insert(
+          data.titel.map((t, i) => ({
+            titel: t,
+            spalte_id: spalte.id,
+            position: start + i * 1000,
+            ...(mit ? { themenfeld: data.themenfeld } : {}),
+            ruecksprache: data.ruecksprache,
+            ruecksprache_am: data.ruecksprachAm,
+            verantwortlich_id: data.verantwortlichId,
+            faellig_am: data.faelligAm,
+            mandat_sf_id: data.mandatSfId,
+            erstellt_von: aufrufer.userId === "cron" ? null : aufrufer.userId,
+          })),
+        )
+        .select(spalten),
+    );
     if (error) throw fehler(error.message);
     await trelloNachAenderung(admin);
-    return (zeilen ?? []).map(aufgabeAus);
+    return ((zeilen ?? []) as unknown as Record<string, unknown>[]).map(
+      aufgabeAus,
+    );
   });
 
 export const aufgabeSpeichernFn = createServerFn({ method: "POST" })
@@ -329,15 +381,17 @@ export const aufgabeSpeichernFn = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<Aufgabe> => {
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
     const admin = createServiceRoleClient();
-    const { data: zeile, error } = await admin
-      .from("aufgaben")
-      .update(zeileAus(data.felder))
-      .eq("id", data.id)
-      .select(AUFGABE_SPALTEN)
-      .single();
-    if (error) throw fehler(error.message);
+    const { data: zeile, error } = await mitThemenfeld((spalten, mit) =>
+      admin
+        .from("aufgaben")
+        .update(zeileAus(data.felder, mit))
+        .eq("id", data.id)
+        .select(spalten)
+        .single(),
+    );
+    if (error || !zeile) throw fehler(error?.message ?? "Keine Antwort.");
     await trelloNachAenderung(admin);
-    return aufgabeAus(zeile);
+    return aufgabeAus(zeile as unknown as Record<string, unknown>);
   });
 
 /** Drag & Drop: neue Spalte und Position. Wechsel in eine Erledigt-Spalte setzt erledigt_am. */
@@ -362,21 +416,23 @@ export const aufgabeVerschiebenFn = createServerFn({ method: "POST" })
       .maybeSingle();
     if (e1) throw fehler(e1.message);
     if (!alt) throw new Error("Aufgabe nicht gefunden.");
-    const { data: zeile, error } = await admin
-      .from("aufgaben")
-      .update({
-        spalte_id: spalte.id,
-        position: data.position,
-        erledigt_am: spalte.erledigt
-          ? (alt.erledigt_am ?? new Date().toISOString())
-          : null,
-      })
-      .eq("id", data.id)
-      .select(AUFGABE_SPALTEN)
-      .single();
-    if (error) throw fehler(error.message);
+    const { data: zeile, error } = await mitThemenfeld((spalten) =>
+      admin
+        .from("aufgaben")
+        .update({
+          spalte_id: spalte.id,
+          position: data.position,
+          erledigt_am: spalte.erledigt
+            ? (alt.erledigt_am ?? new Date().toISOString())
+            : null,
+        })
+        .eq("id", data.id)
+        .select(spalten)
+        .single(),
+    );
+    if (error || !zeile) throw fehler(error?.message ?? "Keine Antwort.");
     await trelloNachAenderung(admin);
-    return aufgabeAus(zeile);
+    return aufgabeAus(zeile as unknown as Record<string, unknown>);
   });
 
 export const aufgabeLoeschenFn = createServerFn({ method: "POST" })
@@ -387,11 +443,11 @@ export const aufgabeLoeschenFn = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ ok: true }> => {
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
     const admin = createServiceRoleClient();
-    const { data: zeilen, error } = await admin
-      .from("aufgaben")
-      .delete()
-      .eq("id", data.id)
-      .select("trello_id");
+    const { data: zeilen, error } = await ohneTrelloSpalte(
+      () =>
+        admin.from("aufgaben").delete().eq("id", data.id).select("trello_id"),
+      () => admin.from("aufgaben").delete().eq("id", data.id).select("id"),
+    );
     if (error) throw fehler(error.message);
     await trelloKarteLoeschen((zeilen?.[0]?.trello_id as string) ?? null);
     return { ok: true };
@@ -500,11 +556,16 @@ export const spalteLoeschenFn = createServerFn({ method: "POST" })
       .from("aufgaben")
       .update({ spalte_id: andere[0].id })
       .eq("spalte_id", data.id);
-    const { data: geloescht, error } = await admin
-      .from("aufgaben_spalten")
-      .delete()
-      .eq("id", data.id)
-      .select("trello_id");
+    const { data: geloescht, error } = await ohneTrelloSpalte(
+      () =>
+        admin
+          .from("aufgaben_spalten")
+          .delete()
+          .eq("id", data.id)
+          .select("trello_id"),
+      () =>
+        admin.from("aufgaben_spalten").delete().eq("id", data.id).select("id"),
+    );
     if (error) throw fehler(error.message);
     await trelloListeArchivieren((geloescht?.[0]?.trello_id as string) ?? null);
     return { ok: true };

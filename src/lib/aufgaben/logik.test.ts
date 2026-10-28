@@ -7,6 +7,7 @@ import {
   positionZwischen,
   ruecksprachen,
   tageBisFaellig,
+  themenStaende,
 } from "./logik";
 import { FILTER_LEER, type Aufgabe } from "./typen";
 
@@ -20,6 +21,7 @@ function aufgabe(teil: Partial<Aufgabe>): Aufgabe {
     verantwortlichId: null,
     faelligAm: null,
     prioritaet: "normal",
+    themenfeld: "",
     ruecksprache: "",
     ruecksprachAm: null,
     mandatSfId: null,
@@ -130,5 +132,60 @@ describe("Rücksprachen", () => {
       "Fotos bestellen",
       "Termin",
     ]);
+  });
+});
+
+describe("Themenfelder", () => {
+  const offen = { id: "s", titel: "Offen", position: 1000, erledigt: false };
+  const fertig = { id: "e", titel: "Erledigt", position: 2000, erledigt: true };
+  const spalten = new Map([
+    ["s", offen],
+    ["e", fertig],
+  ]);
+  const heute = "2026-10-28";
+
+  it("Filter nach Themenfeld, auch „ohne“", () => {
+    const a = aufgabe({ themenfeld: "strategie" });
+    const f = { ...FILTER_LEER, themenfeld: "strategie" as const };
+    expect(passtZuFilter(a, offen, f, heute)).toBe(true);
+    expect(passtZuFilter(aufgabe({}), offen, f, heute)).toBe(false);
+    expect(
+      passtZuFilter(
+        aufgabe({}),
+        offen,
+        { ...FILTER_LEER, themenfeld: "" },
+        heute,
+      ),
+    ).toBe(true);
+  });
+
+  it("zählt offene, überfällige und kürzlich erledigte Aufgaben", () => {
+    const st = themenStaende(
+      [
+        aufgabe({ themenfeld: "strategie", prioritaet: "hoch" }),
+        aufgabe({ themenfeld: "strategie", faelligAm: "2026-10-01" }),
+        aufgabe({
+          themenfeld: "strategie",
+          spalteId: "e",
+          erledigtAm: "2026-10-20T10:00:00Z",
+        }),
+        aufgabe({
+          themenfeld: "strategie",
+          spalteId: "e",
+          erledigtAm: "2026-08-01T10:00:00Z",
+        }),
+      ],
+      spalten,
+      heute,
+    );
+    expect(st.find((s) => s.themenfeld === "strategie")).toEqual({
+      themenfeld: "strategie",
+      offen: 2,
+      ueberfaellig: 1,
+      hoch: 1,
+      erledigt30: 1,
+    });
+    // „Ohne Themenfeld“ erscheint nur, wenn es belegt ist.
+    expect(st.some((s) => s.themenfeld === "")).toBe(false);
   });
 });

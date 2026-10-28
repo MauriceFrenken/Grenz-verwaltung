@@ -8,6 +8,39 @@ export const PRIORITAETEN: { wert: Prioritaet; label: string }[] = [
   { wert: "niedrig", label: "Niedrig" },
 ];
 
+/** Strategische Themenfelder, nach denen das Board gruppiert und gefiltert wird. */
+export const THEMENFELDER = [
+  { wert: "strategie", label: "Strategie & Wachstum", kurz: "Strategie" },
+  { wert: "akquise", label: "Akquise & Mandate", kurz: "Akquise" },
+  {
+    wert: "vermarktung",
+    label: "Vermarktung & Investoren",
+    kurz: "Vermarktung",
+  },
+  { wert: "marke", label: "Marketing & Marke", kurz: "Marke" },
+  { wert: "personal", label: "Personal & Team", kurz: "Personal" },
+  {
+    wert: "organisation",
+    label: "Organisation & Prozesse",
+    kurz: "Organisation",
+  },
+  { wert: "digital", label: "Digitalisierung & App", kurz: "Digital" },
+  { wert: "finanzen", label: "Finanzen & Controlling", kurz: "Finanzen" },
+] as const;
+
+/** "" = noch keinem Themenfeld zugeordnet. */
+export type Themenfeld = (typeof THEMENFELDER)[number]["wert"] | "";
+
+export function themenfeldLabel(t: Themenfeld, kurz = false): string {
+  const f = THEMENFELDER.find((x) => x.wert === t);
+  if (!f) return "Ohne Themenfeld";
+  return kurz ? f.kurz : f.label;
+}
+
+export function istThemenfeld(wert: unknown): wert is Themenfeld {
+  return wert === "" || THEMENFELDER.some((f) => f.wert === wert);
+}
+
 export type ChecklistenPunkt = { id: string; text: string; erledigt: boolean };
 
 export type Spalte = {
@@ -27,6 +60,7 @@ export type Aufgabe = {
   verantwortlichId: string | null;
   faelligAm: string | null;
   prioritaet: Prioritaet;
+  themenfeld: Themenfeld;
   ruecksprache: string;
   ruecksprachAm: string | null;
   mandatSfId: string | null;
@@ -53,6 +87,8 @@ export type Board = {
   personen: Person[];
   mandate: MandatKurz[];
   trello: TrelloStatus;
+  /** false, solange die Migration für Themenfelder fehlt. */
+  themenfelder: boolean;
 };
 
 /** Felder, die beim Anlegen und Bearbeiten einer Karte gesetzt werden. */
@@ -62,6 +98,7 @@ export type AufgabeFelder = {
   verantwortlichId: string | null;
   faelligAm: string | null;
   prioritaet: Prioritaet;
+  themenfeld: Themenfeld;
   ruecksprache: string;
   ruecksprachAm: string | null;
   mandatSfId: string | null;
@@ -74,6 +111,8 @@ export type Filter = {
   person: string;
   /** "" = alle Rücksprachen. */
   ruecksprache: string;
+  /** null = alle, "" = ohne Themenfeld. */
+  themenfeld: Themenfeld | null;
   nurUeberfaellig: boolean;
 };
 
@@ -81,5 +120,6 @@ export const FILTER_LEER: Filter = {
   suche: "",
   person: "",
   ruecksprache: "",
+  themenfeld: null,
   nurUeberfaellig: false,
 };

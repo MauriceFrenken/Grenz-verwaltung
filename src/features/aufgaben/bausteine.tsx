@@ -10,7 +10,12 @@ import {
   faelligStand,
   type FaelligStand,
 } from "@/lib/aufgaben/logik";
-import type { Aufgabe, Person, Spalte } from "@/lib/aufgaben/typen";
+import {
+  themenfeldLabel,
+  type Aufgabe,
+  type Person,
+  type Spalte,
+} from "@/lib/aufgaben/typen";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +56,8 @@ export function AufgabeKarte({
   person,
   heute,
   ziehend,
+  mitThemenfeld,
+  mitStatus,
   onOeffnen,
   onDragStart,
   onDragEnd,
@@ -60,6 +67,10 @@ export function AufgabeKarte({
   person: Person | undefined;
   heute: string;
   ziehend: boolean;
+  /** Themenfeld als Kennzeichen zeigen (Ansicht nach Status). */
+  mitThemenfeld?: boolean;
+  /** Spalte als Kennzeichen zeigen (Ansicht nach Themenfeld). */
+  mitStatus?: boolean;
   onOeffnen: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
@@ -80,10 +91,26 @@ export function AufgabeKarte({
         ziehend && "opacity-40",
       )}
     >
-      {aufgabe.ruecksprache && (
-        <span className="inline-flex max-w-full items-center gap-1 self-start truncate bg-[var(--gc-hellblau-zart)] px-1.5 py-0.5 text-[11px] text-heading">
-          <MessagesSquare className="size-3 shrink-0" />
-          <span className="truncate">{aufgabe.ruecksprache}</span>
+      {((mitThemenfeld && aufgabe.themenfeld) ||
+        (mitStatus && spalte) ||
+        aufgabe.ruecksprache) && (
+        <span className="flex max-w-full flex-wrap gap-1">
+          {mitThemenfeld && aufgabe.themenfeld && (
+            <span className="bg-brand px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white">
+              {themenfeldLabel(aufgabe.themenfeld, true)}
+            </span>
+          )}
+          {mitStatus && spalte && (
+            <span className="border border-hairline px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">
+              {spalte.titel}
+            </span>
+          )}
+          {aufgabe.ruecksprache && (
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1 bg-[var(--gc-hellblau-zart)] px-1.5 py-0.5 text-[11px] text-heading">
+              <MessagesSquare className="size-3 shrink-0" />
+              <span className="truncate">{aufgabe.ruecksprache}</span>
+            </span>
+          )}
         </span>
       )}
       <span

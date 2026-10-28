@@ -1,6 +1,13 @@
 /** Reine Hilfen des Aufgabenboards: Sortierung, Einfügeposition, Fälligkeit, Filter. */
 
-import type { Aufgabe, ChecklistenPunkt, Filter, Spalte } from "./typen";
+import {
+  THEMENFELDER,
+  type Aufgabe,
+  type ChecklistenPunkt,
+  type Filter,
+  type Spalte,
+  type Themenfeld,
+} from "./typen";
 
 const ABSTAND = 1000;
 
@@ -75,6 +82,7 @@ export function passtZuFilter(
     return false;
   }
   if (f.ruecksprache && a.ruecksprache !== f.ruecksprache) return false;
+  if (f.themenfeld !== null && a.themenfeld !== f.themenfeld) return false;
   if (f.nurUeberfaellig && faelligStand(a, spalte, heute) !== "ueberfaellig")
     return false;
   const q = f.suche.trim().toLowerCase();
@@ -112,4 +120,45 @@ export function aufgabenAusNotiz(text: string): string[] {
     )
     .filter((z) => z.length > 0)
     .map((z) => z.slice(0, 300));
+}
+
+export type ThemenStand = {
+  themenfeld: Themenfeld;
+  offen: number;
+  ueberfaellig: number;
+  hoch: number;
+  /** In den letzten 30 Tagen erledigt. */
+  erledigt30: number;
+};
+
+/** Je Themenfeld (plus „ohne“, falls belegt): offene, überfällige und kürzlich erledigte Aufgaben. */
+export function themenStaende(
+  aufgaben: Aufgabe[],
+  spalteVon: Map<string, Spalte>,
+  heute: string,
+): ThemenStand[] {
+  const felder: Themenfeld[] = [...THEMENFELDER.map((f) => f.wert), ""];
+  const staende = felder.map((themenfeld) => ({
+    themenfeld,
+    offen: 0,
+    ueberfaellig: 0,
+    hoch: 0,
+    erledigt30: 0,
+  }));
+  const von = new Map(staende.map((s) => [s.themenfeld, s]));
+  for (const a of aufgaben) {
+    const s = von.get(a.themenfeld) ?? von.get("")!;
+    const spalte = spalteVon.get(a.spalteId);
+    if (spalte?.erledigt) {
+      const am = (a.erledigtAm ?? a.updatedAt).slice(0, 10);
+      if (tageBisFaellig(am, heute) >= -30) s.erledigt30++;
+      continue;
+    }
+    s.offen++;
+    if (a.prioritaet === "hoch") s.hoch++;
+    if (faelligStand(a, spalte, heute) === "ueberfaellig") s.ueberfaellig++;
+  }
+  return staende.filter(
+    (s) => s.themenfeld !== "" || s.offen > 0 || s.erledigt30 > 0,
+  );
 }

@@ -12,7 +12,13 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { aufgabenAusNotiz, heuteIso } from "@/lib/aufgaben/logik";
-import type { MandatKurz, Person, Spalte } from "@/lib/aufgaben/typen";
+import {
+  THEMENFELDER,
+  type MandatKurz,
+  type Person,
+  type Spalte,
+  type Themenfeld,
+} from "@/lib/aufgaben/typen";
 
 import { FELD } from "./bausteine";
 
@@ -24,6 +30,7 @@ export type RueckspracheEingabe = {
   verantwortlichId: string | null;
   faelligAm: string | null;
   mandatSfId: string | null;
+  themenfeld: Themenfeld;
 };
 
 /** Nach einer Rücksprache alle festgelegten Aufgaben auf einmal erfassen: eine Zeile je Aufgabe. */
@@ -33,6 +40,8 @@ export function RueckspracheDialog({
   personen,
   mandate,
   ruecksprachen,
+  themenfelder,
+  vorgabeThemenfeld,
   onSchliessen,
   onErfassen,
 }: {
@@ -41,6 +50,9 @@ export function RueckspracheDialog({
   personen: Person[];
   mandate: MandatKurz[];
   ruecksprachen: string[];
+  themenfelder: boolean;
+  /** Vorbelegung, z. B. das gerade gefilterte Themenfeld. */
+  vorgabeThemenfeld: Themenfeld;
   onSchliessen: () => void;
   onErfassen: (e: RueckspracheEingabe) => Promise<void>;
 }) {
@@ -51,6 +63,8 @@ export function RueckspracheDialog({
   const [faellig, setFaellig] = useState("");
   const [mandat, setMandat] = useState("");
   const [spalteId, setSpalteId] = useState("");
+  const [thema, setThema] = useState<Themenfeld | null>(null);
+  const themenfeld = thema ?? vorgabeThemenfeld;
   const [busy, setBusy] = useState(false);
 
   const titel = aufgabenAusNotiz(notiz);
@@ -68,6 +82,7 @@ export function RueckspracheDialog({
         verantwortlichId: person || null,
         faelligAm: faellig || null,
         mandatSfId: mandat || null,
+        themenfeld,
       });
       setNotiz("");
       onSchliessen();
@@ -84,8 +99,9 @@ export function RueckspracheDialog({
         <DialogHeader>
           <DialogTitle>Rücksprache erfassen</DialogTitle>
           <DialogDescription>
-            Je Zeile eine Aufgabe. Verantwortlicher, Fälligkeit und Mandat
-            gelten für alle Karten und lassen sich danach je Karte ändern.
+            Je Zeile eine Aufgabe. Themenfeld, Verantwortlicher, Fälligkeit und
+            Mandat gelten für alle Karten und lassen sich danach je Karte
+            ändern.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
@@ -127,6 +143,23 @@ export function RueckspracheDialog({
             />
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
+            {themenfelder && (
+              <label className="flex flex-col gap-1 text-xs text-text-muted sm:col-span-2">
+                Themenfeld
+                <select
+                  className={FELD}
+                  value={themenfeld}
+                  onChange={(e) => setThema(e.target.value as Themenfeld)}
+                >
+                  <option value="">Ohne Themenfeld</option>
+                  {THEMENFELDER.map((t) => (
+                    <option key={t.wert} value={t.wert}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="flex flex-col gap-1 text-xs text-text-muted">
               Verantwortlich
               <select
