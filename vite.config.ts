@@ -4,6 +4,8 @@
 //     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
+import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 import { exposeAiDevPlugin } from "./vite-plugin-expose-ai-dev";
@@ -50,6 +52,18 @@ export default defineConfig({
     },
     ssr: {
       noExternal: EBICS_BUNDLE,
+    },
+    // tslib fest auf die 2.x der App: traceDeps (pdfkit) legt sonst pdf-libs tslib 1.x als
+    // node_modules/tslib ins Vercel-Paket, und Radix bricht mit fehlendem __spreadArray ab.
+    resolve: {
+      alias: [
+        {
+          find: /^tslib$/,
+          replacement: fileURLToPath(
+            new URL("./node_modules/tslib/tslib.es6.mjs", import.meta.url),
+          ),
+        },
+      ],
     },
   },
   tanstackStart: {
