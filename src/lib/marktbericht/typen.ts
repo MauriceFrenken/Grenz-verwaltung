@@ -142,6 +142,8 @@ export type MarktberichtTexte = {
   nachfrage?: string;
   vermarktung?: string;
   ausblick?: string;
+  /** „Was das für Investoren bedeutet“: drei bis vier konkrete Hinweise für Privatanleger. */
+  empfehlungen?: string[];
   ausblickTrends?: { kennzahl: string; trend: Trend; prognose: Trend }[];
   /** Hinweise der Prüfung, z. B. Zahlen im KI-Text, die nicht in den Kennzahlen stehen. */
   pruefhinweise?: string[];
@@ -156,12 +158,22 @@ export type MarktberichtInhalt = {
   texteAutomatisch?: boolean;
   /** Seit dem letzten automatischen Text kamen neue Vergleichswerte hinzu. */
   texteFaellig?: boolean;
+  /** Fassung der KI-Vorgaben, mit der die Texte geschrieben wurden (siehe TEXT_FASSUNG). */
+  textFassung?: number;
 };
+
+/**
+ * Fassung der KI-Vorgaben. 2 = Bericht für private und semi-professionelle Investoren als
+ * „Grenz & Co. Research“ ohne Nennung fremder Quellen. Automatische Texte älterer Fassungen
+ * schreibt der Cron neu.
+ */
+export const TEXT_FASSUNG = 2;
 
 /** Noch keine Texte geschrieben (frisch angelegter Bericht). */
 export function texteLeer(t: MarktberichtTexte): boolean {
   return (
     !t.thesen?.some((x) => x.trim()) &&
+    !t.empfehlungen?.some((x) => x.trim()) &&
     ![
       t.einleitung,
       t.rahmen,

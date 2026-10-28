@@ -10,10 +10,12 @@ import {
   zahlAus,
   type ExposeZeile,
 } from "./auswertung";
-import { kacheln, unbelegteZahlen } from "./bericht";
+import { kacheln, kennzahlenText, unbelegteZahlen } from "./bericht";
 import { bundesbankCsvWerte, zinsStand } from "./bundesbank";
+import { quellenGenannt } from "./ki";
+import { deutschland, standortZeilen } from "./standorte";
 import { teilmarktAus } from "./teilmarkt";
-import type { MarktberichtKennzahlen } from "./typen";
+import type { Benchmark, MarktberichtKennzahlen } from "./typen";
 
 function expose(datum: string, f: Record<string, string | null>): ExposeZeile {
   return {
@@ -213,52 +215,161 @@ describe("Prüfung der KI-Texte", () => {
   });
 });
 
-describe("kacheln", () => {
-  it("zeigt eigene Werte vor zitierten und höchstens sechs", () => {
-    const k = {
-      angebot: {
-        zeilen: [
-          {
-            teilmarkt: "Gesamt",
-            angebote: 36,
-            mitPreis: 36,
-            faktor: { median: 21.36, p25: 19, p75: 24, n: 32 },
-            preisM2: { median: 2544, p25: 2000, p75: 3000, n: 36 },
-            mieteM2: null,
-            volumen: 0,
-          },
-        ],
-        objektarten: [],
-        vorperiode: null,
-        ersterEingang: "2026-08-20",
+function bm(
+  kennzahl: string,
+  region: string,
+  wert: number,
+  einheit: string,
+  relevanz = 90,
+  extra: Partial<Benchmark> = {},
+): Benchmark {
+  return {
+    id: `${kennzahl}-${region}-${wert}`,
+    kennzahl,
+    region,
+    wert,
+    einheit,
+    quelle: "Fremdes Haus",
+    stichtag: "2026-06-30",
+    geprueft: true,
+    relevanz,
+    ...extra,
+  };
+}
+
+const KENNZAHLEN = {
+  periode: { jahr: 2026, art: "H1" },
+  von: "2026-01-01",
+  bis: "2026-06-30",
+  stichtag: "2026-06-30",
+  vorlaeufig: false,
+  angebot: {
+    zeilen: [
+      {
+        teilmarkt: "Köln",
+        angebote: 16,
+        mitPreis: 7,
+        faktor: { median: 23.6, p25: 21, p75: 23.9, n: 7 },
+        preisM2: { median: 3000, p25: 2500, p75: 3200, n: 7 },
+        mieteM2: null,
+        volumen: 0,
       },
-      zinsen: { reihen: [], fehler: null },
-      kaeufer: {
-        profile: 214,
-        mitVolumen: 122,
-        regionen: [],
-        volumenbaender: [],
-        assetklassen: [],
-        investorTypen: [],
-        medianVolumenMax: 10_000_000,
+      {
+        teilmarkt: "Gesamt",
+        angebote: 36,
+        mitPreis: 36,
+        faktor: { median: 21.36, p25: 19, p75: 24, n: 32 },
+        preisM2: { median: 2544, p25: 2000, p75: 3000, n: 36 },
+        mieteM2: null,
+        volumen: 0,
       },
-    } as unknown as MarktberichtKennzahlen;
-    const liste = kacheln(
-      k,
-      Array.from({ length: 4 }, (_, i) => ({
-        id: String(i),
-        kennzahl: "Spitzenrendite",
-        region: "Top-7",
-        wert: 3.81,
-        einheit: "%",
-        quelle: "C&W",
-        stichtag: "2026-06-30",
-        geprueft: i !== 0,
-      })),
+    ],
+    objektarten: [],
+    vorperiode: null,
+    ersterEingang: "2026-08-20",
+  },
+  zinsen: { reihen: [], fehler: null },
+  kaeufer: {
+    profile: 214,
+    mitVolumen: 122,
+    regionen: [],
+    volumenbaender: [],
+    assetklassen: [],
+    investorTypen: [],
+    medianVolumenMax: 10_000_000,
+  },
+  vermarktung: {
+    neueMandate: 3,
+    abschluesse: 1,
+    abschlussVolumen: 0,
+    verloren: 4,
+  },
+  vermarktungVorperiode: {
+    neueMandate: 2,
+    abschluesse: 0,
+    abschlussVolumen: 0,
+    verloren: 1,
+  },
+  radar: { kaeufer: 0, verkaeufer: 0, auswahl: [] },
+} as unknown as MarktberichtKennzahlen;
+
+const WERTE = [
+  bm("Rohertragsfaktor Mietwohnhausgrundstücke 2025", "Köln", 21, "Faktor", 95),
+  bm(
+    "Marktübliche Einstiegsfaktoren Mehrfamilienhaus Bestand",
+    "Düsseldorf",
+    18,
+    "Faktor (Spanne 18–21)",
+  ),
+  bm("Bereinigter Kaufpreis Mietwohnhausgrundstücke", "Köln", 2991, "€/m²"),
+  bm(
+    "Durchschnittlicher Kaufpreis Mietwohnhäuser (Liegenschaftszinsauswertung)",
+    "Bonn",
+    2544,
+    "€/m²",
+  ),
+  bm("Median-Angebotsmiete Neuvermietung Wohnen", "Köln", 17.01, "€/m²", 92, {
+    veraenderung: "+4,5% y/y",
+  }),
+  bm(
+    "Ø-Angebotsmiete Bestandswohnungen Altstadt",
+    "Düsseldorf-Altstadt",
+    18.14,
+    "€/m²",
+  ),
+  bm("Spitzenrendite Büro", "Köln", 4.6, "%"),
+  bm("Transaktionsvolumen Zinshäuser", "Köln", 1.07, "Mrd. €", 100),
+  bm("Spitzenrendite Wohnen", "Top-7", 3.4, "%", 70),
+];
+
+describe("Standorte", () => {
+  it("ordnet Vergleichswerte den Städten und Kennzahlen zu", () => {
+    const [koeln, duesseldorf, bonn] = standortZeilen(KENNZAHLEN, WERTE);
+    expect(koeln.markt.faktor?.text).toBe("21,0");
+    expect(koeln.markt.kaufpreis?.text).toBe("2.991 €/m²");
+    expect(koeln.markt.miete?.veraenderung).toBe("+4,5% y/y");
+    expect(koeln.markt.umsatz?.text).toBe("1,07 Mrd. €");
+    expect(koeln.markt.rendite).toBeUndefined();
+    expect(koeln.bruttorendite).toBe(4.2);
+    expect(duesseldorf.markt.faktor?.text).toBe("18–21");
+    // Stadtteilwerte zählen nicht für die Stadt.
+    expect(duesseldorf.markt.miete).toBeUndefined();
+    expect(bonn.markt.kaufpreis?.text).toBe("2.544 €/m²");
+    expect(bonn.markt.liegenschaftszins).toBeUndefined();
+    expect(deutschland(WERTE).rendite?.text).toBe("3,4 %");
+  });
+
+  it("Kacheln und KI-Kontext nennen keine fremden Herausgeber", () => {
+    const liste = kacheln(KENNZAHLEN, WERTE);
+    expect(liste.length).toBeLessThanOrEqual(6);
+    expect(liste[0]).toMatchObject({
+      wert: "21,0",
+      label: "Kaufpreisfaktor Köln",
+    });
+    expect(liste.some((k) => k.label === "Bruttorendite im Angebot")).toBe(
+      true,
     );
-    expect(liste).toHaveLength(6);
-    expect(liste[0].wert).toBe("21,4");
-    expect(liste[1].wert).toBe("2.540 €/m²");
-    expect(liste[4].quelle).toBe("zitiert: C&W");
+    expect(JSON.stringify(liste)).not.toContain("Fremdes Haus");
+    const kontext = kennzahlenText(KENNZAHLEN, WERTE);
+    expect(kontext).not.toContain("Fremdes Haus");
+    expect(kontext).not.toContain("Mandate");
+    expect(kontext).toContain("Bruttorendite 4,2 %");
+  });
+});
+
+describe("quellenGenannt", () => {
+  it("findet fremde Quellen, aber nicht „lautet“", () => {
+    expect(
+      quellenGenannt({
+        einleitung: "Laut JLL steigen die Mieten.",
+        ausblick: "Unsere These lautet: stabile Faktoren.",
+      }),
+    ).toHaveLength(1);
+    expect(
+      quellenGenannt({ angebot: "Der Gutachterausschuss meldet Faktor 21." }),
+    ).toHaveLength(1);
+    expect(quellenGenannt({ angebot: "Wir sehen Faktor 21 in Köln." })).toEqual(
+      [],
+    );
   });
 });

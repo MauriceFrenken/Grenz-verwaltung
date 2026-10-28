@@ -50,23 +50,18 @@ const TEXTFELDER: {
   },
   {
     feld: "rahmen",
-    titel: "Rahmenbedingungen",
-    hilfe: "Zins- und Finanzierungsumfeld",
+    titel: "Finanzierung",
+    hilfe: "Bauzins, Bundesanleihe, Rendite gegen Zins",
   },
   {
     feld: "angebot",
-    titel: "Angebotsmarkt",
-    hilfe: "Faktoren und Preise nach Teilmarkt",
+    titel: "Preise und Renditen",
+    hilfe: "Faktoren, Kaufpreise und Renditen je Standort",
   },
   {
     feld: "nachfrage",
-    titel: "Nachfrage",
-    hilfe: "Käuferindex aus den Ankaufsprofilen",
-  },
-  {
-    feld: "vermarktung",
-    titel: "Vermarktung",
-    hilfe: "Grenz & Co. im Markt, Markt-Radar",
+    titel: "Markt und Mieten",
+    hilfe: "Transaktionen, Mietentwicklung, Nachfrage",
   },
   {
     feld: "ausblick",
@@ -380,7 +375,9 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
               <p className="text-xs text-text-subtle">
                 Die KI schreibt nur mit Zahlen aus den eingefrorenen Kennzahlen
                 und geprüften Vergleichswerten. Zahlen, die dort nicht stehen,
-                erscheinen unten als Prüfhinweis.
+                erscheinen unten als Prüfhinweis, ebenso genannte fremde
+                Quellen. Leser sind private und semi-professionelle Investoren;
+                Absender ist Grenz & Co. Research.
               </p>
               {(texte.pruefhinweise ?? []).map((h, i) => (
                 <div
@@ -443,6 +440,29 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
                     onChange={(e) => setzeTexte({ [feld]: e.target.value })}
                   />
                 </div>
+              ))}
+
+              <h3 className="mt-2 text-xs font-semibold text-text-muted">
+                Was das für Investoren bedeutet (drei bis vier Hinweise,
+                Stichwort, Doppelpunkt, Aussage)
+              </h3>
+              {[0, 1, 2, 3].map((i) => (
+                <Input
+                  key={i}
+                  id={`mb-empfehlung-${i}`}
+                  disabled={gesperrt}
+                  value={texte.empfehlungen?.[i] ?? ""}
+                  placeholder={
+                    i === 0
+                      ? "z. B. Käufer: Im Umland liegen Bruttorenditen über dem Bauzins"
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const empfehlungen = [...(texte.empfehlungen ?? [])];
+                    empfehlungen[i] = e.target.value;
+                    setzeTexte({ empfehlungen });
+                  }}
+                />
               ))}
 
               {texte.ausblickTrends?.length ? (
@@ -565,9 +585,10 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
                   Bibliothek
                 </Link>
                 ). Werte, deren Zitat samt Zahl im Originaltext steht, gelten
-                als belegt. Gedruckt werden nur geprüfte Werte, immer mit
-                Quelle. Berichte hinter einer Registrierung als PDF hochladen
-                (bis 3 MB).
+                als belegt. Gedruckt werden nur geprüfte Werte, im Bericht ohne
+                Herausgeber als Grenz & Co. Research; die Belege bleiben hier
+                gespeichert. Berichte hinter einer Registrierung als PDF
+                hochladen (bis 3 MB).
                 {ungeprueft
                   ? ` ${ungeprueft} Wert(e) noch nicht bestätigt.`
                   : ""}

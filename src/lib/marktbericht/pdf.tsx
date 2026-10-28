@@ -1,10 +1,13 @@
 /**
  * Marktbericht als PDF im Layout der Grenz-Einschätzungen (A4 quer, hellblaue Randfläche rechts,
  * Wortmarke oben rechts, Seitenzahl im navy Kasten). Maße in Zoll wie in den PowerPoint-Vorlagen.
+ * Zielgruppe: private und semi-professionelle Investoren. Absender ist Grenz & Co. Research;
+ * fremde Herausgeber werden im PDF nicht genannt (Belege bleiben intern am Vergleichswert).
  */
 
 import {
   Document,
+  Font,
   Image,
   Line,
   Page,
@@ -17,19 +20,21 @@ import {
 } from "@react-pdf/renderer";
 import type { ReactNode } from "react";
 
+import roboto300 from "@/assets/fonts/roboto/roboto-latin-300-normal.ttf?inline";
+import roboto400 from "@/assets/fonts/roboto/roboto-latin-400-normal.ttf?inline";
+import roboto700 from "@/assets/fonts/roboto/roboto-latin-700-normal.ttf?inline";
 import logoWeiss from "@/assets/grenz-co-logo-weiss.png?inline";
 import wortmarkeWeiss from "@/assets/grenz-co-wortmarke-weiss.png?inline";
 
-import {
-  erhebungZeitraum,
-  fmt,
-  kacheln,
-  median,
-  spanne,
-  type Kachel,
-} from "./bericht";
+import { erhebungZeitraum, fmt, kacheln, type Kachel } from "./bericht";
 import { zinsStand } from "./bundesbank";
 import type { MarktberichtVoll } from "./server-fn";
+import {
+  bruttorendite,
+  deutschland,
+  standortZeilen,
+  type MarktWert,
+} from "./standorte";
 import { MINDEST_FALLZAHL, periodeText, type Trend } from "./typen";
 
 const F = {
@@ -42,10 +47,16 @@ const F = {
 };
 const Z = 72;
 const SEITE: [number, number] = [11.69 * Z, 8.27 * Z];
-const SCHRIFT = "Helvetica";
-const FETT = "Helvetica-Bold";
+// CI-Schrift Roboto (lokal, latin; TTF, weil fontkit WOFF2 beim Einbetten nicht zuverlässig teilt). Eigene Familien je Schnitt, damit fontFamily allein reicht.
+const SCHRIFT = "Roboto";
+const LEICHT = "Roboto-Light";
+const FETT = "Roboto-Bold";
+Font.register({ family: SCHRIFT, src: roboto400 });
+Font.register({ family: LEICHT, src: roboto300 });
+Font.register({ family: FETT, src: roboto700 });
+Font.registerHyphenationCallback((wort) => [wort]);
 
-/** Helvetica kennt nur WinAnsi: Zeichen außerhalb ersetzen, sonst fehlen sie im PDF. */
+/** Die Schrift ist auf „latin“ beschränkt: seltene Zeichen ersetzen, sonst fehlen sie im PDF. */
 function t(s: string | null | undefined): string {
   return (s ?? "")
     .replace(/[−‒]/g, "-")
@@ -133,6 +144,7 @@ function Rahmen({
         style={{
           ...abs({ x: 0.35, y: 0.48, w: 7.1, h: 0.65 }),
           fontSize: 30,
+          fontFamily: LEICHT,
           color: F.navy,
         }}
       >
@@ -543,7 +555,9 @@ function KachelFeld({ k }: { k: Kachel }) {
         marginRight: 0.2 * Z,
       }}
     >
-      <Text style={{ fontSize: 24, color: F.navy }}>{t(k.wert)}</Text>
+      <Text style={{ fontSize: 22, color: F.navy, fontFamily: LEICHT }}>
+        {t(k.wert)}
+      </Text>
       <Text style={{ fontSize: 8, marginTop: 4, letterSpacing: 0.3 }}>
         {t(k.label.toUpperCase())}
       </Text>
@@ -574,27 +588,119 @@ function KachelFeld({ k }: { k: Kachel }) {
 }
 
 const DISCLAIMER =
-  "Dieser Bericht von Grenz & Co. dient ausschließlich der allgemeinen Information über den Markt für Zinshäuser im Rheinland. Er stellt keine Anlageberatung, kein Wertgutachten und keine Empfehlung für Investitions-, Verkaufs- oder Anmietungsentscheidungen dar. Eigene Auswertungen beruhen auf den bei Grenz & Co. eingegangenen Angeboten sowie auf eigenen Vermarktungs- und Investorendaten; sie bilden Angebotswerte ab, keine notariell beurkundeten Kaufpreise. Zitierte Werte anderer Häuser und öffentlicher Stellen sind als solche gekennzeichnet und urheberrechtlich deren Eigentum. Für Richtigkeit und Vollständigkeit wird keine Gewähr übernommen.";
+  "Dieser Bericht von Grenz & Co. Research dient ausschließlich der allgemeinen Information über den Markt für Zinshäuser und Mehrfamilienhäuser im Rheinland. Er stellt keine Anlage-, Steuer- oder Rechtsberatung, kein Wertgutachten und keine Aufforderung zum Kauf oder Verkauf dar. Die Angaben beruhen auf eigenen Erhebungen und Auswertungen von Grenz & Co. sowie auf öffentlich zugänglichen Markt-, Transaktions- und Finanzdaten, die wir für verlässlich halten. Angebotswerte sind keine beurkundeten Kaufpreise. Für Richtigkeit und Vollständigkeit wird keine Gewähr übernommen. Vervielfältigung nur mit Quellenangabe „Grenz & Co. Research“.";
+
+function wertOder(w: MarktWert | undefined): string {
+  return w ? w.text : "–";
+}
+
+/** Kasten mit navy Rand links, für Erklärungen und Hinweise auf der Randfläche. */
+function Hinweis({ titel, children }: { titel: string; children: ReactNode }) {
+  return (
+    <View
+      style={{
+        backgroundColor: "#FFFFFF",
+        borderLeft: `3pt solid ${F.navy}`,
+        padding: 9,
+        marginBottom: 14,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 8.5,
+          fontFamily: FETT,
+          color: F.navy,
+          marginBottom: 4,
+          letterSpacing: 0.4,
+        }}
+      >
+        {t(titel.toUpperCase())}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function Empfehlungen({ punkte, pos }: { punkte: string[]; pos: Pos }) {
+  if (!punkte.length) return null;
+  return (
+    <View style={abs(pos)}>
+      <Text
+        style={{
+          fontSize: 9,
+          fontFamily: FETT,
+          color: F.navy,
+          letterSpacing: 0.5,
+          marginBottom: 8,
+        }}
+      >
+        WAS DAS FÜR INVESTOREN BEDEUTET
+      </Text>
+      {punkte.map((p, i) => {
+        const [kopf, ...rest] = p.split(":");
+        const hatKopf = rest.length > 0 && kopf.length < 40;
+        return (
+          <View
+            key={i}
+            style={{
+              flexDirection: "row",
+              backgroundColor: i % 2 ? "#FFFFFF" : F.zeile,
+              paddingVertical: 7,
+              paddingHorizontal: 8,
+            }}
+          >
+            <Text
+              style={{
+                width: 22,
+                fontSize: 14,
+                color: F.navy,
+                fontFamily: LEICHT,
+              }}
+            >
+              {i + 1}
+            </Text>
+            <Text style={{ flex: 1, fontSize: 10, lineHeight: 1.35 }}>
+              {hatKopf ? (
+                <>
+                  <Text style={{ fontFamily: FETT, color: F.navy }}>
+                    {t(kopf)}:
+                  </Text>
+                  {t(rest.join(":"))}
+                </>
+              ) : (
+                t(p)
+              )}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
 
 function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
   const k = b.kennzahlen;
   const x = b.inhalt.texte;
   const stempel = b.status === "entwurf" ? "ENTWURF" : null;
   const periode = periodeText(k.periode);
-  const kopf = `Grenz & Co. · Marktbericht Zinshäuser Rheinland · ${periode}`;
+  const kopf = `Grenz & Co. Research · Marktbericht Zinshäuser Rheinland · ${periode}`;
   const benchmarks = b.inhalt.benchmarks.filter((x) => x.geprueft);
+  const standorte = standortZeilen(k, benchmarks);
+  const de = deutschland(benchmarks);
   const gesamt = k.angebot.zeilen.find((z) => z.teilmarkt === "Gesamt");
-  const teilmaerkte = k.angebot.zeilen.filter((z) => z.teilmarkt !== "Gesamt");
   const bauzins = k.zinsen.reihen.find((r) => r.id === "bauzins");
   const bund = k.zinsen.reihen.find((r) => r.id === "bund10");
+  const bauzinsStand = zinsStand(bauzins);
+  const renditeAngebot = bruttorendite(gesamt?.faktor?.median);
   const stand = fmt.datum(k.stichtag);
+  const laufend = erhebungZeitraum(k, "angebot");
   let seite = 1;
   const naechste = () => ++seite;
 
   return (
     <Document
       title={b.titel}
-      author="Grenz & Co."
+      author="Grenz & Co. Research"
       subject={`Marktbericht ${periode}`}
     >
       {/* Titel */}
@@ -625,15 +731,32 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
             d="M0 80V60h20V52h14v8h22V48h10v12h30V54h16v6h24V50h12v10h20V56h32v24z"
           />
         </Svg>
+        <Text
+          style={{
+            ...abs({ x: 0.85, y: 1.35, w: 6 }),
+            fontSize: 11,
+            color: "#FFFFFF",
+            letterSpacing: 2,
+          }}
+        >
+          GRENZ & CO. RESEARCH
+        </Text>
         <View
           style={{
             ...abs({ x: 5.69, y: 4.04, w: 6.01, h: 2.48 }),
             backgroundColor: F.navy,
             paddingHorizontal: 0.23 * Z,
-            paddingTop: 0.36 * Z,
+            paddingTop: 0.32 * Z,
           }}
         >
-          <Text style={{ fontSize: 26, color: "#FFFFFF", marginBottom: 8 }}>
+          <Text
+            style={{
+              fontSize: 26,
+              color: "#FFFFFF",
+              marginBottom: 8,
+              fontFamily: LEICHT,
+            }}
+          >
             MARKTBERICHT
           </Text>
           <Text style={{ fontSize: 12, color: "#FFFFFF", lineHeight: 1.35 }}>
@@ -644,18 +767,16 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
               fontSize: 12,
               color: "#FFFFFF",
               lineHeight: 1.35,
-              marginBottom: 14,
+              marginBottom: 12,
             }}
           >
-            {t(periode)}
+            {t(`${periode} · Für private und professionelle Investoren`)}
           </Text>
           <View
             style={{ flexDirection: "row", justifyContent: "space-between" }}
           >
             <Text style={{ fontSize: 10, color: "#FFFFFF" }}>
-              {k.vorlaeufig
-                ? `Vorläufiger Stand ${stand}`
-                : `Stichtag ${stand}`}
+              {k.vorlaeufig ? `Vorläufiger Stand ${stand}` : `Stand ${stand}`}
             </Text>
             {stempel ? (
               <Text style={{ fontSize: 10, color: "#FFFFFF" }}>{stempel}</Text>
@@ -685,7 +806,7 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
       >
         <View
           style={{
-            ...abs({ x: 0.35, y: 1.75, w: 7.1 }),
+            ...abs({ x: 0.35, y: 1.65, w: 7.1 }),
             flexDirection: "row",
             flexWrap: "wrap",
           }}
@@ -696,15 +817,15 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
         </View>
         <Absatz
           text={x.einleitung}
-          pos={{ x: 0.35, y: 4.55, w: 6.9 }}
-          groesse={10}
+          pos={{ x: 0.35, y: 4.5, w: 6.9 }}
+          groesse={10.5}
         />
       </Rahmen>
 
-      {/* Rahmenbedingungen */}
+      {/* Finanzierung */}
       <Rahmen
-        titel="Rahmenbedingungen"
-        untertitel="Zins- und Finanzierungsumfeld"
+        titel="Finanzierung"
+        untertitel="Bauzinsen, Kapitalmarkt und Rendite im Vergleich"
         seite={naechste()}
         kopf={kopf}
         stempel={stempel}
@@ -716,13 +837,22 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
                 .map((r) => ({ r, s: zinsStand(r) }))
                 .filter((e) => e.s)
                 .map(({ r, s }) => ({
-                  label: `${r!.label} (${s!.monat})`,
+                  label: `${r!.label.replace(" (Zinsbindung über 10 Jahre)", " 10 J.")} (${s!.monat.slice(5, 7)}/${s!.monat.slice(0, 4)})`,
                   wert: `${fmt.prozent(s!.wert)}${s!.deltaBp != null ? ` (${fmt.bp(s!.deltaBp)})` : ""}`,
                 }))}
             />
+            {renditeAngebot != null && bauzinsStand ? (
+              <Hinweis titel="Rendite gegen Zins">
+                <Text style={{ fontSize: 8.5, lineHeight: 1.4 }}>
+                  {t(
+                    `Bruttorendite im aktuellen Angebot ${fmt.rendite(renditeAngebot)} gegenüber Bauzins ${fmt.prozent(bauzinsStand.wert)}. Liegt die Rendite über dem Zins, wirkt Fremdkapital positiv auf die Eigenkapitalrendite (Leverage).`,
+                  )}
+                </Text>
+              </Hinweis>
+            ) : null}
             <Text style={{ fontSize: 7, color: F.textHell }}>
-              Quelle: Deutsche Bundesbank, Zeitreihen-Datenbank. Veränderung
-              gegenüber Vorjahresmonat in Basispunkten.
+              Monatswerte. Veränderung gegenüber Vorjahresmonat in Basispunkten
+              (100 bp = 1 Prozentpunkt).
             </Text>
           </>
         }
@@ -742,25 +872,105 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
         <Absatz text={x.rahmen} pos={{ x: 0.35, y: 5.55, w: 6.9 }} />
       </Rahmen>
 
-      {/* Angebotsmarkt */}
+      {/* Preise und Renditen */}
       <Rahmen
-        titel="Angebotsmarkt"
-        untertitel="Bei Grenz & Co. eingegangene Zinshaus-Angebote nach Teilmarkt"
+        titel="Preise und Renditen"
+        untertitel="Kaufpreisfaktoren, Kaufpreise und Renditen für Mehrfamilienhäuser"
+        seite={naechste()}
+        kopf={kopf}
+        stempel={stempel}
+        rand={
+          <>
+            <Hinweis titel="So lesen Sie den Faktor">
+              <Text style={{ fontSize: 8.5, lineHeight: 1.4 }}>
+                Faktor = Kaufpreis geteilt durch die Jahresnettokaltmiete. Je
+                höher der Faktor, desto teurer das Haus und desto niedriger die
+                Bruttorendite (100 geteilt durch Faktor).
+              </Text>
+            </Hinweis>
+            <Randliste
+              titel="Faktor und Bruttorendite"
+              eintraege={[16, 18, 20, 22, 25, 28].map((f) => ({
+                label: `Faktor ${f}`,
+                wert: fmt.rendite(bruttorendite(f)!),
+              }))}
+            />
+          </>
+        }
+      >
+        <Tabelle
+          pos={{ x: 0.35, y: 1.6, w: 7.0 }}
+          kopf={[
+            "Standort",
+            "Faktor Markt",
+            "Preis je m²",
+            "Faktor Angebote",
+            "Rendite Angebote",
+            "Liegenschafts- zins",
+            "Spitzen- rendite",
+          ]}
+          breiten={[1.3, 0.85, 0.95, 0.95, 0.95, 1.0, 1.0]}
+          rechts={[1, 2, 3, 4, 5, 6]}
+          zeilen={standorte.map((z) => [
+            z.standort,
+            wertOder(z.markt.faktor),
+            wertOder(z.markt.kaufpreis),
+            z.angebotsfaktor ? fmt.faktor(z.angebotsfaktor) : "–",
+            z.bruttorendite != null ? fmt.rendite(z.bruttorendite) : "–",
+            wertOder(z.markt.liegenschaftszins),
+            wertOder(z.markt.rendite),
+          ])}
+        />
+        <Balken
+          pos={{ x: 0.35, y: 2.15 + 0.27 * standorte.length, w: 6.9 }}
+          titel="Faktor der aktuellen Angebote (Median)"
+          werte={standorte
+            .filter((z) => z.angebotsfaktor)
+            .map((z) => ({ label: z.standort, wert: z.angebotsfaktor! }))}
+          format={fmt.faktor}
+        />
+        <Absatz text={x.angebot} pos={{ x: 0.35, y: 4.5, w: 6.9 }} />
+      </Rahmen>
+
+      {/* Investmentmarkt und Mieten */}
+      <Rahmen
+        titel="Markt und Mieten"
+        untertitel="Transaktionen, Mietentwicklung und Nachfrage der Investoren"
         seite={naechste()}
         kopf={kopf}
         stempel={stempel}
         rand={
           <>
             <Randliste
-              titel="Objektarten"
-              eintraege={k.angebot.objektarten.map((o) => ({
-                label: o.label,
-                wert: fmt.ganz(o.wert),
-              }))}
+              titel="Gesuchte Strategien"
+              eintraege={k.kaeufer.assetklassen
+                .slice(0, 5)
+                .map((a) => ({ label: a.label, wert: fmt.ganz(a.wert) }))}
+            />
+            <Randliste
+              titel="Deutschland"
+              eintraege={[
+                ...(de.umsatz
+                  ? [
+                      {
+                        label: "Wohninvestment",
+                        wert: `${de.umsatz.text}${de.umsatz.veraenderung ? ` (${de.umsatz.veraenderung})` : ""}`,
+                      },
+                    ]
+                  : []),
+                ...(de.rendite
+                  ? [
+                      {
+                        label: "Spitzenrendite Wohnen Top-7",
+                        wert: de.rendite.text,
+                      },
+                    ]
+                  : []),
+              ]}
             />
             <Text style={{ fontSize: 7, color: F.textHell, lineHeight: 1.35 }}>
               {t(
-                `Faktor = Angebotspreis / Jahresnettokaltmiete (Ist). Spanne = mittlere 50 % der Angebote. Werte erst ab ${MINDEST_FALLZAHL} Angeboten je Zelle. Erfassung seit ${k.angebot.ersterEingang ? fmt.datum(k.angebot.ersterEingang) : "–"}.${erhebungZeitraum(k, "angebot") ? ` Für die Berichtsperiode liegen zu wenige Fälle vor; gezeigt wird die laufende Erhebung ${erhebungZeitraum(k, "angebot")}.` : ""}`,
+                `Nachfrage: ${fmt.ganz(k.kaeufer.profile)} Ankaufsprofile aktiver Investoren, die Grenz & Co. betreut.`,
               )}
             </Text>
           </>
@@ -769,199 +979,37 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
         <Tabelle
           pos={{ x: 0.35, y: 1.6, w: 7.0 }}
           kopf={[
-            "Teilmarkt",
-            "Angebote",
-            "Faktor Median",
-            "Faktor Spanne",
-            "€/m² Median",
-            "Miete €/m²",
+            "Standort",
+            "Angebotsmiete Wohnen",
+            "Veränderung",
+            "Umsatz Zinshäuser",
+            "Veränderung",
           ]}
-          breiten={[1.45, 0.75, 1.0, 1.3, 1.25, 1.25]}
-          rechts={[1, 2, 3, 4, 5]}
-          fettLetzte
-          zeilen={[...teilmaerkte, ...(gesamt ? [gesamt] : [])].map((z) => [
-            z.teilmarkt,
-            fmt.ganz(z.angebote),
-            median(z.faktor, fmt.faktor),
-            spanne(z.faktor, fmt.faktor),
-            z.preisM2 ? fmt.euroM2(z.preisM2.median) : "–",
-            z.mieteM2 ? fmt.mieteM2(z.mieteM2.median) : "–",
-          ])}
+          breiten={[1.6, 1.45, 1.25, 1.45, 1.25]}
+          rechts={[1, 2, 3, 4]}
+          zeilen={standorte
+            .filter((z) => z.standort !== "Übriges Rheinland")
+            .map((z) => [
+              z.standort,
+              wertOder(z.markt.miete),
+              z.markt.miete?.veraenderung ?? "–",
+              wertOder(z.markt.umsatz),
+              z.markt.umsatz?.veraenderung ?? "–",
+            ])}
         />
         <Balken
-          pos={{ x: 0.35, y: 1.95 + 0.27 * (teilmaerkte.length + 1), w: 6.9 }}
-          titel="Angebotsfaktor (Median) nach Teilmarkt"
-          werte={teilmaerkte
-            .filter((z) => z.faktor)
-            .map((z) => ({ label: z.teilmarkt, wert: z.faktor!.median }))}
-          format={fmt.faktor}
-        />
-        <Absatz text={x.angebot} pos={{ x: 0.35, y: 5.55, w: 6.9 }} />
-      </Rahmen>
-
-      {/* Nachfrage */}
-      <Rahmen
-        titel="Nachfrage"
-        untertitel="Grenz-Käuferindex aus den Ankaufsprofilen der Bestandsinvestoren"
-        seite={naechste()}
-        kopf={kopf}
-        stempel={stempel}
-        rand={
-          <>
-            <Randliste
-              titel="Strategien"
-              eintraege={k.kaeufer.assetklassen
-                .slice(0, 6)
-                .map((a) => ({ label: a.label, wert: fmt.ganz(a.wert) }))}
-            />
-            <Randliste
-              titel="Investorentypen"
-              eintraege={k.kaeufer.investorTypen
-                .slice(0, 6)
-                .map((a) => ({ label: a.label, wert: fmt.ganz(a.wert) }))}
-            />
-            <Text style={{ fontSize: 7, color: F.textHell }}>
-              {t(
-                `${fmt.ganz(k.kaeufer.profile)} Ankaufsprofile, ${fmt.ganz(k.kaeufer.mitVolumen)} mit Volumenangabe. Quelle: Grenz & Co., Salesforce.`,
-              )}
-            </Text>
-          </>
-        }
-      >
-        <Balken
-          pos={{ x: 0.35, y: 1.65, w: 3.4 }}
-          titel="Gesuchtes Volumen je Profil"
+          pos={{ x: 0.35, y: 3.05, w: 6.9 }}
+          titel="Gesuchtes Investitionsvolumen je Investor (Anzahl Ankaufsprofile)"
           werte={k.kaeufer.volumenbaender}
           format={fmt.ganz}
         />
-        <Balken
-          pos={{ x: 3.95, y: 1.65, w: 3.4 }}
-          titel="Profile mit Suchregion"
-          werte={k.kaeufer.regionen}
-          format={fmt.ganz}
-        />
-        <Absatz text={x.nachfrage} pos={{ x: 0.35, y: 4.4, w: 6.9 }} />
+        <Absatz text={x.nachfrage} pos={{ x: 0.35, y: 4.6, w: 6.9 }} />
       </Rahmen>
 
-      {/* Vermarktung und Marktgeschehen */}
-      <Rahmen
-        titel="Vermarktung"
-        untertitel="Grenz & Co. im Markt und Meldungen aus dem Markt-Radar"
-        seite={naechste()}
-        kopf={kopf}
-        stempel={stempel}
-        rand={
-          <Randliste
-            titel={
-              erhebungZeitraum(k, "radar")
-                ? `Markt-Radar ${erhebungZeitraum(k, "radar")}`
-                : "Markt-Radar"
-            }
-            eintraege={[
-              {
-                label: "Meldungen aktive Käufer",
-                wert: fmt.ganz(k.radar.kaeufer),
-              },
-              {
-                label: "Meldungen mögliche Verkäufer",
-                wert: fmt.ganz(k.radar.verkaeufer),
-              },
-            ]}
-          />
-        }
-      >
-        <Tabelle
-          pos={{ x: 0.35, y: 1.6, w: 7.0 }}
-          kopf={["Kennzahl", periode, "Vorjahreszeitraum"]}
-          breiten={[3.6, 1.7, 1.7]}
-          rechts={[1, 2]}
-          zeilen={[
-            ["Neue Mandate", "neueMandate", fmt.ganz],
-            ["Abschlüsse", "abschluesse", fmt.ganz],
-            [
-              "Abschlussvolumen",
-              "abschlussVolumen",
-              (w: number) => (w ? fmt.mio(w) : "–"),
-            ],
-            ["Verlorene Interessenten", "verloren", fmt.ganz],
-          ].map(([l, f, format]) => {
-            const feld = f as keyof typeof k.vermarktung;
-            const fm = format as (w: number) => string;
-            return [
-              l as string,
-              fm(k.vermarktung[feld]),
-              fm(k.vermarktungVorperiode[feld]),
-            ];
-          })}
-        />
-        {k.radar.auswahl.length ? (
-          <Tabelle
-            pos={{ x: 0.35, y: 3.25, w: 7.0 }}
-            kopf={["Akteur", "Meldung", "Ort", "Volumen"]}
-            breiten={[1.6, 3.6, 0.9, 0.9]}
-            rechts={[3]}
-            zeilen={k.radar.auswahl
-              .slice(0, 5)
-              .map((m) => [
-                m.akteur,
-                m.ereignis.length > 110
-                  ? `${m.ereignis.slice(0, 107)}…`
-                  : m.ereignis,
-                m.ort ?? "–",
-                m.volumen ? fmt.mio(m.volumen) : "–",
-              ])}
-          />
-        ) : null}
-        <Absatz text={x.vermarktung} pos={{ x: 0.35, y: 5.75, w: 6.9 }} />
-      </Rahmen>
-
-      {/* Vergleichswerte anderer Häuser */}
-      {benchmarks.length ? (
-        <Rahmen
-          titel="Marktdaten im Vergleich"
-          untertitel="Zitierte Kennzahlen anderer Häuser und öffentlicher Stellen"
-          seite={naechste()}
-          kopf={kopf}
-          stempel={stempel}
-          rand={
-            <Text style={{ fontSize: 8, color: F.navy, lineHeight: 1.4 }}>
-              Die Werte stammen aus den genannten Veröffentlichungen und werden
-              mit Quelle und Stand zitiert. Abgrenzungen und Methodik der Häuser
-              unterscheiden sich; die Werte sind daher nur eingeschränkt
-              vergleichbar.
-            </Text>
-          }
-        >
-          <Tabelle
-            pos={{ x: 0.35, y: 1.6, w: 7.0 }}
-            kopf={[
-              "Kennzahl",
-              "Region",
-              "Wert",
-              "Veränderung",
-              "Quelle",
-              "Stand",
-            ]}
-            breiten={[1.75, 0.9, 0.95, 0.9, 1.75, 0.75]}
-            rechts={[2]}
-            zeilen={benchmarks
-              .slice(0, 16)
-              .map((bm) => [
-                bm.kennzahl,
-                bm.region || "–",
-                fmt.wert(bm.wert, bm.einheit),
-                bm.veraenderung ?? "–",
-                `${bm.quelle}${bm.seite ? `, S. ${bm.seite}` : ""}`,
-                fmt.datum(bm.stichtag),
-              ])}
-          />
-        </Rahmen>
-      ) : null}
-
-      {/* Ausblick */}
+      {/* Ausblick und Empfehlungen */}
       <Rahmen
         titel="Ausblick"
-        untertitel="Trend der Periode und Erwartung für das nächste Halbjahr"
+        untertitel="Unsere Erwartung für das nächste Halbjahr"
         seite={naechste()}
         kopf={kopf}
         stempel={stempel}
@@ -984,21 +1032,29 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
                   <View style={{ width: 14 }}>{trendPfeil(tr.prognose)}</View>
                 </View>
               ))}
+              <Text style={{ fontSize: 7, color: F.textHell, marginTop: 6 }}>
+                Links: Entwicklung im Berichtszeitraum. Rechts: Erwartung für
+                die kommenden sechs Monate.
+              </Text>
             </View>
           ) : null
         }
       >
         <Absatz
           text={x.ausblick}
-          pos={{ x: 0.35, y: 1.7, w: 6.9 }}
-          groesse={11}
+          pos={{ x: 0.35, y: 1.65, w: 6.9 }}
+          groesse={10.5}
+        />
+        <Empfehlungen
+          punkte={x.empfehlungen ?? []}
+          pos={{ x: 0.35, y: 3.65, w: 6.9 }}
         />
       </Rahmen>
 
-      {/* Methodik, Quellen, Kontakt */}
+      {/* Über diesen Bericht, Kontakt */}
       <Rahmen
-        titel="Methodik und Quellen"
-        untertitel="Datengrundlage, Begriffe und Hinweise"
+        titel="Über diesen Bericht"
+        untertitel="Datengrundlage, Begriffe und Kontakt"
         seite={naechste()}
         kopf={kopf}
         stempel={stempel}
@@ -1022,34 +1078,45 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
                 {z || " "}
               </Text>
             ))}
+            <Text
+              style={{
+                fontSize: 8.5,
+                color: F.navy,
+                lineHeight: 1.4,
+                marginTop: 14,
+              }}
+            >
+              Sie möchten wissen, was Ihr Zinshaus heute wert ist? Wir erstellen
+              Ihnen gern eine kostenfreie Markteinschätzung.
+            </Text>
           </View>
         }
       >
         <View style={abs({ x: 0.35, y: 1.65, w: 6.9 })}>
           {[
             [
-              "Angebotsmarkt",
-              "Alle bei Grenz & Co. eingegangenen Exposés für Zinshäuser, Mehrfamilien- und Wohn- und Geschäftshäuser. Preis, Ist-Miete und Fläche werden per KI mit Belegzitat aus dem Exposé gelesen. Faktor = Angebotspreis / Jahresnettokaltmiete. Angebotswerte, keine Kaufpreise.",
+              "Grenz & Co. Research",
+              "Grenz & Co. Research analysiert den Markt für Zinshäuser, Mehrfamilienhäuser und Wohn- und Geschäftshäuser im Rheinland. Grundlage sind eigene Angebots- und Investorendaten, laufende Marktbeobachtung sowie die Auswertung öffentlich zugänglicher Markt-, Transaktions- und Finanzdaten.",
             ],
             [
-              "Teilmärkte",
-              "Köln, Düsseldorf und Bonn nach Stadtgebiet; übriges Rheinland = Regierungsbezirke Köln und Düsseldorf; übriges NRW = Westfalen und östliches Ruhrgebiet.",
+              "Aktuelle Angebote",
+              `Zinshaus-Angebote, die Grenz & Co. erhalten hat${laufend ? ` (${laufend})` : ""}. Faktor = Angebotspreis geteilt durch Jahresnettokaltmiete (Ist), Median ab ${MINDEST_FALLZAHL} Angeboten. Angebotswerte, keine Kaufpreise.`,
             ],
             [
-              "Fallzahlen",
-              `Median und Spanne (25. bis 75. Perzentil) werden erst ab ${MINDEST_FALLZAHL} Fällen je Zelle ausgewiesen.`,
+              "Marktwerte",
+              "Kaufpreisfaktoren, Kaufpreise, Liegenschaftszinsen und Umsätze beziehen sich auf Mehrfamilienhäuser im Bestand der jeweiligen Stadt; Mieten auf Wohnungen in der Neuvermietung. Stand jeweils zum letzten verfügbaren Berichtszeitpunkt.",
+            ],
+            [
+              "Rendite",
+              "Bruttorendite = Jahresnettokaltmiete geteilt durch Kaufpreis (ohne Nebenkosten). Spitzenrendite = Nettoanfangsrendite für erstklassige Objekte in besten Lagen. Liegenschaftszins = marktüblicher Zins, mit dem Immobilien als Kapitalanlage verzinst werden.",
+            ],
+            [
+              "Finanzierung",
+              "Effektivzinssätze für Wohnungsbaukredite an private Haushalte mit Zinsbindung über 10 Jahre (Neugeschäft) und Rendite 10-jähriger Bundesanleihen, jeweils Monatswerte.",
             ],
             [
               "Nachfrage",
-              "Ankaufsprofile der Investoren in der Grenz-Datenbank (Salesforce). Volumenband nach Höchstvolumen, sonst Mindestvolumen.",
-            ],
-            [
-              "Zinsumfeld",
-              "Deutsche Bundesbank: Effektivzinssätze für Wohnungsbaukredite an private Haushalte mit Zinsbindung über 10 Jahre (Neugeschäft) und Rendite börsennotierter Bundeswertpapiere mit 10 Jahren Restlaufzeit.",
-            ],
-            [
-              "Zitierte Werte",
-              "Kennzahlen anderer Häuser werden mit Herausgeber, Seite und Stand zitiert und nicht verändert.",
+              "Ankaufsprofile der Investoren, die Grenz & Co. betreut, nach gesuchtem Volumen und Strategie.",
             ],
           ].map(([kopfzeile, inhalt]) => (
             <View key={kopfzeile} style={{ marginBottom: 7 }}>
@@ -1069,16 +1136,11 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
               marginTop: 6,
             }}
           >
-            Disclaimer
+            Hinweis
           </Text>
           <Text style={{ fontSize: 7.5, lineHeight: 1.35, color: F.textHell }}>
             {t(DISCLAIMER)}
           </Text>
-          {k.zinsen.fehler ? (
-            <Text style={{ fontSize: 7, color: F.runter, marginTop: 4 }}>
-              {t(k.zinsen.fehler)}
-            </Text>
-          ) : null}
         </View>
       </Rahmen>
     </Document>
