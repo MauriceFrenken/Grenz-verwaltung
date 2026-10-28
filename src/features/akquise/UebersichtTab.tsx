@@ -73,6 +73,35 @@ export function UebersichtTab({ daten }: { daten: AkquiseDto }) {
       ),
     [daten, filter],
   );
+  // Anrufe über alle Bereiche, damit Gespräche mit Investoren und Netzwerk nicht unsichtbar sind.
+  const alleBereiche = useMemo(
+    () =>
+      aktivitaetenSicht(
+        daten.aktivitaeten.verlauf,
+        { ...filter, bereich: null },
+        daten.stand.slice(0, 10),
+      ),
+    [daten, filter],
+  );
+  const anrufeAlle =
+    alleBereiche.summen.find((x) => x.massnahme === "anruf")?.zeitraum ?? 0;
+  const anrufeJeBereich = (["akquise", "vermarktung", "allgemein"] as const)
+    .map((b) => ({
+      b,
+      n: daten.aktivitaeten.verlauf.filter(
+        (e) =>
+          e.m === "anruf" &&
+          e.b === b &&
+          (!filter.person || e.p === filter.person) &&
+          e.d >= (alleBereiche.jeMonat[0]?.monat ?? "") + "-01",
+      ).length,
+    }))
+    .filter((x) => x.n > 0);
+  const BEREICH_KURZ = {
+    akquise: "Akquise",
+    vermarktung: "Vermarktung",
+    allgemein: "Netzwerk/Allgemein",
+  } as const;
   const summe = (m: Massnahme, feld: "zeitraum" | "vorzeitraum" = "zeitraum") =>
     sicht.summen.find((s) => s.massnahme === m)?.[feld] ?? 0;
   const zr = ZEITRAUM_LABEL[filter.monate] ?? `${filter.monate} Monate`;
@@ -140,6 +169,11 @@ export function UebersichtTab({ daten }: { daten: AkquiseDto }) {
             summe("anruf"),
             summe("anruf", "vorzeitraum"),
           )}
+          nebenwert={
+            filter.bereich
+              ? `Alle Bereiche: ${formatInt(anrufeAlle)} Anrufe${anrufeJeBereich.length ? ` (${anrufeJeBereich.map((x) => `${formatInt(x.n)} ${BEREICH_KURZ[x.b]}`).join(", ")})` : ""}`
+              : undefined
+          }
         />
         <Kachel
           titel="Objektaufnahmen / Einwertungen"

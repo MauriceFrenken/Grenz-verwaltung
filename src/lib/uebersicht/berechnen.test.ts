@@ -163,3 +163,77 @@ describe("Hilfen", () => {
     ).toBeNull();
   });
 });
+
+describe("Provision mit Maklervertrag", () => {
+  it("zählt groß nur schriftliche Maklerverträge, alle beauftragten als Nebenwert", () => {
+    const u = berechneUebersicht(
+      eingabe({
+        mandate: [
+          mandat("1", "Beauftragung", {
+            art: "Schriftlicher Maklervertrag",
+            angebotspreis: 755000,
+            provisionProzent: 5,
+          }),
+          mandat("2", "Beauftragung", {
+            art: "Lose Beauftragung",
+            angebotspreis: 2500000,
+            provisionProzent: 5,
+          }),
+          mandat("3", "Beauftragung", { art: "Off-Market Freigabe" }),
+          mandat("4", "Akquisition"),
+        ],
+      }),
+    );
+    expect(u.kacheln.provisionVertrag).toBe(37750);
+    expect(u.kacheln.mandateMitVertrag).toBe(1);
+    expect(u.kacheln.provisionPipeline).toBe(37750 + 125000);
+    expect(u.kacheln.beauftragtGesamt).toBe(3);
+    expect(u.kacheln.aktivJePhase).toEqual([
+      { phase: "Akquisition", anzahl: 1 },
+      { phase: "Einwertung", anzahl: 0 },
+      { phase: "Beauftragung", anzahl: 3 },
+    ]);
+  });
+
+  it("zählt offene Aufgaben und doppelte E-Mail-Tasks nicht als Aktivität", () => {
+    const u = berechneUebersicht(
+      eingabe({
+        aktivitaeten: [
+          {
+            datum: "2026-10-20T12:00:00Z",
+            sfTyp: "Task",
+            status: "Completed",
+            art: "Anruf",
+            betreff: "Anruf",
+            mandatSfId: null,
+          },
+          {
+            datum: "2026-10-20T12:00:00Z",
+            sfTyp: "Task",
+            status: "Open",
+            art: "Aufgabe",
+            betreff: "Send Letter",
+            mandatSfId: null,
+          },
+          {
+            datum: "2026-10-21T12:00:00Z",
+            sfTyp: "Task",
+            status: "Completed",
+            art: "E-Mail",
+            betreff: "E-Mail: X",
+            mandatSfId: null,
+          },
+          {
+            datum: "2026-10-21T12:00:00Z",
+            sfTyp: "EmailMessage",
+            status: "3",
+            art: "E-Mail",
+            betreff: "X",
+            mandatSfId: null,
+          },
+        ],
+      }),
+    );
+    expect(u.aktivitaetGesamt4W).toBe(2);
+  });
+});

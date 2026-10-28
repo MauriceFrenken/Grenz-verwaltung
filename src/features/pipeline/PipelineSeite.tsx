@@ -51,6 +51,7 @@ import {
   type PipelineDto,
   type StufeId,
 } from "@/lib/pipeline/berechnen";
+import { hatSchriftlichenMaklervertrag } from "@/lib/mandate/maklervertrag";
 import { SALESFORCE_LIGHTNING_URL } from "@/lib/salesforce/config";
 import { cn } from "@/lib/utils";
 
@@ -199,6 +200,14 @@ export function PipelineSeite() {
     0,
   );
   const ungewichtet = deals.reduce((s, d) => s + (d.provision ?? 0), 0);
+  // Gesichert ist nur, was ein schriftlicher Maklervertrag abdeckt (ohne bereits gewonnene).
+  const mitVertrag = deals.filter(
+    (d) => hatSchriftlichenMaklervertrag(d.art) && d.stufe !== "notar",
+  );
+  const provisionVertrag = mitVertrag.reduce(
+    (s, d) => s + (d.provision ?? 0),
+    0,
+  );
   const zukunft = monate.filter((m) => m.monat >= heuteMonat);
   const naechste3 = zukunft.slice(0, 3).reduce((s, m) => s + m.gewichtet, 0);
   const restjahr = zukunft
@@ -220,9 +229,10 @@ export function PipelineSeite() {
       <PageWrapper>
         <KachelReihe>
           <Kachel
-            titel="Pipeline gewichtet"
-            wert={euroKurz(gewichtet)}
-            unterzeile={`${deals.length} Objekte, ungewichtet ${euroKurz(ungewichtet)}`}
+            titel="Provision mit Maklervertrag"
+            wert={euroKurz(provisionVertrag)}
+            unterzeile={`${mitVertrag.length} ${mitVertrag.length === 1 ? "Objekt" : "Objekte"} mit schriftlichem Maklervertrag, netto, ungewichtet`}
+            nebenwert={`Ganze Pipeline: gewichtet ${euroKurz(gewichtet)}, ungewichtet ${euroKurz(ungewichtet)} (${deals.length} Objekte inkl. lose Beauftragung und Off-Market)`}
           />
           <Kachel
             titel="Erwartet nächste 3 Monate"

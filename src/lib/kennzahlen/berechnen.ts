@@ -394,11 +394,11 @@ export function berechneKennzahlen(input: {
     };
   });
 
-  const jeZahler = new Map<string, { anzahl: number; brutto: number }>();
+  const jeZahler = new Map<string, { anzahl: number; netto: number }>();
   for (const p of provisionen) {
-    const z = jeZahler.get(p.zahler || "Unbekannt") ?? { anzahl: 0, brutto: 0 };
+    const z = jeZahler.get(p.zahler || "Unbekannt") ?? { anzahl: 0, netto: 0 };
     z.anzahl++;
-    z.brutto += p.brutto;
+    z.netto += p.netto;
     jeZahler.set(p.zahler || "Unbekannt", z);
   }
 
@@ -416,8 +416,8 @@ export function berechneKennzahlen(input: {
     },
     kumuliert,
     provisionsZahler: [...jeZahler.entries()]
-      .map(([name, z]) => ({ name, anzahl: z.anzahl, brutto: runde(z.brutto) }))
-      .sort((a, b) => b.brutto - a.brutto),
+      .map(([name, z]) => ({ name, anzahl: z.anzahl, netto: runde(z.netto) }))
+      .sort((a, b) => b.netto - a.netto),
     konten: input.konten.map((k) => ({
       iban: k.iban,
       bezeichnung: k.bezeichnung,

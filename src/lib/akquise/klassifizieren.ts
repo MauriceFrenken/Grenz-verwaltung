@@ -131,8 +131,17 @@ export function klassifiziere(
   return "sonstiges";
 }
 
-/** Akquise = Verkäuferseite (Eigentümer-Leads, Anschreiben, Einwertung); Vermarktung = Käuferseite. */
-export function bereichVon(a: RohAufgabe, massnahme: Massnahme): Bereich {
+/**
+ * Akquise = Verkäuferseite (Eigentümer-Leads, Anschreiben, Einwertung, Gespräche mit
+ * Eigentümern von Mandaten); Vermarktung = Käuferseite (Deals, Kampagnen).
+ * `eigentuemerAccounts`: Accounts, die Eigentümer eines Mandats sind; Anrufe und E-Mails
+ * an deren Kontakte zählen zur Akquise, auch wenn sie an keinem Lead hängen.
+ */
+export function bereichVon(
+  a: RohAufgabe,
+  massnahme: Massnahme,
+  eigentuemerAccounts: ReadonlySet<string> = new Set(),
+): Bereich {
   if (massnahme === "besichtigung") return "vermarktung";
   if (
     a.wer?.typ === "Lead" ||
@@ -147,6 +156,10 @@ export function bereichVon(a: RohAufgabe, massnahme: Massnahme): Bereich {
     return "akquise";
   const what = a.worauf?.typ;
   if (what === "Opportunity" || what === "Campaign") return "vermarktung";
+  if (what === "Mandate__c" || what === "Real_Estate__c") return "akquise";
+  const account =
+    a.wer?.accountId ?? (what === "Account" ? (a.worauf?.id ?? null) : null);
+  if (account && eigentuemerAccounts.has(account)) return "akquise";
   return "allgemein";
 }
 

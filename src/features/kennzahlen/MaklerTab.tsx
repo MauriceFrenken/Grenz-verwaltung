@@ -126,17 +126,26 @@ export function MaklerTab() {
   return (
     <div className="flex flex-col gap-6">
       <p className="text-sm text-text-muted">
-        Stand {formatDate(daten.stand)} · Quelle: Salesforce-Auszug,
-        Jahresabschluss 2025, BWA Q3 2026 ({daten.quellen.join(", ")}). Neue
-        Stände werden ergänzt, ältere bleiben gespeichert.
+        {daten.salesforceLive
+          ? `Mandate, Deals, Kampagnen und Aktivitäten live aus Salesforce (Abruf ${daten.salesforceLive.letzterAbruf ? new Date(daten.salesforceLive.letzterAbruf).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : "–"}). Umsatz, Kosten und Objektordner aus Jahresabschluss 2025, BWA Q3 2026 und OneDrive-Liste (Stand ${formatDate(daten.stand)}). Alle Provisionen netto.`
+          : `Stand ${formatDate(daten.stand)} · Quelle: Salesforce-Auszug, Jahresabschluss 2025, BWA Q3 2026 (${daten.quellen.join(", ")}).`}
       </p>
 
       <KachelReihe>
-        <Kachel
-          titel="Provision in der Pipeline"
-          wert={formatEuro(k.pipelineProvision)}
-          unterzeile={`${k.beauftragt} beauftragte Mandate · ${k.beauftragtOhnePreis} ohne Preis`}
-        />
+        {k.pipelineProvisionAlle != null ? (
+          <Kachel
+            titel="Provision mit Maklervertrag"
+            wert={formatEuro(k.pipelineProvision)}
+            unterzeile={`${k.beauftragtMitVertrag ?? 0} von ${k.beauftragt} beauftragten Mandaten mit schriftlichem Maklervertrag, netto`}
+            nebenwert={`Alle beauftragten Mandate: ${formatEuro(k.pipelineProvisionAlle)} (inkl. lose Beauftragung und Off-Market) · ${k.beauftragtOhnePreis} ohne Preis`}
+          />
+        ) : (
+          <Kachel
+            titel="Provision in der Pipeline"
+            wert={formatEuro(k.pipelineProvision)}
+            unterzeile={`${k.beauftragt} beauftragte Mandate · ${k.beauftragtOhnePreis} ohne Preis`}
+          />
+        )}
         <Kachel
           titel="Exposé-Volumen beauftragt"
           wert={euroKurz(k.pipelinePreise)}
@@ -145,7 +154,7 @@ export function MaklerTab() {
         <Kachel
           titel="Vermittelter Kaufpreis"
           wert={euroKurz(k.vermittelterKaufpreis)}
-          unterzeile={`${k.verkaeufe} Verkäufe · ${k.offeneDeals} offene Deals`}
+          unterzeile={`${k.verkaeufe} Verkäufe (Invoice Paid) · ${k.offeneDeals} offene Interessenten-Deals`}
         />
         <Kachel
           titel="Gewinnquote Mandate"
@@ -220,7 +229,7 @@ export function MaklerTab() {
 
       <Karte
         titel="Pipeline: beauftragte Mandate"
-        hinweis="Sortiert nach prognostizierter Provision. Fehlende Preise sind Pflegelücken in Salesforce."
+        hinweis="Schriftliche Maklerverträge zuerst, dann nach erwarteter Provision (netto). Fehlende Preise sind Pflegelücken in Salesforce."
       >
         <Tabelle
           kopf={[
@@ -384,7 +393,7 @@ export function MaklerTab() {
 
       <Karte
         titel="Vertriebsaktivität je Monat"
-        hinweis="Aufgaben, Akquisebriefe, Anrufe und E-Mails in Salesforce."
+        hinweis="Erledigte Aufgaben, versendete Akquisebriefe, Anrufe und E-Mails in Salesforce (Sebastian Grenz und Business Development SG). Offene Aufgaben zählen erst, wenn sie erledigt sind; jede E-Mail zählt einmal."
       >
         <ChartContainer config={aktivitaetConfig} className="h-72 w-full">
           <BarChart

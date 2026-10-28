@@ -204,31 +204,37 @@ export const personalLadenFn = createServerFn({ method: "POST" })
           (a) =>
             verwalten || a.mitarbeiterId === ichId || a.status !== "abgelehnt",
         ),
-      jahreswerte: (pruefe(jahreswerte) as Roh[]).map((z): Jahreswert => ({
-        mitarbeiterId: String(z.mitarbeiter_id),
-        jahr: Number(z.jahr),
-        urlaubUebertrag: zahl(z.urlaub_uebertrag) ?? 0,
-        provisionszielEur: zahl(z.provisionsziel_eur),
-      })),
-      schulungen: (pruefe(schulungen) as Roh[]).map((z): Schulung => ({
-        id: String(z.id),
-        mitarbeiterId: String(z.mitarbeiter_id),
-        art: String(z.art) as Schulung["art"],
-        titel: String(z.titel),
-        anbieter: text(z.anbieter),
-        datum: String(z.datum),
-        stunden: zahl(z.stunden),
-        nachweisUrl: text(z.nachweis_url),
-        notiz: text(z.notiz),
-      })),
-      checkpunkte: (pruefe(checkpunkte) as Roh[]).map((z): Checkpunkt => ({
-        id: String(z.id),
-        mitarbeiterId: String(z.mitarbeiter_id),
-        typ: String(z.typ) as Checkpunkt["typ"],
-        punkt: String(z.punkt),
-        reihenfolge: Number(z.reihenfolge ?? 0),
-        erledigtAm: text(z.erledigt_am),
-      })),
+      jahreswerte: (pruefe(jahreswerte) as Roh[]).map(
+        (z): Jahreswert => ({
+          mitarbeiterId: String(z.mitarbeiter_id),
+          jahr: Number(z.jahr),
+          urlaubUebertrag: zahl(z.urlaub_uebertrag) ?? 0,
+          provisionszielEur: zahl(z.provisionsziel_eur),
+        }),
+      ),
+      schulungen: (pruefe(schulungen) as Roh[]).map(
+        (z): Schulung => ({
+          id: String(z.id),
+          mitarbeiterId: String(z.mitarbeiter_id),
+          art: String(z.art) as Schulung["art"],
+          titel: String(z.titel),
+          anbieter: text(z.anbieter),
+          datum: String(z.datum),
+          stunden: zahl(z.stunden),
+          nachweisUrl: text(z.nachweis_url),
+          notiz: text(z.notiz),
+        }),
+      ),
+      checkpunkte: (pruefe(checkpunkte) as Roh[]).map(
+        (z): Checkpunkt => ({
+          id: String(z.id),
+          mitarbeiterId: String(z.mitarbeiter_id),
+          typ: String(z.typ) as Checkpunkt["typ"],
+          punkt: String(z.punkt),
+          reihenfolge: Number(z.reihenfolge ?? 0),
+          erledigtAm: text(z.erledigt_am),
+        }),
+      ),
       benutzer,
       sfNutzer: verwalten
         ? await sfNutzerLaden(
@@ -591,6 +597,9 @@ export const personalLeistungFn = createServerFn({ method: "POST" })
               .from("sf_aktivitaeten")
               .select("sf_id", { count: "exact", head: true })
               .eq("owner_sf_user_id", sf)
+              // Erledigte Aufgaben, Termine und E-Mails; offene Aufgaben sind Planung,
+              // E-Mail-Tasks doppeln die EmailMessage (siehe sf-sync/zaehlen.ts).
+              .or("sf_typ.neq.Task,and(status.eq.Completed,art.neq.E-Mail)")
               .gte("datum", von)
               .lte("datum", `${bis}T23:59:59Z`),
             admin

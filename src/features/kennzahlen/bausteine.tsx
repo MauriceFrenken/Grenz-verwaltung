@@ -12,11 +12,14 @@ export function Kachel({
   titel,
   wert,
   unterzeile,
+  nebenwert,
   ton,
 }: {
   titel: string;
   wert: string;
   unterzeile?: string;
+  /** Zweitrangige Zahl oder Erklärung, klein unter der Unterzeile. */
+  nebenwert?: string;
   ton?: "gut" | "schlecht";
 }) {
   return (
@@ -33,6 +36,11 @@ export function Kachel({
       </span>
       {unterzeile ? (
         <span className="text-xs text-text-muted">{unterzeile}</span>
+      ) : null}
+      {nebenwert ? (
+        <span className="border-t border-hairline pt-1 text-[11px] leading-snug text-text-subtle">
+          {nebenwert}
+        </span>
       ) : null}
     </div>
   );

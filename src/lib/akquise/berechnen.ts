@@ -698,14 +698,16 @@ function potenzialErmitteln(
 
   return [...eintraege.values()]
     .filter((e) => e.signale.length > 0)
-    .map(({ schritte, ...e }): PotenzialEintrag => ({
-      ...e,
-      score: Math.min(
-        100,
-        e.signale.reduce((s, x: PotenzialSignal) => s + x.punkte, 0),
-      ),
-      naechsterSchritt: schritte[0] ?? "Kontakt aufnehmen",
-    }))
+    .map(
+      ({ schritte, ...e }): PotenzialEintrag => ({
+        ...e,
+        score: Math.min(
+          100,
+          e.signale.reduce((s, x: PotenzialSignal) => s + x.punkte, 0),
+        ),
+        naechsterSchritt: schritte[0] ?? "Kontakt aufnehmen",
+      }),
+    )
     .sort(
       (a, b) =>
         b.score - a.score ||
@@ -723,13 +725,19 @@ export function akquiseBerechnen(
   heute: string,
   stand = new Date().toISOString(),
 ): AkquiseDto {
+  const eigentuemer = new Set(
+    daten.mandate
+      .filter((m) => !istTest(m.eigentuemer))
+      .map((m) => m.accountId)
+      .filter((id): id is string => !!id),
+  );
   const alle: Angereichert[] = daten.aufgaben.map((a) => {
     const massnahme = klassifiziere(a);
     return {
       ...a,
       massnahme,
       datum: aktivitaetsDatum(a),
-      bereich: bereichVon(a, massnahme),
+      bereich: bereichVon(a, massnahme, eigentuemer),
     };
   });
   const verlaeufe = leadVerlaeufe(alle);

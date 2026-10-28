@@ -3,10 +3,15 @@
  * Reine Funktionen, getestet in berechnen.test.ts.
  */
 
+import { hatSchriftlichenMaklervertrag } from "@/lib/mandate/maklervertrag";
+import { zaehltAlsAktivitaet } from "@/lib/sf-sync/zaehlen";
+
 export type MandatRoh = {
   sfId: string;
   name: string;
   status: string | null;
+  /** Beauftragungsart (Type_of_commissioning__c). */
+  art?: string | null;
   angebotspreis: number | null;
   provisionProzent: number | null;
   /** Prognostizierte_Provision__c aus Salesforce, falls Preis × Satz nicht rechenbar. */
@@ -32,6 +37,9 @@ export type DealRoh = {
 
 export type AktivitaetRoh = {
   datum: string;
+  /** Task, Event oder EmailMessage; ohne Angabe zählt die Zeile immer. */
+  sfTyp?: string | null;
+  status?: string | null;
   art: string | null;
   betreff: string | null;
   mandatSfId: string | null;
@@ -64,8 +72,14 @@ export type UebersichtDto = {
   letzterAbruf: string | null;
   salesforceLeer: boolean;
   kacheln: {
+    /** Provision beauftragter Mandate mit schriftlichem Maklervertrag (Hauptwert). */
+    provisionVertrag: number;
+    mandateMitVertrag: number;
+    /** Alle beauftragten Mandate mit Preis, inkl. loser Beauftragung und Off-Market (Nebenwert). */
     provisionPipeline: number;
     mandateMitProvision: number;
+    beauftragtGesamt: number;
+    aktivJePhase: Array<{ phase: string; anzahl: number }>;
     aktiveMandate: number;
     neueMandate4W: number;
     neueMandateVor4W: number;
@@ -177,6 +191,7 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
   const mandate = e.mandate.filter((m) => !istTest(m.name));
   const deals = e.deals.filter((d) => !istTest(d.name));
   const mandatJeId = new Map(mandate.map((m) => [m.sfId, m]));
+  const aktivitaeten = e.aktivitaeten.filter(zaehltAlsAktivitaet);
 
   const beauftragt = mandate.filter((m) => m.status === "Beauftragung");
   const aktiv = mandate.filter((m) =>
@@ -203,11 +218,17 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
 
   let provisionPipeline = 0;
   let mandateMitProvision = 0;
+  let provisionVertrag = 0;
+  let mandateMitVertrag = 0;
   for (const m of beauftragt) {
     const p = erwarteteProvision(m);
     if (p) {
       provisionPipeline += p;
       mandateMitProvision += 1;
+    }
+    if (hatSchriftlichenMaklervertrag(m.art)) {
+      provisionVertrag += p ?? 0;
+      mandateMitVertrag += 1;
     }
   }
 
@@ -228,7 +249,7 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
 
   // Aktivität je Mandat (für Ruhen und Top-Mandate).
   const letzteAktivitaet = new Map<string, string>();
-  for (const a of e.aktivitaeten) {
+  for (const a of aktivitaeten) {
     if (!a.mandatSfId) continue;
     if (a.datum > (letzteAktivitaet.get(a.mandatSfId) ?? ""))
       letzteAktivitaet.set(a.mandatSfId, a.datum);
@@ -316,7 +337,7 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
     wochen.set(w, { Anruf: 0, "E-Mail": 0, Termin: 0, Aufgabe: 0 });
   let gesamt4W = 0;
   let vorher4W = 0;
-  for (const a of e.aktivitaeten) {
+  for (const a of aktivitaeten) {
     const tag = a.datum.slice(0, 10);
     if (tag > heute) continue;
     const zeile = wochen.get(wochenStart(tag));
@@ -325,7 +346,7 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
     else if (tag > vor8W) vorher4W += 1;
   }
 
-  const letzteAktivitaeten = e.aktivitaeten
+  const letzteAktivitaeten = aktivitaeten
     .filter((a) => a.datum.slice(0, 10) <= heute)
     .sort((a, b) => b.datum.localeCompare(a.datum))
     .slice(0, 8)
@@ -364,8 +385,15 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
     letzterAbruf: e.letzterAbruf,
     salesforceLeer: e.mandate.length === 0,
     kacheln: {
+      provisionVertrag,
+      mandateMitVertrag,
       provisionPipeline,
       mandateMitProvision,
+      beauftragtGesamt: beauftragt.length,
+      aktivJePhase: OFFENE_PHASEN.map((phase) => ({
+        phase,
+        anzahl: aktiv.filter((m) => m.status === phase).length,
+      })),
       aktiveMandate: aktiv.length,
       neueMandate4W: neuIn(vor4W, heute),
       neueMandateVor4W: neuIn(vor8W, vor4W),

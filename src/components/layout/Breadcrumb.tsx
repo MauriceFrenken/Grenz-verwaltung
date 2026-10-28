@@ -12,7 +12,6 @@ const LABELS: Record<string, string> = {
   "/akquise/radar": "Markt-Radar",
   "/akquise/anschreiben": "Anschreiben",
   "/akquise/aktivitaeten": "Aktivitäten",
-  "/akquise/massnahmen": "Maßnahmen",
   "/aufgaben": "Aufgaben",
   "/personal": "Personal",
   "/exposes": "Exposéanalyse",
