@@ -4,8 +4,8 @@ import { ChevronRight } from "lucide-react";
 const LABELS: Record<string, string> = {
   "/": "Übersicht",
   "/kennzahlen": "Kennzahlen",
-  "/pipeline": "Deal-Pipeline",
-  "/mandate": "Mandate",
+  "/mandate": "Mandate & Pipeline",
+  "/mandate/pipeline": "Deal-Pipeline",
   "/investoren": "Investoren",
   "/akquise": "Akquise",
   "/akquise/potenzial": "Potenzial aus Salesforce",

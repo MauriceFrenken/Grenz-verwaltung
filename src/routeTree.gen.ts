@@ -21,7 +21,6 @@ import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as InvestorenRouteImport } from './routes/investoren'
 import { Route as KennzahlenRouteImport } from './routes/kennzahlen'
 import { Route as PasswortZuruecksetzenRouteImport } from './routes/passwort-zuruecksetzen'
-import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AkquiseIndexRouteImport } from './routes/akquise.index'
 import { Route as AkquiseReiterRouteImport } from './routes/akquise.$reiter'
@@ -34,6 +33,7 @@ import { Route as ExposesAuswertungRouteImport } from './routes/exposes.auswertu
 import { Route as ExposesImportRouteImport } from './routes/exposes.import'
 import { Route as ExposesKarteRouteImport } from './routes/exposes.karte'
 import { Route as MandateIndexRouteImport } from './routes/mandate.index'
+import { Route as MandatePipelineRouteImport } from './routes/mandate.pipeline'
 import { Route as MicrosoftCallbackRouteImport } from './routes/microsoft.callback'
 import { Route as PersonalIndexRouteImport } from './routes/personal.index'
 import { Route as PersonalIdRouteImport } from './routes/personal.$id'
@@ -119,11 +119,6 @@ const PasswortZuruecksetzenRoute = PasswortZuruecksetzenRouteImport.update({
   path: '/passwort-zuruecksetzen',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PipelineRoute = PipelineRouteImport.update({
-  id: '/pipeline',
-  path: '/pipeline',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -183,6 +178,11 @@ const ExposesKarteRoute = ExposesKarteRouteImport.update({
 const MandateIndexRoute = MandateIndexRouteImport.update({
   id: '/mandate/',
   path: '/mandate/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MandatePipelineRoute = MandatePipelineRouteImport.update({
+  id: '/mandate/pipeline',
+  path: '/mandate/pipeline',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MicrosoftCallbackRoute = MicrosoftCallbackRouteImport.update({
@@ -323,7 +323,6 @@ export interface FileRoutesByFullPath {
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
-  '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/akquise/$reiter': typeof AkquiseReiterRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
@@ -332,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/exposes/karte': typeof ExposesKarteRoute
+  '/mandate/pipeline': typeof MandatePipelineRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/personal/$id': typeof PersonalIdRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
@@ -372,7 +372,6 @@ export interface FileRoutesByTo {
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
-  '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/akquise/$reiter': typeof AkquiseReiterRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
@@ -380,6 +379,7 @@ export interface FileRoutesByTo {
   '/einstellungen/integrationen': typeof EinstellungenIntegrationenRoute
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/karte': typeof ExposesKarteRoute
+  '/mandate/pipeline': typeof MandatePipelineRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/personal/$id': typeof PersonalIdRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
@@ -423,7 +423,6 @@ export interface FileRoutesById {
   '/investoren': typeof InvestorenRoute
   '/kennzahlen': typeof KennzahlenRoute
   '/passwort-zuruecksetzen': typeof PasswortZuruecksetzenRoute
-  '/pipeline': typeof PipelineRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/akquise/$reiter': typeof AkquiseReiterRoute
   '/einstellungen/audit': typeof EinstellungenAuditRoute
@@ -432,6 +431,7 @@ export interface FileRoutesById {
   '/exposes/auswertung': typeof ExposesAuswertungRoute
   '/exposes/import': typeof ExposesImportRouteWithChildren
   '/exposes/karte': typeof ExposesKarteRoute
+  '/mandate/pipeline': typeof MandatePipelineRoute
   '/microsoft/callback': typeof MicrosoftCallbackRoute
   '/personal/$id': typeof PersonalIdRoute
   '/salesforce/callback': typeof SalesforceCallbackRoute
@@ -476,7 +476,6 @@ export interface FileRouteTypes {
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
-    | '/pipeline'
     | '/sitemap.xml'
     | '/akquise/$reiter'
     | '/einstellungen/audit'
@@ -485,6 +484,7 @@ export interface FileRouteTypes {
     | '/exposes/auswertung'
     | '/exposes/import'
     | '/exposes/karte'
+    | '/mandate/pipeline'
     | '/microsoft/callback'
     | '/personal/$id'
     | '/salesforce/callback'
@@ -525,7 +525,6 @@ export interface FileRouteTypes {
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
-    | '/pipeline'
     | '/sitemap.xml'
     | '/akquise/$reiter'
     | '/einstellungen/audit'
@@ -533,6 +532,7 @@ export interface FileRouteTypes {
     | '/einstellungen/integrationen'
     | '/exposes/auswertung'
     | '/exposes/karte'
+    | '/mandate/pipeline'
     | '/microsoft/callback'
     | '/personal/$id'
     | '/salesforce/callback'
@@ -575,7 +575,6 @@ export interface FileRouteTypes {
     | '/investoren'
     | '/kennzahlen'
     | '/passwort-zuruecksetzen'
-    | '/pipeline'
     | '/sitemap.xml'
     | '/akquise/$reiter'
     | '/einstellungen/audit'
@@ -584,6 +583,7 @@ export interface FileRouteTypes {
     | '/exposes/auswertung'
     | '/exposes/import'
     | '/exposes/karte'
+    | '/mandate/pipeline'
     | '/microsoft/callback'
     | '/personal/$id'
     | '/salesforce/callback'
@@ -627,9 +627,9 @@ export interface RootRouteChildren {
   InvestorenRoute: typeof InvestorenRoute
   KennzahlenRoute: typeof KennzahlenRoute
   PasswortZuruecksetzenRoute: typeof PasswortZuruecksetzenRoute
-  PipelineRoute: typeof PipelineRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   AkquiseReiterRoute: typeof AkquiseReiterRoute
+  MandatePipelineRoute: typeof MandatePipelineRoute
   MicrosoftCallbackRoute: typeof MicrosoftCallbackRoute
   PersonalIdRoute: typeof PersonalIdRoute
   SalesforceCallbackRoute: typeof SalesforceCallbackRoute
@@ -742,13 +742,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PasswortZuruecksetzenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pipeline': {
-      id: '/pipeline'
-      path: '/pipeline'
-      fullPath: '/pipeline'
-      preLoaderRoute: typeof PipelineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -831,6 +824,13 @@ declare module '@tanstack/react-router' {
       path: '/mandate'
       fullPath: '/mandate/'
       preLoaderRoute: typeof MandateIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mandate/pipeline': {
+      id: '/mandate/pipeline'
+      path: '/mandate/pipeline'
+      fullPath: '/mandate/pipeline'
+      preLoaderRoute: typeof MandatePipelineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/microsoft/callback': {
@@ -1066,9 +1066,9 @@ const rootRouteChildren: RootRouteChildren = {
   InvestorenRoute: InvestorenRoute,
   KennzahlenRoute: KennzahlenRoute,
   PasswortZuruecksetzenRoute: PasswortZuruecksetzenRoute,
-  PipelineRoute: PipelineRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   AkquiseReiterRoute: AkquiseReiterRoute,
+  MandatePipelineRoute: MandatePipelineRoute,
   MicrosoftCallbackRoute: MicrosoftCallbackRoute,
   PersonalIdRoute: PersonalIdRoute,
   SalesforceCallbackRoute: SalesforceCallbackRoute,

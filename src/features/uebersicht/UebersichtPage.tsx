@@ -425,7 +425,7 @@ function Schnellzugriff({ daten }: { daten: UebersichtDto }) {
       icon: MapPin,
     },
     {
-      to: "/pipeline",
+      to: "/mandate/pipeline",
       label: "Deal-Pipeline",
       zusatz: "Vom Erstkontakt bis zum Notartermin",
       icon: Handshake,

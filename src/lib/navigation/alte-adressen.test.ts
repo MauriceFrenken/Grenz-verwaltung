@@ -17,6 +17,10 @@ describe("neueAdresse", () => {
     });
   });
 
+  it("führt die Deal-Pipeline zu Mandate & Pipeline", () => {
+    expect(neueAdresse("/pipeline")).toEqual({ pfad: "/mandate/pipeline" });
+  });
+
   it("führt alte Reiter der Mandatsakte zum Exposé", () => {
     expect(neueAdresse("/mandate/a0X1/bewertung")).toEqual({
       pfad: "/mandate/a0X1",

@@ -2,7 +2,6 @@ import {
   Briefcase,
   CalendarCheck,
   ChartColumn,
-  Handshake,
   Inbox,
   KanbanSquare,
   LayoutDashboard,
@@ -46,7 +45,6 @@ export const NAVIGATION: NavSection[] = [
     items: [
       { to: "/", label: "Übersicht", icon: LayoutDashboard },
       { to: "/kennzahlen", label: "Kennzahlen", icon: ChartColumn },
-      { to: "/pipeline", label: "Deal-Pipeline", icon: Handshake },
       {
         to: "/aufgaben",
         label: "Aufgaben",
@@ -59,13 +57,6 @@ export const NAVIGATION: NavSection[] = [
   {
     label: "Vermarktung",
     items: [
-      {
-        to: "/mandate",
-        label: "Mandate",
-        icon: Briefcase,
-        badge: "mandate",
-        badgeTon: "emerald",
-      },
       {
         to: "/investoren",
         label: "Investoren",
@@ -84,6 +75,13 @@ export const NAVIGATION: NavSection[] = [
         icon: Radar,
         badge: "verkaeufer",
         badgeTon: "violet",
+      },
+      {
+        to: "/mandate",
+        label: "Mandate & Pipeline",
+        icon: Briefcase,
+        badge: "mandate",
+        badgeTon: "emerald",
       },
     ],
   },

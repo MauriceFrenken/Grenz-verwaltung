@@ -30,6 +30,7 @@ import {
   zelle,
   zelleRechts,
 } from "@/features/kennzahlen/hilfen";
+import { MandateBereichReiter } from "@/features/mandate/MandateBereichReiter";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDate, formatEuro } from "@/lib/format";
 import {
@@ -143,7 +144,10 @@ export function PipelineSeite() {
   if (!dto) {
     return (
       <>
-        <PageHeader titel="Deal-Pipeline" />
+        <PageHeader
+          titel="Mandate & Pipeline"
+          reiter={<MandateBereichReiter aktiv="pipeline" />}
+        />
         <PageWrapper>
           <Loader2 className="h-4 w-4 animate-spin" />
         </PageWrapper>
@@ -172,7 +176,8 @@ export function PipelineSeite() {
   return (
     <>
       <PageHeader
-        titel="Deal-Pipeline"
+        titel="Mandate & Pipeline"
+        reiter={<MandateBereichReiter aktiv="pipeline" />}
         beschreibung="Alle laufenden Objekte vom Erstkontakt bis zum Notartermin, mit erwarteter Provision je Monat. Daten aus Salesforce (Mandate und Interessenten-Deals)."
       />
       <PageWrapper>
