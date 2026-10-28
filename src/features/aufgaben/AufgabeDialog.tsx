@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { checklistenStand } from "@/lib/aufgaben/logik";
 import {
   PRIORITAETEN,
+  THEMENFELDER,
   type Aufgabe,
   type AufgabeFelder,
   type MandatKurz,
@@ -32,6 +33,7 @@ function felderVon(a: Aufgabe): AufgabeFelder {
     verantwortlichId: a.verantwortlichId,
     faelligAm: a.faelligAm,
     prioritaet: a.prioritaet,
+    themenfeld: a.themenfeld,
     ruecksprache: a.ruecksprache,
     ruecksprachAm: a.ruecksprachAm,
     mandatSfId: a.mandatSfId,
@@ -45,6 +47,7 @@ export function AufgabeDialog({
   personen,
   mandate,
   ruecksprachen,
+  themenfelder,
   onSchliessen,
   onSpeichern,
   onVerschieben,
@@ -55,6 +58,8 @@ export function AufgabeDialog({
   personen: Person[];
   mandate: MandatKurz[];
   ruecksprachen: string[];
+  /** false, solange die Datenbank noch keine Themenfelder speichert. */
+  themenfelder: boolean;
   onSchliessen: () => void;
   onSpeichern: (id: string, felder: AufgabeFelder) => Promise<void>;
   onVerschieben: (id: string, spalteId: string) => Promise<void>;
@@ -121,6 +126,32 @@ export function AufgabeDialog({
           />
 
           <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-xs text-text-muted sm:col-span-2">
+              Themenfeld
+              <select
+                className={FELD}
+                value={f.themenfeld}
+                disabled={!themenfelder}
+                title={
+                  themenfelder
+                    ? undefined
+                    : "Themenfelder lassen sich speichern, sobald die Datenbank-Migration eingespielt ist."
+                }
+                onChange={(e) =>
+                  set(
+                    "themenfeld",
+                    e.target.value as AufgabeFelder["themenfeld"],
+                  )
+                }
+              >
+                <option value="">Ohne Themenfeld</option>
+                {THEMENFELDER.map((t) => (
+                  <option key={t.wert} value={t.wert}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="flex flex-col gap-1 text-xs text-text-muted">
               Spalte
               <select

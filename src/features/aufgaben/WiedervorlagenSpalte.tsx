@@ -9,6 +9,9 @@ import { cn } from "@/lib/utils";
 
 function passt(w: Wiedervorlage, filter: Filter, personen: Person[]): boolean {
   if (filter.ruecksprache) return false;
+  // Wiedervorlagen aus Salesforce gehören zur Akquise.
+  if (filter.themenfeld !== null && filter.themenfeld !== "akquise")
+    return false;
   if (filter.nurUeberfaellig && !w.ueberfaelligTage) return false;
   if (filter.person === "ohne" && w.bearbeiter) return false;
   if (filter.person && filter.person !== "ohne") {

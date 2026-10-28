@@ -4,6 +4,8 @@ import {
   ArrowRight,
   Archive,
   CheckCheck,
+  Columns3,
+  Compass,
   Loader2,
   ExternalLink,
   MessagesSquare,
@@ -35,14 +37,19 @@ import {
   positionZwischen,
   ruecksprachen as ruecksprachenAus,
   tageBisFaellig,
+  themenStaende,
+  type ThemenStand,
 } from "@/lib/aufgaben/logik";
 import {
   FILTER_LEER,
+  THEMENFELDER,
+  themenfeldLabel,
   type Aufgabe,
   type AufgabeFelder,
   type Board,
   type Filter,
   type Spalte,
+  type Themenfeld,
 } from "@/lib/aufgaben/typen";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +69,22 @@ const fn = () => import("@/lib/aufgaben/server-fn");
 
 type Ziel = { spalteId: string; index: number };
 
+/** Board nach Status (Spalten) oder nach strategischem Themenfeld. */
+type Ansicht = "status" | "themen";
+const ANSICHT_SCHLUESSEL = "aufgaben.ansicht";
+
+function gespeicherteAnsicht(): Ansicht {
+  try {
+    return window.localStorage.getItem(ANSICHT_SCHLUESSEL) === "themen"
+      ? "themen"
+      : "status";
+  } catch {
+    return "status";
+  }
+}
+
+const THEMEN_SPALTEN: Themenfeld[] = [...THEMENFELDER.map((t) => t.wert), ""];
+
 export function AufgabenSeite() {
   const { session, benutzer } = useAuth();
   const token = session?.access_token ?? "";
@@ -72,7 +95,19 @@ export function AufgabenSeite() {
   const [rsOffen, setRsOffen] = useState(false);
   const [ziehId, setZiehId] = useState<string | null>(null);
   const [ziel, setZiel] = useState<Ziel | null>(null);
+  const [zielThema, setZielThema] = useState<Themenfeld | null>(null);
+  const [ansicht, setAnsichtState] = useState<Ansicht>("status");
   const heute = heuteIso();
+
+  useEffect(() => setAnsichtState(gespeicherteAnsicht()), []);
+  const setAnsicht = (a: Ansicht) => {
+    setAnsichtState(a);
+    try {
+      window.localStorage.setItem(ANSICHT_SCHLUESSEL, a);
+    } catch {
+      // Nur Bequemlichkeit.
+    }
+  };
 
   const laden = useCallback(async () => {
     if (!token) return;
@@ -133,6 +168,11 @@ export function AufgabenSeite() {
   const rsListe = useMemo(
     () => ruecksprachenAus(board?.aufgaben ?? []),
     [board],
+  );
+
+  const staende = useMemo(
+    () => themenStaende(board?.aufgaben ?? [], spalteVon, heute),
+    [board, spalteVon, heute],
   );
 
   const kennzahlen = useMemo(() => {
@@ -204,14 +244,18 @@ export function AufgabenSeite() {
     await verschieben(id, spalteId, positionZwischen(andere, andere.length));
   };
 
-  const anlegen = async (spalteId: string, titel: string) => {
+  const anlegen = async (
+    spalteId: string,
+    titel: string,
+    themenfeld: Themenfeld = filter.themenfeld ?? "",
+  ) => {
     try {
       const { aufgabeAnlegenFn } = await fn();
       const neu = await aufgabeAnlegenFn({
         data: {
           supabaseAccessToken: token,
           spalteId,
-          felder: { titel, prioritaet: "normal", checkliste: [] },
+          felder: { titel, prioritaet: "normal", themenfeld, checkliste: [] },
         },
       });
       setBoard((b) => (b ? { ...b, aufgaben: [...b.aufgaben, neu] } : b));
@@ -233,6 +277,39 @@ export function AufgabenSeite() {
     } catch (e) {
       toast.error(meldung(e, "Die Aufgabe konnte nicht gespeichert werden."));
       throw e;
+    }
+  };
+
+  /** Ansicht nach Themenfeld: Karte in ein anderes Themenfeld ziehen. */
+  const themaSetzen = async (id: string, themenfeld: Themenfeld) => {
+    const alt = board?.aufgaben.find((a) => a.id === id);
+    if (!alt || alt.themenfeld === themenfeld) return;
+    aufgabeErsetzen({ ...alt, themenfeld });
+    try {
+      const { aufgabeSpeichernFn } = await fn();
+      aufgabeErsetzen(
+        await aufgabeSpeichernFn({
+          data: {
+            supabaseAccessToken: token,
+            id,
+            felder: {
+              titel: alt.titel,
+              beschreibung: alt.beschreibung,
+              verantwortlichId: alt.verantwortlichId,
+              faelligAm: alt.faelligAm,
+              prioritaet: alt.prioritaet,
+              themenfeld,
+              ruecksprache: alt.ruecksprache,
+              ruecksprachAm: alt.ruecksprachAm,
+              mandatSfId: alt.mandatSfId,
+              checkliste: alt.checkliste,
+            },
+          },
+        }),
+      );
+    } catch (e) {
+      aufgabeErsetzen(alt);
+      toast.error(meldung(e, "Das Themenfeld konnte nicht gesetzt werden."));
     }
   };
 
@@ -379,18 +456,68 @@ export function AufgabenSeite() {
     void verschieben(id, spalteId, position);
   };
 
+  /** Ansicht nach Themenfeld: offene Karten, dringendste zuerst. */
+  const imThema = (t: Themenfeld) =>
+    (board?.aufgaben ?? [])
+      .filter((a) => {
+        const spalte = spalteVon.get(a.spalteId);
+        return (
+          a.themenfeld === t &&
+          !spalte?.erledigt &&
+          passtZuFilter(a, spalte, filter, heute)
+        );
+      })
+      .sort(
+        (x, y) =>
+          (x.faelligAm ?? "9999").localeCompare(y.faelligAm ?? "9999") ||
+          Number(y.prioritaet === "hoch") - Number(x.prioritaet === "hoch") ||
+          x.position - y.position,
+      );
+  const ersteOffeneSpalte =
+    spalten.find((s) => !s.erledigt)?.id ?? spalten[0]?.id;
+
+  const karteZeigen = (a: Aufgabe, nachThema: boolean) => {
+    const s = spalteVon.get(a.spalteId);
+    return (
+      <AufgabeKarte
+        key={a.id}
+        aufgabe={a}
+        spalte={s}
+        person={
+          a.verantwortlichId ? personVon.get(a.verantwortlichId) : undefined
+        }
+        heute={heute}
+        ziehend={ziehId === a.id}
+        mitThemenfeld={!nachThema && board?.themenfelder}
+        mitStatus={nachThema}
+        onOeffnen={() => setOffenId(a.id)}
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", a.id);
+          setZiehId(a.id);
+        }}
+        onDragEnd={() => {
+          setZiehId(null);
+          setZiel(null);
+          setZielThema(null);
+        }}
+      />
+    );
+  };
+
   const offen = board?.aufgaben.find((a) => a.id === offenId) ?? null;
   const filterAktiv =
     filter.suche ||
     filter.person ||
     filter.ruecksprache ||
+    filter.themenfeld !== null ||
     filter.nurUeberfaellig;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
         titel="Aufgaben"
-        beschreibung="Die in Rücksprachen festgelegten Aufgaben als Board. Karten per Drag & Drop zwischen den Spalten verschieben."
+        beschreibung="Die in Rücksprachen festgelegten Aufgaben, ausgerichtet an den strategischen Themenfeldern von Grenz & Co. Karten per Drag & Drop verschieben."
         aktionen={
           <div className="flex gap-2">
             {board?.trello.verbunden && (
@@ -420,10 +547,31 @@ export function AufgabenSeite() {
                 </Button>
               </>
             )}
+            <div className="flex border border-input" role="group">
+              <Button
+                variant={ansicht === "status" ? "default" : "ghost"}
+                className="border-0"
+                onClick={() => setAnsicht("status")}
+                title="Board nach Status"
+              >
+                <Columns3 className="size-4" />
+                Status
+              </Button>
+              <Button
+                variant={ansicht === "themen" ? "default" : "ghost"}
+                className="border-0"
+                onClick={() => setAnsicht("themen")}
+                disabled={!board?.themenfelder}
+                title="Offene Aufgaben nach Themenfeld"
+              >
+                <Compass className="size-4" />
+                Themenfelder
+              </Button>
+            </div>
             <Button
               variant="outline"
               onClick={() => void spalteSpeichern({ titel: "Neue Spalte" })}
-              disabled={!board}
+              disabled={!board || ansicht === "themen"}
             >
               <Plus className="size-4" />
               Spalte
@@ -517,6 +665,30 @@ export function AufgabenSeite() {
               </option>
             ))}
           </select>
+          {board.themenfelder && (
+            <select
+              aria-label="Themenfeld"
+              className={cn(FELD, "w-56")}
+              value={filter.themenfeld ?? "alle"}
+              onChange={(e) =>
+                setFilter({
+                  ...filter,
+                  themenfeld:
+                    e.target.value === "alle"
+                      ? null
+                      : (e.target.value as Themenfeld),
+                })
+              }
+            >
+              <option value="alle">Alle Themenfelder</option>
+              {THEMENFELDER.map((t) => (
+                <option key={t.wert} value={t.wert}>
+                  {t.label}
+                </option>
+              ))}
+              <option value="">Ohne Themenfeld</option>
+            </select>
+          )}
           {benutzer && (
             <Button
               variant={filter.person === benutzer.id ? "default" : "outline"}
@@ -553,6 +725,26 @@ export function AufgabenSeite() {
         </div>
       )}
 
+      {board && !board.themenfelder && (
+        <div className="mx-8 mt-4 border border-[var(--warn)] bg-warn-soft p-3 text-sm text-warn">
+          Themenfelder sind vorbereitet, werden aber erst gespeichert, wenn die
+          Datenbank-Migration 20261028120000_aufgaben_themenfeld eingespielt
+          ist. Das Board funktioniert bis dahin wie bisher.
+        </div>
+      )}
+      {board && board.themenfelder && (
+        <StrategieLeiste
+          staende={staende}
+          aktiv={filter.themenfeld}
+          onWaehlen={(t) =>
+            setFilter({
+              ...filter,
+              themenfeld: filter.themenfeld === t ? null : t,
+            })
+          }
+        />
+      )}
+
       {fehler && (
         <div className="mx-8 mt-6 border border-[var(--bad)] bg-bad-soft p-4 text-sm text-bad">
           {fehler}
@@ -565,7 +757,44 @@ export function AufgabenSeite() {
         </div>
       )}
 
-      {board && (
+      {board && ansicht === "themen" && board.themenfelder && (
+        <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto bg-[var(--gc-grau-zart)] px-8 py-6">
+          {THEMEN_SPALTEN.filter(
+            (t) =>
+              (filter.themenfeld === null || filter.themenfeld === t) &&
+              (t !== "" || imThema("").length > 0),
+          ).map((t) => (
+            <ThemaAnsicht
+              key={t || "ohne"}
+              themenfeld={t}
+              karten={imThema(t)}
+              stand={staende.find((x) => x.themenfeld === t)}
+              ziel={zielThema === t}
+              renderKarte={(a) => karteZeigen(a, true)}
+              onDragOver={(e) => {
+                if (!ziehId) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (zielThema !== t) setZielThema(t);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const id = ziehId;
+                setZiehId(null);
+                setZielThema(null);
+                if (id) void themaSetzen(id, t);
+              }}
+              onAnlegen={
+                ersteOffeneSpalte
+                  ? (titel) => anlegen(ersteOffeneSpalte, titel, t)
+                  : undefined
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      {board && (ansicht === "status" || !board.themenfelder) && (
         <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto bg-[var(--gc-grau-zart)] px-8 py-6">
           {spalten.map((s, i) => (
             <SpalteAnsicht
@@ -577,30 +806,7 @@ export function AufgabenSeite() {
               letzte={i === spalten.length - 1}
               ziehId={ziehId}
               zielIndex={ziel?.spalteId === s.id ? ziel.index : null}
-              renderKarte={(a) => (
-                <AufgabeKarte
-                  key={a.id}
-                  aufgabe={a}
-                  spalte={s}
-                  person={
-                    a.verantwortlichId
-                      ? personVon.get(a.verantwortlichId)
-                      : undefined
-                  }
-                  heute={heute}
-                  ziehend={ziehId === a.id}
-                  onOeffnen={() => setOffenId(a.id)}
-                  onDragStart={(e) => {
-                    e.dataTransfer.effectAllowed = "move";
-                    e.dataTransfer.setData("text/plain", a.id);
-                    setZiehId(a.id);
-                  }}
-                  onDragEnd={() => {
-                    setZiehId(null);
-                    setZiel(null);
-                  }}
-                />
-              )}
+              renderKarte={(a) => karteZeigen(a, false)}
               onDragOver={(e) => ueberListe(e, s.id)}
               onDrop={(e) => ablegen(e, s.id)}
               onAnlegen={(titel) => anlegen(s.id, titel)}
@@ -625,6 +831,7 @@ export function AufgabenSeite() {
           personen={board.personen}
           mandate={board.mandate}
           ruecksprachen={rsListe}
+          themenfelder={board.themenfelder}
           onSchliessen={() => setOffenId(null)}
           onSpeichern={speichern}
           onVerschieben={inSpalte}
@@ -638,6 +845,8 @@ export function AufgabenSeite() {
           personen={board.personen}
           mandate={board.mandate}
           ruecksprachen={rsListe}
+          themenfelder={board.themenfelder}
+          vorgabeThemenfeld={filter.themenfeld ?? ""}
           onSchliessen={() => setRsOffen(false)}
           onErfassen={ruecksprache}
         />
@@ -683,28 +892,9 @@ function SpalteAnsicht({
 }) {
   const [umbenennen, setUmbenennen] = useState(false);
   const [titel, setTitel] = useState(spalte.titel);
-  const [neu, setNeu] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   const ohneGezogene = karten.filter((k) => k.id !== ziehId);
   const platzhalter = <div className="h-1 shrink-0 bg-brand" aria-hidden />;
-
-  const anlegen = async () => {
-    const t = (neu ?? "").trim();
-    if (!t) {
-      setNeu(null);
-      return;
-    }
-    setBusy(true);
-    try {
-      await onAnlegen(t);
-      setNeu("");
-    } catch {
-      // Meldung kommt aus onAnlegen.
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <section className="flex max-h-full w-72 shrink-0 flex-col border border-hairline bg-surface">
@@ -811,50 +1001,203 @@ function SpalteAnsicht({
         {zielIndex === ohneGezogene.length && platzhalter}
       </div>
 
-      <div className="border-t border-hairline p-2">
-        {neu === null ? (
-          <button
-            type="button"
-            className="flex w-full items-center gap-1 px-1 py-1 text-left text-sm text-text-muted hover:text-heading"
-            onClick={() => setNeu("")}
-          >
-            <Plus className="size-4" />
-            Aufgabe hinzufügen
-          </button>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <textarea
-              autoFocus
-              rows={2}
-              className="w-full resize-none border border-input bg-background p-2 text-sm text-heading focus:outline-none focus:ring-1 focus:ring-ring"
-              placeholder="Titel der Aufgabe"
-              value={neu}
-              disabled={busy}
-              onChange={(e) => setNeu(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void anlegen();
-                }
-                if (e.key === "Escape") setNeu(null);
-              }}
-            />
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={() => void anlegen()}
-                disabled={busy || !neu.trim()}
-              >
-                {busy && <Loader2 className="size-4 animate-spin" />}
-                Hinzufügen
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setNeu(null)}>
-                Abbrechen
-              </Button>
-            </div>
+      <NeueAufgabe onAnlegen={onAnlegen} />
+    </section>
+  );
+}
+
+function NeueAufgabe({
+  onAnlegen,
+}: {
+  onAnlegen: (titel: string) => Promise<void>;
+}) {
+  const [neu, setNeu] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const anlegen = async () => {
+    const t = (neu ?? "").trim();
+    if (!t) {
+      setNeu(null);
+      return;
+    }
+    setBusy(true);
+    try {
+      await onAnlegen(t);
+      setNeu("");
+    } catch {
+      // Meldung kommt aus onAnlegen.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-hairline p-2">
+      {neu === null ? (
+        <button
+          type="button"
+          className="flex w-full items-center gap-1 px-1 py-1 text-left text-sm text-text-muted hover:text-heading"
+          onClick={() => setNeu("")}
+        >
+          <Plus className="size-4" />
+          Aufgabe hinzufügen
+        </button>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <textarea
+            autoFocus
+            rows={2}
+            className="w-full resize-none border border-input bg-background p-2 text-sm text-heading focus:outline-none focus:ring-1 focus:ring-ring"
+            placeholder="Titel der Aufgabe"
+            value={neu}
+            disabled={busy}
+            onChange={(e) => setNeu(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void anlegen();
+              }
+              if (e.key === "Escape") setNeu(null);
+            }}
+          />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => void anlegen()}
+              disabled={busy || !neu.trim()}
+            >
+              {busy && <Loader2 className="size-4 animate-spin" />}
+              Hinzufügen
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setNeu(null)}>
+              Abbrechen
+            </Button>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Kacheln je Themenfeld: wo steht die Strategie? Klick filtert das Board. */
+function StrategieLeiste({
+  staende,
+  aktiv,
+  onWaehlen,
+}: {
+  staende: ThemenStand[];
+  aktiv: Themenfeld | null;
+  onWaehlen: (t: Themenfeld) => void;
+}) {
+  return (
+    <div className="flex gap-2 overflow-x-auto border-b border-hairline bg-surface px-8 py-3">
+      {staende.map((s) => {
+        const an = aktiv === s.themenfeld;
+        return (
+          <button
+            key={s.themenfeld || "ohne"}
+            type="button"
+            onClick={() => onWaehlen(s.themenfeld)}
+            title={themenfeldLabel(s.themenfeld)}
+            className={cn(
+              "flex min-w-36 shrink-0 flex-col gap-1 border px-3 py-2 text-left transition",
+              an
+                ? "border-brand bg-brand text-white"
+                : "border-hairline bg-elevated hover:border-[var(--gc-navy-hell)]",
+            )}
+          >
+            <span
+              className={cn(
+                "truncate text-[10px] font-medium uppercase tracking-wider",
+                an ? "text-white/80" : "text-text-muted",
+              )}
+            >
+              {themenfeldLabel(s.themenfeld)}
+            </span>
+            <span className="flex items-baseline gap-1">
+              <span
+                className={cn(
+                  "text-xl font-light tabular-nums",
+                  !an && "text-heading",
+                )}
+              >
+                {s.offen}
+              </span>
+              <span className={cn("text-xs", !an && "text-text-muted")}>
+                offen
+              </span>
+            </span>
+            <span
+              className={cn(
+                "flex gap-2 text-[11px]",
+                an ? "text-white/80" : "text-text-muted",
+              )}
+            >
+              {s.ueberfaellig > 0 && (
+                <span className={cn(!an && "text-bad")}>
+                  {s.ueberfaellig} überfällig
+                </span>
+              )}
+              <span>{s.erledigt30} erledigt (30 T.)</span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Spalte der Ansicht nach Themenfeld. Ablegen ändert das Themenfeld, nicht den Status. */
+function ThemaAnsicht({
+  themenfeld,
+  karten,
+  stand,
+  ziel,
+  renderKarte,
+  onDragOver,
+  onDrop,
+  onAnlegen,
+}: {
+  themenfeld: Themenfeld;
+  karten: Aufgabe[];
+  stand: ThemenStand | undefined;
+  ziel: boolean;
+  renderKarte: (a: Aufgabe) => React.ReactNode;
+  onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDrop: (e: React.DragEvent) => void;
+  onAnlegen?: (titel: string) => Promise<void>;
+}) {
+  return (
+    <section className="flex max-h-full w-72 shrink-0 flex-col border border-hairline bg-surface">
+      <header className="flex items-center gap-2 border-b border-hairline px-3 py-2">
+        <h2 className="min-w-0 flex-1 truncate text-xs font-medium uppercase tracking-wider text-heading">
+          {themenfeldLabel(themenfeld)}
+        </h2>
+        {!!stand?.ueberfaellig && (
+          <span className="shrink-0 bg-bad-soft px-1.5 text-xs tabular-nums text-bad">
+            {stand.ueberfaellig}
+          </span>
+        )}
+        <span className="shrink-0 bg-surface-muted px-1.5 text-xs tabular-nums text-text-muted">
+          {karten.length}
+        </span>
+      </header>
+      <div
+        className={cn(
+          "flex min-h-16 flex-1 flex-col gap-2 overflow-y-auto p-2",
+          ziel && "bg-[var(--gc-hellblau-zart)]",
+        )}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+      >
+        {karten.map(renderKarte)}
+        {karten.length === 0 && (
+          <span className="px-1 py-2 text-xs text-text-muted">
+            Keine offenen Aufgaben.
+          </span>
         )}
       </div>
+      {onAnlegen && <NeueAufgabe onAnlegen={onAnlegen} />}
     </section>
   );
 }
