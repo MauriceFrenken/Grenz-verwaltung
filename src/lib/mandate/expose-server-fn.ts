@@ -29,11 +29,15 @@ import {
 
 type Admin = ReturnType<typeof createServiceRoleClient>;
 
+import {
+  PDF_TEIL_BYTES,
+  pdfLink,
+  pdfTeilHochladen,
+  pdfUmwandelnUndAblegen,
+  pdfUploadStarten,
+} from "./pdf-umwandlung";
+
 const FORMAT = "grenz-vorlage";
-/** Hilfsordner im OneDrive der Dokumentenablage für die PDF-Umwandlung. */
-const PDF_ORDNER = "Grenz Exposé PDF-Umwandlung";
-/** Teilgröße für den Upload: Vielfaches von 320 KiB, als Base64 unter dem Vercel-Limit. */
-export const PDF_TEIL_BYTES = 320 * 1024 * 8;
 
 function text(wert: unknown, max = 200): string {
   return typeof wert === "string" ? wert.slice(0, max) : "";
@@ -444,20 +448,8 @@ export const mandatExposePdfStartFn = createServerFn({ method: "POST" })
     const roh = await ladeRoh(admin, data.id);
     offen(roh.status);
     if (!roh.inhalt.ergebnis) throw new Error("Noch keine Exposé-Daten.");
-    const { microsoftAccessToken } = await import("@/lib/microsoft/postfach");
-    const { microsoftOneDriveUser } = await import("@/lib/microsoft/ablage");
-    const { graphDriveUploadSessionStarten } =
-      await import("@/lib/microsoft/graph");
-    const { accessToken } = await microsoftAccessToken();
-    const url = await graphDriveUploadSessionStarten(
-      accessToken,
-      microsoftOneDriveUser(),
-      PDF_ORDNER,
-      `${roh.id}_v${roh.version}.pptx`,
-    );
-    await speichern(admin, data.id, {
-      inhalt: { ...roh.inhalt, pdfUpload: { url, itemId: null } },
-    });
+    const pdfUpload = await pdfUploadStarten(`${roh.id}_v${roh.version}.pptx`);
+    await speichern(admin, data.id, { inhalt: { ...roh.inhalt, pdfUpload } });
     return { teilBytes: PDF_TEIL_BYTES };
   });
 
@@ -478,16 +470,13 @@ export const mandatExposePdfTeilFn = createServerFn({ method: "POST" })
     const admin = createServiceRoleClient();
     const roh = await ladeRoh(admin, data.id);
     const upload = roh.inhalt.pdfUpload;
-    if (!upload?.url) throw new Error("Bitte die PDF-Erstellung neu starten.");
-    const { graphDriveUploadTeil } = await import("@/lib/microsoft/graph");
-    const teil = new Uint8Array(Buffer.from(data.base64, "base64"));
-    const { itemId } = await graphDriveUploadTeil(
-      upload.url,
-      teil,
+    const itemId = await pdfTeilHochladen(
+      upload,
+      data.base64,
       data.offset,
       data.gesamt,
     );
-    if (itemId)
+    if (itemId && upload)
       await speichern(admin, data.id, {
         inhalt: { ...roh.inhalt, pdfUpload: { url: upload.url, itemId } },
       });
@@ -504,43 +493,19 @@ export const mandatExposePdfFertigFn = createServerFn({ method: "POST" })
     await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
     const admin = createServiceRoleClient();
     const roh = await ladeRoh(admin, data.id);
-    const itemId = roh.inhalt.pdfUpload?.itemId;
-    if (!itemId) throw new Error("Die PowerPoint ist noch nicht hochgeladen.");
-    const { microsoftAccessToken } = await import("@/lib/microsoft/postfach");
-    const { microsoftOneDriveUser } = await import("@/lib/microsoft/ablage");
-    const { graphDriveAlsPdf, graphDriveDateiLoeschen } =
-      await import("@/lib/microsoft/graph");
-    const { accessToken } = await microsoftAccessToken();
-    const benutzer = microsoftOneDriveUser();
-    let pdf: Uint8Array;
-    try {
-      pdf = await graphDriveAlsPdf(accessToken, benutzer, itemId);
-    } finally {
-      await graphDriveDateiLoeschen(accessToken, benutzer, itemId).catch(
-        () => undefined,
-      );
-    }
     const dateiname = exposeDateiname(roh.inhalt.ergebnis, roh.version, "pdf");
     const pfad = `exposes/${roh.mandatSfId}/${roh.id}/${dateiname}`;
-    const { error: e1 } = await admin.storage
-      .from("dokumente")
-      .upload(pfad, pdf, { contentType: "application/pdf", upsert: true });
-    if (e1) throw new Error(e1.message);
+    const url = await pdfUmwandelnUndAblegen(
+      admin,
+      roh.inhalt.pdfUpload?.itemId,
+      pfad,
+    );
     await speichern(admin, data.id, {
       datei_pfad: pfad,
       inhalt: { ...roh.inhalt, pdfUpload: null },
     });
-    return { url: await signiert(admin, pfad, dateiname), dateiname };
+    return { url, dateiname };
   });
-
-async function signiert(admin: Admin, pfad: string, dateiname: string) {
-  const { data, error } = await admin.storage
-    .from("dokumente")
-    .createSignedUrl(pfad, 600, { download: dateiname });
-  if (error || !data?.signedUrl)
-    throw new Error(error?.message ?? "PDF-Link konnte nicht erstellt werden.");
-  return data.signedUrl;
-}
 
 /** Gespeichertes PDF herunterladen (Link 10 Minuten gültig). */
 export const mandatExposePdfLinkFn = createServerFn({ method: "POST" })
@@ -554,13 +519,7 @@ export const mandatExposePdfLinkFn = createServerFn({ method: "POST" })
     const roh = await ladeRoh(admin, data.id);
     if (!roh.dateiPfad)
       throw new Error("Für diese Version gibt es noch kein PDF.");
-    return {
-      url: await signiert(
-        admin,
-        roh.dateiPfad,
-        roh.dateiPfad.split("/").pop() ?? "Expose.pdf",
-      ),
-    };
+    return { url: await pdfLink(admin, roh.dateiPfad) };
   });
 
 /** Freigabe durch den Nutzer: Pflichtangaben erfüllt und PDF erstellt. */
