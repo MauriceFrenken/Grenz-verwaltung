@@ -613,8 +613,9 @@ export const personalLeistungFn = createServerFn({ method: "POST" })
               .from("sf_mandate")
               .select("sf_id", { count: "exact", head: true })
               .eq("verantwortlich_sf_user_id", sf)
-              .gte("beauftragt_am", von)
-              .lte("beauftragt_am", bis),
+              // Angelegt im Jahr; Start_date__c (beauftragt_am) ist kaum gepflegt.
+              .gte("sf_daten->>CreatedDate", von)
+              .lte("sf_daten->>CreatedDate", `${bis}T23:59:59Z`),
             admin
               .from("sf_deals")
               .select("betrag, sf_daten")
