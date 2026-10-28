@@ -12,19 +12,35 @@ import { ChecklistenTab } from "./ChecklistenTab";
 import { LeistungTab } from "./LeistungTab";
 import { SchulungenTab } from "./SchulungenTab";
 import { TeamTab } from "./TeamTab";
+import { UebersichtTab } from "./UebersichtTab";
 import { usePersonal, type PersonalKontext } from "./usePersonal";
 
 export type PersonalReiter =
-  "team" | "abwesenheiten" | "schulungen" | "leistung" | "checklisten";
+  | "uebersicht"
+  | "mitarbeiter"
+  | "abwesenheiten"
+  | "schulungen"
+  | "onboarding"
+  | "berichte";
 export const PERSONAL_REITER: PersonalReiter[] = [
-  "team",
+  "uebersicht",
+  "mitarbeiter",
   "abwesenheiten",
   "schulungen",
-  "leistung",
-  "checklisten",
+  "onboarding",
+  "berichte",
 ];
+/** Frühere Reiternamen, damit alte Links weiter funktionieren. */
+export const ALTE_REITER: Record<string, PersonalReiter> = {
+  team: "mitarbeiter",
+  checklisten: "onboarding",
+  leistung: "berichte",
+};
 
-/** Personal: Team und Akten, Abwesenheiten, Pflichtschulungen, Leistung, On-/Offboarding. */
+/**
+ * Personal nach dem Vorbild von Personio: Übersicht mit „Zu erledigen“, Mitarbeiterliste mit
+ * Profilen, Abwesenheiten, Schulungen, On-/Offboarding und Berichte.
+ */
 export function PersonalPage({ reiter }: { reiter: PersonalReiter }) {
   const navigate = useNavigate();
   const aktuell = new Date().getFullYear();
@@ -35,7 +51,7 @@ export function PersonalPage({ reiter }: { reiter: PersonalReiter }) {
     <>
       <PageHeader
         titel="Personal"
-        beschreibung="Team, Urlaub und Abwesenheiten, Pflichtschulungen und Leistung"
+        beschreibung="Mitarbeiter, Abwesenheiten, Schulungen, On- und Offboarding"
         aktionen={
           <div className="w-28">
             <Auswahl
@@ -69,19 +85,21 @@ export function PersonalPage({ reiter }: { reiter: PersonalReiter }) {
               })
             }
           >
-            <TabsList>
-              <TabsTrigger value="team">Team</TabsTrigger>
-              <TabsTrigger value="abwesenheiten">
-                Urlaub & Abwesenheiten
-              </TabsTrigger>
-              <TabsTrigger value="schulungen">Pflichtschulungen</TabsTrigger>
-              <TabsTrigger value="leistung">Leistung</TabsTrigger>
-              <TabsTrigger value="checklisten">On- & Offboarding</TabsTrigger>
+            <TabsList className="flex-wrap">
+              <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
+              <TabsTrigger value="mitarbeiter">Mitarbeiter</TabsTrigger>
+              <TabsTrigger value="abwesenheiten">Abwesenheiten</TabsTrigger>
+              <TabsTrigger value="schulungen">Schulungen</TabsTrigger>
+              <TabsTrigger value="onboarding">On- & Offboarding</TabsTrigger>
+              <TabsTrigger value="berichte">Berichte</TabsTrigger>
             </TabsList>
             <div
               className={p.laedt ? "opacity-70 transition-opacity" : undefined}
             >
-              <TabsContent value="team" className="mt-4">
+              <TabsContent value="uebersicht" className="mt-4">
+                <UebersichtTab k={p as PersonalKontext} />
+              </TabsContent>
+              <TabsContent value="mitarbeiter" className="mt-4">
                 <TeamTab k={p as PersonalKontext} />
               </TabsContent>
               <TabsContent value="abwesenheiten" className="mt-4">
@@ -90,11 +108,11 @@ export function PersonalPage({ reiter }: { reiter: PersonalReiter }) {
               <TabsContent value="schulungen" className="mt-4">
                 <SchulungenTab k={p as PersonalKontext} />
               </TabsContent>
-              <TabsContent value="leistung" className="mt-4">
-                <LeistungTab k={p as PersonalKontext} />
-              </TabsContent>
-              <TabsContent value="checklisten" className="mt-4">
+              <TabsContent value="onboarding" className="mt-4">
                 <ChecklistenTab k={p as PersonalKontext} />
+              </TabsContent>
+              <TabsContent value="berichte" className="mt-4">
+                <LeistungTab k={p as PersonalKontext} />
               </TabsContent>
             </div>
           </Tabs>
