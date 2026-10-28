@@ -12,11 +12,13 @@ import {
   tageZwischen,
   urlaubskonto,
 } from "@/lib/personal/berechnen";
+import { loeschfaellig } from "@/lib/personal/recruiting";
 
 import { EintragDialog, artLabel } from "./AbwesenheitenTab";
 import { Kasten, aktiveMitarbeiter, heuteIso, tageText } from "./bausteine";
 import { Anstehend } from "./TeamTab";
 import type { PersonalKontext } from "./usePersonal";
+import type { RecruitingKontext } from "./useRecruiting";
 
 function plusTage(iso: string, n: number): string {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -26,10 +28,17 @@ function plusTage(iso: string, n: number): string {
 
 /**
  * Startseite des Personalbereichs nach dem Vorbild der Personio-Startseite:
- * Kennzahlen, „Zu erledigen“ (Anträge, fällige Schulungen, offene Checklisten),
+ * Kennzahlen, „Zu erledigen“ (Anträge, neue Bewerbungen, fällige Schulungen, offene Checklisten),
  * wer abwesend ist und was ansteht.
  */
-export function UebersichtTab({ k }: { k: PersonalKontext }) {
+export function UebersichtTab({
+  k,
+  r,
+}: {
+  k: PersonalKontext;
+  /** Nur für Personalverantwortliche. */
+  r: RecruitingKontext | null;
+}) {
   const { daten, ausfuehren } = k;
   const heute = heuteIso();
   const [antrag, setAntrag] = useState(false);
@@ -62,6 +71,18 @@ export function UebersichtTab({ k }: { k: PersonalKontext }) {
       };
     })
     .filter((c) => c.gesamt > 0 && c.offen > 0);
+
+  const bewerber = r?.daten?.bewerber ?? [];
+  const neueBewerbungen = bewerber.filter((b) => b.phase === "eingang").length;
+  const loeschungen = bewerber.filter((b) => loeschfaellig(b, heute)).length;
+  const recruiting = [
+    neueBewerbungen
+      ? `${neueBewerbungen} ${neueBewerbungen === 1 ? "neue Bewerbung" : "neue Bewerbungen"} sichten`
+      : null,
+    loeschungen
+      ? `${loeschungen} Bewerberdaten mit abgelaufener Löschfrist`
+      : null,
+  ].filter((x): x is string => Boolean(x));
 
   const woche = tageZwischen(heute, plusTage(heute, 13)).filter(istArbeitstag);
   const weg = aktiv
@@ -118,6 +139,7 @@ export function UebersichtTab({ k }: { k: PersonalKontext }) {
             }
           >
             {antraege.length === 0 &&
+            recruiting.length === 0 &&
             schulungenFaellig.length === 0 &&
             checklisten.length === 0 ? (
               <p className="text-sm text-text-muted">Alles erledigt.</p>
@@ -178,6 +200,26 @@ export function UebersichtTab({ k }: { k: PersonalKontext }) {
                         wartet auf Freigabe
                       </span>
                     )}
+                  </li>
+                ))}
+                {recruiting.map((t) => (
+                  <li
+                    key={t}
+                    className="flex flex-wrap items-center justify-between gap-3 py-2"
+                  >
+                    <span>
+                      <span className="label-caps mr-2 text-text-subtle">
+                        Recruiting
+                      </span>
+                      {t}
+                    </span>
+                    <Link
+                      to="/personal"
+                      search={{ tab: "recruiting" }}
+                      className="text-xs text-heading underline"
+                    >
+                      Öffnen
+                    </Link>
                   </li>
                 ))}
                 {schulungenFaellig.map(({ m, st }) => (
