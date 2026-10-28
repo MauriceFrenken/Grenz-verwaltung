@@ -88,7 +88,38 @@ type ListenRoh = {
   volumen_min: number | string | null;
   volumen_max: number | string | null;
   einheiten_min: number | string | null;
+  objekte_interesse?: string[] | null;
 };
+
+/** Ortskürzel der Grenz-Objekte in der Suchkunden-Liste („2 D Art Noveau“, „16 K Roddergasse 68“). */
+const KUERZEL: Record<string, string> = {
+  D: "Düsseldorf",
+  K: "Köln",
+  AC: "Aachen",
+  BN: "Bonn",
+  MG: "Mönchengladbach",
+  W: "Wuppertal",
+  NE: "Neuss",
+  E: "Essen",
+};
+const ORTE_IM_NAMEN = ["Velbert", "Brühl"];
+
+/**
+ * Suchgebiet eines Suchkunden aus den Grenz-Objekten, für die er sich interessiert hat: die
+ * Städte der Objekte plus NRW (alle Objekte liegen in NRW). Ohne erkennbare Stadt leer.
+ */
+export function regionenAusInteresse(
+  objekte: string[] | null | undefined,
+): string[] {
+  const orte = new Set<string>();
+  for (const o of objekte ?? []) {
+    const teile = o.trim().split(/\s+/);
+    const kuerzel = KUERZEL[teile[1] ?? ""];
+    if (kuerzel) orte.add(kuerzel);
+    for (const ort of ORTE_IM_NAMEN) if (o.includes(ort)) orte.add(ort);
+  }
+  return orte.size ? [...orte, "NRW"] : [];
+}
 
 const zahl = (w: unknown) =>
   w == null || w === "" || !Number.isFinite(Number(w)) ? null : Number(w);
@@ -102,7 +133,9 @@ export function listeAlsProfil(q: ListenRoh): ProfilZeile {
     account_sf_id: null,
     assetklassen: q.objektklassen,
     nutzungsarten: q.nutzungen,
-    regionen: q.regionen,
+    regionen: q.regionen?.length
+      ? q.regionen
+      : regionenAusInteresse(q.objekte_interesse),
     volumen_min: zahl(q.volumen_min),
     volumen_max: zahl(q.volumen_max),
     faktor_max: null,

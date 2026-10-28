@@ -294,7 +294,11 @@ export function anreicherungsVorschlaege(e: PruefErgebnis, b: InvestorBestand): 
 /** Ergänzt einen Listeneintrag direkt um die Funde der Recherche (nur leere Felder, E-Mails vereint). */
 export function quellenErgaenzung(
   e: PruefErgebnis,
-  q: { emails: string[] | null; telefon: string | null; webseite: string | null; nutzungen: string[] | null; volumen_min: number | string | null; volumen_max: number | string | null },
+  q: {
+    emails: string[] | null; telefon: string | null; webseite: string | null; nutzungen: string[] | null;
+    volumen_min: number | string | null; volumen_max: number | string | null;
+    regionen?: string[] | null; einheiten_min?: number | string | null;
+  },
 ): Record<string, unknown> {
   const neu: Record<string, unknown> = {};
   const alt = (q.emails ?? []).map((m) => m.toLowerCase());
@@ -310,6 +314,8 @@ export function quellenErgaenzung(
       if (e.profil.volumenMin != null) neu.volumen_min = e.profil.volumenMin;
       if (e.profil.volumenMax != null) neu.volumen_max = e.profil.volumenMax;
     }
+    if (!(q.regionen ?? []).length && e.profil.regionen.length) neu.regionen = e.profil.regionen;
+    if (q.einheiten_min == null && e.profil.einheitenMin != null) neu.einheiten_min = e.profil.einheitenMin;
   }
   return neu;
 }
@@ -330,6 +336,43 @@ async function nachzuholen(admin: SupabaseClient, anzahl: number): Promise<Pruef
     .limit(anzahl);
   if (error) throw new Error(error.message);
   return (data ?? []).map((z) => ({ schluessel: z.schluessel, firma: z.firma, webseite: z.webseite, ort: null }));
+}
+
+/**
+ * Lücken fürs Käufer-Matching: Wohn-Investoren aus 7Plus ohne Suchgebiet, die noch nie geprüft
+ * wurden, nach Passung. Die Recherche ergänzt Suchgebiet, Volumen und Einheiten aus dem Ankaufsprofil.
+ */
+async function suchgebietKandidaten(admin: SupabaseClient, anzahl: number): Promise<PruefKandidat[]> {
+  const ergebnis: PruefKandidat[] = [];
+  for (let von = 0; ergebnis.length < anzahl; von += 200) {
+    const { data, error } = await admin
+      .from("investor_quellen")
+      .select("schluessel, firma, webseite, ort")
+      .eq("quelle", "7plus")
+      .is("dublette_von", null)
+      .is("sf_account_sf_id", null)
+      .eq("bearbeitung", "offen")
+      .eq("nicht_anlegen", false)
+      .not("firma", "is", null)
+      .eq("regionen", "{}")
+      .contains("nutzungen", ["Wohnen"])
+      .order("passung", { ascending: false })
+      .order("schluessel")
+      .range(von, von + 199);
+    if (error) throw new Error(error.message);
+    if (!data?.length) break;
+    const { data: geprueft, error: f } = await admin
+      .from("investor_pruefungen")
+      .select("schluessel")
+      .in("schluessel", data.map((q) => `quelle:${q.schluessel}`));
+    if (f) throw new Error(f.message);
+    const schon = new Set((geprueft ?? []).map((g) => g.schluessel));
+    for (const q of data)
+      if (!schon.has(`quelle:${q.schluessel}`) && ergebnis.length < anzahl)
+        ergebnis.push({ schluessel: `quelle:${q.schluessel}`, firma: q.firma, webseite: q.webseite, ort: q.ort });
+    if (data.length < 200) break;
+  }
+  return ergebnis;
 }
 
 async function bestandLaden(admin: SupabaseClient, ergebnisse: PruefErgebnis[]): Promise<Map<string, InvestorBestand>> {
@@ -376,7 +419,7 @@ async function anreichern(admin: SupabaseClient, ergebnisse: PruefErgebnis[]): P
   if (listen.length) {
     const { data, error } = await admin
       .from("investor_quellen")
-      .select("schluessel, emails, telefon, webseite, nutzungen, volumen_min, volumen_max")
+      .select("schluessel, emails, telefon, webseite, nutzungen, volumen_min, volumen_max, regionen, einheiten_min")
       .in("schluessel", listen.map((e) => e.schluessel.slice(7)));
     if (error) throw new Error(error.message);
     for (const q of data ?? []) {
@@ -398,9 +441,10 @@ async function anreichern(admin: SupabaseClient, ergebnisse: PruefErgebnis[]): P
 export async function pruefLauf(
   admin: SupabaseClient,
   anzahl = 20,
+  modus: "standard" | "suchgebiet" = "standard",
 ): Promise<{ geprueft: number; auffaellig: number; vorschlaege: number }> {
-  const kandidaten = await nachzuholen(admin, anzahl);
-  if (kandidaten.length < anzahl) {
+  const kandidaten = modus === "suchgebiet" ? await suchgebietKandidaten(admin, anzahl) : await nachzuholen(admin, anzahl);
+  if (modus === "standard" && kandidaten.length < anzahl) {
     const { data: offen, error } = await admin.rpc("investor_pruefung_kandidaten", { anzahl: anzahl - kandidaten.length });
     if (error) throw new Error(error.message);
     kandidaten.push(...((offen ?? []) as PruefKandidat[]));
