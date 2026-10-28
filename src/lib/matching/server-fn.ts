@@ -463,6 +463,7 @@ type KontaktKurz = {
   firma: string | null;
   email: string | null;
   telefon: boolean;
+  ort: string | null;
 };
 
 /** Name, Firma, E-Mail und ob eine Telefonnummer da ist, für Kontakte und Accounts. */
@@ -475,7 +476,7 @@ async function kontakteLaden(
   for (let i = 0; i < liste.length; i += 300) {
     const { data: k, error } = await admin
       .from("sf_kontakte")
-      .select("sf_id, name, firma, email, telefon, mobil, sf_daten")
+      .select("sf_id, name, firma, email, telefon, mobil, ort")
       .in("sf_id", liste.slice(i, i + 300));
     if (error) throw new Error(error.message);
     for (const x of k ?? [])
@@ -484,6 +485,7 @@ async function kontakteLaden(
         firma: (x.firma as string) ?? null,
         email: (x.email as string) ?? null,
         telefon: Boolean(x.telefon || x.mobil),
+        ort: (x.ort as string) ?? null,
       });
   }
   return ziel;
@@ -520,6 +522,7 @@ function sfSignale(
     ansprechpartner: Boolean(p.kontakt_sf_id?.startsWith("003") && k),
     email: Boolean(k?.email ?? a?.email),
     telefon: Boolean(k?.telefon || a?.telefon),
+    sitz: a?.ort ?? k?.ort ?? null,
     bemerkung: i?.bemerkung ?? null,
     mandatStatus: p.kontakt_sf_id
       ? (opts.mandatStatus?.get(p.kontakt_sf_id) ?? null)
@@ -544,7 +547,7 @@ async function listenProfileLaden(
       admin
         .from("investor_quellen")
         .select(
-          "schluessel, quelle, firma, person, emails, telefon, ort, typ, nutzungen, objektklassen, regionen, volumen_min, volumen_max, einheiten_min, objekte_interesse",
+          "schluessel, quelle, firma, person, emails, telefon, ort, nrw_bezug, typ, nutzungen, objektklassen, regionen, volumen_min, volumen_max, einheiten_min, objekte_interesse",
         )
         .is("dublette_von", null)
         .is("sf_account_sf_id", null)
@@ -593,6 +596,8 @@ async function listenProfileLaden(
         interesseObjekte: ((q.objekte_interesse as string[] | null) ?? [])
           .length,
         ansprechpartner: Boolean(q.person),
+        sitz: (q.ort as string) ?? null,
+        nrwBezug: (q.nrw_bezug as string) ?? null,
         email: emails.length > 0,
         telefon: Boolean(q.telefon),
       };
@@ -739,8 +744,7 @@ export const matchingFn = createServerFn({ method: "POST" })
         ),
       }))
       .map((x) => ({ ...x, bewertung: x.e.bewertung }))
-      .sort(nachKreis)
-      .slice(0, 300);
+      .sort(nachKreis);
 
     const treffer: MatchTreffer[] = ergebnis.map(({ p, e }) => {
       const kontakt = p.kontakt_sf_id
@@ -812,12 +816,12 @@ export const matchingFn = createServerFn({ method: "POST" })
         quelle: String(r.quelle),
       }));
 
-    // Ganze Investorendatenbank: passende Investoren aus den Listen, die noch nicht in Salesforce sind.
+    // Ganze Investorendatenbank: alle nicht ausgeschlossenen Listen-Investoren nach Score.
     const listen = await listenProfileLaden(admin);
     const listenErgebnis = qualifizierteTreffer(objekt, listen.profile, {
       signale: listen.signale,
-      kreise: ["A", "B", "C"],
-      max: 200,
+      kreise: ["A", "B", "C", "unter"],
+      max: 1500,
     }).map((e) => listenTreffer(e, listen.jeSchluessel.get(e.profilSfId)!));
 
     return {
@@ -1229,13 +1233,14 @@ export const vermarktungsAbgleichFn = createServerFn({ method: "POST" })
           }),
         ausschliessen: (p) =>
           Boolean(p.kontakt_sf_id && schon.has(p.kontakt_sf_id)),
-        max: 50,
+        kreise: ["A", "B", "C"],
+        max: 200,
       });
       // Listen-Investoren haben noch keine Historie bei Grenz: hier zählt auch der C-Kreis.
       const listen = qualifizierteTreffer(objekt, listenProfile, {
         signale: listenSignale,
         kreise: ["A", "B", "C"],
-        max: 30,
+        max: 150,
       });
       const kampagne =
         kampagnen.find(

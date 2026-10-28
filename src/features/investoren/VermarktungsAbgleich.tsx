@@ -55,8 +55,12 @@ export function VermarktungsAbgleich() {
       const { vermarktungsAbgleichFn } = await import("@/lib/matching/server-fn");
       const z = await vermarktungsAbgleichFn({ data: { supabaseAccessToken: token } });
       setZeilen(z);
-      // Vorauswahl: alle Treffer mit Kontakt; das erste Mandat aufgeklappt.
-      setAuswahl(Object.fromEntries(z.map((m) => [m.mandatSfId, new Set(m.treffer.flatMap((t) => (t.kontaktSfId ? [t.kontaktSfId] : [])))])));
+      // Vorauswahl: A- und B-Kreis mit Kontakt; das erste Mandat aufgeklappt.
+      setAuswahl(
+        Object.fromEntries(
+          z.map((m) => [m.mandatSfId, new Set(m.treffer.flatMap((t) => (t.kontaktSfId && (t.kreis === "A" || t.kreis === "B") ? [t.kontaktSfId] : [])))]),
+        ),
+      );
       setListenAuswahl({});
       setOffen(new Set(z.slice(0, 1).map((m) => m.mandatSfId)));
     } catch (e) {
@@ -121,8 +125,8 @@ export function VermarktungsAbgleich() {
         <div>
           <h2 className="text-sm font-semibold text-heading">Laufende Vermarktungen gegen die Investorendatenbank</h2>
           <p className="text-xs text-text-subtle">
-            Mandate in Beauftragung. Gezeigt werden Salesforce-Investoren im A- und B-Kreis, die noch nicht in einer Kampagne des
-            Mandats sind, und Listen-Investoren ab C-Kreis. In Salesforce wird erst nach Bestätigung geschrieben.
+            Mandate in Beauftragung. Gezeigt werden Salesforce- und Listen-Investoren im A-, B- und C-Kreis, die noch nicht in einer
+            Kampagne des Mandats sind; vorausgewählt sind A und B. In Salesforce wird erst nach Bestätigung geschrieben.
           </p>
           <ScoreModellHinweis />
         </div>

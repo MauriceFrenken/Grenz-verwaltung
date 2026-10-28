@@ -29,7 +29,7 @@ const KREIS_FILTER: Record<string, { label: string; kreise: string[] }> = {
   A: { label: "nur A-Kreis", kreise: ["A"] },
   AB: { label: "A und B", kreise: ["A", "B"] },
   ABC: { label: "A, B und C", kreise: ["A", "B", "C"] },
-  alle: { label: "alle", kreise: ["A", "B", "C", "unter"] },
+  alle: { label: "alle passenden", kreise: ["A", "B", "C", "unter"] },
 };
 
 function ScoreBalken({ wert, gedimmt }: { wert: number; gedimmt?: boolean }) {
@@ -65,7 +65,8 @@ export function MatchingPage({ sfId }: { sfId: string }) {
   const [offen, setOffen] = useState<string | null>(null);
   const [auswahl, setAuswahl] = useState<Set<string>>(new Set());
   const [mitAusschluss, setMitAusschluss] = useState(false);
-  const [kreisFilter, setKreisFilter] = useState("ABC");
+  const [kreisFilter, setKreisFilter] = useState("alle");
+  const [listenAnzahl, setListenAnzahl] = useState(200);
   const [kampagnenName, setKampagnenName] = useState("");
   const [busy, setBusy] = useState(false);
   const [marktAlle, setMarktAlle] = useState(false);
@@ -487,9 +488,9 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                   ({listenSichtbar.length})
                 </h3>
                 <p className="text-xs text-text-subtle">
-                  Aus 7Plus, Leadliste, Suchkunden und Recherche, gleiches
-                  Scoring-Modell (ohne Historie bei Grenz meist B- oder
-                  C-Kreis). Für die Kampagne zuerst in Salesforce anlegen.
+                  Aus 7Plus, Leadliste, Suchkunden und Recherche, alle ohne
+                  Ausschluss nach Score. Ohne Suchgebiet zählen NRW-Bezug oder
+                  Firmensitz. Für die Kampagne zuerst in Salesforce anlegen.
                 </p>
               </div>
               <Button
@@ -514,7 +515,7 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {listenSichtbar.map((t) => (
+                    {listenSichtbar.slice(0, listenAnzahl).map((t) => (
                       <tr
                         key={t.schluessel}
                         className="border-t border-hairline align-top hover:bg-surface-muted"
@@ -571,6 +572,19 @@ export function MatchingPage({ sfId }: { sfId: string }) {
                     ))}
                   </tbody>
                 </table>
+                {listenSichtbar.length > listenAnzahl ? (
+                  <div className="border-t border-hairline p-2 text-center">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setListenAnzahl((n) => n + 200)}
+                    >
+                      Weitere{" "}
+                      {Math.min(200, listenSichtbar.length - listenAnzahl)} von{" "}
+                      {listenSichtbar.length - listenAnzahl} anzeigen
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <p className="text-sm text-text-muted">
