@@ -18,8 +18,6 @@ import { Kachel, KachelReihe, Karte } from "@/features/kennzahlen/bausteine";
 import { VIZ, euroKurz } from "@/features/kennzahlen/hilfen";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
-import { themenStaende, type ThemenStand } from "@/lib/aufgaben/logik";
-import { themenfeldLabel, type Board } from "@/lib/aufgaben/typen";
 import { formatDate, formatInt, formatMonth } from "@/lib/format";
 import type { KennzahlenDto } from "@/lib/kennzahlen/types";
 import { prognose, type PipelineDto } from "@/lib/pipeline/berechnen";
@@ -75,10 +73,6 @@ const ladePipeline = async (token: string) =>
   (await import("@/lib/pipeline/server-fn")).pipelineLadenFn({
     data: { supabaseAccessToken: token },
   });
-const ladeBoard = async (token: string) =>
-  (await import("@/lib/aufgaben/server-fn")).aufgabenBoardFn({
-    data: { supabaseAccessToken: token },
-  });
 const ladeZiele = async (token: string) =>
   (await import("@/lib/ziele/server-fn")).zieleLadenFn({
     data: { supabaseAccessToken: token, jahr: new Date().getFullYear() },
@@ -94,7 +88,6 @@ export function UebersichtPage() {
   const uebersicht = useLaden(token, ladeUebersicht);
   const kennzahlen = useLaden(token, ladeKennzahlen);
   const pipeline = useLaden(token, ladePipeline);
-  const board = useLaden(token, ladeBoard);
   const ziele = useLaden(token, ladeZiele, zieleStand);
 
   useEffect(() => {
@@ -133,8 +126,6 @@ export function UebersichtPage() {
             kennzahlen={kennzahlen.daten}
             kennzahlenFehler={kennzahlen.fehler}
             pipeline={pipeline.daten}
-            board={board.daten}
-            boardFehler={board.fehler}
             ziele={ziele.daten}
             onZieleGespeichert={() => setZieleStand((n) => n + 1)}
           />
@@ -159,8 +150,6 @@ function Dashboard({
   kennzahlen,
   kennzahlenFehler,
   pipeline,
-  board,
-  boardFehler,
   ziele,
   onZieleGespeichert,
 }: {
@@ -168,8 +157,6 @@ function Dashboard({
   kennzahlen: KennzahlenDto | null;
   kennzahlenFehler: string | null;
   pipeline: PipelineDto | null;
-  board: Board | null;
-  boardFehler: string | null;
   ziele: ZieleDto | null;
   onZieleGespeichert: () => void;
 }) {
@@ -293,18 +280,10 @@ function Dashboard({
         </Karte>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Karte
-          titel="Strategie nach Themenfeldern"
-          hinweis="Stand der strategischen Vorhaben aus dem Aufgabenboard. Einzelne To-dos laufen über Trello."
-          className="lg:col-span-3"
-        >
-          <Strategie board={board} fehler={boardFehler} heute={daten.heute} />
-        </Karte>
+      <div className="grid gap-6">
         <Karte
           titel="Letzte Abschlüsse"
           hinweis={`${jahr}: Provisionseingänge auf dem Konto, ältere aus Salesforce. Alles netto.`}
-          className="lg:col-span-2"
         >
           <AbschlussListe
             eintraege={[
@@ -634,120 +613,6 @@ function ZieleDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Strategie({
-  board,
-  fehler,
-  heute,
-}: {
-  board: Board | null;
-  fehler: string | null;
-  heute: string;
-}) {
-  if (fehler) return <p className="text-sm text-text-muted">{fehler}</p>;
-  if (!board) return <p className="text-sm text-text-muted">Lädt…</p>;
-  if (!board.themenfelder)
-    return (
-      <p className="text-sm text-text-muted">
-        Themenfelder sind noch nicht eingerichtet (Migration
-        „aufgaben_themenfeld“).
-      </p>
-    );
-  const spalteVon = new Map(board.spalten.map((s) => [s.id, s]));
-  const staende = themenStaende(board.aufgaben, spalteVon, heute);
-  const prioritaeten = board.aufgaben
-    .filter(
-      (a) =>
-        a.prioritaet === "hoch" &&
-        a.themenfeld !== "" &&
-        !spalteVon.get(a.spalteId)?.erledigt,
-    )
-    .slice(0, 5);
-  const belegt = staende.some((s) => s.offen || s.erledigt30);
-
-  return (
-    <div className="flex flex-col gap-4">
-      {!belegt ? (
-        <p className="text-sm text-text-muted">
-          Noch keine Vorhaben einem Themenfeld zugeordnet. Strategische Themen
-          im Aufgabenboard anlegen und einem Themenfeld zuordnen.
-        </p>
-      ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-text-muted">
-              <th className="py-1 font-normal">Themenfeld</th>
-              <th className="py-1 text-right font-normal">Offen</th>
-              <th className="py-1 text-right font-normal">Hohe Prio</th>
-              <th className="py-1 text-right font-normal">Überfällig</th>
-              <th className="py-1 text-right font-normal">Erledigt 30 T.</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-hairline">
-            {staende.map((s) => (
-              <ThemenZeile key={s.themenfeld || "ohne"} stand={s} />
-            ))}
-          </tbody>
-        </table>
-      )}
-      {prioritaeten.length ? (
-        <div className="border-t border-hairline pt-3">
-          <span className="label-caps text-text-muted">Prioritäten</span>
-          <ul className="mt-2 flex flex-col gap-1.5">
-            {prioritaeten.map((a) => (
-              <li key={a.id} className="flex items-center gap-2 text-sm">
-                <span className="rounded-full border border-hairline px-2 py-0.5 text-[11px] text-text-muted">
-                  {themenfeldLabel(a.themenfeld, true)}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-heading">
-                  {a.titel}
-                </span>
-                {a.faelligAm ? (
-                  <span className="shrink-0 text-xs tabular-nums text-text-muted">
-                    {formatDate(a.faelligAm)}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      <Link
-        to="/aufgaben"
-        className="group flex items-center gap-1 self-start text-sm font-medium text-brand-text hover:underline"
-      >
-        Zum Aufgabenboard
-        <ArrowRight
-          className="size-3.5 transition-transform group-hover:translate-x-0.5"
-          strokeWidth={1.5}
-        />
-      </Link>
-    </div>
-  );
-}
-
-function ThemenZeile({ stand: s }: { stand: ThemenStand }) {
-  return (
-    <tr>
-      <td className="py-1.5 text-heading">
-        {s.themenfeld ? themenfeldLabel(s.themenfeld) : "Ohne Themenfeld"}
-      </td>
-      <td className="py-1.5 text-right tabular-nums">{s.offen}</td>
-      <td className="py-1.5 text-right tabular-nums">{s.hoch || "–"}</td>
-      <td
-        className={cn(
-          "py-1.5 text-right tabular-nums",
-          s.ueberfaellig > 0 && "text-danger",
-        )}
-      >
-        {s.ueberfaellig || "–"}
-      </td>
-      <td className="py-1.5 text-right tabular-nums text-chart-2">
-        {s.erledigt30 || "–"}
-      </td>
-    </tr>
   );
 }
 
