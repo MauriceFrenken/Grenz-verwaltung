@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as AnmeldenRouteImport } from './routes/anmelden'
-import { Route as AufgabenRouteImport } from './routes/aufgaben'
 import { Route as DatenschutzRouteImport } from './routes/datenschutz'
 import { Route as EinladungRouteImport } from './routes/einladung'
 import { Route as EinstellungenRouteImport } from './routes/einstellungen'
@@ -75,11 +74,6 @@ const SplatRoute = SplatRouteImport.update({
 const AnmeldenRoute = AnmeldenRouteImport.update({
   id: '/anmelden',
   path: '/anmelden',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AufgabenRoute = AufgabenRouteImport.update({
-  id: '/aufgaben',
-  path: '/aufgaben',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DatenschutzRoute = DatenschutzRouteImport.update({
@@ -332,7 +326,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/anmelden': typeof AnmeldenRoute
-  '/aufgaben': typeof AufgabenRoute
   '/datenschutz': typeof DatenschutzRoute
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
@@ -386,7 +379,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/anmelden': typeof AnmeldenRoute
-  '/aufgaben': typeof AufgabenRoute
   '/datenschutz': typeof DatenschutzRoute
   '/einladung': typeof EinladungRoute
   '/impressum': typeof ImpressumRoute
@@ -438,7 +430,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/anmelden': typeof AnmeldenRoute
-  '/aufgaben': typeof AufgabenRoute
   '/datenschutz': typeof DatenschutzRoute
   '/einladung': typeof EinladungRoute
   '/einstellungen': typeof EinstellungenRouteWithChildren
@@ -494,7 +485,6 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/anmelden'
-    | '/aufgaben'
     | '/datenschutz'
     | '/einladung'
     | '/einstellungen'
@@ -548,7 +538,6 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/anmelden'
-    | '/aufgaben'
     | '/datenschutz'
     | '/einladung'
     | '/impressum'
@@ -599,7 +588,6 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/anmelden'
-    | '/aufgaben'
     | '/datenschutz'
     | '/einladung'
     | '/einstellungen'
@@ -654,7 +642,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
   AnmeldenRoute: typeof AnmeldenRoute
-  AufgabenRoute: typeof AufgabenRoute
   DatenschutzRoute: typeof DatenschutzRoute
   EinladungRoute: typeof EinladungRoute
   EinstellungenRoute: typeof EinstellungenRouteWithChildren
@@ -716,13 +703,6 @@ declare module '@tanstack/react-router' {
       path: '/anmelden'
       fullPath: '/anmelden'
       preLoaderRoute: typeof AnmeldenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/aufgaben': {
-      id: '/aufgaben'
-      path: '/aufgaben'
-      fullPath: '/aufgaben'
-      preLoaderRoute: typeof AufgabenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/datenschutz': {
@@ -1117,7 +1097,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
   AnmeldenRoute: AnmeldenRoute,
-  AufgabenRoute: AufgabenRoute,
   DatenschutzRoute: DatenschutzRoute,
   EinladungRoute: EinladungRoute,
   EinstellungenRoute: EinstellungenRouteWithChildren,

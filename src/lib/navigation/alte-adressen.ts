@@ -19,9 +19,11 @@ const ALTE_ADRESSEN: Array<{
         s.get("tab") === "salesforce" ? "/akquise/potenzial" : "/akquise/radar",
     }),
   },
+  // Reiter Aufgaben am 29.10.2026 entfernt (Wunsch Maurice, Aufgaben laufen über Trello).
+  { muster: /^\/aufgaben$/, ziel: () => ({ pfad: "/" }) },
   {
     muster: /^\/akquise\/salesforce\/wiedervorlagen$/,
-    ziel: () => ({ pfad: "/aufgaben" }),
+    ziel: () => ({ pfad: "/akquise" }),
   },
   {
     muster: /^\/akquise\/salesforce(?:\/(anschreiben|aktivitaeten))?$/,

@@ -13,8 +13,9 @@ describe("neueAdresse", () => {
       pfad: "/akquise/anschreiben",
     });
     expect(neueAdresse("/akquise/salesforce/wiedervorlagen")).toEqual({
-      pfad: "/aufgaben",
+      pfad: "/akquise",
     });
+    expect(neueAdresse("/aufgaben")).toEqual({ pfad: "/" });
   });
 
   it("führt die Deal-Pipeline zu Mandate & Pipeline", () => {
