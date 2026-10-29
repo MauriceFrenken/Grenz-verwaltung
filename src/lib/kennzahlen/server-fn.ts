@@ -8,6 +8,11 @@ import {
 } from "@/lib/microsoft/supabase-admin";
 import { GRENZ_GESELLSCHAFT_ID } from "@/lib/grenz";
 import {
+  letzteSalden,
+  letzterEbicsAbrufStichtag,
+  saldoStand,
+} from "@/lib/ebics/saldo-stand";
+import {
   berechneKennzahlen,
   PDF_IMPORT_PRAEFIX,
   type RohBuchung,
@@ -39,7 +44,7 @@ export const kennzahlenLadenFn = createServerFn({ method: "POST" })
 
     const { data: konten, error: kontenErr } = await admin
       .from("bankkonten")
-      .select("iban, bezeichnung")
+      .select("iban, bezeichnung, zugang")
       .eq("gesellschaft_id", GRENZ_GESELLSCHAFT_ID)
       .eq("aktiv", true)
       .order("iban");
@@ -49,21 +54,13 @@ export const kennzahlenLadenFn = createServerFn({ method: "POST" })
     const { data: salden, error: saldenErr } = ibans.length
       ? await admin
           .from("kontosalden")
-          .select("iban, stichtag, saldo")
+          .select("iban, stichtag, saldo, quelle")
           .in("iban", ibans)
           .order("stichtag", { ascending: false })
       : { data: [], error: null };
     if (saldenErr) throw new Error(saldenErr.message);
-    const letzterSaldo = new Map<string, { stichtag: string; saldo: number }>();
-    for (const s of salden ?? []) {
-      const iban = String(s.iban);
-      if (!letzterSaldo.has(iban)) {
-        letzterSaldo.set(iban, {
-          stichtag: String(s.stichtag),
-          saldo: Number(s.saldo),
-        });
-      }
-    }
+    const letzterSaldo = letzteSalden(salden ?? []);
+    const abrufStichtag = await letzterEbicsAbrufStichtag(admin);
 
     // Alle Buchungen ab Jahresbeginn (spätere Jahre für die Saldo-Rückrechnung),
     // mindestens aber die letzten 13 Monate für Runway und offene USt.
@@ -90,7 +87,9 @@ export const kennzahlenLadenFn = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       for (const r of rows ?? []) {
         const auszug = r.bankauszuege as
-          { dateiname?: string } | { dateiname?: string }[] | null;
+          | { dateiname?: string }
+          | { dateiname?: string }[]
+          | null;
         const dateiname = Array.isArray(auszug)
           ? auszug[0]?.dateiname
           : auszug?.dateiname;
@@ -116,7 +115,11 @@ export const kennzahlenLadenFn = createServerFn({ method: "POST" })
           iban: String(k.iban),
           bezeichnung: (k.bezeichnung as string | null) ?? null,
           saldo: s?.saldo ?? null,
-          saldoStichtag: s?.stichtag ?? null,
+          saldoStichtag: saldoStand(
+            s?.stichtag ?? null,
+            (k.zugang as string | null) ?? null,
+            abrufStichtag,
+          ),
         };
       }),
       buchungen,
