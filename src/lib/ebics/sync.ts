@@ -207,6 +207,25 @@ export async function syncEbicsAlleKonten(
   const ergebnisse: EbicsSyncKundeErgebnis[] = [];
 
   for (const kunde of kunden) {
+    // Nach INI/HIA prüft jeder Lauf selbst, ob die Bank freigeschaltet hat (HPB);
+    // ab dann wird ohne Klick in der App abgerufen.
+    if (kunde.status === "wartet_auf_bank" || kunde.status === "fehler") {
+      try {
+        const { ebicsBankSchluesselHolen } = await import("@/lib/ebics/client");
+        await mitWiederholung(() => ebicsBankSchluesselHolen(admin, kunde));
+        kunde.status = "bereit";
+      } catch (err) {
+        ergebnisse.push({
+          gesellschaftId: kunde.gesellschaft_id,
+          status: "skip",
+          anzahlNeu: 0,
+          meldung: `Bank noch nicht freigeschaltet: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        });
+        continue;
+      }
+    }
     if (kunde.status !== "bereit") {
       ergebnisse.push({
         gesellschaftId: kunde.gesellschaft_id,
