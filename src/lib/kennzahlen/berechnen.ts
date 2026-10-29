@@ -38,7 +38,7 @@ export type RohKonto = {
  * PDF-Importe und EBICS überschneiden sich: Je Konto zählen PDF-Buchungen nur
  * vor dem ersten EBICS-Buchungstag, danach gilt EBICS.
  */
-export function ohneDoppelte(buchungen: RohBuchung[]): RohBuchung[] {
+export function ohneDoppelte<T extends RohBuchung>(buchungen: T[]): T[] {
   const ersterEbicsTag = new Map<string, string>();
   for (const b of buchungen) {
     if (b.ausPdfImport) continue;

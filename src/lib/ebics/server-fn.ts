@@ -10,11 +10,14 @@ import {
   microsoftCallerAusJwt,
 } from "@/lib/microsoft/supabase-admin";
 import { loadEbicsKunden } from "@/lib/ebics/kunden";
-import type {
-  EbicsKundeStatusDto,
-  EbicsUmsaetzeDto,
-} from "@/lib/ebics/types";
+import type { EbicsKundeStatusDto, EbicsUmsaetzeDto } from "@/lib/ebics/types";
 import { GRENZ_GESELLSCHAFT_ID } from "@/lib/grenz";
+import {
+  letzteSalden,
+  letzterEbicsAbrufStichtag,
+  saldoStand,
+} from "@/lib/ebics/saldo-stand";
+import { ohneDoppelte, PDF_IMPORT_PRAEFIX } from "@/lib/kennzahlen/berechnen";
 
 export type { EbicsKundeStatusDto, EbicsUmsaetzeDto };
 
@@ -77,9 +80,7 @@ export const ebicsStatusFn = createServerFn({ method: "POST" })
     );
     const gesIds = [
       ...new Set(
-        (bankRows ?? [])
-          .map((b) => String(b.gesellschaft_id))
-          .filter(Boolean),
+        (bankRows ?? []).map((b) => String(b.gesellschaft_id)).filter(Boolean),
       ),
     ];
     const { data: gesRows } = gesIds.length
@@ -88,9 +89,7 @@ export const ebicsStatusFn = createServerFn({ method: "POST" })
           .select("id, name, kuerzel")
           .in("id", gesIds)
       : { data: [] as Array<{ id: string; name: string; kuerzel: string }> };
-    const gesById = new Map(
-      (gesRows ?? []).map((g) => [String(g.id), g]),
-    );
+    const gesById = new Map((gesRows ?? []).map((g) => [String(g.id), g]));
 
     const kontenByKunde = new Map<string, EbicsKundeStatusDto["konten"]>();
     for (const k of kontenRows ?? []) {
@@ -244,7 +243,9 @@ export const ebicsIniBriefeHolenFn = createServerFn({ method: "POST" })
     return { anzahl: briefe.length, briefe, fehler };
   });
 
-export const ebicsBankFreischaltungPruefenFn = createServerFn({ method: "POST" })
+export const ebicsBankFreischaltungPruefenFn = createServerFn({
+  method: "POST",
+})
   .validator((data: unknown) => data as { supabaseAccessToken: string })
   .handler(async ({ data }) => {
     await microsoftCallerAusJwt(asToken(data));
@@ -319,7 +320,7 @@ export const ebicsUmsaetzeLadenFn = createServerFn({ method: "POST" })
 
     const { data: konten, error: kontenErr } = await admin
       .from("bankkonten")
-      .select("iban, bezeichnung")
+      .select("iban, bezeichnung, zugang")
       .eq("gesellschaft_id", GRENZ_GESELLSCHAFT_ID)
       .order("iban");
     if (kontenErr) throw new Error(kontenErr.message);
@@ -328,27 +329,19 @@ export const ebicsUmsaetzeLadenFn = createServerFn({ method: "POST" })
     const { data: salden, error: saldenErr } = ibans.length
       ? await admin
           .from("kontosalden")
-          .select("iban, stichtag, saldo")
+          .select("iban, stichtag, saldo, quelle")
           .in("iban", ibans)
           .order("stichtag", { ascending: false })
       : { data: [], error: null };
     if (saldenErr) throw new Error(saldenErr.message);
-    const letzterSaldo = new Map<string, { stichtag: string; saldo: number }>();
-    for (const s of salden ?? []) {
-      const iban = String(s.iban);
-      if (!letzterSaldo.has(iban)) {
-        letzterSaldo.set(iban, {
-          stichtag: String(s.stichtag),
-          saldo: Number(s.saldo),
-        });
-      }
-    }
+    const letzterSaldo = letzteSalden(salden ?? []);
+    const abrufStichtag = await letzterEbicsAbrufStichtag(admin);
 
     const { data: buchungen, error: buchungenErr } = ibans.length
       ? await admin
           .from("bankbuchungen")
           .select(
-            "id, konto_iban, buchungsdatum, betrag, auftraggeber_name, verwendungszweck",
+            "id, konto_iban, buchungsdatum, betrag, gegenkonto_iban, auftraggeber_name, verwendungszweck, bankauszuege(dateiname)",
           )
           .in("konto_iban", ibans)
           .order("buchungsdatum", { ascending: false })
@@ -365,16 +358,41 @@ export const ebicsUmsaetzeLadenFn = createServerFn({ method: "POST" })
           iban: ibanFormatiert(iban),
           bezeichnung: (k.bezeichnung as string | null) ?? null,
           saldo: saldo?.saldo ?? null,
-          saldoStichtag: saldo?.stichtag ?? null,
+          saldoStichtag: saldoStand(
+            saldo?.stichtag ?? null,
+            (k.zugang as string | null) ?? null,
+            abrufStichtag,
+          ),
         };
       }),
-      buchungen: (buchungen ?? []).map((b) => ({
-        id: String(b.id),
-        kontoIban: ibanFormatiert(String(b.konto_iban)),
-        buchungsdatum: String(b.buchungsdatum),
-        betrag: Number(b.betrag),
-        auftraggeberName: (b.auftraggeber_name as string | null) ?? null,
-        verwendungszweck: (b.verwendungszweck as string | null) ?? null,
+      // PDF-Importe, die EBICS inzwischen auch geliefert hat, nur einmal zeigen
+      buchungen: ohneDoppelte(
+        (buchungen ?? []).map((b) => {
+          const auszug = b.bankauszuege as
+            | { dateiname?: string }
+            | { dateiname?: string }[]
+            | null;
+          const dateiname = Array.isArray(auszug)
+            ? auszug[0]?.dateiname
+            : auszug?.dateiname;
+          return {
+            id: String(b.id),
+            kontoIban: String(b.konto_iban),
+            buchungsdatum: String(b.buchungsdatum),
+            betrag: Number(b.betrag),
+            gegenkontoIban: (b.gegenkonto_iban as string | null) ?? null,
+            auftraggeberName: (b.auftraggeber_name as string | null) ?? null,
+            verwendungszweck: (b.verwendungszweck as string | null) ?? null,
+            ausPdfImport: (dateiname ?? "").startsWith(PDF_IMPORT_PRAEFIX),
+          };
+        }),
+      ).map((b) => ({
+        id: b.id,
+        kontoIban: ibanFormatiert(b.kontoIban),
+        buchungsdatum: b.buchungsdatum,
+        betrag: b.betrag,
+        auftraggeberName: b.auftraggeberName,
+        verwendungszweck: b.verwendungszweck,
       })),
     };
   });
