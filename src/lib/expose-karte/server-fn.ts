@@ -1,4 +1,8 @@
-/** Server-Funktion für die Exposé-Karte. */
+/**
+ * Server-Funktionen der Marktkarte. Grundlage sind die Transaktionen aus Salesforce
+ * (Transaktion__c, live abgefragt) plus eigene Grenz-Abschlüsse; die Exposés aus dem
+ * Postfach kommen als zweite Ebene dazu.
+ */
 
 import { createServerFn } from "@tanstack/react-start";
 
@@ -13,6 +17,8 @@ import {
 } from "@/lib/microsoft/supabase-admin";
 
 import { geocodeExpose } from "./geocode";
+import type { MandatKurz } from "./transaktionen";
+import { ladeTransaktionen } from "./transaktionen-server";
 import { sucheVergleichsobjekte, type VergleichErgebnis } from "./vergleich";
 
 export type { VergleichErgebnis };
@@ -41,6 +47,25 @@ export type KartenObjekt = Pick<
   | "energieklasse"
   | "exportiert"
 > & {
+  /** Salesforce-Transaktion (bzw. Grenz-Abschluss) oder Exposé aus dem Postfach. */
+  quelle: "transaktion" | "expose";
+  /** Exposés zählen als Angebot. */
+  status: "verkauft" | "angebot" | "nicht_verkauft";
+  /** Transaktionsnummer bzw. Deal-Name aus Salesforce. */
+  titel?: string | null;
+  /** Bei Verkäufen der Angebotspreis vor dem Verkauf, falls gepflegt. */
+  angebotspreis?: number | null;
+  /** Kaufpreis in Salesforce als geschätzt markiert. */
+  preisGeschaetzt?: boolean;
+  objektzustand?: string | null;
+  anmerkung?: string | null;
+  /** Mandat von Grenz & Co. zum Objekt, verlinkt die Mandatsakte. */
+  mandat?: MandatKurz | null;
+  /** Eigener Abschluss von Grenz & Co. */
+  grenz?: boolean;
+  /** Provision netto (Provision_in__c) bei eigenen Abschlüssen. */
+  provisionNetto?: number | null;
+  realEstateSfId?: string | null;
   lat: number | null;
   lng: number | null;
   /** false = nur Ort gefunden, Punkt liegt ungefähr. */
@@ -49,9 +74,38 @@ export type KartenObjekt = Pick<
 
 export type ExposeKarteDto = {
   objekte: KartenObjekt[];
-  /** Exposés, deren Adresse noch nicht nachgeschlagen wurde. */
+  /** Adressen, die noch nicht nachgeschlagen wurden. */
   offen: number;
+  /** Salesforce nicht erreichbar: Karte zeigt nur Exposés. */
+  salesforceFehler: string | null;
 };
+
+/** Pro Aufruf zuerst Transaktionen, dann Exposés nachschlagen. */
+export async function ladeMarktkarte(
+  admin: ReturnType<typeof createServiceRoleClient>,
+): Promise<ExposeKarteDto> {
+  let transaktionen: KartenObjekt[] = [];
+  let tOffen = 0;
+  let salesforceFehler: string | null = null;
+  try {
+    const t = await ladeTransaktionen(admin, GEOCODE_PRO_AUFRUF);
+    transaktionen = t.objekte;
+    tOffen = t.offen;
+  } catch (err) {
+    console.error("[marktkarte] Salesforce-Transaktionen", err);
+    salesforceFehler = err instanceof Error ? err.message : String(err);
+  }
+  // Nominatim erlaubt 1 Anfrage/s: Exposés erst, wenn die Transaktionen fertig sind.
+  const exposes = await ladeKartenObjekte(
+    admin,
+    tOffen > 0 ? 0 : GEOCODE_PRO_AUFRUF / 2,
+  );
+  return {
+    objekte: [...transaktionen, ...exposes.objekte],
+    offen: tOffen + exposes.offen,
+    salesforceFehler,
+  };
+}
 
 type Zeile = {
   id: string;
@@ -70,7 +124,8 @@ type Zeile = {
 /** Alle Exposés mit Koordinaten; ergänzt fehlende Koordinaten portionsweise. */
 export async function ladeKartenObjekte(
   admin: ReturnType<typeof createServiceRoleClient>,
-): Promise<ExposeKarteDto> {
+  budget = GEOCODE_PRO_AUFRUF,
+): Promise<Omit<ExposeKarteDto, "salesforceFehler">> {
   const zeilen: Zeile[] = [];
   const SEITE = 1000;
   for (let von = 0; ; von += SEITE) {
@@ -104,7 +159,7 @@ export async function ladeKartenObjekte(
   const fehlend = objekte.filter(
     ({ zeile }) => !zeile.geo_gesucht_am && zeile.felder,
   );
-  for (const { zeile, o } of fehlend.slice(0, GEOCODE_PRO_AUFRUF)) {
+  for (const { zeile, o } of fehlend.slice(0, budget)) {
     let treffer: Awaited<ReturnType<typeof geocodeExpose>> = null;
     try {
       treffer = await geocodeExpose(o);
@@ -131,6 +186,8 @@ export async function ladeKartenObjekte(
       .length,
     objekte: objekte.map(({ zeile, o }) => ({
       id: o.id,
+      quelle: "expose" as const,
+      status: "angebot" as const,
       eingegangenAm: o.eingegangenAm,
       adresse: o.adresse,
       plz: o.plz,
@@ -165,7 +222,7 @@ export const exposeKarteLadenFn = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<ExposeKarteDto> => {
     await microsoftCallerAusJwt(data.supabaseAccessToken);
-    return ladeKartenObjekte(createServiceRoleClient());
+    return ladeMarktkarte(createServiceRoleClient());
   });
 
 /** Projektbeschreibung → passende Vergleichsobjekte aus den Exposés. */
@@ -181,6 +238,6 @@ export const exposeVergleichSuchenFn = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<VergleichErgebnis> => {
     await microsoftCallerAusJwt(data.supabaseAccessToken);
     if (!data.text) throw new Error("Bitte das Projekt beschreiben.");
-    const { objekte } = await ladeKartenObjekte(createServiceRoleClient());
+    const { objekte } = await ladeMarktkarte(createServiceRoleClient());
     return sucheVergleichsobjekte(data.text, objekte);
   });

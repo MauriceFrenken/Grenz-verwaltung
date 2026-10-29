@@ -156,6 +156,20 @@ function km(a: [number, number], b: [number, number]): number {
   return 6371 * 2 * Math.asin(Math.sqrt(h));
 }
 
+/** Herkunft und Preisart je Objekt für die KI. */
+function art(o: KartenObjekt): string {
+  if (o.status === "verkauft")
+    return o.preisGeschaetzt
+      ? "Verkauf (Kaufpreis geschätzt)"
+      : o.grenz
+        ? "Verkauf Grenz & Co. (Kaufpreis)"
+        : "Verkauf (Kaufpreis)";
+  if (o.status === "nicht_verkauft") return "nicht verkauft (Angebotspreis)";
+  return o.quelle === "expose"
+    ? "Exposé (Angebotspreis)"
+    : "am Markt (Angebotspreis)";
+}
+
 function wert(n: number | null, einheit = ""): string {
   return n === null ? "–" : `${Math.round(n * 10) / 10}${einheit}`;
 }
@@ -194,6 +208,7 @@ export async function sucheVergleichsobjekte(
     .map(({ o, km: d }) =>
       [
         o.id,
+        art(o),
         [o.plz, o.stadt].filter(Boolean).join(" ") || "–",
         d === null ? "–" : `${d} km`,
         o.objektart ?? "–",
@@ -215,8 +230,9 @@ export async function sucheVergleichsobjekte(
   }>(
     [
       "Du bist Analyst bei Grenz & Co., einem Immobilienmakler für Zinshäuser.",
-      `Wähle aus den angebotenen Exposés bis zu ${MAX_TREFFER} Vergleichsobjekte (Comparables) für das Projekt des Kunden.`,
-      "Gewichtung: gleiche oder ähnliche Objektart, Nähe (Entfernung), ähnliche Größe (Einheiten/Fläche), ähnliches Baujahr. Objekte mit Miete und Kaufpreis sind wertvoller.",
+      `Wähle aus den Markttransaktionen und Exposés bis zu ${MAX_TREFFER} Vergleichsobjekte (Comparables) für das Projekt des Kunden.`,
+      "Gewichtung: gleiche oder ähnliche Objektart, Nähe (Entfernung), ähnliche Größe (Einheiten/Fläche), ähnliches Baujahr. Objekte mit Miete und Preis sind wertvoller; tatsächliche Verkäufe mit Kaufpreis sind wertvoller als Angebote.",
+      "Trenne in der Einschätzung Kaufpreise (Verkäufe) von Angebotspreisen und kennzeichne geschätzte Kaufpreise als geschätzt.",
       "Nutze nur IDs aus der Tabelle. Schreibe auf Deutsch, sachlich, ohne Floskeln. Nenne in der Einschätzung konkrete Zahlen aus den gewählten Objekten.",
     ].join("\n"),
     [
@@ -225,7 +241,7 @@ export async function sucheVergleichsobjekte(
       "",
       `Erfasste Eckdaten: ${JSON.stringify(angaben)}`,
       "",
-      "ANGEBOTENE EXPOSÉS (id | Ort | Entfernung zum Projekt | Objektart | WE | Fläche | Baujahr | Jahresmiete € | Kaufpreis € | Faktor | Miete je m² | Preis je m²):",
+      "MARKTDATEN (id | Art | Ort | Entfernung zum Projekt | Objektart | WE | Fläche | Baujahr | Jahresmiete € | Preis € | Faktor | Miete je m² | Preis je m²):",
       tabelle,
     ].join("\n"),
     AUSWAHL_WERKZEUG,

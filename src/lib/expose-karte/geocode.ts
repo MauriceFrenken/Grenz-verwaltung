@@ -9,6 +9,12 @@ const PAUSE_MS = 1100;
 
 export type GeoTreffer = { lat: number; lng: number; genau: boolean };
 
+export type GeoAdresse = {
+  adresse: string | null;
+  plz: string | null;
+  stadt: string | null;
+};
+
 let letzteAnfrage = 0;
 
 async function suche(q: string): Promise<{ lat: number; lng: number } | null> {
@@ -31,18 +37,24 @@ async function suche(q: string): Promise<{ lat: number; lng: number } | null> {
   return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 }
 
+/** Ort ohne Zusatz in Klammern („Leichlingen (Rheinland)“ → „Leichlingen“). */
+function ortOhneZusatz(ort: string | null): string | null {
+  return ort?.replace(/\s*\(.*?\)\s*/g, " ").trim() || null;
+}
+
 /**
  * Erst Straße + Ort, sonst nur PLZ/Ort (ungefähre Lage).
- * Mehrere Adressen („A 3 / B 6“) → nur die erste.
+ * Mehrere Adressen („A 3 / B 6“, „A 3; B 6“, „A 3, 5“) → nur die erste.
  */
-export async function geocodeExpose(input: {
-  adresse: string | null;
-  plz: string | null;
-  stadt: string | null;
-}): Promise<GeoTreffer | null> {
-  const ort = [input.plz, input.stadt].filter(Boolean).join(" ").trim();
+export async function geocodeExpose(
+  input: GeoAdresse,
+): Promise<GeoTreffer | null> {
+  const ort = [input.plz, ortOhneZusatz(input.stadt)]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   if (!ort) return null;
-  const strasse = input.adresse?.split("/")[0]?.split(",")[0]?.trim();
+  const strasse = input.adresse?.split(/[/;]/)[0]?.split(",")[0]?.trim();
 
   if (strasse) {
     const t = await suche(`${strasse}, ${ort}`);
@@ -50,4 +62,12 @@ export async function geocodeExpose(input: {
   }
   const t = await suche(ort);
   return t ? { ...t, genau: false } : null;
+}
+
+/** Schlüssel für den Geo-Cache: dieselbe Adresse ergibt denselben Schlüssel. */
+export function geoSchluessel(input: GeoAdresse): string | null {
+  const teile = [input.adresse, input.plz, input.stadt].map((t) =>
+    (t ?? "").toLowerCase().replace(/\s+/g, " ").trim(),
+  );
+  return teile[2] ? teile.join("|") : null;
 }
