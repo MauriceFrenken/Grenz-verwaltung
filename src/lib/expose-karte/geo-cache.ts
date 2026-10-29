@@ -11,7 +11,10 @@ import vorbelegt from "./geo-vorbelegt.json";
 
 type Eintrag = { lat: number; lng: number; genau: boolean } | null;
 
-const VORBELEGT = vorbelegt as Record<string, [number, number, 0 | 1] | null>;
+const VORBELEGT = vorbelegt as unknown as Record<
+  string,
+  [number, number, 0 | 1] | null
+>;
 const speicher = new Map<string, Eintrag>();
 let tabelleFehlt = false;
 
