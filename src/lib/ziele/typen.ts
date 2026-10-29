@@ -5,13 +5,13 @@ export const ZIEL_KENNZAHLEN = [
     wert: "provision_netto",
     label: "Provision netto",
     einheit: "euro",
-    hinweis: "Bezahlte Provision ohne USt",
+    hinweis: "Provisionseingänge auf dem Konto ohne USt",
   },
   {
     wert: "verkaeufe",
     label: "Verkäufe",
     einheit: "anzahl",
-    hinweis: "Verkäufe mit bezahlter Rechnung",
+    hinweis: "Provisionseingänge auf dem Konto",
   },
   {
     wert: "neue_mandate",
@@ -28,14 +28,15 @@ export function istZielKennzahl(wert: unknown): wert is ZielKennzahl {
 }
 
 /**
- * Vorgeschlagene Jahresziele (Stand 29.10.2026), solange in der Tabelle nichts eingetragen ist.
- * 2026: Ist 124,6 T€ aus 2 Verkäufen (Vorjahr 119,7 T€ aus 2), 10 neue Mandate.
- * Ziel = ein weiterer Verkauf bis Dezember (+25 % ggü. Vorjahr) und 2 neue Mandate.
- * 2027: Verdopplung der Provision aus 5 Verkäufen à Ø 50 T€, dafür 2 neue Mandate je Monat.
+ * Jahresziele, solange in der Tabelle nichts eingetragen ist.
+ * 2026: 500 T€ Provision netto (Vorgabe Maurice, 29.10.2026). Bei Ø 50 T€ netto je Verkauf
+ * (2026 bisher: 75 / 49,6 / 22,3 T€) sind das 10 Verkäufe; bei rund jedem dritten Mandat
+ * mit Abschluss braucht es dafür 36 neue Mandate (3 je Monat, 2025 waren es 37).
+ * 2027: dieselbe Messlatte, bis es eine eigene Planung gibt.
  */
 export const STANDARD_ZIELE: Record<number, Record<ZielKennzahl, number>> = {
-  2026: { provision_netto: 150_000, verkaeufe: 3, neue_mandate: 12 },
-  2027: { provision_netto: 250_000, verkaeufe: 5, neue_mandate: 24 },
+  2026: { provision_netto: 500_000, verkaeufe: 10, neue_mandate: 36 },
+  2027: { provision_netto: 500_000, verkaeufe: 10, neue_mandate: 36 },
 };
 
 export type ZielQuelle = "eingetragen" | "mitarbeiter" | "standard";
