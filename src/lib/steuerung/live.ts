@@ -5,12 +5,14 @@
  */
 
 import { hatSchriftlichenMaklervertrag } from "@/lib/mandate/maklervertrag";
-import { zaehltAlsAktivitaet } from "@/lib/sf-sync/zaehlen";
+import { stattgefunden } from "@/lib/sf-sync/zaehlen";
 
 import type { MaklerDto } from "./types";
 
 export type LiveMandat = {
   sfId: string;
+  /** Eigentümer ist ein Test-Account („Test GmbH“). */
+  test?: boolean;
   name: string;
   status: string | null;
   art: string | null;
@@ -135,7 +137,7 @@ function aktivitaetsTyp(
 
 export function berechneMaklerLive(e: LiveEingabe): MaklerLive {
   const mandate = e.mandate.filter(
-    (m) => !istTestName(m.name) && !istTestName(m.objekt ?? ""),
+    (m) => !m.test && !istTestName(m.name) && !istTestName(m.objekt ?? ""),
   );
   const deals = e.deals.filter((d) => !istTestName(d.name));
 
@@ -237,8 +239,7 @@ export function berechneMaklerLive(e: LiveEingabe): MaklerLive {
     "E-Mail": { jahr: 0, vorjahr: 0 },
     Aufgabe: { jahr: 0, vorjahr: 0 },
   };
-  for (const a of e.aktivitaeten) {
-    if (!zaehltAlsAktivitaet(a)) continue;
+  for (const a of stattgefunden(e.aktivitaeten)) {
     const tag = a.datum.slice(0, 10);
     if (tag > e.heute) continue;
     const typ = aktivitaetsTyp(a);

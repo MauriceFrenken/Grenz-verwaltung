@@ -4,10 +4,12 @@
  */
 
 import { hatSchriftlichenMaklervertrag } from "@/lib/mandate/maklervertrag";
-import { zaehltAlsAktivitaet } from "@/lib/sf-sync/zaehlen";
+import { stattgefunden } from "@/lib/sf-sync/zaehlen";
 
 export type MandatRoh = {
   sfId: string;
+  /** Eigentümer ist ein Test-Account („Test GmbH“). */
+  test?: boolean;
   name: string;
   status: string | null;
   /** Beauftragungsart (Type_of_commissioning__c). */
@@ -188,10 +190,10 @@ export function erwarteteProvision(m: MandatRoh): number | null {
 export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
   const heute = e.heute;
   const jahr = heute.slice(0, 4);
-  const mandate = e.mandate.filter((m) => !istTest(m.name));
+  const mandate = e.mandate.filter((m) => !m.test && !istTest(m.name));
   const deals = e.deals.filter((d) => !istTest(d.name));
   const mandatJeId = new Map(mandate.map((m) => [m.sfId, m]));
-  const aktivitaeten = e.aktivitaeten.filter(zaehltAlsAktivitaet);
+  const aktivitaeten = stattgefunden(e.aktivitaeten);
 
   const beauftragt = mandate.filter((m) => m.status === "Beauftragung");
   const aktiv = mandate.filter((m) =>

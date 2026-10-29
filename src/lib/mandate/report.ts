@@ -3,6 +3,8 @@
  * Keine Datenbank- und keine Netzwerkzugriffe, damit alles testbar bleibt.
  */
 
+import { istGeplant, stattgefundenZeilen } from "@/lib/sf-sync/zaehlen";
+
 import type {
   BerichtFotos,
   BerichtWerte,
@@ -421,9 +423,18 @@ export type ReportEingabe = {
 };
 
 export function berechneReportKennzahlen(e: ReportEingabe): ReportKennzahlen {
-  const imZr = imZeitraum(e.aktivitaeten, e.von, e.bis).sort((a, b) =>
-    (b.datum ?? "").localeCompare(a.datum ?? ""),
-  );
+  // Gezählt wird nur stattgefundene Aktivität (keine offenen Aufgaben, E-Mails einmal);
+  // der Funnel sieht weiter alle Einträge, weil er Texte und Kontakte auswertet.
+  const gezaehlt = stattgefundenZeilen(e.aktivitaeten);
+  const imZr = imZeitraum(gezaehlt, e.von, e.bis);
+  // Liste und Belege fürs Marktfeedback: alles Erledigte, auch E-Mail-Aufgaben mit Text.
+  const erledigtImZr = imZeitraum(
+    e.aktivitaeten.filter(
+      (a) => !istGeplant({ sfTyp: a.sf_typ, art: a.art, status: a.status }),
+    ),
+    e.von,
+    e.bis,
+  ).sort((a, b) => (b.datum ?? "").localeCompare(a.datum ?? ""));
   const mitgliederJeKampagne = new Map<string, number>();
   for (const m of e.mitglieder)
     mitgliederJeKampagne.set(
@@ -442,14 +453,14 @@ export function berechneReportKennzahlen(e: ReportEingabe): ReportKennzahlen {
     })),
     funnel: berechneFunnel(e.mitglieder, e.deals, e.aktivitaeten),
     aktivitaeten: {
-      gesamt: e.aktivitaeten.length,
+      gesamt: gezaehlt.length,
       zeitraum: imZr.length,
-      jeWoche: aktivitaetenJeWoche(e.aktivitaeten, e.von, e.bis),
-      jeMonat: aktivitaetenJeMonat(e.aktivitaeten, e.von, e.bis),
+      jeWoche: aktivitaetenJeWoche(gezaehlt, e.von, e.bis),
+      jeMonat: aktivitaetenJeMonat(gezaehlt, e.von, e.bis),
       nachArt: aktivitaetenNachArt(imZr),
     },
     angebote: sammleAngebote(e.deals, e.mitglieder, e.namen),
-    aktivitaetsListe: imZr.slice(0, 200).map((a) => ({
+    aktivitaetsListe: erledigtImZr.slice(0, 200).map((a) => ({
       sfId: a.sf_id,
       datum: a.datum!.slice(0, 10),
       art: a.art ?? "Aktivität",

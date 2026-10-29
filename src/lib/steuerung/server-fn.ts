@@ -7,6 +7,7 @@ import {
   microsoftCallerAusJwt,
 } from "@/lib/microsoft/supabase-admin";
 import { alleSeiten } from "@/lib/server/alle-seiten";
+import { testEigentuemer } from "@/lib/server/test-eigentuemer";
 
 import { berechneMakler, type Datenstand } from "./berechnen";
 import { berechneMaklerLive } from "./live";
@@ -63,7 +64,7 @@ export const maklerKennzahlenLadenFn = createServerFn({ method: "POST" })
       admin
         .from("sf_mandate")
         .select(
-          "sf_id, name, status, art, angebotspreis, provision_prozent, real_estate_sf_id, verantwortlich_sf_user_id, fee:sf_daten->>Fee_Model__c, prognose:sf_daten->Prognostizierte_Provision__c, erstellt:sf_daten->>CreatedDate",
+          "sf_id, name, status, art, angebotspreis, provision_prozent, real_estate_sf_id, eigentuemer_account_sf_id, verantwortlich_sf_user_id, fee:sf_daten->>Fee_Model__c, prognose:sf_daten->Prognostizierte_Provision__c, erstellt:sf_daten->>CreatedDate",
         )
         .limit(5000),
       admin.from("sf_real_estate").select("sf_id, name").limit(5000),
@@ -112,6 +113,12 @@ export const maklerKennzahlenLadenFn = createServerFn({ method: "POST" })
       if (r.error) throw new Error(r.error.message);
     if (!(mandate.data ?? []).length) return statisch;
 
+    const testIds = await testEigentuemer(
+      admin,
+      (mandate.data ?? []).map(
+        (m) => m.eigentuemer_account_sf_id as string | null,
+      ),
+    );
     const objektName = new Map(
       (objekte.data ?? []).map((o) => [String(o.sf_id), String(o.name)]),
     );
@@ -119,6 +126,7 @@ export const maklerKennzahlenLadenFn = createServerFn({ method: "POST" })
       heute,
       mandate: (mandate.data ?? []).map((m) => ({
         sfId: String(m.sf_id),
+        test: testIds.has(String(m.eigentuemer_account_sf_id ?? "")),
         name: String(m.name),
         status: text(m.status),
         art: text(m.art),

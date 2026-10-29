@@ -9,6 +9,7 @@ import {
 } from "@/lib/server/aufrufer";
 
 import { alleSeiten } from "@/lib/server/alle-seiten";
+import { testEigentuemer } from "@/lib/server/test-eigentuemer";
 
 import { berechneUebersicht, type UebersichtDto } from "./berechnen";
 
@@ -37,7 +38,7 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
         admin
           .from("sf_mandate")
           .select(
-            "sf_id, name, status, art, angebotspreis, provision_prozent, real_estate_sf_id, prognose:sf_daten->Prognostizierte_Provision__c, erstellt:sf_daten->>CreatedDate",
+            "sf_id, name, status, art, angebotspreis, provision_prozent, real_estate_sf_id, eigentuemer_account_sf_id, prognose:sf_daten->Prognostizierte_Provision__c, erstellt:sf_daten->>CreatedDate",
           )
           .limit(5000),
         admin.from("sf_real_estate").select("sf_id, name").limit(5000),
@@ -74,6 +75,12 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
     for (const r of [mandate, objekte, deals, reports, stand])
       if (r.error) throw new Error(r.error.message);
 
+    const testIds = await testEigentuemer(
+      admin,
+      (mandate.data ?? []).map(
+        (m) => m.eigentuemer_account_sf_id as string | null,
+      ),
+    );
     const objektName = new Map(
       (objekte.data ?? []).map((o) => [String(o.sf_id), String(o.name)]),
     );
@@ -92,6 +99,7 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
       letzterAbruf: abrufe.at(-1) ?? null,
       mandate: (mandate.data ?? []).map((m) => ({
         sfId: String(m.sf_id),
+        test: testIds.has(String(m.eigentuemer_account_sf_id ?? "")),
         name: String(m.name),
         status: text(m.status),
         art: text(m.art),
