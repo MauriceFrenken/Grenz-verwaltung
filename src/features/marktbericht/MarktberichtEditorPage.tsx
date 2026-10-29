@@ -6,6 +6,7 @@ import {
   FileUp,
   Library,
   Loader2,
+  MessageSquare,
   Plus,
   RefreshCw,
   Sparkles,
@@ -38,10 +39,14 @@ import {
   type Trend,
 } from "@/lib/marktbericht/typen";
 
+type Schlagzeile = keyof NonNullable<MarktberichtTexte["schlagzeilen"]>;
+
 const TEXTFELDER: {
   feld: keyof MarktberichtTexte;
   titel: string;
   hilfe: string;
+  /** Kernaussage, die im PDF groß über dem Abschnitt steht. */
+  schlagzeile?: Schlagzeile;
 }[] = [
   {
     feld: "einleitung",
@@ -52,21 +57,25 @@ const TEXTFELDER: {
     feld: "rahmen",
     titel: "Finanzierung",
     hilfe: "Bauzins, Bundesanleihe, Rendite gegen Zins",
+    schlagzeile: "rahmen",
   },
   {
     feld: "angebot",
     titel: "Preise und Renditen",
     hilfe: "Faktoren, Kaufpreise und Renditen je Standort",
+    schlagzeile: "angebot",
   },
   {
     feld: "nachfrage",
     titel: "Markt und Mieten",
     hilfe: "Transaktionen, Mietentwicklung, Nachfrage",
+    schlagzeile: "nachfrage",
   },
   {
     feld: "ausblick",
     titel: "Ausblick",
     hilfe: "Erwartung für das nächste Halbjahr",
+    schlagzeile: "ausblick",
   },
 ];
 
@@ -95,6 +104,10 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
   const [geaendert, setGeaendert] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [loeschenFrage, setLoeschenFrage] = useState(false);
+  const [chat, setChat] = useState<{ anweisung: string; antwort: string }[]>(
+    [],
+  );
+  const [anweisung, setAnweisung] = useState("");
   const dateiInput = useRef<HTMLInputElement>(null);
 
   const uebernehmen = useCallback((b: MarktberichtVoll) => {
@@ -171,6 +184,38 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
       );
       toast.success("Gespeichert.");
     });
+
+  /** Chat: die KI ändert die Texte nach Anweisung, das Ergebnis wird sofort gespeichert. */
+  const chatSenden = () => {
+    const a = anweisung.trim();
+    if (!a) return;
+    return mitBusy("chat", async () => {
+      const { marktberichtChatFn, marktberichtSpeichernFn } =
+        await import("@/lib/marktbericht/server-fn");
+      const r = await marktberichtChatFn({
+        data: {
+          supabaseAccessToken: token,
+          id,
+          texte,
+          benchmarks: werte,
+          anweisung: a,
+          verlauf: chat,
+        },
+      });
+      uebernehmen(
+        await marktberichtSpeichernFn({
+          data: {
+            supabaseAccessToken: token,
+            id,
+            texte: r.texte,
+            benchmarks: werte,
+          },
+        }),
+      );
+      setChat((c) => [...c, { anweisung: a, antwort: r.antwort }]);
+      setAnweisung("");
+    });
+  };
 
   const neuBerechnen = () =>
     mitBusy("rechnen", async () => {
@@ -357,6 +402,65 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
       <PageWrapper>
         <div className="grid max-w-6xl gap-6 lg:grid-cols-[1fr_360px]">
           <div className="flex min-w-0 flex-col gap-6">
+            {!gesperrt ? (
+              <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-heading">
+                  <MessageSquare className="h-4 w-4" />
+                  Mit der KI bearbeiten
+                </h2>
+                <p className="text-xs text-text-subtle">
+                  Beschreiben Sie, was sich ändern soll, z. B. „Kurzfassung
+                  knapper, Fokus auf Köln“ oder „Ausblick vorsichtiger
+                  formulieren“. Die KI passt nur die betroffenen Texte an, nutzt
+                  ausschließlich belegte Zahlen und speichert das Ergebnis
+                  direkt.
+                </p>
+                {chat.length ? (
+                  <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+                    {chat.map((c, i) => (
+                      <div key={i} className="flex flex-col gap-1 text-sm">
+                        <p className="self-end bg-surface-muted px-3 py-2 text-heading">
+                          {c.anweisung}
+                        </p>
+                        <p className="border-l-2 border-accent px-3 py-1 text-text-muted">
+                          {c.antwort}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                <Textarea
+                  id="mb-chat"
+                  rows={2}
+                  value={anweisung}
+                  placeholder="Ihre Anweisung an die KI …"
+                  disabled={!!busy}
+                  onChange={(e) => setAnweisung(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault();
+                      void chatSenden();
+                    }
+                  }}
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-text-subtle">
+                    {geaendert
+                      ? "Ungespeicherte Änderungen werden mitgeschickt und gespeichert."
+                      : "Strg + Enter zum Senden"}
+                  </span>
+                  <Button
+                    size="sm"
+                    onClick={() => void chatSenden()}
+                    disabled={!!busy || !anweisung.trim()}
+                  >
+                    {symbol("chat") ?? <Sparkles className="h-4 w-4" />}
+                    Änderung ausführen
+                  </Button>
+                </div>
+              </section>
+            ) : null}
+
             <section className="flex flex-col gap-3 border border-hairline bg-surface p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold text-heading">Texte</h2>
@@ -424,7 +528,7 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
                 />
               ))}
 
-              {TEXTFELDER.map(({ feld, titel, hilfe }) => (
+              {TEXTFELDER.map(({ feld, titel, hilfe, schlagzeile }) => (
                 <div key={feld} className="mt-2 flex flex-col gap-1">
                   <h3 className="text-xs font-semibold text-text-muted">
                     {titel}{" "}
@@ -432,6 +536,22 @@ export function MarktberichtEditorPage({ id }: { id: string }) {
                       · {hilfe}
                     </span>
                   </h3>
+                  {schlagzeile ? (
+                    <Input
+                      id={`mb-schlagzeile-${schlagzeile}`}
+                      disabled={gesperrt}
+                      placeholder="Kernaussage als Überschrift (ein Satz)"
+                      value={texte.schlagzeilen?.[schlagzeile] ?? ""}
+                      onChange={(e) =>
+                        setzeTexte({
+                          schlagzeilen: {
+                            ...texte.schlagzeilen,
+                            [schlagzeile]: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  ) : null}
                   <Textarea
                     id={`mb-${feld}`}
                     rows={4}
