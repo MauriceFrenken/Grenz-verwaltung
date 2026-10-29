@@ -33,7 +33,7 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
     const heute = new Date().toISOString().slice(0, 10);
     const ab = new Date(Date.now() - 120 * 86_400_000).toISOString();
 
-    const [mandate, objekte, deals, aktivitaeten, reports, exposes, stand] =
+    const [mandate, objekte, deals, aktivitaeten, exposes, stand] =
       await Promise.all([
         admin
           .from("sf_mandate")
@@ -56,10 +56,6 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
             .order("sf_id")
             .range(a, b),
         ),
-        admin
-          .from("eigentuemer_reports")
-          .select("mandat_sf_id, created_at")
-          .limit(5000),
         alleSeiten<Record<string, unknown>>((a, b) =>
           admin
             .from("postfach_exposes")
@@ -72,7 +68,7 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
           .select("letzter_abruf_am")
           .not("letzter_abruf_am", "is", null),
       ]);
-    for (const r of [mandate, objekte, deals, reports, stand])
+    for (const r of [mandate, objekte, deals, stand])
       if (r.error) throw new Error(r.error.message);
 
     const testIds = await testEigentuemer(
@@ -84,12 +80,6 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
     const objektName = new Map(
       (objekte.data ?? []).map((o) => [String(o.sf_id), String(o.name)]),
     );
-    const letzterReport = new Map<string, string>();
-    for (const r of reports.data ?? []) {
-      const id = String(r.mandat_sf_id);
-      if (String(r.created_at) > (letzterReport.get(id) ?? ""))
-        letzterReport.set(id, String(r.created_at));
-    }
     const abrufe = (stand.data ?? [])
       .map((s) => String(s.letzter_abruf_am))
       .sort();
@@ -132,7 +122,6 @@ export const uebersichtLadenFn = createServerFn({ method: "POST" })
         betreff: text(a.betreff),
         mandatSfId: text(a.mandat_sf_id),
       })),
-      letzterReport,
       exposes: exposes.map((x) => ({
         status: text(x.status),
         eingegangenAm: text(x.eingegangen_am),

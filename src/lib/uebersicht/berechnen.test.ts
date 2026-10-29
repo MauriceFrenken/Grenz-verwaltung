@@ -51,7 +51,6 @@ function eingabe(extra: Partial<UebersichtEingabe> = {}): UebersichtEingabe {
     mandate: [],
     deals: [],
     aktivitaeten: [],
-    letzterReport: new Map(),
     exposes: [],
     ...extra,
   };
@@ -79,11 +78,6 @@ describe("berechneUebersicht", () => {
     expect(d.kacheln.aktiveMandate).toBe(3);
     expect(d.gewonnen).toBe(1);
     expect(d.verloren).toBe(1);
-    expect(
-      d.zuTun.some((z) =>
-        z.titel.startsWith("2 beauftragte Mandate ohne Exposé-Preis"),
-      ),
-    ).toBe(true);
   });
 
   it("zählt Abschlüsse des Jahres und offene Interessenten", () => {
@@ -113,11 +107,40 @@ describe("berechneUebersicht", () => {
     expect(d.kacheln.offeneInteressenten).toBe(1);
     expect(d.kacheln.imDatenraum).toBe(1);
     expect(d.interessentenPhasen).toEqual([{ phase: "Datenraum", anzahl: 1 }]);
-    expect(d.zuTun[0]).toMatchObject({ ton: "warnung", titel: "Opp. 3" });
+    expect(d.kacheln.provisionVorjahr).toBe(60_000);
+    expect(d.kacheln.abschluesseVorjahr).toBe(1);
     expect(d.abschluesse.map((a) => a.name)).toEqual(["Opp. 1", "Opp. 2"]);
   });
 
-  it("meldet ruhende beauftragte Mandate und gruppiert Aktivität je Woche", () => {
+  it("vergleicht mit dem Vorjahr bis zum gleichen Tag und zählt neue Mandate im Jahr", () => {
+    const d = berechneUebersicht(
+      eingabe({
+        mandate: [
+          mandat("a", "Akquisition", { erstelltAm: "2026-03-01T10:00:00Z" }),
+          mandat("b", "Akquisition", { erstelltAm: "2025-12-01T10:00:00Z" }),
+        ],
+        deals: [
+          deal("1", "Invoice Paid", {
+            geschlossen: true,
+            gewonnen: true,
+            abschlussAm: "2025-10-25",
+            provision: 40_000,
+          }),
+          deal("2", "Invoice Paid", {
+            geschlossen: true,
+            gewonnen: true,
+            abschlussAm: "2025-11-10",
+            provision: 30_000,
+          }),
+        ],
+      }),
+    );
+    expect(d.kacheln.provisionVorjahrBisHeute).toBe(40_000);
+    expect(d.kacheln.provisionVorjahr).toBe(70_000);
+    expect(d.kacheln.neueMandateJahr).toBe(1);
+  });
+
+  it("gruppiert Aktivität je Woche", () => {
     const d = berechneUebersicht(
       eingabe({
         mandate: [mandat("a", "Beauftragung"), mandat("b", "Beauftragung")],
@@ -137,18 +160,12 @@ describe("berechneUebersicht", () => {
         ],
       }),
     );
-    const warnungen = d.zuTun.filter((z) => z.ton === "warnung");
-    expect(warnungen.map((w) => w.mandatSfId)).toEqual(["b"]);
     expect(d.aktivitaetWochen).toHaveLength(12);
     expect(d.aktivitaetWochen.at(-1)).toMatchObject({
       woche: "2026-10-19",
       Anruf: 1,
     });
     expect(d.aktivitaetGesamt4W).toBe(1);
-    expect(d.letzteAktivitaeten[0]).toMatchObject({
-      betreff: "Call",
-      mandat: "Objekt a",
-    });
   });
 });
 

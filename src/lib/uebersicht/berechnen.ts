@@ -1,5 +1,6 @@
 /**
- * Business-Übersicht (Startseite): Kennzahlen, Pipeline, To-dos und Aktivität aus den sf_*-Caches.
+ * Business-Übersicht (Startseite): Ergebnisse, Pipeline und Abschlüsse aus den sf_*-Caches.
+ * Operative To-dos stehen bewusst nicht hier (das Tagesgeschäft läuft über Trello).
  * Reine Funktionen, getestet in berechnen.test.ts.
  */
 
@@ -55,18 +56,7 @@ export type UebersichtEingabe = {
   mandate: MandatRoh[];
   deals: DealRoh[];
   aktivitaeten: AktivitaetRoh[];
-  /** Mandat-Id → jüngster Eigentümer-Report (ISO). */
-  letzterReport: Map<string, string>;
   exposes: ExposeRoh[];
-};
-
-export type ZuTun = {
-  ton: "warnung" | "hinweis";
-  titel: string;
-  text: string;
-  /** Mandat-Id für den Link; sonst Listenpfad. */
-  mandatSfId?: string;
-  pfad?: "/mandate" | "/exposes";
 };
 
 export type UebersichtDto = {
@@ -88,6 +78,13 @@ export type UebersichtDto = {
     provisionJahr: number;
     kaufpreisJahr: number;
     abschluesseJahr: number;
+    /** Bezahlte Provision netto im ganzen Vorjahr. */
+    provisionVorjahr: number;
+    /** Bezahlte Provision netto im Vorjahr bis zum gleichen Kalendertag. */
+    provisionVorjahrBisHeute: number;
+    abschluesseVorjahr: number;
+    /** Im laufenden Jahr in Salesforce angelegte Mandate. */
+    neueMandateJahr: number;
     offeneInteressenten: number;
     imDatenraum: number;
   };
@@ -95,19 +92,11 @@ export type UebersichtDto = {
   gewonnen: number;
   verloren: number;
   interessentenPhasen: Array<{ phase: string; anzahl: number }>;
-  zuTun: ZuTun[];
   aktivitaetWochen: Array<
     { woche: string } & Record<AktivitaetsGruppe, number>
   >;
   aktivitaetGesamt4W: number;
   aktivitaetVor4W: number;
-  letzteAktivitaeten: Array<{
-    datum: string;
-    art: string;
-    betreff: string;
-    mandatSfId: string | null;
-    mandat: string | null;
-  }>;
   topMandate: Array<{
     sfId: string;
     name: string;
@@ -153,12 +142,6 @@ export function istTest(name: string): boolean {
   return /^test\b/i.test(name.trim());
 }
 
-function tageZwischen(von: string, bis: string): number {
-  return Math.floor(
-    (Date.parse(bis.slice(0, 10)) - Date.parse(von.slice(0, 10))) / TAG,
-  );
-}
-
 function minusTage(iso: string, n: number): string {
   return new Date(Date.parse(iso.slice(0, 10)) - n * TAG)
     .toISOString()
@@ -192,7 +175,6 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
   const jahr = heute.slice(0, 4);
   const mandate = e.mandate.filter((m) => !m.test && !istTest(m.name));
   const deals = e.deals.filter((d) => !istTest(d.name));
-  const mandatJeId = new Map(mandate.map((m) => [m.sfId, m]));
   const aktivitaeten = stattgefunden(e.aktivitaeten);
 
   const beauftragt = mandate.filter((m) => m.status === "Beauftragung");
@@ -217,6 +199,11 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
   const gewonnenJahr = gewonneneDeals.filter((d) =>
     (d.abschlussAm ?? "").startsWith(jahr),
   );
+  const vorjahr = String(Number(jahr) - 1);
+  const gewonnenVorjahr = gewonneneDeals.filter((d) =>
+    (d.abschlussAm ?? "").startsWith(vorjahr),
+  );
+  const gleicherTagVorjahr = `${vorjahr}${heute.slice(4, 10)}`;
 
   let provisionPipeline = 0;
   let mandateMitProvision = 0;
@@ -264,74 +251,9 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
         (interessentenJeMandat.get(d.mandatSfId) ?? 0) + 1,
       );
 
-  // To-dos: Warnungen zuerst.
-  const zuTun: ZuTun[] = [];
-  for (const d of offeneDeals) {
-    if (d.abschlussAm && d.abschlussAm < heute) {
-      zuTun.push({
-        ton: "warnung",
-        titel: d.name,
-        text: `Abschlussdatum ${d.abschlussAm.split("-").reverse().join(".")} überschritten (${DEAL_PHASE_TEXT[d.phase ?? ""] ?? d.phase ?? "ohne Phase"})`,
-        mandatSfId: d.mandatSfId ?? undefined,
-        pfad: d.mandatSfId ? undefined : "/mandate",
-      });
-    }
-  }
-  const ruhend = beauftragt
-    .map((m) => ({ m, letzte: letzteAktivitaet.get(m.sfId) ?? null }))
-    .filter((x) => !x.letzte || tageZwischen(x.letzte, heute) > 30)
-    .sort((a, b) => (a.letzte ?? "").localeCompare(b.letzte ?? ""));
-  for (const { m, letzte } of ruhend.slice(0, 5)) {
-    zuTun.push({
-      ton: "warnung",
-      titel: m.objekt ?? m.name,
-      text: letzte
-        ? `Beauftragt, seit ${tageZwischen(letzte, heute)} Tagen keine Aktivität`
-        : "Beauftragt, noch keine Aktivität in Salesforce",
-      mandatSfId: m.sfId,
-    });
-  }
-  if (ruhend.length > 5) {
-    zuTun.push({
-      ton: "warnung",
-      titel: `${ruhend.length - 5} weitere ruhende Mandate`,
-      text: "Beauftragt, seit über 30 Tagen keine Aktivität",
-      pfad: "/mandate",
-    });
-  }
-  const ohnePreis = beauftragt.filter((m) => !m.angebotspreis).length;
-  if (ohnePreis > 0) {
-    zuTun.push({
-      ton: "hinweis",
-      titel: `${ohnePreis} beauftragte ${ohnePreis === 1 ? "Mandat" : "Mandate"} ohne Exposé-Preis`,
-      text: "Ohne Preis fehlt die Provision in der Pipeline",
-      pfad: "/mandate",
-    });
-  }
-  const ohneReport = beauftragt.filter((m) => {
-    const r = e.letzterReport.get(m.sfId);
-    return !r || tageZwischen(r, heute) > 30;
-  }).length;
-  if (ohneReport > 0) {
-    zuTun.push({
-      ton: "hinweis",
-      titel: `${ohneReport} Eigentümer ohne Report seit 30 Tagen`,
-      text: "Eigentümer-Report im Mandat anlegen und versenden",
-      pfad: "/mandate",
-    });
-  }
   const offeneExposes = e.exposes.filter(
     (x) => x.status === "neu" || x.status === "analysiert",
   ).length;
-  if (offeneExposes > 0) {
-    zuTun.push({
-      ton: "hinweis",
-      titel: `${offeneExposes} Exposés im Postfach nicht bearbeitet`,
-      text: "Prüfen und nach Salesforce übernehmen oder ablegen",
-      pfad: "/exposes",
-    });
-  }
-
   // Aktivität der letzten 12 Wochen.
   const startWoche = wochenStart(minusTage(heute, 7 * 11));
   const wochen = new Map<string, Record<AktivitaetsGruppe, number>>();
@@ -347,21 +269,6 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
     if (tag > vor4W) gesamt4W += 1;
     else if (tag > vor8W) vorher4W += 1;
   }
-
-  const letzteAktivitaeten = aktivitaeten
-    .filter((a) => a.datum.slice(0, 10) <= heute)
-    .sort((a, b) => b.datum.localeCompare(a.datum))
-    .slice(0, 8)
-    .map((a) => {
-      const m = a.mandatSfId ? mandatJeId.get(a.mandatSfId) : undefined;
-      return {
-        datum: a.datum,
-        art: a.art ?? "Aufgabe",
-        betreff: a.betreff ?? "(ohne Betreff)",
-        mandatSfId: m ? m.sfId : null,
-        mandat: m ? (m.objekt ?? m.name) : null,
-      };
-    });
 
   const topMandate = beauftragt
     .map((m) => ({
@@ -405,6 +312,17 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
         0,
       ),
       abschluesseJahr: gewonnenJahr.length,
+      provisionVorjahr: gewonnenVorjahr.reduce(
+        (s, d) => s + (d.provision ?? 0),
+        0,
+      ),
+      provisionVorjahrBisHeute: gewonnenVorjahr
+        .filter((d) => (d.abschlussAm ?? "") <= gleicherTagVorjahr)
+        .reduce((s, d) => s + (d.provision ?? 0), 0),
+      abschluesseVorjahr: gewonnenVorjahr.length,
+      neueMandateJahr: mandate.filter((m) =>
+        (m.erstelltAm ?? "").startsWith(jahr),
+      ).length,
       offeneInteressenten: offeneDeals.length,
       imDatenraum: offeneDeals.filter((d) => d.phase === "Data Room").length,
     },
@@ -415,11 +333,9 @@ export function berechneUebersicht(e: UebersichtEingabe): UebersichtDto {
       phase,
       anzahl,
     })),
-    zuTun,
     aktivitaetWochen: [...wochen].map(([woche, z]) => ({ woche, ...z })),
     aktivitaetGesamt4W: gesamt4W,
     aktivitaetVor4W: vorher4W,
-    letzteAktivitaeten,
     topMandate,
     abschluesse: gewonneneDeals.slice(0, 5).map((d) => ({
       name: d.name,
