@@ -23,7 +23,7 @@ describe("wirksameZiele", () => {
     expect(w.ziele).toEqual({
       provision_netto: 200_000,
       verkaeufe: 4,
-      neue_mandate: 12,
+      neue_mandate: 36,
     });
     expect(w.quelle).toEqual({
       provision_netto: "mitarbeiter",

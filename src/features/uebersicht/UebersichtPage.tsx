@@ -177,9 +177,19 @@ function Dashboard({
   const jahr = daten.heute.slice(0, 4);
   const restjahr = prognoseRestjahr(pipeline);
   const provisionsziel = ziele?.ziele.provision_netto ?? null;
-  const anteil = zielerreichung(k.provisionJahr, provisionsziel);
+  // Bezahlte Provision zählt nach dem Kontoeingang (netto); Salesforce nur, solange die Bankdaten laden.
+  const bankJahr =
+    kennzahlen?.provisionen.filter((p) => p.datum.startsWith(jahr)) ?? null;
+  const provisionIst = bankJahr
+    ? bankJahr.reduce((s, p) => s + p.netto, 0)
+    : k.provisionJahr;
+  const verkaeufeIst = bankJahr ? bankJahr.length : k.abschluesseJahr;
+  const ohneSalesforce = bankJahr
+    ? Math.max(0, bankJahr.length - k.abschluesseJahr)
+    : 0;
+  const anteil = zielerreichung(provisionIst, provisionsziel);
   const runway = kennzahlen?.runway ?? null;
-  const vorjahrDiff = k.provisionJahr - k.provisionVorjahrBisHeute;
+  const vorjahrDiff = provisionIst - k.provisionVorjahrBisHeute;
 
   return (
     <div className="flex flex-col gap-6">
@@ -202,13 +212,13 @@ function Dashboard({
       <KachelReihe>
         <Kachel
           titel={`Provision ${jahr} netto`}
-          wert={euroKurz(k.provisionJahr)}
+          wert={euroKurz(provisionIst)}
           unterzeile={
             anteil != null && provisionsziel
-              ? `${Math.round((k.provisionJahr / provisionsziel) * 100)} % vom Jahresziel ${euroKurz(provisionsziel)}`
+              ? `${Math.round((provisionIst / provisionsziel) * 100)} % vom Jahresziel ${euroKurz(provisionsziel)}`
               : "Jahresziel noch nicht hinterlegt"
           }
-          nebenwert={`${k.abschluesseJahr} ${k.abschluesseJahr === 1 ? "Verkauf" : "Verkäufe"} bezahlt, ohne USt · Vorjahr bis heute ${euroKurz(k.provisionVorjahrBisHeute)} (${vorjahrDiff >= 0 ? "+" : "−"}${euroKurz(Math.abs(vorjahrDiff))})`}
+          nebenwert={`${verkaeufeIst} ${verkaeufeIst === 1 ? "Provisionseingang" : "Provisionseingänge"} auf dem Konto, ohne USt${ohneSalesforce ? ` (${ohneSalesforce} ohne bezahlten Deal in Salesforce)` : ""} · Vorjahr bis heute ${euroKurz(k.provisionVorjahrBisHeute)} (${vorjahrDiff >= 0 ? "+" : "−"}${euroKurz(Math.abs(vorjahrDiff))})`}
           ton={
             anteil != null && anteil >= jahresanteil(daten.heute)
               ? "gut"
@@ -222,7 +232,7 @@ function Dashboard({
           nebenwert={
             restjahr == null
               ? undefined
-              : `Ist + Prognose ${jahr}: ${euroKurz(k.provisionJahr + restjahr)}${provisionsziel ? ` · ${Math.round(((k.provisionJahr + restjahr) / provisionsziel) * 100)} % vom Ziel` : ""}`
+              : `Ist + Prognose ${jahr}: ${euroKurz(provisionIst + restjahr)}${provisionsziel ? ` · ${Math.round(((provisionIst + restjahr) / provisionsziel) * 100)} % vom Ziel` : ""}`
           }
         />
         <Kachel
@@ -270,6 +280,8 @@ function Dashboard({
           daten={daten}
           ziele={ziele}
           restjahr={restjahr}
+          provisionIst={provisionIst}
+          verkaeufeIst={verkaeufeIst}
           onGespeichert={onZieleGespeichert}
         />
         <Karte
@@ -291,38 +303,29 @@ function Dashboard({
         </Karte>
         <Karte
           titel="Letzte Abschlüsse"
-          hinweis="Verkäufe mit bezahlter Rechnung, Provision netto"
+          hinweis={`${jahr}: Provisionseingänge auf dem Konto, ältere aus Salesforce. Alles netto.`}
           className="lg:col-span-2"
         >
-          {daten.abschluesse.length === 0 ? (
-            <p className="text-sm text-text-muted">Noch keine Abschlüsse.</p>
-          ) : (
-            <ul className="divide-y divide-hairline">
-              {daten.abschluesse.map((a) => (
-                <li
-                  key={a.name}
-                  className="flex items-center justify-between gap-3 py-2 text-sm"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-heading">
-                      {a.name.replace(/^Opp\.\s*/, "")}
-                    </span>
-                    <span className="text-xs text-text-muted">
-                      {formatDate(a.datum)}
-                    </span>
-                  </span>
-                  <span className="flex shrink-0 flex-col items-end">
-                    <span className="font-semibold tabular-nums text-heading">
-                      {a.provision ? euroKurz(a.provision) : "–"}
-                    </span>
-                    <span className="text-xs tabular-nums text-text-muted">
-                      {a.kaufpreis ? `${euroKurz(a.kaufpreis)} KP` : ""}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <AbschlussListe
+            eintraege={[
+              ...(bankJahr ?? []).map((p) => ({
+                titel: p.objekt ?? p.zahler,
+                datum: p.datum,
+                zusatz: p.objekt ? p.zahler : "Kontoeingang",
+                provision: p.netto,
+                kaufpreis: null,
+              })),
+              ...daten.abschluesse
+                .filter((a) => !bankJahr || !(a.datum ?? "").startsWith(jahr))
+                .map((a) => ({
+                  titel: a.name.replace(/^Opp\.\s*/, ""),
+                  datum: a.datum,
+                  zusatz: null,
+                  provision: a.provision,
+                  kaufpreis: a.kaufpreis,
+                })),
+            ].slice(0, 6)}
+          />
         </Karte>
       </div>
 
@@ -338,6 +341,47 @@ function Dashboard({
         Testdatensätze ausgeblendet.
       </p>
     </div>
+  );
+}
+
+function AbschlussListe({
+  eintraege,
+}: {
+  eintraege: Array<{
+    titel: string;
+    datum: string | null;
+    zusatz: string | null;
+    provision: number | null;
+    kaufpreis: number | null;
+  }>;
+}) {
+  if (eintraege.length === 0)
+    return <p className="text-sm text-text-muted">Noch keine Abschlüsse.</p>;
+  return (
+    <ul className="divide-y divide-hairline">
+      {eintraege.map((a, i) => (
+        <li
+          key={`${a.titel}-${i}`}
+          className="flex items-center justify-between gap-3 py-2 text-sm"
+        >
+          <span className="min-w-0">
+            <span className="block truncate text-heading">{a.titel}</span>
+            <span className="block truncate text-xs text-text-muted">
+              {formatDate(a.datum)}
+              {a.zusatz ? ` · ${a.zusatz}` : ""}
+            </span>
+          </span>
+          <span className="flex shrink-0 flex-col items-end">
+            <span className="font-semibold tabular-nums text-heading">
+              {a.provision ? euroKurz(a.provision) : "–"}
+            </span>
+            <span className="text-xs tabular-nums text-text-muted">
+              {a.kaufpreis ? `${euroKurz(a.kaufpreis)} KP` : ""}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -381,12 +425,16 @@ function JahresZiele({
   daten,
   ziele,
   restjahr,
+  provisionIst,
+  verkaeufeIst,
   onGespeichert,
   className,
 }: {
   daten: UebersichtDto;
   ziele: ZieleDto | null;
   restjahr: number | null;
+  provisionIst: number;
+  verkaeufeIst: number;
   onGespeichert: () => void;
   className?: string;
 }) {
@@ -395,8 +443,8 @@ function JahresZiele({
   const jahr = daten.heute.slice(0, 4);
   const soll = jahresanteil(daten.heute);
   const ist: Record<ZielKennzahl, number> = {
-    provision_netto: k.provisionJahr,
-    verkaeufe: k.abschluesseJahr,
+    provision_netto: provisionIst,
+    verkaeufe: verkaeufeIst,
     neue_mandate: k.neueMandateJahr,
   };
   const vorjahr: Partial<Record<ZielKennzahl, string>> = {
