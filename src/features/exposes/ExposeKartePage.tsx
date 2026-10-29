@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -24,9 +25,24 @@ const LEAFLET_JS =
 const LEAFLET_CSS =
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
 
-/* Feste Kategorienfarben wie in der Exposé-Auswertung (--viz-1 … --viz-5). */
-const FARBEN = ["#233567", "#8ea9c1", "#4f6fa3", "#a6a6a6", "#6b6f8a"];
-const FARBE_SONST = "#d9d9d9";
+/* Farben je Ebene: Verkäufe navy, Angebote hellblau, Exposés grau (CI-Töne wie --viz-1 … --viz-5). */
+type Ebene = "verkauft" | "angebot" | "expose";
+const EBENEN: Array<{ id: Ebene; label: string; farbe: string }> = [
+  { id: "verkauft", label: "Verkauft", farbe: "#233567" },
+  { id: "angebot", label: "Am Markt", farbe: "#8ea9c1" },
+  { id: "expose", label: "Exposés (Postfach)", farbe: "#a6a6a6" },
+];
+const FARBE_NICHT_VERKAUFT = "#6b6f8a";
+
+function ebeneVon(o: KartenObjekt): Ebene {
+  if (o.quelle === "expose") return "expose";
+  return o.status === "verkauft" ? "verkauft" : "angebot";
+}
+
+function farbeVon(o: KartenObjekt): string {
+  if (o.status === "nicht_verkauft") return FARBE_NICHT_VERKAUFT;
+  return EBENEN.find((e) => e.id === ebeneVon(o))!.farbe;
+}
 
 // Minimaler Ausschnitt der Leaflet-API, den die Seite nutzt.
 type LMarker = {
@@ -87,22 +103,41 @@ function euro(n: number | null): string {
   return n ? euroKurz(n) : "–";
 }
 
+function statusText(o: KartenObjekt): string {
+  if (o.quelle === "expose")
+    return `Exposé · Eingang ${formatDate(o.eingegangenAm)}`;
+  if (o.status === "verkauft")
+    return `${o.grenz ? "Verkauft durch Grenz & Co." : "Verkauft"}${o.eingegangenAm ? ` am ${formatDate(o.eingegangenAm)}` : ""}`;
+  if (o.status === "nicht_verkauft") return "Nicht verkauft";
+  return `Am Markt${o.eingegangenAm ? ` seit ${formatDate(o.eingegangenAm)}` : ""}`;
+}
+
+function preisLabel(o: KartenObjekt): string {
+  if (o.status !== "verkauft") return "Angebotspreis";
+  return o.preisGeschaetzt ? "Kaufpreis (geschätzt)" : "Kaufpreis";
+}
+
 function zeilen(o: KartenObjekt): Array<[string, string]> {
-  return [
+  const z: Array<[string, string] | null> = [
     ["Objektart", o.objektart ?? "–"],
     ["Baujahr", o.baujahr ? String(o.baujahr) : "–"],
     ["Einheiten", o.einheiten ? formatInt(o.einheiten) : "–"],
     ["Fläche", o.flaeche ? `${formatInt(Math.round(o.flaeche))} m²` : "–"],
     ["Jahresmiete (IST)", euro(o.miete)],
     ["Miete je m²", o.mieteQm ? `${zahl1(o.mieteQm)} €` : "–"],
-    ["Kaufpreis", euro(o.preis)],
+    [preisLabel(o), euro(o.preis)],
+    o.status === "verkauft" && o.angebotspreis
+      ? ["Angebotspreis vorher", euro(o.angebotspreis)]
+      : null,
     ["Preis je m²", o.preisQm ? `${formatInt(o.preisQm)} €` : "–"],
     ["Faktor", o.faktor ? `${zahl1(o.faktor)}-fach` : "–"],
     ["Bruttorendite", o.rendite ? prozent(o.rendite, 1) : "–"],
-    ["Energieklasse", o.energieklasse ?? "–"],
+    o.objektzustand ? ["Zustand", o.objektzustand] : null,
+    o.energieklasse ? ["Energieklasse", o.energieklasse] : null,
     ["Makler", o.makler ?? "–"],
-    ["Eingang", formatDate(o.eingegangenAm)],
+    o.provisionNetto ? ["Provision (netto)", euro(o.provisionNetto)] : null,
   ];
+  return z.filter((x): x is [string, string] => x !== null);
 }
 
 function popupHtml(o: KartenObjekt): string {
@@ -114,18 +149,35 @@ function popupHtml(o: KartenObjekt): string {
         `<tr><td style="color:#595959;padding:1px 12px 1px 0">${esc(k)}</td><td style="text-align:right;font-variant-numeric:tabular-nums">${esc(v)}</td></tr>`,
     )
     .join("");
+  const status = `<div style="margin-bottom:6px;font-weight:600;color:${farbeVon(o)}">${esc(statusText(o))}</div>`;
+  const anmerkung = o.anmerkung
+    ? `<div style="margin-top:6px;color:#595959">${esc(o.anmerkung)}</div>`
+    : "";
+  const mandat = o.mandat
+    ? `<div style="margin-top:6px"><a href="/mandate/${encodeURIComponent(o.mandat.sfId)}" style="color:#233567;text-decoration:underline">Mandatsakte ${esc(o.mandat.name)}${o.mandat.phase ? ` (${esc(o.mandat.phase)})` : ""} öffnen</a></div>`
+    : "";
+  const quelle = o.titel
+    ? `<div style="margin-top:6px;color:#8c8c8c;font-size:11px">Salesforce ${esc(o.titel)}</div>`
+    : "";
   const hinweis = o.genau
     ? ""
     : `<div style="margin-top:6px;color:#a8671a;font-size:11px">Lage ungefähr (nur Ort bekannt)</div>`;
-  return `<div style="font-size:12px;min-width:220px"><div style="font-weight:600;font-size:13px">${titel}</div><div style="color:#595959;margin-bottom:6px">${ort}</div><table style="width:100%;border-collapse:collapse">${tabelle}</table>${hinweis}</div>`;
+  return `<div style="font-size:12px;min-width:220px"><div style="font-weight:600;font-size:13px">${titel}</div><div style="color:#595959;margin-bottom:4px">${ort}</div>${status}<table style="width:100%;border-collapse:collapse">${tabelle}</table>${anmerkung}${mandat}${quelle}${hinweis}</div>`;
 }
 
-/** Karte aller Exposés mit Eckdaten — Grundlage für Vergleichsobjekte im Kundengespräch. */
+/**
+ * Marktkarte: Transaktionen aus Salesforce (Verkäufe und Angebote) als Grundlage, Exposés aus dem
+ * Postfach zuschaltbar — für Vergleichsobjekte im Kundengespräch.
+ */
 export function ExposeKartePage() {
   const { session } = useAuth();
   const token = session?.access_token ?? "";
   const [objekte, setObjekte] = useState<KartenObjekt[] | null>(null);
   const [offen, setOffen] = useState(0);
+  const [sfFehler, setSfFehler] = useState<string | null>(null);
+  const [ebenen, setEbenen] = useState<Set<Ebene>>(
+    () => new Set<Ebene>(["verkauft", "angebot"]),
+  );
   const [art, setArt] = useState<string>("alle");
   const [suche, setSuche] = useState("");
   const [auswahl, setAuswahl] = useState<string | null>(null);
@@ -150,14 +202,18 @@ export function ExposeKartePage() {
       try {
         const { exposeKarteLadenFn } =
           await import("@/lib/expose-karte/server-fn");
-        for (let runde = 0; runde < 20 && aktiv; runde++) {
+        // Weiter nachladen, solange Adressen gefunden werden (Nominatim: ca. 8 je Aufruf).
+        let vorher = Infinity;
+        for (let runde = 0; runde < 80 && aktiv; runde++) {
           const d = await exposeKarteLadenFn({
             data: { supabaseAccessToken: token },
           });
           if (!aktiv) return;
           setObjekte(d.objekte);
           setOffen(d.offen);
-          if (d.offen === 0) break;
+          setSfFehler(d.salesforceFehler);
+          if (d.offen === 0 || d.offen >= vorher) break;
+          vorher = d.offen;
         }
       } catch (err) {
         toast.error(apiFehlermeldung(err));
@@ -195,18 +251,21 @@ export function ExposeKartePage() {
     };
   }, []);
 
+  const anzahlJeEbene = useMemo(() => {
+    const m = new Map<Ebene, number>();
+    for (const o of objekte ?? [])
+      m.set(ebeneVon(o), (m.get(ebeneVon(o)) ?? 0) + 1);
+    return m;
+  }, [objekte]);
+
   const arten = useMemo(() => {
     const m = new Map<string, number>();
     for (const o of objekte ?? []) {
-      if (o.objektart) m.set(o.objektart, (m.get(o.objektart) ?? 0) + 1);
+      if (o.objektart && ebenen.has(ebeneVon(o)))
+        m.set(o.objektart, (m.get(o.objektart) ?? 0) + 1);
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([n]) => n);
-  }, [objekte]);
-
-  const farbeVon = (a: string | null) => {
-    const i = a ? arten.indexOf(a) : -1;
-    return i >= 0 && i < FARBEN.length ? FARBEN[i] : FARBE_SONST;
-  };
+  }, [objekte, ebenen]);
 
   const vergleichInfo = useMemo(
     () => new Map((vergleich?.treffer ?? []).map((t) => [t.id, t])),
@@ -222,19 +281,28 @@ export function ExposeKartePage() {
       });
     }
     const q = suche.trim().toLowerCase();
-    return (objekte ?? []).filter(
-      (o) =>
-        o.lat !== null &&
-        o.lng !== null &&
-        (art === "alle" || o.objektart === art) &&
-        (!q ||
-          [o.adresse, o.plz, o.stadt, o.makler]
-            .filter(Boolean)
-            .some((t) => t!.toLowerCase().includes(q))),
-    );
-  }, [objekte, art, suche, vergleich]);
+    return (objekte ?? [])
+      .filter(
+        (o) =>
+          o.lat !== null &&
+          o.lng !== null &&
+          ebenen.has(ebeneVon(o)) &&
+          (art === "alle" || o.objektart === art) &&
+          (!q ||
+            [o.adresse, o.plz, o.stadt, o.makler, o.titel, o.mandat?.name]
+              .filter(Boolean)
+              .some((t) => t!.toLowerCase().includes(q))),
+      )
+      .sort(
+        (a, b) =>
+          Number(b.status === "verkauft") - Number(a.status === "verkauft") ||
+          (b.eingegangenAm ?? "").localeCompare(a.eingegangenAm ?? ""),
+      );
+  }, [objekte, art, suche, vergleich, ebenen]);
 
-  const ohneLage = (objekte ?? []).filter((o) => o.lat === null).length;
+  const ohneLage = (objekte ?? []).filter(
+    (o) => o.lat === null && ebenen.has(ebeneVon(o)),
+  ).length;
 
   // Marker neu zeichnen, wenn sich Daten oder Filter ändern.
   useEffect(() => {
@@ -261,14 +329,15 @@ export function ExposeKartePage() {
       k.ebene.addLayer(p);
       punkte.push([projekt.lat, projekt.lng]);
     }
-    for (const o of sichtbar) {
+    // Verkäufe zuletzt zeichnen, damit sie oben liegen.
+    for (const o of [...sichtbar].reverse()) {
       if (o.lat === null || o.lng === null) continue;
       punkte.push([o.lat, o.lng]);
       const m = k.L.circleMarker([o.lat, o.lng], {
-        radius: 8,
-        color: "#ffffff",
-        weight: 1.5,
-        fillColor: farbeVon(o.objektart),
+        radius: o.grenz ? 10 : o.quelle === "expose" ? 6 : 8,
+        color: o.grenz ? "#bcd4e5" : "#ffffff",
+        weight: o.grenz ? 3 : 1.5,
+        fillColor: farbeVon(o),
         fillOpacity: o.genau ? 0.9 : 0.45,
         dashArray: o.genau ? undefined : "3",
       }).bindPopup(popupHtml(o), { maxWidth: 320 });
@@ -283,9 +352,17 @@ export function ExposeKartePage() {
       k.map.fitBounds(punkte, { padding: [30, 30], maxZoom: 14 });
       ersterZuschnitt.current = false;
     }
-    // farbeVon hängt nur an arten, das in sichtbar schon steckt
+    // art/suche stecken schon in sichtbar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sichtbar, vergleich]);
+
+  const umschalten = (e: Ebene) =>
+    setEbenen((alt) => {
+      const neu = new Set(alt);
+      if (neu.has(e)) neu.delete(e);
+      else neu.add(e);
+      return neu;
+    });
 
   const vergleichSuchen = async () => {
     if (!projektText.trim() || !token) return;
@@ -319,7 +396,7 @@ export function ExposeKartePage() {
     <>
       <PageHeader
         titel="Exposéanalyse"
-        beschreibung="Lage und Eckdaten aller eingegangenen Exposés, z. B. als Vergleichsobjekte im Kundengespräch"
+        beschreibung="Marktkarte: Verkäufe und Angebote aus Salesforce, auf Wunsch mit den Exposés aus dem Postfach"
         reiter={<ExposeReiter aktiv="karte" />}
       />
       <PageWrapper>
@@ -332,8 +409,8 @@ export function ExposeKartePage() {
               <p className="text-xs text-text-muted">
                 Beschreibe das Objekt deines Kunden, z. B. „MFH in Neuss, Am
                 Baldhof 12, 14 WE, ca. 950 m², Baujahr 1965, IST-Miete 92 T€ p.
-                a., Preisvorstellung 2,1 Mio“. Die KI sucht passende Exposés
-                heraus.
+                a., Preisvorstellung 2,1 Mio“. Die KI sucht passende Verkäufe,
+                Angebote und Exposés heraus.
               </p>
             </div>
             <Textarea
@@ -367,7 +444,7 @@ export function ExposeKartePage() {
                   variant="outline"
                   onClick={() => setVergleich(null)}
                 >
-                  Alle Exposés zeigen
+                  Alle Objekte zeigen
                 </Button>
               ) : null}
             </div>
@@ -384,49 +461,74 @@ export function ExposeKartePage() {
             ) : null}
           </section>
 
+          {sfFehler ? (
+            <p className="rounded-md border border-hairline bg-surface p-3 text-xs text-heading">
+              Salesforce ist gerade nicht erreichbar, die Karte zeigt nur die
+              Exposés aus dem Postfach. ({sfFehler})
+            </p>
+          ) : null}
+
           <div
             className={cn(
-              "flex flex-wrap items-center gap-2",
+              "flex flex-col gap-2",
               vergleich && "pointer-events-none opacity-40",
             )}
           >
-            <button
-              type="button"
-              onClick={() => setArt("alle")}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs",
-                art === "alle"
-                  ? "border-heading bg-heading text-surface"
-                  : "border-hairline bg-surface text-heading",
-              )}
-            >
-              Alle
-            </button>
-            {arten.map((a) => (
-              <button
-                key={a}
-                type="button"
-                onClick={() => setArt(a)}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs",
-                  art === a
-                    ? "border-heading bg-heading text-surface"
-                    : "border-hairline bg-surface text-heading",
-                )}
-              >
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: farbeVon(a) }}
-                />
-                {a}
-              </button>
-            ))}
-            <Input
-              value={suche}
-              onChange={(e) => setSuche(e.target.value)}
-              placeholder="Ort, PLZ, Straße oder Makler"
-              className="ml-auto h-8 w-64 text-sm"
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              {EBENEN.map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => umschalten(e.id)}
+                  aria-pressed={ebenen.has(e.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs",
+                    ebenen.has(e.id)
+                      ? "border-heading bg-surface text-heading"
+                      : "border-hairline bg-surface text-text-muted opacity-60",
+                  )}
+                >
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{
+                      backgroundColor: ebenen.has(e.id)
+                        ? e.farbe
+                        : "transparent",
+                      border: `1.5px solid ${e.farbe}`,
+                    }}
+                  />
+                  {e.label}
+                  <span className="tabular-nums text-text-muted">
+                    {formatInt(anzahlJeEbene.get(e.id) ?? 0)}
+                  </span>
+                </button>
+              ))}
+              <Input
+                value={suche}
+                onChange={(e) => setSuche(e.target.value)}
+                placeholder="Ort, PLZ, Straße, Makler oder Mandat"
+                className="ml-auto h-8 w-64 text-sm"
+              />
+            </div>
+            {arten.length > 1 ? (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {["alle", ...arten].map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => setArt(a)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-0.5 text-xs",
+                      art === a
+                        ? "border-heading bg-heading text-surface"
+                        : "border-hairline bg-surface text-heading",
+                    )}
+                  >
+                    {a === "alle" ? "Alle Objektarten" : a}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
@@ -440,7 +542,7 @@ export function ExposeKartePage() {
                   ? "Lädt…"
                   : vergleich
                     ? `${sichtbar.length} Vergleichsobjekte`
-                    : `${sichtbar.length} Objekte auf der Karte`}
+                    : `${formatInt(sichtbar.length)} Objekte auf der Karte`}
                 {offen > 0 ? ` · ${offen} Adressen werden noch gesucht…` : ""}
                 {ohneLage > 0 && offen === 0
                   ? ` · ${ohneLage} ohne erkennbare Adresse`
@@ -448,19 +550,22 @@ export function ExposeKartePage() {
               </div>
               <ul className="flex-1 overflow-y-auto">
                 {sichtbar.map((o) => (
-                  <li key={o.id}>
+                  <li
+                    key={o.id}
+                    className={cn(
+                      "border-b border-hairline",
+                      auswahl === o.id && "bg-muted",
+                    )}
+                  >
                     <button
                       type="button"
                       onClick={() => zeige(o)}
-                      className={cn(
-                        "flex w-full flex-col gap-0.5 border-b border-hairline px-4 py-2.5 text-left hover:bg-muted/50",
-                        auswahl === o.id && "bg-muted",
-                      )}
+                      className="flex w-full flex-col gap-0.5 px-4 pt-2.5 pb-1 text-left hover:bg-muted/50"
                     >
                       <span className="flex items-center gap-2 text-sm font-medium text-heading">
                         <span
                           className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: farbeVon(o.objektart) }}
+                          style={{ backgroundColor: farbeVon(o) }}
                         />
                         <span className="truncate">
                           {o.adresse ?? "Adresse unbekannt"}
@@ -470,6 +575,9 @@ export function ExposeKartePage() {
                         {[o.plz, o.stadt].filter(Boolean).join(" ")}
                         {o.objektart ? ` · ${o.objektart}` : ""}
                       </span>
+                      <span className="text-xs text-heading">
+                        {statusText(o)}
+                      </span>
                       <span className="text-xs tabular-nums text-text-muted">
                         {[
                           o.einheiten ? `${formatInt(o.einheiten)} WE` : null,
@@ -477,7 +585,9 @@ export function ExposeKartePage() {
                             ? `${formatInt(Math.round(o.flaeche))} m²`
                             : null,
                           o.miete ? `${euroKurz(o.miete)} p. a.` : null,
-                          o.preis ? `KP ${euroKurz(o.preis)}` : null,
+                          o.preis
+                            ? `${o.status === "verkauft" ? "KP" : "AP"} ${euroKurz(o.preis)}${o.preisGeschaetzt ? " (geschätzt)" : ""}`
+                            : null,
                           o.faktor ? `${zahl1(o.faktor)}-fach` : null,
                         ]
                           .filter(Boolean)
@@ -492,15 +602,28 @@ export function ExposeKartePage() {
                         </span>
                       ) : null}
                     </button>
+                    {o.mandat ? (
+                      <Link
+                        to="/mandate/$sfId"
+                        params={{ sfId: o.mandat.sfId }}
+                        className="block px-4 pb-2.5 text-xs text-brand-text underline"
+                      >
+                        Mandatsakte {o.mandat.name}
+                        {o.mandat.phase ? ` (${o.mandat.phase})` : ""}
+                      </Link>
+                    ) : (
+                      <span className="block pb-1.5" />
+                    )}
                   </li>
                 ))}
               </ul>
             </div>
           </div>
           <p className="text-xs text-text-muted">
-            Werte wie im Exposé angegeben. Blasse, gestrichelte Punkte: nur der
-            Ort war erkennbar, die Lage ist ungefähr. Kartendaten ©
-            OpenStreetMap.
+            Verkäufe und Angebote aus den Salesforce-Transaktionen, Abschlüsse
+            von Grenz &amp; Co. mit hellblauem Rand. KP = Kaufpreis, AP =
+            Angebotspreis. Blasse, gestrichelte Punkte: nur der Ort war
+            erkennbar, die Lage ist ungefähr. Kartendaten © OpenStreetMap.
           </p>
         </div>
       </PageWrapper>
