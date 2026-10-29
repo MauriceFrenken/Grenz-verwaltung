@@ -96,8 +96,8 @@ export function MarktberichtListePage() {
   return (
     <>
       <PageHeader
-        titel="Marktbericht Zinshäuser Rheinland"
-        beschreibung="Halbjahres- und Jahresbericht im Grenz-&-Co.-Design. Grundlage sind die eigenen Daten (Exposé-Eingang, Ankaufsprofile, Salesforce, Markt-Radar), die Zinsen der Bundesbank und die automatisch ausgelesenen Marktberichte großer Häuser."
+        titel="Marktberichte"
+        beschreibung="Zinshäuser Rheinland, zum Halbjahr und Jahresende für private und professionelle Investoren, als Grenz & Co. Research. Die KI schreibt den Entwurf automatisch aus den eigenen Daten, den Bundesbank-Zinsen und den ausgelesenen Berichten großer Häuser (ohne Quellennennung im Bericht). Im Bericht lassen sich Änderungen per Chat anweisen."
       />
       <PageWrapper>
         <div className="flex max-w-5xl flex-col gap-6">

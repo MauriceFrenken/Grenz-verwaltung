@@ -115,8 +115,8 @@ export const KI_TOOLS: KiToolDefinition[] = [
   {
     id: "marktbericht",
     pfad: "/tools/marktbericht",
-    label: "Marktbericht Halbjahr und Jahr",
-    kurz: "Marktbericht",
+    label: "Marktberichte",
+    kurz: "Marktberichte",
     beschreibung:
       "Erstellt den Marktbericht Zinshäuser Rheinland zum Halbjahr und Jahresende: Angebotsfaktoren aus dem Exposé-Eingang, Käuferindex, Zinsen der Bundesbank und zitierte Werte großer Häuser.",
     icon: FileText,

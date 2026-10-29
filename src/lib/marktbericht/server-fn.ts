@@ -151,6 +151,17 @@ function text(w: unknown, max: number): string | undefined {
   return typeof w === "string" ? w.slice(0, max) : undefined;
 }
 
+function schlagzeilenAus(roh: unknown): MarktberichtTexte["schlagzeilen"] {
+  if (!roh || typeof roh !== "object") return undefined;
+  const s = roh as Record<string, unknown>;
+  return {
+    rahmen: text(s.rahmen, 120),
+    angebot: text(s.angebot, 120),
+    nachfrage: text(s.nachfrage, 120),
+    ausblick: text(s.ausblick, 120),
+  };
+}
+
 function texteAus(roh: unknown): MarktberichtTexte {
   const t = (roh ?? {}) as Record<string, unknown>;
   const liste = (w: unknown, max: number) =>
@@ -184,6 +195,7 @@ function texteAus(roh: unknown): MarktberichtTexte {
     vermarktung: text(t.vermarktung, 3000),
     ausblick: text(t.ausblick, 3000),
     empfehlungen: liste(t.empfehlungen, 300),
+    schlagzeilen: schlagzeilenAus(t.schlagzeilen),
     ausblickTrends: trends,
     pruefhinweise: liste(t.pruefhinweise, 400),
   };
@@ -633,6 +645,60 @@ export const marktberichtKiTexteFn = createServerFn({ method: "POST" })
     const { texteEntwurf } = await import("./ki");
     return texteEntwurf(b.kennzahlen, data.benchmarks);
   });
+
+/**
+ * Chat im Editor: Die KI überarbeitet die aktuellen (auch ungespeicherten) Texte nach einer
+ * Anweisung. Das Ergebnis wird nicht gespeichert; der Editor übernimmt und speichert es.
+ */
+export const marktberichtChatFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => {
+    const d = (data ?? {}) as {
+      texte?: unknown;
+      benchmarks?: unknown;
+      anweisung?: unknown;
+      verlauf?: unknown;
+    };
+    const anweisung =
+      typeof d.anweisung === "string" ? d.anweisung.trim().slice(0, 2000) : "";
+    if (!anweisung) throw new Error("Bitte eine Anweisung eingeben.");
+    const verlauf = Array.isArray(d.verlauf)
+      ? (d.verlauf as Record<string, unknown>[])
+          .filter(
+            (v) =>
+              typeof v?.anweisung === "string" &&
+              typeof v?.antwort === "string",
+          )
+          .slice(-6)
+          .map((v) => ({
+            anweisung: String(v.anweisung).slice(0, 2000),
+            antwort: String(v.antwort).slice(0, 1000),
+          }))
+      : [];
+    return {
+      supabaseAccessToken: tokenAus(data),
+      id: idAus(data),
+      texte: texteAus(d.texte),
+      benchmarks: benchmarksAus(d.benchmarks),
+      anweisung,
+      verlauf,
+    };
+  })
+  .handler(
+    async ({
+      data,
+    }): Promise<{ texte: MarktberichtTexte; antwort: string }> => {
+      await pruefeAufrufer(data.supabaseAccessToken, "schreiben");
+      const b = await ladeEntwurf(createServiceRoleClient(), data.id);
+      const { texteUeberarbeiten } = await import("./ki");
+      return texteUeberarbeiten(
+        b.kennzahlen,
+        data.benchmarks,
+        data.texte,
+        data.anweisung,
+        data.verlauf,
+      );
+    },
+  );
 
 /** Kompletten Entwurf schreiben: Kennzahlen neu berechnen, alle Texte per KI, direkt gespeichert. */
 export const marktberichtAutoEntwurfFn = createServerFn({ method: "POST" })

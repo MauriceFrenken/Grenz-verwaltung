@@ -38,83 +38,119 @@ const ohneStriche = (s: string) => s.replace(/\s*[–—]\s*/g, ", ").trim();
 
 const TREND = { type: "string", enum: ["steigend", "stabil", "fallend"] };
 
-const TEXT_SCHEMA = {
-  type: "object",
-  properties: {
-    thesen: { type: "array", items: { type: "string" } },
-    einleitung: { type: "string" },
-    rahmen: { type: "string" },
-    angebot: { type: "string" },
-    nachfrage: { type: "string" },
-    ausblick: { type: "string" },
-    empfehlungen: { type: "array", items: { type: "string" } },
-    ausblickTrends: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          kennzahl: { type: "string" },
-          trend: TREND,
-          prognose: TREND,
-        },
-        required: ["kennzahl", "trend", "prognose"],
-        additionalProperties: false,
+const TEXT_PROPS = {
+  thesen: { type: "array", items: { type: "string" } },
+  einleitung: { type: "string" },
+  rahmen: { type: "string" },
+  angebot: { type: "string" },
+  nachfrage: { type: "string" },
+  ausblick: { type: "string" },
+  schlagzeilen: {
+    type: "object",
+    properties: {
+      rahmen: { type: "string" },
+      angebot: { type: "string" },
+      nachfrage: { type: "string" },
+      ausblick: { type: "string" },
+    },
+    required: ["rahmen", "angebot", "nachfrage", "ausblick"],
+    additionalProperties: false,
+  },
+  empfehlungen: { type: "array", items: { type: "string" } },
+  ausblickTrends: {
+    type: "array",
+    items: {
+      type: "object",
+      properties: {
+        kennzahl: { type: "string" },
+        trend: TREND,
+        prognose: TREND,
       },
+      required: ["kennzahl", "trend", "prognose"],
+      additionalProperties: false,
     },
   },
-  required: [
-    "thesen",
-    "einleitung",
-    "rahmen",
-    "angebot",
-    "nachfrage",
-    "ausblick",
-    "empfehlungen",
-    "ausblickTrends",
-  ],
+} as const;
+
+const TEXT_FELDER = [
+  "thesen",
+  "einleitung",
+  "rahmen",
+  "angebot",
+  "nachfrage",
+  "ausblick",
+  "schlagzeilen",
+  "empfehlungen",
+  "ausblickTrends",
+] as const;
+
+const TEXT_SCHEMA = {
+  type: "object",
+  properties: TEXT_PROPS,
+  required: TEXT_FELDER,
   additionalProperties: false,
 } as const;
 
-const TEXT_SYSTEM = `Du schreibst für Grenz & Co. Research, die Research-Abteilung der Grenz & Co. Immobilienberatungs-GmbH (Köln und Düsseldorf), Investmentmakler für Zinshäuser, Mehrfamilienhäuser und Wohn- und Geschäftshäuser im Rheinland.
-Leser sind private und semi-professionelle Immobilieninvestoren: vermögende Privatpersonen, Family Offices, Bestandshalter mit einigen Häusern. Sie wollen in zwei Minuten wissen: Was kostet ein Zinshaus gerade, welche Rendite ist drin, wie teuer ist die Finanzierung, wohin gehen Mieten und Preise, ist jetzt ein guter Zeitpunkt zu kaufen oder zu verkaufen.
+const CHAT_SCHEMA = {
+  type: "object",
+  properties: { antwort: { type: "string" }, ...TEXT_PROPS },
+  required: ["antwort", ...TEXT_FELDER],
+  additionalProperties: false,
+} as const;
 
-Stil:
-- Kurz, klar, auf den Punkt. Aktive Sätze, keine Füllwörter, kein Fachjargon ohne Erklärung (Faktor = Kaufpreis durch Jahresnettokaltmiete).
-- Souverän und meinungsstark wie ein erfahrener Research-Analyst, aber seriös. „Wir“ steht für Grenz & Co. Research.
-- Konkrete Zahlen statt Adjektive. Deutsch. Keine Gedankenstriche (– oder —).
+/** Stil- und Inhaltsregeln, gemeinsam für den Entwurf und den Chat. */
+const REGELN = `Absender ist Grenz & Co. Research, die Research-Abteilung der Grenz & Co. Immobilienberatungs-GmbH (Köln und Düsseldorf), Investmentmakler für Zinshäuser, Mehrfamilienhäuser und Wohn- und Geschäftshäuser im Rheinland.
+Leser sind vermögende Privatanleger, Family Offices und Bestandshalter mit einigen Häusern. Sie lesen den Bericht in zwei Minuten und wollen wissen: Was kostet ein Zinshaus, welche Rendite ist drin, was kostet die Finanzierung, wohin gehen Mieten und Preise, was heißt das für Kauf, Verkauf und Bestand.
+
+Stil (Niveau eines Research-Briefs einer Privatbank):
+- Jeder Abschnitt beginnt mit der Kernaussage, danach höchstens zwei belegende Sätze. Keine Einleitungsfloskeln („Im ersten Halbjahr zeigte sich …“, „Insgesamt lässt sich festhalten …“).
+- Präzise, nüchtern, souverän. Aktive Verben, kurze Hauptsätze, höchstens 22 Wörter pro Satz. Keine Schachtelsätze, keine Klammern, keine Ausrufe, kein Marketing.
+- Höchstens drei Zahlen pro Satz. Jede Zahl trägt eine Aussage; keine Zahlenaufzählungen. Dieselbe Zahl nicht in mehreren Abschnitten wiederholen, außer in Thesen und Kurzfassung.
+- Fachbegriffe wie Faktor, Bruttorendite, Basispunkte dürfen vorkommen, aber nicht in Klammern erklärt werden (die Erklärung steht im Bericht).
+- „Wir“ steht für Grenz & Co. Research. Einschätzungen klar als solche formulieren („Wir erwarten …“).
+- Deutsch, keine Gedankenstriche (– oder —), keine Plus-Zeichen vor Zahlen im Fließtext („um 4,5 %“ statt „+4,5 %“).
 
 Harte Regeln:
-- Verwende ausschließlich Zahlen, die in den gelieferten Kennzahlen stehen, genau so geschrieben. Rechne keine neuen Zahlen aus und runde nicht um.
-- Nenne NIE einen Herausgeber, ein anderes Maklerhaus, einen Gutachterausschuss, eine Behörde oder Bank als Quelle und schreibe nie „laut …“ oder „nach Angaben von …“. Alle Aussagen sind Einschätzungen von Grenz & Co. Research („Unsere Auswertung zeigt …“, „Wir beobachten …“).
-- Nenne keine Investoren-, Eigentümer- oder Firmennamen.
-- Interne Vermarktungszahlen von Grenz & Co. (Mandate, Abschlüsse, Interessenten) gehören nicht in den Bericht.
-- Wo Daten dünn sind, formuliere vorsichtig statt zu verallgemeinern, ohne die Datenlage ausführlich zu erklären.
+- Verwende ausschließlich Zahlen, die in den gelieferten Kennzahlen stehen, genau so geschrieben. Rechne nichts neu aus, runde nicht.
+- Nenne NIE einen Herausgeber, ein anderes Maklerhaus, einen Gutachterausschuss, eine Behörde oder Bank als Quelle und schreibe nie „laut …“ oder „nach Angaben von …“. Alle Aussagen sind Einschätzungen von Grenz & Co. Research.
+- Nenne keine Investoren-, Eigentümer- oder Firmennamen. Keine internen Vermarktungszahlen von Grenz & Co.
+- Werte mit älterem Stand (z. B. Gesamtjahr 2025) als solche kennzeichnen („2025“), nicht als aktuelles Halbjahr ausgeben.
 
-Felder:
-- thesen: genau 3 Kernthesen, je höchstens 10 Wörter, Stichwort mit Doppelpunkt, dann die Aussage (z. B. „Mieten ziehen an: Köln plus 4,5 % zum Vorjahr“).
-- einleitung: Kurzfassung in 3 Sätzen, die das Wichtigste für Investoren zusammenfasst.
-- rahmen: Finanzierung, 2 bis 3 Sätze: Bauzins, Bundesanleihe, und was der Abstand zwischen Rendite und Bauzins für fremdfinanzierte Käufe bedeutet.
-- angebot: Preise und Renditen, 3 bis 4 Sätze zu Köln, Düsseldorf, Bonn und Umland: Faktoren, Kaufpreise je m², Bruttorenditen.
-- nachfrage: Investmentmarkt und Mieten, 3 Sätze: Umsatz und Belebung des Marktes, Mietentwicklung, was Käufer derzeit suchen.
-- ausblick: 3 Sätze zum nächsten Halbjahr, vorsichtig, mit klarer Tendenz.
-- empfehlungen: 3 bis 4 Hinweise „Was das für Investoren bedeutet“, je höchstens 22 Wörter, Stichwort mit Doppelpunkt (z. B. „Käufer: Faktoren unter 20 bieten im Umland solide Bruttorenditen“). Keine Anlageberatung im Einzelfall, sondern Markteinordnung.
+Felder und Längen:
+- thesen: genau 3, je höchstens 8 Wörter, „Stichwort: Aussage“ (z. B. „Mieten: Düsseldorf legt um 7,4 % zu“).
+- einleitung: Kurzfassung, genau 3 Sätze, höchstens 60 Wörter.
+- schlagzeilen: je Abschnitt eine Schlagzeile mit der Kernaussage, höchstens 8 Wörter, ohne Punkt (z. B. „Renditen liegen nur knapp über dem Bauzins“).
+- rahmen (Finanzierung): 2 bis 3 Sätze, höchstens 60 Wörter.
+- angebot (Preise und Renditen): 3 Sätze, höchstens 70 Wörter. Köln, Düsseldorf, Bonn, Umland vergleichen, nicht nacheinander aufzählen.
+- nachfrage (Markt und Mieten): 3 Sätze, höchstens 70 Wörter.
+- ausblick: 3 Sätze, höchstens 60 Wörter, klare Tendenz.
+- empfehlungen: genau 4, für Käufer, Verkäufer, Bestandshalter und Finanzierung, je „Stichwort: Hinweis“, höchstens 16 Wörter. Markteinordnung, keine Anlageberatung im Einzelfall.
 - ausblickTrends: 4 bis 6 Kennzahlen (Kaufpreisfaktoren, Mieten, Bauzins, Transaktionen, Nachfrage, Angebot) mit Trend der Periode und Prognose fürs nächste Halbjahr.`;
+
+const TEXT_SYSTEM = `Du schreibst den halbjährlichen Marktbericht „Zinshäuser Rheinland“.\n\n${REGELN}`;
+
+const CHAT_SYSTEM = `Du überarbeitest den Marktbericht „Zinshäuser Rheinland“ nach der Anweisung eines Mitarbeiters von Grenz & Co.\n\n${REGELN}\n\nVorgehen:\n- Setze die Anweisung genau um und ändere nur, was sie betrifft. Alle übrigen Felder gibst du unverändert zurück.\n- Verlangt die Anweisung Zahlen, die nicht in den Kennzahlen stehen, oder das Nennen von Quellen, setze sie nicht um und sage das in „antwort“.\n- „antwort“: ein bis zwei Sätze an den Mitarbeiter, was du geändert hast.`;
 
 /** Namen fremder Quellen, die im Bericht nicht vorkommen dürfen. */
 const QUELLEN =
   /\b(laut|nach angaben|zufolge|bnp|paribas|jll|jones lang|cbre|cushman|wakefield|savills|colliers|engel\s*&\s*völkers|e&v|greif|contzen|aengevelt|dip\b|gutachterausschuss|oberer gutachter|ivd|bundesbank|destatis|bulwiengesa|empirica|greix|immoscout|immowelt|research-berichte?n? anderer)\b/i;
 
-export function quellenGenannt(texte: MarktberichtTexte): string[] {
-  const felder: [string, string | undefined][] = [
+function felder(texte: MarktberichtTexte): [string, string | undefined][] {
+  const s = texte.schlagzeilen ?? {};
+  return [
     ["Thesen", texte.thesen?.join(" ")],
     ["Kurzfassung", texte.einleitung],
+    ["Schlagzeilen", [s.rahmen, s.angebot, s.nachfrage, s.ausblick].join(" ")],
     ["Finanzierung", texte.rahmen],
     ["Preise und Renditen", texte.angebot],
-    ["Investmentmarkt", texte.nachfrage],
+    ["Markt und Mieten", texte.nachfrage],
     ["Ausblick", texte.ausblick],
     ["Empfehlungen", texte.empfehlungen?.join(" ")],
   ];
-  return felder
+}
+
+export function quellenGenannt(texte: MarktberichtTexte): string[] {
+  return felder(texte)
     .map(([name, t]) => {
       const m = (t ?? "").match(QUELLEN);
       return m
@@ -131,40 +167,63 @@ type RohTexte = {
   angebot: string;
   nachfrage: string;
   ausblick: string;
+  schlagzeilen: NonNullable<MarktberichtTexte["schlagzeilen"]>;
   empfehlungen: string[];
   ausblickTrends: NonNullable<MarktberichtTexte["ausblickTrends"]>;
 };
 
-async function texteAnfragen(
-  kontext: string,
-  korrektur?: string,
-): Promise<MarktberichtTexte> {
-  const antwort = await client().messages.create({
-    model: MODELL,
-    max_tokens: 6000,
-    system: TEXT_SYSTEM,
-    output_config: {
-      effort: "medium",
-      format: { type: "json_schema", schema: TEXT_SCHEMA },
-    },
-    messages: [
-      {
-        role: "user",
-        content: `<kennzahlen>\n${kontext}\n</kennzahlen>\n\nSchreibe die Texte des Marktberichts als JSON.${korrektur ? `\n\nDein letzter Entwurf hatte diese Fehler, vermeide sie:\n${korrektur}` : ""}`,
-      },
-    ],
-  });
-  const roh = JSON.parse(textAus(antwort)) as RohTexte;
+const ohnePlus = (s: string) => ohneStriche(s).replace(/(^|\s)\+(?=\d)/g, "$1");
+const zeile = (s: string) => ohnePlus(s).replace(/\.$/, "");
+
+function texteAusRoh(roh: RohTexte): MarktberichtTexte {
   return {
-    thesen: roh.thesen.slice(0, 3).map(ohneStriche),
-    einleitung: ohneStriche(roh.einleitung),
-    rahmen: ohneStriche(roh.rahmen),
-    angebot: ohneStriche(roh.angebot),
-    nachfrage: ohneStriche(roh.nachfrage),
-    ausblick: ohneStriche(roh.ausblick),
-    empfehlungen: roh.empfehlungen.slice(0, 4).map(ohneStriche),
+    thesen: roh.thesen.slice(0, 3).map(zeile),
+    einleitung: ohnePlus(roh.einleitung),
+    rahmen: ohnePlus(roh.rahmen),
+    angebot: ohnePlus(roh.angebot),
+    nachfrage: ohnePlus(roh.nachfrage),
+    ausblick: ohnePlus(roh.ausblick),
+    schlagzeilen: {
+      rahmen: zeile(roh.schlagzeilen.rahmen ?? ""),
+      angebot: zeile(roh.schlagzeilen.angebot ?? ""),
+      nachfrage: zeile(roh.schlagzeilen.nachfrage ?? ""),
+      ausblick: zeile(roh.schlagzeilen.ausblick ?? ""),
+    },
+    empfehlungen: roh.empfehlungen.slice(0, 4).map(zeile),
     ausblickTrends: roh.ausblickTrends.slice(0, 6),
   };
+}
+
+async function anfragen<T>(
+  system: string,
+  schema: { [key: string]: unknown },
+  inhalt: string,
+): Promise<T> {
+  const antwort = await client()
+    .messages.stream({
+      model: MODELL,
+      max_tokens: 8000,
+      system,
+      output_config: {
+        effort: "high",
+        format: { type: "json_schema", schema },
+      },
+      messages: [{ role: "user", content: inhalt }],
+    })
+    .finalMessage();
+  return JSON.parse(textAus(antwort)) as T;
+}
+
+function texteAnfragen(kontext: string, korrektur?: string): Promise<RohTexte> {
+  return anfragen<RohTexte>(
+    TEXT_SYSTEM,
+    TEXT_SCHEMA,
+    `<kennzahlen>\n${kontext}\n</kennzahlen>\n\nSchreibe die Texte des Marktberichts als JSON.${korrektur ? `\n\nDein letzter Entwurf hatte diese Fehler, vermeide sie:\n${korrektur}` : ""}`,
+  );
+}
+
+function fehlerIn(texte: MarktberichtTexte, kontext: string): string[] {
+  return [...quellenGenannt(texte), ...pruefe(texte, kontext)];
 }
 
 export async function texteEntwurf(
@@ -172,30 +231,50 @@ export async function texteEntwurf(
   benchmarks: Benchmark[],
 ): Promise<MarktberichtTexte> {
   const kontext = kennzahlenText(k, benchmarks);
-  let texte = await texteAnfragen(kontext);
-  let fehler = [...quellenGenannt(texte), ...pruefe(texte, kontext)];
+  let texte = texteAusRoh(await texteAnfragen(kontext));
+  let fehler = fehlerIn(texte, kontext);
   // Einmal nachbessern lassen, wenn eine Quelle genannt ist oder Zahlen nicht belegt sind.
   if (fehler.length) {
-    texte = await texteAnfragen(kontext, fehler.join("\n"));
-    fehler = [...quellenGenannt(texte), ...pruefe(texte, kontext)];
+    texte = texteAusRoh(await texteAnfragen(kontext, fehler.join("\n")));
+    fehler = fehlerIn(texte, kontext);
   }
   texte.pruefhinweise = fehler;
   return texte;
 }
 
+/** Chat im Editor: Texte nach einer Anweisung überarbeiten. Ergebnis ist ungespeichert. */
+export async function texteUeberarbeiten(
+  k: MarktberichtKennzahlen,
+  benchmarks: Benchmark[],
+  texte: MarktberichtTexte,
+  anweisung: string,
+  verlauf: { anweisung: string; antwort: string }[],
+): Promise<{ texte: MarktberichtTexte; antwort: string }> {
+  const kontext = kennzahlenText(k, benchmarks);
+  const bisher = { ...texte };
+  delete bisher.pruefhinweise;
+  const frueher = verlauf
+    .slice(-6)
+    .map((v) => `Mitarbeiter: ${v.anweisung}\nDu: ${v.antwort}`)
+    .join("\n\n");
+  const roh = await anfragen<RohTexte & { antwort: string }>(
+    CHAT_SYSTEM,
+    CHAT_SCHEMA,
+    `<kennzahlen>\n${kontext}\n</kennzahlen>\n\n<bericht>\n${JSON.stringify(bisher, null, 1)}\n</bericht>\n\n${frueher ? `<bisheriger_chat>\n${frueher}\n</bisheriger_chat>\n\n` : ""}<anweisung>\n${anweisung}\n</anweisung>\n\nGib den vollständigen überarbeiteten Bericht als JSON zurück.`,
+  );
+  const neu = texteAusRoh({
+    ...roh,
+    // Leere Schlagzeilen der KI nicht übernehmen, wenn es vorher welche gab.
+    schlagzeilen: { ...texte.schlagzeilen, ...roh.schlagzeilen },
+  } as RohTexte);
+  neu.pruefhinweise = fehlerIn(neu, kontext);
+  return { texte: neu, antwort: ohneStriche(roh.antwort) };
+}
+
 /** Zahlen in den Texten, die nicht in den Kennzahlen stehen, als Hinweis für die Redaktion. */
 export function pruefe(texte: MarktberichtTexte, kontext: string): string[] {
   const hinweise: string[] = [];
-  const felder: [string, string | undefined][] = [
-    ["Thesen", texte.thesen?.join(" ")],
-    ["Kurzfassung", texte.einleitung],
-    ["Finanzierung", texte.rahmen],
-    ["Preise und Renditen", texte.angebot],
-    ["Investmentmarkt", texte.nachfrage],
-    ["Ausblick", texte.ausblick],
-    ["Empfehlungen", texte.empfehlungen?.join(" ")],
-  ];
-  for (const [name, t] of felder) {
+  for (const [name, t] of felder(texte)) {
     const fremd = unbelegteZahlen(t ?? "", kontext);
     if (fremd.length)
       hinweise.push(

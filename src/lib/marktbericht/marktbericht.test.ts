@@ -372,4 +372,12 @@ describe("quellenGenannt", () => {
       [],
     );
   });
+
+  it("prüft auch die Kernaussagen über den Abschnitten", () => {
+    expect(
+      quellenGenannt({
+        schlagzeilen: { angebot: "Savills sieht Köln vor Düsseldorf" },
+      }),
+    ).toHaveLength(1);
+  });
 });

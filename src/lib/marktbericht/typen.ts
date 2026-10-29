@@ -142,6 +142,13 @@ export type MarktberichtTexte = {
   nachfrage?: string;
   vermarktung?: string;
   ausblick?: string;
+  /** Schlagzeile je Abschnitt (Kernaussage), steht im PDF unter dem Seitentitel. */
+  schlagzeilen?: {
+    rahmen?: string;
+    angebot?: string;
+    nachfrage?: string;
+    ausblick?: string;
+  };
   /** „Was das für Investoren bedeutet“: drei bis vier konkrete Hinweise für Privatanleger. */
   empfehlungen?: string[];
   ausblickTrends?: { kennzahl: string; trend: Trend; prognose: Trend }[];
@@ -164,10 +171,11 @@ export type MarktberichtInhalt = {
 
 /**
  * Fassung der KI-Vorgaben. 2 = Bericht für private und semi-professionelle Investoren als
- * „Grenz & Co. Research“ ohne Nennung fremder Quellen. Automatische Texte älterer Fassungen
+ * „Grenz & Co. Research“ ohne Nennung fremder Quellen. 3 = strengere Stil- und Längenvorgaben,
+ * Schlagzeilen je Abschnitt. Automatische Texte älterer Fassungen
  * schreibt der Cron neu.
  */
-export const TEXT_FASSUNG = 2;
+export const TEXT_FASSUNG = 3;
 
 /** Noch keine Texte geschrieben (frisch angelegter Bericht). */
 export function texteLeer(t: MarktberichtTexte): boolean {

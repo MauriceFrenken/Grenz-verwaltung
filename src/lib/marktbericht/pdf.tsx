@@ -114,6 +114,7 @@ function Fuss({
 function Rahmen({
   titel,
   untertitel,
+  kernaussage,
   seite,
   kopf,
   stempel,
@@ -122,6 +123,8 @@ function Rahmen({
 }: {
   titel: string;
   untertitel: string;
+  /** Schlagzeile der KI; ersetzt den Untertitel und steht größer in navy. */
+  kernaussage?: string;
   seite: number;
   kopf: string;
   stempel: string | null;
@@ -150,11 +153,26 @@ function Rahmen({
       >
         {t(titel.toUpperCase())}
       </Text>
-      <Text
-        style={{ ...abs({ x: 0.35, y: 1.15, w: 7.1, h: 0.3 }), fontSize: 9.5 }}
-      >
-        {t(untertitel)}
-      </Text>
+      {kernaussage?.trim() ? (
+        <Text
+          style={{
+            ...abs({ x: 0.35, y: 1.1, w: 7.1, h: 0.35 }),
+            fontSize: 13,
+            color: F.navy,
+          }}
+        >
+          {t(kernaussage.trim())}
+        </Text>
+      ) : (
+        <Text
+          style={{
+            ...abs({ x: 0.35, y: 1.15, w: 7.1, h: 0.3 }),
+            fontSize: 9.5,
+          }}
+        >
+          {t(untertitel)}
+        </Text>
+      )}
       {children}
       {rand ? (
         <View style={{ ...abs({ x: 7.85, y: 1.6, w: 3.45 }) }}>{rand}</View>
@@ -826,6 +844,7 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
       <Rahmen
         titel="Finanzierung"
         untertitel="Bauzinsen, Kapitalmarkt und Rendite im Vergleich"
+        kernaussage={x.schlagzeilen?.rahmen}
         seite={naechste()}
         kopf={kopf}
         stempel={stempel}
@@ -876,6 +895,7 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
       <Rahmen
         titel="Preise und Renditen"
         untertitel="Kaufpreisfaktoren, Kaufpreise und Renditen für Mehrfamilienhäuser"
+        kernaussage={x.schlagzeilen?.angebot}
         seite={naechste()}
         kopf={kopf}
         stempel={stempel}
@@ -936,6 +956,7 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
       <Rahmen
         titel="Markt und Mieten"
         untertitel="Transaktionen, Mietentwicklung und Nachfrage der Investoren"
+        kernaussage={x.schlagzeilen?.nachfrage}
         seite={naechste()}
         kopf={kopf}
         stempel={stempel}
@@ -1010,6 +1031,7 @@ function MarktberichtDokument({ b }: { b: MarktberichtVoll }) {
       <Rahmen
         titel="Ausblick"
         untertitel="Unsere Erwartung für das nächste Halbjahr"
+        kernaussage={x.schlagzeilen?.ausblick}
         seite={naechste()}
         kopf={kopf}
         stempel={stempel}

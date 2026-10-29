@@ -25,7 +25,7 @@ const LABELS: Record<string, string> = {
   "/tools/mieterliste": "Mieterlistenerstellung",
   "/tools/dcf": "DCF-Kalkulation",
   "/tools/kaufpreis": "Kaufpreistool",
-  "/tools/marktbericht": "Marktbericht",
+  "/tools/marktbericht": "Marktberichte",
   "/einstellungen": "Einstellungen",
   "/einstellungen/benutzer": "Benutzer",
   "/einstellungen/integrationen": "Integrationen",
