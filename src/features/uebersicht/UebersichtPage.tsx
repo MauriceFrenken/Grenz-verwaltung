@@ -1,26 +1,36 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  AlertTriangle,
-  ArrowRight,
-  Briefcase,
-  ChartColumn,
-  CircleDot,
-  Handshake,
-  Inbox,
-  MapPin,
-  Radar,
-  RefreshCw,
-} from "lucide-react";
+import { ArrowRight, Loader2, RefreshCw, Target } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageWrapper } from "@/components/layout/PageWrapper";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Kachel, KachelReihe, Karte } from "@/features/kennzahlen/bausteine";
 import { VIZ, euroKurz } from "@/features/kennzahlen/hilfen";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFehlermeldung } from "@/lib/apiFehlermeldung";
-import { formatDate, formatInt } from "@/lib/format";
-import type { UebersichtDto, ZuTun } from "@/lib/uebersicht/berechnen";
+import { themenStaende, type ThemenStand } from "@/lib/aufgaben/logik";
+import { themenfeldLabel, type Board } from "@/lib/aufgaben/typen";
+import { formatDate, formatInt, formatMonth } from "@/lib/format";
+import type { KennzahlenDto } from "@/lib/kennzahlen/types";
+import { prognose, type PipelineDto } from "@/lib/pipeline/berechnen";
+import type { UebersichtDto } from "@/lib/uebersicht/berechnen";
+import {
+  jahresanteil,
+  ZIEL_KENNZAHLEN,
+  zielerreichung,
+  type ZielKennzahl,
+  type ZieleDto,
+} from "@/lib/ziele/typen";
 import { cn } from "@/lib/utils";
 
 function tagesgruss(): string {
@@ -30,43 +40,66 @@ function tagesgruss(): string {
   return "Guten Abend";
 }
 
-/** „+3 ggü. 4 Wochen davor“ */
-function vergleich(jetzt: number, vorher: number): string {
-  const diff = jetzt - vorher;
-  const zeichen = diff > 0 ? "+" : diff < 0 ? "−" : "±";
-  return `${zeichen}${Math.abs(diff)} ggü. 4 Wochen davor`;
+/** Lädt eine Server-Funktion; Fehler einzelner Bereiche blockieren die Seite nicht. */
+function useLaden<T>(
+  token: string,
+  laden: (token: string) => Promise<T>,
+  zaehler = 0,
+): { daten: T | null; fehler: string | null } {
+  const [daten, setDaten] = useState<T | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  useEffect(() => {
+    if (!token) return;
+    let aktiv = true;
+    void laden(token).then(
+      (d) => aktiv && setDaten(d),
+      (e) => aktiv && setFehler(apiFehlermeldung(e)),
+    );
+    return () => {
+      aktiv = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, zaehler]);
+  return { daten, fehler };
 }
 
-/** Startseite: das Geschäft von Grenz & Co. auf einen Blick. */
+const ladeUebersicht = async (token: string) =>
+  (await import("@/lib/uebersicht/server-fn")).uebersichtLadenFn({
+    data: { supabaseAccessToken: token },
+  });
+const ladeKennzahlen = async (token: string) =>
+  (await import("@/lib/kennzahlen/server-fn")).kennzahlenLadenFn({
+    data: { supabaseAccessToken: token, jahr: new Date().getFullYear() },
+  });
+const ladePipeline = async (token: string) =>
+  (await import("@/lib/pipeline/server-fn")).pipelineLadenFn({
+    data: { supabaseAccessToken: token },
+  });
+const ladeBoard = async (token: string) =>
+  (await import("@/lib/aufgaben/server-fn")).aufgabenBoardFn({
+    data: { supabaseAccessToken: token },
+  });
+const ladeZiele = async (token: string) =>
+  (await import("@/lib/ziele/server-fn")).zieleLadenFn({
+    data: { supabaseAccessToken: token, jahr: new Date().getFullYear() },
+  });
+
+/** Startseite: Ergebnisse, Ziele und Strategie von Grenz & Co. Das Operative läuft über Trello. */
 export function UebersichtPage() {
   const { benutzer, session } = useAuth();
   const token = session?.access_token ?? "";
   const vorname = benutzer?.name?.trim().split(/\s+/)[0];
-  const [daten, setDaten] = useState<UebersichtDto | null>(null);
-  const [laedt, setLaedt] = useState(false);
+  const [zieleStand, setZieleStand] = useState(0);
+
+  const uebersicht = useLaden(token, ladeUebersicht);
+  const kennzahlen = useLaden(token, ladeKennzahlen);
+  const pipeline = useLaden(token, ladePipeline);
+  const board = useLaden(token, ladeBoard);
+  const ziele = useLaden(token, ladeZiele, zieleStand);
 
   useEffect(() => {
-    if (!token) return;
-    let aktiv = true;
-    setLaedt(true);
-    void (async () => {
-      try {
-        const { uebersichtLadenFn } =
-          await import("@/lib/uebersicht/server-fn");
-        const u = await uebersichtLadenFn({
-          data: { supabaseAccessToken: token },
-        });
-        if (aktiv) setDaten(u);
-      } catch (e) {
-        if (aktiv) toast.error(apiFehlermeldung(e));
-      }
-      if (!aktiv) return;
-      setLaedt(false);
-    })();
-    return () => {
-      aktiv = false;
-    };
-  }, [token]);
+    if (uebersicht.fehler) toast.error(uebersicht.fehler);
+  }, [uebersicht.fehler]);
 
   const datum = new Date().toLocaleDateString("de-DE", {
     weekday: "long",
@@ -84,26 +117,69 @@ export function UebersichtPage() {
           {vorname ? `, ${vorname}` : ""}
         </h1>
         <p className="text-sm text-text-muted">
-          Was heute ansteht und was gerade läuft. Die Auswertungen stehen unter
+          Ergebnisse, Ziele und Strategie auf einen Blick. Das operative
+          Tagesgeschäft läuft über Trello, die Detailauswertungen stehen unter
           Kennzahlen.
         </p>
       </header>
       <PageWrapper>
-        {!daten ? (
+        {!uebersicht.daten ? (
           <p className="text-sm text-text-muted">
-            {laedt ? "Lädt…" : "Keine Daten."}
+            {uebersicht.fehler ? "Keine Daten." : "Lädt…"}
           </p>
         ) : (
-          <Dashboard daten={daten} />
+          <Dashboard
+            daten={uebersicht.daten}
+            kennzahlen={kennzahlen.daten}
+            kennzahlenFehler={kennzahlen.fehler}
+            pipeline={pipeline.daten}
+            board={board.daten}
+            boardFehler={board.fehler}
+            ziele={ziele.daten}
+            onZieleGespeichert={() => setZieleStand((n) => n + 1)}
+          />
         )}
       </PageWrapper>
     </>
   );
 }
 
-function Dashboard({ daten }: { daten: UebersichtDto }) {
+/** Gewichtete Provisionsprognose vom laufenden Monat bis Dezember. */
+function prognoseRestjahr(p: PipelineDto | null): number | null {
+  if (!p) return null;
+  const monat = Number(p.heute.slice(5, 7));
+  return prognose(p, { zurueck: 0, vor: 13 - monat }).reduce(
+    (s, m) => s + m.gewichtet,
+    0,
+  );
+}
+
+function Dashboard({
+  daten,
+  kennzahlen,
+  kennzahlenFehler,
+  pipeline,
+  board,
+  boardFehler,
+  ziele,
+  onZieleGespeichert,
+}: {
+  daten: UebersichtDto;
+  kennzahlen: KennzahlenDto | null;
+  kennzahlenFehler: string | null;
+  pipeline: PipelineDto | null;
+  board: Board | null;
+  boardFehler: string | null;
+  ziele: ZieleDto | null;
+  onZieleGespeichert: () => void;
+}) {
   const k = daten.kacheln;
   const jahr = daten.heute.slice(0, 4);
+  const restjahr = prognoseRestjahr(pipeline);
+  const provisionsziel = ziele?.ziele.provision_netto ?? null;
+  const anteil = zielerreichung(k.provisionJahr, provisionsziel);
+  const runway = kennzahlen?.runway ?? null;
+  const vorjahrDiff = k.provisionJahr - k.provisionVorjahrBisHeute;
 
   return (
     <div className="flex flex-col gap-6">
@@ -111,8 +187,8 @@ function Dashboard({ daten }: { daten: UebersichtDto }) {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warn/40 bg-warn-soft p-4 text-sm">
           <span className="flex items-center gap-2 text-heading">
             <RefreshCw className="size-4" strokeWidth={1.5} />
-            Noch keine Salesforce-Daten abgerufen. Mandate, Interessenten und
-            Aktivitäten erscheinen nach dem ersten Abruf.
+            Noch keine Salesforce-Daten abgerufen. Ergebnisse und Pipeline
+            erscheinen nach dem ersten Abruf.
           </span>
           <Link
             to="/einstellungen/integrationen"
@@ -125,43 +201,80 @@ function Dashboard({ daten }: { daten: UebersichtDto }) {
 
       <KachelReihe>
         <Kachel
+          titel={`Provision ${jahr} netto`}
+          wert={euroKurz(k.provisionJahr)}
+          unterzeile={
+            anteil != null && provisionsziel
+              ? `${Math.round((k.provisionJahr / provisionsziel) * 100)} % vom Jahresziel ${euroKurz(provisionsziel)}`
+              : "Jahresziel noch nicht hinterlegt"
+          }
+          nebenwert={`${k.abschluesseJahr} ${k.abschluesseJahr === 1 ? "Verkauf" : "Verkäufe"} bezahlt, ohne USt · Vorjahr bis heute ${euroKurz(k.provisionVorjahrBisHeute)} (${vorjahrDiff >= 0 ? "+" : "−"}${euroKurz(Math.abs(vorjahrDiff))})`}
+          ton={
+            anteil != null && anteil >= jahresanteil(daten.heute)
+              ? "gut"
+              : undefined
+          }
+        />
+        <Kachel
+          titel={`Prognose bis Dezember`}
+          wert={restjahr == null ? "…" : euroKurz(restjahr)}
+          unterzeile="Gewichtete Provision aus der Deal-Pipeline, netto"
+          nebenwert={
+            restjahr == null
+              ? undefined
+              : `Ist + Prognose ${jahr}: ${euroKurz(k.provisionJahr + restjahr)}${provisionsziel ? ` · ${Math.round(((k.provisionJahr + restjahr) / provisionsziel) * 100)} % vom Ziel` : ""}`
+          }
+        />
+        <Kachel
+          titel="Runway"
+          wert={
+            runway
+              ? runway.monate == null
+                ? "–"
+                : `${runway.monate.toLocaleString("de-DE", { maximumFractionDigits: 1 })} Monate`
+              : kennzahlenFehler
+                ? "–"
+                : "…"
+          }
+          unterzeile={
+            runway
+              ? `Liquidität netto ${euroKurz(runway.liquiditaetNetto)} ÷ Fixkosten ${euroKurz(runway.fixProMonat)} je Monat`
+              : (kennzahlenFehler ?? "Bankdaten werden geladen")
+          }
+          nebenwert={
+            runway?.reichtBis
+              ? `Reicht bis ${formatMonth(`${runway.reichtBis}-01`)}, offene USt bereits abgezogen`
+              : undefined
+          }
+          ton={
+            runway?.monate != null
+              ? runway.monate < 6
+                ? "schlecht"
+                : runway.monate >= 12
+                  ? "gut"
+                  : undefined
+              : undefined
+          }
+        />
+        <Kachel
           titel="Provision mit Maklervertrag"
           wert={euroKurz(k.provisionVertrag)}
           unterzeile={`${k.mandateMitVertrag} beauftragte ${k.mandateMitVertrag === 1 ? "Mandat" : "Mandate"} mit schriftlichem Maklervertrag, netto`}
-          nebenwert={`Alle ${k.beauftragtGesamt} beauftragten Mandate: ${euroKurz(k.provisionPipeline)} (${k.mandateMitProvision} mit Preis, inkl. lose Beauftragung und Off-Market)`}
-        />
-        <Kachel
-          titel="Aktive Mandate"
-          wert={formatInt(k.aktiveMandate)}
-          unterzeile={k.aktivJePhase
-            .map((p) => `${p.anzahl} ${p.phase}`)
-            .join(" · ")}
-          nebenwert={`${k.neueMandate4W} neu in 4 Wochen (${vergleich(k.neueMandate4W, k.neueMandateVor4W)})`}
-        />
-        <Kachel
-          titel={`Provision ${jahr} netto`}
-          wert={euroKurz(k.provisionJahr)}
-          unterzeile={`${k.abschluesseJahr} ${k.abschluesseJahr === 1 ? "Verkauf" : "Verkäufe"} bezahlt, ohne USt · ${euroKurz(k.kaufpreisJahr)} Kaufpreis vermittelt`}
-        />
-        <Kachel
-          titel="Kaufinteressenten mit Deal"
-          wert={formatInt(k.offeneInteressenten)}
-          unterzeile={`${k.imDatenraum} im Datenraum`}
-          nebenwert="Offene Interessenten-Deals (Opportunities) in Salesforce, noch nicht gewonnen oder verloren"
+          nebenwert={`Alle ${k.beauftragtGesamt} beauftragten Mandate: ${euroKurz(k.provisionPipeline)} (inkl. lose Beauftragung und Off-Market)`}
         />
       </KachelReihe>
 
       <div className="grid gap-6 lg:grid-cols-5">
-        <Karte
-          titel="Heute zu tun"
-          hinweis="Vorgänge, bei denen wir den nächsten Schritt machen – Warnungen zuerst."
+        <JahresZiele
           className="lg:col-span-3"
-        >
-          <ZuTunListe eintraege={daten.zuTun} />
-        </Karte>
+          daten={daten}
+          ziele={ziele}
+          restjahr={restjahr}
+          onGespeichert={onZieleGespeichert}
+        />
         <Karte
           titel="Mandats-Pipeline"
-          hinweis="Offene Mandate nach Phase, Volumen = Summe der Exposé-Preise. Einzelne Deals in der Deal-Pipeline."
+          hinweis="Offene Mandate nach Phase, Volumen = Summe der Exposé-Preise."
           className="lg:col-span-2"
         >
           <Pipeline daten={daten} />
@@ -170,15 +283,15 @@ function Dashboard({ daten }: { daten: UebersichtDto }) {
 
       <div className="grid gap-6 lg:grid-cols-5">
         <Karte
-          titel="Letzte Aktivität"
-          hinweis="Neueste Anrufe, E-Mails, Termine und Aufgaben"
+          titel="Strategie nach Themenfeldern"
+          hinweis="Stand der strategischen Vorhaben aus dem Aufgabenboard. Einzelne To-dos laufen über Trello."
           className="lg:col-span-3"
         >
-          <AktivitaetsListe daten={daten} />
+          <Strategie board={board} fehler={boardFehler} heute={daten.heute} />
         </Karte>
         <Karte
           titel="Letzte Abschlüsse"
-          hinweis="Verkäufe mit bezahlter Rechnung"
+          hinweis="Verkäufe mit bezahlter Rechnung, Provision netto"
           className="lg:col-span-2"
         >
           {daten.abschluesse.length === 0 ? (
@@ -213,13 +326,6 @@ function Dashboard({ daten }: { daten: UebersichtDto }) {
         </Karte>
       </div>
 
-      <Karte
-        titel="Schnellzugriff"
-        hinweis="Auswertungen, Liquidität und Vertriebsaktivität stehen unter Kennzahlen."
-      >
-        <Schnellzugriff daten={daten} />
-      </Karte>
-
       <p className="text-xs text-text-muted">
         Quelle: Salesforce (Stand{" "}
         {daten.letzterAbruf
@@ -228,79 +334,379 @@ function Dashboard({ daten }: { daten: UebersichtDto }) {
               timeStyle: "short",
             })
           : "–"}
-        , täglicher Abruf) · Testdatensätze ausgeblendet.
+        , täglicher Abruf), Bankkonten über EBICS · Provisionen netto ohne USt ·
+        Testdatensätze ausgeblendet.
       </p>
     </div>
   );
 }
 
-function ZuTunListe({ eintraege }: { eintraege: ZuTun[] }) {
-  if (eintraege.length === 0)
+function Fortschritt({
+  ist,
+  zusatz,
+  ziel,
+  soll,
+}: {
+  ist: number;
+  /** Zweites, helleres Segment (z. B. Prognose). */
+  zusatz?: number;
+  ziel: number;
+  /** Zeitanteil des Jahres als Marke (0–1). */
+  soll: number;
+}) {
+  const breite = (n: number) => `${Math.min(100, (n / ziel) * 100)}%`;
+  return (
+    <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-surface-muted">
+      <div className="flex h-full">
+        <div style={{ width: breite(ist), background: VIZ[0] }} />
+        {zusatz ? (
+          <div
+            style={{
+              width: breite(Math.max(0, Math.min(zusatz, ziel - ist))),
+              background: VIZ[1],
+            }}
+          />
+        ) : null}
+      </div>
+      <div
+        className="absolute inset-y-0 w-px bg-heading"
+        style={{ left: `${soll * 100}%` }}
+        title="Zeitanteil des Jahres"
+      />
+    </div>
+  );
+}
+
+function JahresZiele({
+  daten,
+  ziele,
+  restjahr,
+  onGespeichert,
+  className,
+}: {
+  daten: UebersichtDto;
+  ziele: ZieleDto | null;
+  restjahr: number | null;
+  onGespeichert: () => void;
+  className?: string;
+}) {
+  const [bearbeiten, setBearbeiten] = useState(false);
+  const k = daten.kacheln;
+  const jahr = daten.heute.slice(0, 4);
+  const soll = jahresanteil(daten.heute);
+  const ist: Record<ZielKennzahl, number> = {
+    provision_netto: k.provisionJahr,
+    verkaeufe: k.abschluesseJahr,
+    neue_mandate: k.neueMandateJahr,
+  };
+  const vorjahr: Partial<Record<ZielKennzahl, string>> = {
+    provision_netto: `Vorjahr gesamt ${euroKurz(k.provisionVorjahr)}`,
+    verkaeufe: `Vorjahr gesamt ${k.abschluesseVorjahr}`,
+  };
+
+  return (
+    <Karte
+      titel={`Jahresziele ${jahr}`}
+      hinweis="Ist gegen Ziel. Der Strich markiert, wie viel vom Jahr vergangen ist; hellblau = gewichtete Prognose bis Dezember."
+      className={className}
+    >
+      {!ziele ? (
+        <p className="text-sm text-text-muted">Lädt…</p>
+      ) : (
+        <>
+          <ul className="flex flex-col gap-4">
+            {ZIEL_KENNZAHLEN.map((kz) => {
+              const ziel = ziele.ziele[kz.wert];
+              const quelle = ziele.quelle[kz.wert];
+              const wert = ist[kz.wert];
+              const fmt = (n: number) =>
+                kz.einheit === "euro" ? euroKurz(n) : formatInt(n);
+              return (
+                <li key={kz.wert} className="flex flex-col gap-1.5">
+                  <div className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="text-heading">{kz.label}</span>
+                    <span className="tabular-nums text-heading">
+                      <span className="font-semibold">{fmt(wert)}</span>
+                      <span className="text-text-muted">
+                        {ziel ? ` von ${fmt(ziel)}` : " · kein Ziel"}
+                      </span>
+                    </span>
+                  </div>
+                  {ziel ? (
+                    <Fortschritt
+                      ist={wert}
+                      zusatz={
+                        kz.wert === "provision_netto"
+                          ? (restjahr ?? undefined)
+                          : undefined
+                      }
+                      ziel={ziel}
+                      soll={soll}
+                    />
+                  ) : null}
+                  <span className="text-xs text-text-muted">
+                    {kz.hinweis}
+                    {ziel
+                      ? ` · ${Math.round((wert / ziel) * 100)} % erreicht, ${Math.round(soll * 100)} % des Jahres vorbei`
+                      : ""}
+                    {vorjahr[kz.wert] ? ` · ${vorjahr[kz.wert]}` : ""}
+                    {quelle === "mitarbeiter"
+                      ? " · Ziel = Summe der Mitarbeiterziele"
+                      : quelle === "standard"
+                        ? " · Ziel = Vorschlag"
+                        : ""}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-3">
+            <span className="text-xs text-text-muted">
+              {ziele.tabelle
+                ? "Ziele gelten für das ganze Unternehmen."
+                : "Vorgeschlagene Ziele. Zum Ändern muss die Migration „unternehmensziele“ eingespielt sein."}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!ziele.tabelle}
+              onClick={() => setBearbeiten(true)}
+            >
+              <Target className="size-4" strokeWidth={1.5} />
+              Ziele pflegen
+            </Button>
+          </div>
+          <ZieleDialog
+            offen={bearbeiten}
+            ziele={ziele}
+            onSchliessen={() => setBearbeiten(false)}
+            onGespeichert={() => {
+              setBearbeiten(false);
+              onGespeichert();
+            }}
+          />
+        </>
+      )}
+    </Karte>
+  );
+}
+
+function ZieleDialog({
+  offen,
+  ziele,
+  onSchliessen,
+  onGespeichert,
+}: {
+  offen: boolean;
+  ziele: ZieleDto;
+  onSchliessen: () => void;
+  onGespeichert: () => void;
+}) {
+  const { session } = useAuth();
+  // Mit den wirksamen Zielen (auch Vorschlägen) vorbelegt, damit Speichern sie übernimmt.
+  const [werte, setWerte] = useState<Record<ZielKennzahl, string>>(
+    () =>
+      Object.fromEntries(
+        ZIEL_KENNZAHLEN.map((k) => [
+          k.wert,
+          ziele.ziele[k.wert] != null ? String(ziele.ziele[k.wert]) : "",
+        ]),
+      ) as Record<ZielKennzahl, string>,
+  );
+  const [speichert, setSpeichert] = useState(false);
+
+  const speichern = useCallback(async () => {
+    setSpeichert(true);
+    try {
+      const { zieleSpeichernFn } = await import("@/lib/ziele/server-fn");
+      await zieleSpeichernFn({
+        data: {
+          supabaseAccessToken: session?.access_token ?? "",
+          jahr: ziele.jahr,
+          ziele: Object.fromEntries(
+            Object.entries(werte).map(([k, v]) => [
+              k,
+              v.trim() === ""
+                ? null
+                : Number(v.replace(/\./g, "").replace(",", ".")),
+            ]),
+          ),
+        },
+      });
+      toast.success("Jahresziele gespeichert");
+      onGespeichert();
+    } catch (e) {
+      toast.error(apiFehlermeldung(e));
+    }
+    setSpeichert(false);
+  }, [session, werte, ziele.jahr, onGespeichert]);
+
+  return (
+    <Dialog open={offen} onOpenChange={(o) => !o && onSchliessen()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Jahresziele {ziele.jahr}</DialogTitle>
+          <DialogDescription>
+            Ziele für Grenz & Co. insgesamt. Provision immer netto ohne USt.
+            Leer lassen, wenn es kein Ziel gibt.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          {ZIEL_KENNZAHLEN.map((k) => (
+            <label key={k.wert} className="flex flex-col gap-1 text-sm">
+              <span className="text-heading">
+                {k.label}
+                {k.einheit === "euro" ? " (€ netto)" : " (Anzahl)"}
+              </span>
+              <Input
+                inputMode="decimal"
+                value={werte[k.wert]}
+                placeholder={
+                  k.wert === "provision_netto" &&
+                  ziele.mitarbeiterProvisionsziel
+                    ? `Summe Mitarbeiterziele: ${Math.round(ziele.mitarbeiterProvisionsziel)}`
+                    : undefined
+                }
+                onChange={(e) =>
+                  setWerte((w) => ({ ...w, [k.wert]: e.target.value }))
+                }
+              />
+              <span className="text-xs text-text-muted">{k.hinweis}</span>
+            </label>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onSchliessen}>
+            Abbrechen
+          </Button>
+          <Button onClick={() => void speichern()} disabled={speichert}>
+            {speichert ? <Loader2 className="size-4 animate-spin" /> : null}
+            Speichern
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Strategie({
+  board,
+  fehler,
+  heute,
+}: {
+  board: Board | null;
+  fehler: string | null;
+  heute: string;
+}) {
+  if (fehler) return <p className="text-sm text-text-muted">{fehler}</p>;
+  if (!board) return <p className="text-sm text-text-muted">Lädt…</p>;
+  if (!board.themenfelder)
     return (
       <p className="text-sm text-text-muted">
-        Nichts offen – alle Vorgänge laufen.
+        Themenfelder sind noch nicht eingerichtet (Migration
+        „aufgaben_themenfeld“).
       </p>
     );
+  const spalteVon = new Map(board.spalten.map((s) => [s.id, s]));
+  const staende = themenStaende(board.aufgaben, spalteVon, heute);
+  const prioritaeten = board.aufgaben
+    .filter(
+      (a) =>
+        a.prioritaet === "hoch" &&
+        a.themenfeld !== "" &&
+        !spalteVon.get(a.spalteId)?.erledigt,
+    )
+    .slice(0, 5);
+  const belegt = staende.some((s) => s.offen || s.erledigt30);
+
   return (
-    <ul className="-mx-4 divide-y divide-hairline">
-      {eintraege.slice(0, 9).map((e, i) => {
-        const inhalt: ReactNode = (
-          <>
-            <span
-              className={cn(
-                "grid size-8 shrink-0 place-items-center rounded-md",
-                e.ton === "warnung"
-                  ? "bg-warn-soft text-warn"
-                  : "bg-brand-soft text-brand-text",
-              )}
-            >
-              {e.ton === "warnung" ? (
-                <AlertTriangle className="size-4" strokeWidth={1.5} />
-              ) : (
-                <CircleDot className="size-4" strokeWidth={1.5} />
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-heading group-hover:text-brand-text">
-                {e.titel}
-              </span>
-              <span className="block truncate text-xs text-text-muted">
-                {e.text}
-              </span>
-            </span>
-            <ArrowRight
-              className="size-3.5 shrink-0 text-text-subtle transition-transform group-hover:translate-x-0.5"
-              strokeWidth={1.5}
-            />
-          </>
-        );
-        const klasse =
-          "group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-muted";
-        return (
-          <li key={`${e.titel}-${i}`}>
-            {e.mandatSfId ? (
-              <Link
-                to="/mandate/$sfId"
-                params={{ sfId: e.mandatSfId }}
-                className={klasse}
-              >
-                {inhalt}
-              </Link>
-            ) : (
-              <Link to={e.pfad ?? "/mandate"} className={klasse}>
-                {inhalt}
-              </Link>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+    <div className="flex flex-col gap-4">
+      {!belegt ? (
+        <p className="text-sm text-text-muted">
+          Noch keine Vorhaben einem Themenfeld zugeordnet. Strategische Themen
+          im Aufgabenboard anlegen und einem Themenfeld zuordnen.
+        </p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-text-muted">
+              <th className="py-1 font-normal">Themenfeld</th>
+              <th className="py-1 text-right font-normal">Offen</th>
+              <th className="py-1 text-right font-normal">Hohe Prio</th>
+              <th className="py-1 text-right font-normal">Überfällig</th>
+              <th className="py-1 text-right font-normal">Erledigt 30 T.</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-hairline">
+            {staende.map((s) => (
+              <ThemenZeile key={s.themenfeld || "ohne"} stand={s} />
+            ))}
+          </tbody>
+        </table>
+      )}
+      {prioritaeten.length ? (
+        <div className="border-t border-hairline pt-3">
+          <span className="label-caps text-text-muted">Prioritäten</span>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {prioritaeten.map((a) => (
+              <li key={a.id} className="flex items-center gap-2 text-sm">
+                <span className="rounded-full border border-hairline px-2 py-0.5 text-[11px] text-text-muted">
+                  {themenfeldLabel(a.themenfeld, true)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-heading">
+                  {a.titel}
+                </span>
+                {a.faelligAm ? (
+                  <span className="shrink-0 text-xs tabular-nums text-text-muted">
+                    {formatDate(a.faelligAm)}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <Link
+        to="/aufgaben"
+        className="group flex items-center gap-1 self-start text-sm font-medium text-brand-text hover:underline"
+      >
+        Zum Aufgabenboard
+        <ArrowRight
+          className="size-3.5 transition-transform group-hover:translate-x-0.5"
+          strokeWidth={1.5}
+        />
+      </Link>
+    </div>
+  );
+}
+
+function ThemenZeile({ stand: s }: { stand: ThemenStand }) {
+  return (
+    <tr>
+      <td className="py-1.5 text-heading">
+        {s.themenfeld ? themenfeldLabel(s.themenfeld) : "Ohne Themenfeld"}
+      </td>
+      <td className="py-1.5 text-right tabular-nums">{s.offen}</td>
+      <td className="py-1.5 text-right tabular-nums">{s.hoch || "–"}</td>
+      <td
+        className={cn(
+          "py-1.5 text-right tabular-nums",
+          s.ueberfaellig > 0 && "text-danger",
+        )}
+      >
+        {s.ueberfaellig || "–"}
+      </td>
+      <td className="py-1.5 text-right tabular-nums text-chart-2">
+        {s.erledigt30 || "–"}
+      </td>
+    </tr>
   );
 }
 
 function Pipeline({ daten }: { daten: UebersichtDto }) {
   const gesamt = daten.mandatsPhasen.reduce((s, p) => s + p.anzahl, 0);
   const abgeschlossen = daten.gewonnen + daten.verloren;
+  const k = daten.kacheln;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface-muted">
@@ -334,13 +740,7 @@ function Pipeline({ daten }: { daten: UebersichtDto }) {
           </li>
         ))}
       </ul>
-      <div className="grid grid-cols-2 gap-3 border-t border-hairline pt-3 text-sm">
-        <div>
-          <span className="label-caps text-text-muted">Gewonnen</span>
-          <p className="font-semibold tabular-nums text-chart-2">
-            {daten.gewonnen}
-          </p>
-        </div>
+      <div className="grid grid-cols-3 gap-3 border-t border-hairline pt-3 text-sm">
         <div>
           <span className="label-caps text-text-muted">Gewinnquote</span>
           <p className="font-semibold tabular-nums text-heading">
@@ -348,128 +748,39 @@ function Pipeline({ daten }: { daten: UebersichtDto }) {
               ? `${Math.round((daten.gewonnen / abgeschlossen) * 100)} %`
               : "–"}
           </p>
+          <p className="text-xs text-text-muted">
+            {daten.gewonnen} gewonnen · {daten.verloren} verloren
+          </p>
+        </div>
+        <div>
+          <span className="label-caps text-text-muted">Neue Mandate</span>
+          <p className="font-semibold tabular-nums text-heading">
+            {k.neueMandate4W}
+          </p>
+          <p className="text-xs text-text-muted">
+            4 Wochen, davor {k.neueMandateVor4W}
+          </p>
+        </div>
+        <div>
+          <span className="label-caps text-text-muted">Mit Deal</span>
+          <p className="font-semibold tabular-nums text-heading">
+            {k.offeneInteressenten}
+          </p>
+          <p className="text-xs text-text-muted">
+            Kaufinteressenten, {k.imDatenraum} im Datenraum
+          </p>
         </div>
       </div>
-      {daten.interessentenPhasen.length ? (
-        <div className="border-t border-hairline pt-3">
-          <span className="label-caps text-text-muted">
-            Interessenten nach Phase
-          </span>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {daten.interessentenPhasen.map((p) => (
-              <span
-                key={p.phase}
-                className="rounded-full border border-hairline px-2.5 py-0.5 text-xs text-heading"
-              >
-                {p.phase} · {p.anzahl}
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      <Link
+        to="/mandate/pipeline"
+        className="group flex items-center gap-1 self-start text-sm font-medium text-brand-text hover:underline"
+      >
+        Zur Deal-Pipeline
+        <ArrowRight
+          className="size-3.5 transition-transform group-hover:translate-x-0.5"
+          strokeWidth={1.5}
+        />
+      </Link>
     </div>
-  );
-}
-
-function AktivitaetsListe({ daten }: { daten: UebersichtDto }) {
-  if (daten.letzteAktivitaeten.length === 0)
-    return <p className="text-sm text-text-muted">Noch keine Aktivität.</p>;
-  return (
-    <ul className="divide-y divide-hairline">
-      {daten.letzteAktivitaeten.map((a, i) => (
-        <li key={i} className="flex items-start gap-3 py-2 text-sm">
-          <span className="mt-1.5 size-2 shrink-0 rounded-full bg-brand" />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-heading" title={a.betreff}>
-              {a.betreff}
-            </span>
-            <span className="block truncate text-xs text-text-muted">
-              {a.art}
-              {a.mandat ? (
-                <>
-                  {" · "}
-                  <Link
-                    to="/mandate/$sfId"
-                    params={{ sfId: a.mandatSfId ?? "" }}
-                    className="hover:text-brand-text hover:underline"
-                  >
-                    {a.mandat}
-                  </Link>
-                </>
-              ) : null}
-            </span>
-          </span>
-          <span className="shrink-0 text-xs tabular-nums text-text-muted">
-            {formatDate(a.datum.slice(0, 10))}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Schnellzugriff({ daten }: { daten: UebersichtDto }) {
-  const x = daten.exposes;
-  const links = [
-    {
-      to: "/exposes",
-      label: "Exposéanalyse",
-      zusatz: `${x.offen} offen · ${x.neu7Tage} neu in 7 Tagen`,
-      icon: Inbox,
-    },
-    {
-      to: "/mandate",
-      label: "Mandate",
-      zusatz: `${daten.kacheln.aktiveMandate} aktiv`,
-      icon: Briefcase,
-    },
-    {
-      to: "/exposes/karte",
-      label: "Marktkarte",
-      zusatz: `${x.gesamt} Angebote im Markt`,
-      icon: MapPin,
-    },
-    {
-      to: "/mandate/pipeline",
-      label: "Deal-Pipeline",
-      zusatz: "Vom Erstkontakt bis zum Notartermin",
-      icon: Handshake,
-    },
-    {
-      to: "/akquise",
-      label: "Akquise",
-      zusatz: "Verkäufer, Anschreiben und Termine",
-      icon: Radar,
-    },
-    {
-      to: "/kennzahlen",
-      label: "Kennzahlen",
-      zusatz: "Wachstum, Liquidität und Markt",
-      icon: ChartColumn,
-    },
-  ] as const;
-  return (
-    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {links.map((l) => (
-        <li key={l.to}>
-          <Link
-            to={l.to}
-            className="group flex h-full items-center gap-3 rounded-lg border border-hairline p-3 transition-colors hover:border-brand hover:bg-surface-muted"
-          >
-            <span className="grid size-8 shrink-0 place-items-center rounded-md bg-brand-soft text-brand-text">
-              <l.icon className="size-4" strokeWidth={1.5} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-heading group-hover:text-brand-text">
-                {l.label}
-              </span>
-              <span className="block truncate text-xs text-text-muted">
-                {l.zusatz}
-              </span>
-            </span>
-          </Link>
-        </li>
-      ))}
-    </ul>
   );
 }
