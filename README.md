@@ -62,8 +62,9 @@ select id, 'DE…', '<BIC>' from public.ebics_kunden where gesellschaft_id = 'GC
 ```
 
 Danach in der App unter **EBICS**: Initialisieren → INI-Briefe an die Bank → nach
-Freischaltung **Freischaltung** → **Umsätze abrufen** (oder täglicher Cron
-`/api/cron/ebics-umsaetze`).
+Freischaltung **Freischaltung** → **Umsätze abrufen**. Der tägliche Cron
+`/api/cron/ebics-umsaetze` (06:00 UTC) prüft die Freischaltung auch selbst und ruft
+ab dann ohne Klick ab.
 
 ### Microsoft 365
 

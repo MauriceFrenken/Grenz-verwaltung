@@ -20,7 +20,7 @@ Clientseitig gibt es **kein** Rollen-/Rechte-Matrix-System. Alle authentifiziert
 - Nur Abruf (`C53` / camt.053), keine Zahlungsauslösung.
 - Nur für die Gesellschaft Grenz & Co. (`GRENZ_GESELLSCHAFT_ID` in `src/lib/grenz.ts`, DB-Check auf `ebics_kunden`).
 - Server-Env `EBICS_MASTER_KEY` (≥16 Zeichen) — nie `VITE_*`, nie in der UI.
-- Einmalig: Zugang in `ebics_kunden` eintragen (README) → **EBICS** → Initialisieren → INI-Briefe an die Bank → nach Freischaltung **Freischaltung** → danach **Umsätze abrufen** / Cron `/api/cron/ebics-umsaetze`.
+- Einmalig: Zugang in `ebics_kunden` eintragen (README) → **EBICS** → Initialisieren → INI-Briefe an die Bank → nach Freischaltung **Freischaltung** → danach **Umsätze abrufen** / Cron `/api/cron/ebics-umsaetze` (der Cron holt bei „wartet_auf_bank“ selbst die Bankschlüssel per HPB).
 - Details: `src/lib/ebics/bank-handoff.ts`.
 
 **Git / Vercel:** Commits und Pushes auf `main` immer mit Author **und** Committer `MauriceFrenken <338118561+MauriceFrenken@users.noreply.github.com>` (Repo `MauriceFrenken/Grenz-verwaltung`, Vercel Hobby: sonst blockiert Vercel das Deployment). Env für den Commit setzen, nicht `git config` ändern:

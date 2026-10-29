@@ -231,9 +231,11 @@ export async function ebicsBankSchluesselHolen(
     const hinweis = /EBICS_|technical|business|HPB|091/i.test(msg)
       ? `${msg} — Bank hat den Teilnehmer ggf. noch nicht freigeschaltet.`
       : msg;
+    // Schlüssel liegen bei der Bank: weiter auf Freischaltung warten, damit
+    // der tägliche Cron es am nächsten Tag erneut versucht.
     await admin
       .from("ebics_kunden")
-      .update({ status: "fehler", letzter_fehler: hinweis })
+      .update({ status: "wartet_auf_bank", letzter_fehler: hinweis })
       .eq("id", kunde.id);
     throw new Error(hinweis);
   }
