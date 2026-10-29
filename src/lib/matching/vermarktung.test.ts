@@ -117,6 +117,7 @@ describe("regionenAusInteresse", () => {
       objekte_interesse: ["16 K Roddergasse 68"],
     });
     expect(p.regionen).toEqual(["Köln", "NRW"]);
+    expect(p.nutzungsarten).toEqual(["Wohnen"]);
     const [t] = qualifizierteTreffer(objekt, [p], {
       kreise: ["A", "B", "C", "unter"],
     });

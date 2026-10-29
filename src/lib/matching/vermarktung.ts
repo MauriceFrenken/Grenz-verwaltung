@@ -132,7 +132,13 @@ export function listeAlsProfil(q: ListenRoh): ProfilZeile {
     kontakt_sf_id: null,
     account_sf_id: null,
     assetklassen: q.objektklassen,
-    nutzungsarten: q.nutzungen,
+    // Die 24 Objekte der Suchkunden-Liste sind Wohnobjekte aus der Wohninvestment-Vermarktung
+    // (Wohnungsunternehmen und -investoren als Interessenten), daher ohne eigene Angabe „Wohnen“.
+    nutzungsarten: q.nutzungen?.length
+      ? q.nutzungen
+      : q.objekte_interesse?.length
+        ? ["Wohnen"]
+        : q.nutzungen,
     regionen: q.regionen?.length
       ? q.regionen
       : regionenAusInteresse(q.objekte_interesse),
