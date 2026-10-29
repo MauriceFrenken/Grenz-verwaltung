@@ -176,8 +176,7 @@ function Dashboard({
   const k = daten.kacheln;
   const jahr = daten.heute.slice(0, 4);
   const restjahr = prognoseRestjahr(pipeline);
-  const provisionsziel =
-    ziele?.ziele.provision_netto ?? ziele?.mitarbeiterProvisionsziel ?? null;
+  const provisionsziel = ziele?.ziele.provision_netto ?? null;
   const anteil = zielerreichung(k.provisionJahr, provisionsziel);
   const runway = kennzahlen?.runway ?? null;
   const vorjahrDiff = k.provisionJahr - k.provisionVorjahrBisHeute;
@@ -417,12 +416,8 @@ function JahresZiele({
         <>
           <ul className="flex flex-col gap-4">
             {ZIEL_KENNZAHLEN.map((kz) => {
-              const ersatz =
-                kz.wert === "provision_netto" &&
-                ziele.ziele.provision_netto == null
-                  ? ziele.mitarbeiterProvisionsziel
-                  : null;
-              const ziel = ziele.ziele[kz.wert] ?? ersatz;
+              const ziel = ziele.ziele[kz.wert];
+              const quelle = ziele.quelle[kz.wert];
               const wert = ist[kz.wert];
               const fmt = (n: number) =>
                 kz.einheit === "euro" ? euroKurz(n) : formatInt(n);
@@ -455,7 +450,11 @@ function JahresZiele({
                       ? ` · ${Math.round((wert / ziel) * 100)} % erreicht, ${Math.round(soll * 100)} % des Jahres vorbei`
                       : ""}
                     {vorjahr[kz.wert] ? ` · ${vorjahr[kz.wert]}` : ""}
-                    {ersatz ? " · Ziel = Summe der Mitarbeiterziele" : ""}
+                    {quelle === "mitarbeiter"
+                      ? " · Ziel = Summe der Mitarbeiterziele"
+                      : quelle === "standard"
+                        ? " · Ziel = Vorschlag"
+                        : ""}
                   </span>
                 </li>
               );
@@ -465,7 +464,7 @@ function JahresZiele({
             <span className="text-xs text-text-muted">
               {ziele.tabelle
                 ? "Ziele gelten für das ganze Unternehmen."
-                : "Zum Speichern muss die Migration „unternehmensziele“ eingespielt sein."}
+                : "Vorgeschlagene Ziele. Zum Ändern muss die Migration „unternehmensziele“ eingespielt sein."}
             </span>
             <Button
               variant="outline"
@@ -504,6 +503,7 @@ function ZieleDialog({
   onGespeichert: () => void;
 }) {
   const { session } = useAuth();
+  // Mit den wirksamen Zielen (auch Vorschlägen) vorbelegt, damit Speichern sie übernimmt.
   const [werte, setWerte] = useState<Record<ZielKennzahl, string>>(
     () =>
       Object.fromEntries(

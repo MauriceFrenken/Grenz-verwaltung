@@ -10,6 +10,7 @@ import {
 
 import {
   istZielKennzahl,
+  wirksameZiele,
   ZIEL_KENNZAHLEN,
   type ZielKennzahl,
   type ZieleDto,
@@ -65,11 +66,13 @@ export const zieleLadenFn = createServerFn({ method: "POST" })
       (s, p) => s + (Number(p.provisionsziel_eur) || 0),
       0,
     );
+    const mitarbeiterProvisionsziel = summe > 0 ? summe : null;
     return {
       jahr: data.jahr,
       tabelle: !ziele.error,
-      ziele: werte,
-      mitarbeiterProvisionsziel: summe > 0 ? summe : null,
+      ...wirksameZiele(data.jahr, werte, mitarbeiterProvisionsziel),
+      eingetragen: werte,
+      mitarbeiterProvisionsziel,
     };
   });
 

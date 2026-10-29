@@ -17,3 +17,9 @@ alter table public.unternehmensziele enable row level security;
 drop policy if exists unternehmensziele_select on public.unternehmensziele;
 create policy unternehmensziele_select on public.unternehmensziele
   for select to authenticated using (true);
+
+-- Vorgeschlagene Ziele (29.10.2026), in der App unter „Ziele pflegen“ änderbar.
+insert into public.unternehmensziele (jahr, kennzahl, zielwert) values
+  (2026, 'provision_netto', 150000), (2026, 'verkaeufe', 3), (2026, 'neue_mandate', 12),
+  (2027, 'provision_netto', 250000), (2027, 'verkaeufe', 5), (2027, 'neue_mandate', 24)
+on conflict (jahr, kennzahl) do nothing;
