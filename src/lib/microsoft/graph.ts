@@ -498,7 +498,7 @@ export function graphNachrichtHatKategorie(
   );
 }
 
-function htmlZuText(html: string): string {
+export function htmlZuText(html: string): string {
   return html
     .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, " ")
     .replace(/<br\s*\/?>/gi, "\n")
@@ -560,6 +560,32 @@ export async function graphNachrichtBodyText(
   if (full) return full;
   const preview = data.bodyPreview?.trim();
   return preview || null;
+}
+
+/**
+ * Vollständigen Mail-Body (inkl. weitergeleitetem Teil) als HTML laden — für
+ * Exposé-Links, die oft erst im zitierten Original stehen.
+ */
+export async function graphNachrichtBodyHtml(
+  accessToken: string,
+  postfach: string,
+  nachrichtId: string,
+): Promise<{ html: string; text: string }> {
+  const data = await graphGet<{
+    body?: { contentType?: string; content?: string };
+    bodyPreview?: string;
+  }>(
+    `/users/${encodeURIComponent(postfach)}/messages/${encodeURIComponent(nachrichtId)}` +
+      `?$select=body,bodyPreview`,
+    accessToken,
+    postfach,
+  );
+  const content = data.body?.content ?? "";
+  const istHtml = (data.body?.contentType ?? "").toLowerCase() === "html";
+  return {
+    html: istHtml ? content : "",
+    text: bodyInhaltZuText(data.body) || data.bodyPreview?.trim() || "",
+  };
 }
 
 export async function graphNachrichtAnhaenge(

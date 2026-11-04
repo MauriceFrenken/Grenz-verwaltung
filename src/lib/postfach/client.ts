@@ -19,6 +19,23 @@ export function base64ZuFile(
   return new File([bytes], dateiname, { type: mimeType });
 }
 
+/** PDF eines Postfach-Eintrags als Bytes — Base64 oder signierte URL. */
+export async function postfachPdfBytes(pdf: {
+  base64: string;
+  url?: string;
+}): Promise<Uint8Array<ArrayBuffer>> {
+  if (pdf.url) {
+    const res = await fetch(pdf.url);
+    if (!res.ok) {
+      throw new Error(
+        `Exposé-PDF konnte nicht geladen werden (HTTP ${res.status}).`,
+      );
+    }
+    return new Uint8Array(await res.arrayBuffer());
+  }
+  return base64ZuBytes(pdf.base64);
+}
+
 /** Gespeicherte KI-Felder auf die reinen Werte reduzieren (Salesforce-Draft). */
 export function felderZuWerten(
   felder: ExposeFelder | null,

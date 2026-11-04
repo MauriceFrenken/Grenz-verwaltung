@@ -82,9 +82,11 @@ async function starteFolgeRunde(
 
 async function nachtaufLauf(input: {
   inboxSync: boolean;
+  linksNachverarbeiten?: boolean;
 }): Promise<PostfachNachtlaufErgebnis> {
   return postfachNachtlauf({
     inboxSync: input.inboxSync,
+    linksNachverarbeiten: input.linksNachverarbeiten,
     deadlineMs: Date.now() + NACHTLAUF_DEFAULT_BUDGET_MS,
   });
 }
@@ -120,10 +122,12 @@ export const Route = createFileRoute("/api/cron/expose-analyse")({
         const url = new URL(request.url);
         const rundeRoh = Number(url.searchParams.get("runde") ?? "0");
         const runde =
-          Number.isFinite(rundeRoh) && rundeRoh >= 0
-            ? Math.floor(rundeRoh)
-            : 0;
+          Number.isFinite(rundeRoh) && rundeRoh >= 0 ? Math.floor(rundeRoh) : 0;
         const background = url.searchParams.get("bg") === "1";
+        // Einmalig nach Deploy: ?links=nachverarbeiten ruft die Links bereits
+        // analysierter Mails ohne PDF-Anhang erneut ab.
+        const linksNachverarbeiten =
+          runde === 0 && url.searchParams.get("links") === "nachverarbeiten";
 
         if (runde > NACHTLAUF_MAX_RUNDEN) {
           return Response.json({
@@ -161,7 +165,10 @@ export const Route = createFileRoute("/api/cron/expose-analyse")({
 
         const gestartet = Date.now();
         try {
-          const ergebnis = await nachtaufLauf({ inboxSync: runde === 0 });
+          const ergebnis = await nachtaufLauf({
+            inboxSync: runde === 0,
+            linksNachverarbeiten,
+          });
           ggfFortsetzen(request, runde, ergebnis);
 
           return Response.json({
