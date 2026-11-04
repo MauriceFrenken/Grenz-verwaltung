@@ -4,8 +4,20 @@ import type { GraphNachricht } from "@/lib/microsoft/graph";
 /** Unterordner im Posteingang, in den exportierte Exposé-Mails wandern. */
 export const ABGELEGT_ORDNER = "abgelegt";
 
+/** Präfix in `analyse_fehler`: Exposé steckt hinter einem Link, den ein Mensch öffnen muss. */
+export const LINK_MANUELL_PRAEFIX = "Link braucht manuellen Abruf";
+
+export function istLinkManuell(
+  analyseFehler: string | null | undefined,
+): boolean {
+  return Boolean(analyseFehler?.startsWith(LINK_MANUELL_PRAEFIX));
+}
+
 export type PostfachEintragStatus =
-  "neu" | "analysiert" | "fehler" | "exportiert";
+  | "neu"
+  | "analysiert"
+  | "fehler"
+  | "exportiert";
 
 /** Analysierte Exposé-Mail — Client-Sicht auf `postfach_exposes`. */
 export type PostfachEintrag = {
@@ -17,6 +29,10 @@ export type PostfachEintrag = {
   eingegangenAm: string | null;
   anhangName: string | null;
   anhangGroesse: number | null;
+  /** „link“ = Mail ohne PDF-Anhang; das Exposé kommt über einen Link. */
+  quelle: "anhang" | "link";
+  /** Outlook-Link zur Mail (für den manuellen Abruf). */
+  webLink: string | null;
   status: PostfachEintragStatus;
   felder: ExposeFelder | null;
   analyseFehler: string | null;
@@ -40,6 +56,8 @@ export type PostfachEintragMitPdf = {
     dateiname: string;
     mimeType: string;
     base64: string;
+    /** Große Link-PDFs: signierte Download-URL statt Base64 (Vercel-Antwortlimit). */
+    url?: string;
   };
 };
 

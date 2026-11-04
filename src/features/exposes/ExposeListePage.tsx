@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  ExternalLink,
   FileQuestion,
   FileText,
   FileUp,
@@ -23,12 +24,20 @@ import {
   holeExposePostfach,
 } from "@/lib/graph-cache";
 import type { GraphAnhangArt, GraphNachricht } from "@/lib/microsoft/graph";
-import { base64ZuBytes, felderZuWerten, hatWerte } from "@/lib/postfach/client";
+import {
+  felderZuWerten,
+  hatWerte,
+  postfachPdfBytes,
+} from "@/lib/postfach/client";
 import {
   setzeCheckPdfPromise,
   speichereCheckHandoff,
 } from "@/lib/postfach/check-handoff";
-import type { PostfachEintrag, PostfachSyncErgebnis } from "@/lib/postfach/typen";
+import {
+  istLinkManuell,
+  type PostfachEintrag,
+  type PostfachSyncErgebnis,
+} from "@/lib/postfach/typen";
 import {
   istSalesforceVerbunden,
   speichereExposeSalesforceDraft,
@@ -100,11 +109,74 @@ function AnalyseStatus({
 }) {
   const { nachricht, eintrag } = zeile;
 
-  if (!nachricht.pdfAnhang) {
+  if (!nachricht.pdfAnhang && !eintrag) {
     return <span className="text-text-subtle">Kein PDF</span>;
   }
   if (!eintrag || eintrag.status === "neu") {
-    return <span className="text-text-muted">Offen</span>;
+    return (
+      <span className="text-text-muted">
+        {eintrag?.quelle === "link" ? "Offen (Link)" : "Offen"}
+      </span>
+    );
+  }
+  if (
+    eintrag.status !== "exportiert" &&
+    istLinkManuell(eintrag.analyseFehler)
+  ) {
+    const laedt = wiederholenId === eintrag.id;
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className="text-warn" title={eintrag.analyseFehler ?? undefined}>
+          Link manuell abrufen
+        </span>
+        {eintrag.webLink ? (
+          <a
+            href={eintrag.webLink}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-7 w-7 items-center justify-center text-text-muted hover:text-heading"
+            aria-label="Mail in Outlook öffnen"
+            title="Mail in Outlook öffnen"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink
+              className="h-3.5 w-3.5"
+              strokeWidth={1.5}
+              aria-hidden
+            />
+          </a>
+        ) : null}
+        {onWiederholen ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 text-text-muted hover:bg-surface hover:text-heading hover:ring-1 hover:ring-inset hover:ring-hairline"
+            disabled={Boolean(wiederholenId)}
+            aria-label="Link erneut abrufen"
+            title="Link erneut abrufen (z. B. nachdem Sie die Bestätigung im Browser abgegeben haben)"
+            onClick={(e) => {
+              e.stopPropagation();
+              onWiederholen(eintrag);
+            }}
+          >
+            {laedt ? (
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin"
+                strokeWidth={1.5}
+                aria-hidden
+              />
+            ) : (
+              <RefreshCw
+                className="h-3.5 w-3.5"
+                strokeWidth={1.5}
+                aria-hidden
+              />
+            )}
+          </Button>
+        ) : null}
+      </span>
+    );
   }
   if (eintrag.status === "fehler") {
     const laedt = wiederholenId === eintrag.id;
@@ -136,7 +208,11 @@ function AnalyseStatus({
                 aria-hidden
               />
             ) : (
-              <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+              <RefreshCw
+                className="h-3.5 w-3.5"
+                strokeWidth={1.5}
+                aria-hidden
+              />
             )}
           </Button>
         ) : null}
@@ -146,7 +222,11 @@ function AnalyseStatus({
   if (eintrag.status === "exportiert") {
     return <span className="text-text-muted">Exportiert</span>;
   }
-  return <span className="font-medium text-heading">Analysiert</span>;
+  return (
+    <span className="font-medium text-heading">
+      {eintrag.quelle === "link" ? "Analysiert (über Link)" : "Analysiert"}
+    </span>
+  );
 }
 
 function zuZeilen(daten: PostfachSyncErgebnis): Zeile[] {
@@ -264,7 +344,7 @@ export function ExposeListePage() {
           draftId: draft.id,
           dateiname: pdf.dateiname,
           mimeType: pdf.mimeType,
-          bytes: base64ZuBytes(pdf.base64),
+          bytes: await postfachPdfBytes(pdf),
         });
 
         await navigate({
@@ -288,9 +368,8 @@ export function ExposeListePage() {
     async (eintrag: PostfachEintrag) => {
       setWiederholenId(eintrag.id);
       try {
-        const { postfachAnalyseWiederholenFn } = await import(
-          "@/lib/postfach/server-fn"
-        );
+        const { postfachAnalyseWiederholenFn } =
+          await import("@/lib/postfach/server-fn");
         const aktualisiert = await postfachAnalyseWiederholenFn({
           data: { supabaseAccessToken: token, eintragId: eintrag.id },
         });
@@ -306,6 +385,14 @@ export function ExposeListePage() {
             description: aktualisiert.analyseFehler ?? undefined,
             duration: 12_000,
           });
+        } else if (istLinkManuell(aktualisiert.analyseFehler)) {
+          toast.warning(
+            "Exposé-Link braucht weiterhin einen manuellen Abruf.",
+            {
+              description: aktualisiert.analyseFehler ?? undefined,
+              duration: 12_000,
+            },
+          );
         }
       } catch (e) {
         toast.error(
@@ -393,6 +480,7 @@ export function ExposeListePage() {
           eintrag &&
           (eintrag.status === "analysiert" ||
             eintrag.status === "exportiert") &&
+          eintrag.anhangName != null &&
           hatWerte(eintrag.felder),
         );
         const laedtZeile = aktionId === eintrag?.id;

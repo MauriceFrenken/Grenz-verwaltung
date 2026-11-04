@@ -29,7 +29,7 @@ import {
   leseCheckHandoff,
   loescheCheckHandoff,
 } from "@/lib/postfach/check-handoff";
-import { base64ZuFile } from "@/lib/postfach/client";
+import { postfachPdfBytes } from "@/lib/postfach/client";
 import type { PostfachEintragMitPdf } from "@/lib/postfach/typen";
 import {
   anreichereAdressFelderWerte,
@@ -466,11 +466,12 @@ export function ExposeImportPage() {
           }
         }
 
-        const datei = base64ZuFile(
-          geladen.pdf.base64,
+        const datei = new File(
+          [await postfachPdfBytes(geladen.pdf)],
           geladen.pdf.dateiname,
-          geladen.pdf.mimeType,
+          { type: geladen.pdf.mimeType },
         );
+        if (cancelled) return;
         const extracted = await pdfDateiUebernehmen(datei, {
           felderZuruecksetzen: false,
         });

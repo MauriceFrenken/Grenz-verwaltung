@@ -6,7 +6,7 @@ import { graphAnhangInhalt } from "@/lib/microsoft/graph";
 import { microsoftAccessToken } from "@/lib/microsoft/postfach";
 import { microsoftCallerAusJwt } from "@/lib/microsoft/supabase-admin";
 
-import { leseEintrag, zuEintrag } from "./store";
+import { leseEintrag, linkPdfUrl, zuEintrag } from "./store";
 import type { PostfachEintragMitPdf } from "./typen";
 
 export async function postfachEintragLaden(input: {
@@ -20,7 +20,21 @@ export async function postfachEintragLaden(input: {
 
   const row = await leseEintrag(id);
   if (!row.anhang_id) {
-    throw new Error("Zu dieser Mail ist kein PDF-Anhang gespeichert.");
+    // Exposé kam über einen Link: PDF liegt im Speicher.
+    if (!row.anhang_name) {
+      throw new Error(
+        "Zu dieser Mail gibt es noch kein PDF — bitte den Link in der Mail öffnen und das Exposé hochladen.",
+      );
+    }
+    return {
+      eintrag: zuEintrag(row),
+      pdf: {
+        dateiname: row.anhang_name,
+        mimeType: "application/pdf",
+        base64: "",
+        url: await linkPdfUrl(row.id),
+      },
+    };
   }
 
   const { accessToken } = await microsoftAccessToken();

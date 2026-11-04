@@ -52,6 +52,8 @@ export function zuEintrag(row: PostfachEintragRow): PostfachEintrag {
     eingegangenAm: row.eingegangen_am,
     anhangName: row.anhang_name,
     anhangGroesse: row.anhang_groesse,
+    quelle: row.anhang_id ? "anhang" : "link",
+    webLink: row.web_link,
     status: row.status,
     felder: row.felder,
     analyseFehler: row.analyse_fehler,
@@ -101,6 +103,104 @@ export async function eintraegeAnlegen(
       "Postfach-Einträge konnten nicht gespeichert werden",
       error.message,
     );
+}
+
+/** Einträge für Mails ohne PDF-Anhang, aber mit Exposé-Link. */
+export async function linkEintraegeAnlegen(
+  postfach: string,
+  nachrichten: GraphNachricht[],
+): Promise<void> {
+  const neu = nachrichten.map((n) => ({
+    postfach,
+    graph_nachricht_id: n.id,
+    internet_message_id: n.internetMessageId,
+    betreff: n.betreff,
+    absender_name: n.absenderName,
+    absender_mail: n.absenderMail,
+    eingegangen_am: n.eingegangenAm,
+    web_link: n.webLink,
+  }));
+  if (neu.length === 0) return;
+
+  const admin = createServiceRoleClient();
+  const { error } = await admin.from(TABELLE).upsert(neu, {
+    onConflict: "postfach,graph_nachricht_id",
+    ignoreDuplicates: true,
+  });
+  if (error)
+    throw fehler(
+      "Link-Exposés konnten nicht gespeichert werden",
+      error.message,
+    );
+}
+
+/** Speicherort des über einen Link geladenen PDFs (Bucket `dokumente`). */
+export const LINK_PDF_BUCKET = "dokumente";
+export function linkPdfPfad(eintragId: string): string {
+  return `postfach-links/${eintragId}.pdf`;
+}
+
+export async function speichereLinkPdf(
+  id: string,
+  pdf: { dateiname: string; bytes: Uint8Array },
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error: upErr } = await admin.storage
+    .from(LINK_PDF_BUCKET)
+    .upload(linkPdfPfad(id), pdf.bytes, {
+      contentType: "application/pdf",
+      upsert: true,
+    });
+  if (upErr)
+    throw fehler("Link-PDF konnte nicht gespeichert werden", upErr.message);
+
+  const { error } = await admin
+    .from(TABELLE)
+    .update({
+      anhang_name: pdf.dateiname,
+      anhang_content_type: "application/pdf",
+      anhang_groesse: pdf.bytes.byteLength,
+    })
+    .eq("id", id);
+  if (error)
+    throw fehler("Link-PDF konnte nicht vermerkt werden", error.message);
+}
+
+/** Signierte Download-URL (10 Min.) für das gespeicherte Link-PDF. */
+export async function linkPdfUrl(id: string): Promise<string> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin.storage
+    .from(LINK_PDF_BUCKET)
+    .createSignedUrl(linkPdfPfad(id), 600);
+  if (error || !data?.signedUrl)
+    throw new Error(
+      `Exposé-PDF aus dem Link ist nicht gespeichert: ${error?.message ?? "leer"}`,
+    );
+  return data.signedUrl;
+}
+
+/**
+ * Bereits verarbeitete Link-Mails (ohne PDF-Anhang) wieder auf „neu“ setzen,
+ * damit der Nachtlauf die Links abruft. Exportierte/abgelegte bleiben.
+ */
+export async function linkEintraegeZuruecksetzen(
+  postfach: string,
+): Promise<number> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from(TABELLE)
+    .update({ status: "neu" })
+    .eq("postfach", postfach)
+    .is("anhang_id", null)
+    .in("status", ["analysiert", "fehler"])
+    .is("abgelegt_am", null)
+    .select("id");
+  if (error)
+    throw fehler(
+      "Link-Exposés konnten nicht zurückgesetzt werden",
+      error.message,
+    );
+  return data?.length ?? 0;
 }
 
 export async function leseEintraege(
@@ -193,6 +293,8 @@ export async function leseEintrag(id: string): Promise<PostfachEintragRow> {
 export async function speichereAnalyse(
   id: string,
   felder: ExposeFelder,
+  /** Hinweis trotz Erfolg, z. B. „Link braucht manuellen Abruf …“. */
+  hinweis: string | null = null,
 ): Promise<void> {
   const admin = createServiceRoleClient();
   const { error } = await admin
@@ -200,7 +302,7 @@ export async function speichereAnalyse(
     .update({
       status: "analysiert",
       felder,
-      analyse_fehler: null,
+      analyse_fehler: hinweis ? hinweis.slice(0, 1000) : null,
       analysiert_am: new Date().toISOString(),
     })
     .eq("id", id);
