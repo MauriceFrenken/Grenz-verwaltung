@@ -25,6 +25,7 @@ import {
   periodeSchluessel,
   periodeText,
   TEXT_FASSUNG,
+  texteNeuDran,
   texteLeer,
   type Benchmark,
   type MarktberichtInhalt,
@@ -79,6 +80,7 @@ function inhaltAus(roh: unknown): MarktberichtInhalt {
     ...(typeof i.textFassung === "number"
       ? { textFassung: i.textFassung }
       : {}),
+    ...(typeof i.texteAm === "string" ? { texteAm: i.texteAm } : {}),
   };
 }
 
@@ -462,6 +464,7 @@ export async function automatischSchreiben(
     texte,
     texteAutomatisch: true,
     textFassung: TEXT_FASSUNG,
+    texteAm: new Date().toISOString(),
   };
   delete inhalt.texteFaellig;
   const { error } = await admin
@@ -478,6 +481,7 @@ export async function automatischSchreiben(
  */
 export async function entwurfTexteNachziehen(
   admin: SupabaseClient,
+  jetzt = new Date(),
 ): Promise<string | null> {
   const { data, error } = await admin
     .from("marktberichte")
@@ -490,7 +494,8 @@ export async function entwurfTexteNachziehen(
     return (
       texteLeer(i.texte) ||
       (i.texteAutomatisch &&
-        (i.texteFaellig || (i.textFassung ?? 1) < TEXT_FASSUNG))
+        ((i.texteFaellig && texteNeuDran(i.texteAm, jetzt)) ||
+          (i.textFassung ?? 1) < TEXT_FASSUNG))
     );
   });
   if (!offen) return null;
@@ -616,6 +621,9 @@ export const marktberichtSpeichernFn = createServerFn({ method: "POST" })
             ...(vorher.inhalt.texteFaellig ? { texteFaellig: true } : {}),
             ...(vorher.inhalt.textFassung
               ? { textFassung: vorher.inhalt.textFassung }
+              : {}),
+            ...(vorher.inhalt.texteAm
+              ? { texteAm: vorher.inhalt.texteAm }
               : {}),
           }
         : {}),
