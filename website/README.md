@@ -15,7 +15,7 @@ Bis zur Freigabe: `noindex` (Meta-Tag, `X-Robots-Tag`, `robots.txt`). Die alte S
 ## Vor dem Livegang
 
 - Kennzahlen bestätigen (6.000+ Investoren, 100 % unabhängig)
-- Case Studies durch freigegebene Transaktionen ersetzen, Stellen eintragen
-- Impressum und Datenschutz übernehmen (derzeit Links auf die alte Seite)
+- Case Studies: Freigabe der Verkäufer einholen, Stellen eintragen
+- Impressum und Datenschutz juristisch gegenlesen lassen (Stand November 2026)
 - Formular an Salesforce anbinden
 - `noindex` entfernen, `robots.txt` öffnen, Domain umziehen

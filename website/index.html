@@ -18,7 +18,7 @@
 <link rel="preload" href="/assets/fonts/roboto-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/styles.css">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"RealEstateAgent","name":"Grenz & Co. Immobilienberatung","url":"https://grenz-co.de","telephone":"+49 221 669 648 50","email":"info@grenz-co.de","areaServed":"Nordrhein-Westfalen","address":{"@type":"PostalAddress","addressLocality":"Köln","addressCountry":"DE"},"founder":{"@type":"Person","name":"Sebastian Grenz"}}
+{"@context":"https://schema.org","@type":"RealEstateAgent","name":"Grenz & Co. Immobilienberatung","url":"https://grenz-co.de","telephone":"+49 221 669 648 50","email":"info@grenz-co.de","areaServed":"Nordrhein-Westfalen","legalName":"Grenz & Co. Immobilienberatungs-GmbH","address":{"@type":"PostalAddress","streetAddress":"Friesenplatz 1","postalCode":"50672","addressLocality":"Köln","addressCountry":"DE"},"founder":{"@type":"Person","name":"Sebastian Grenz"}}
 </script>
 </head>
 <body>
@@ -31,7 +31,7 @@
     <nav id="menue" aria-label="Hauptnavigation">
       <a href="/#leistungen">Leistungen</a>
       <a href="/#fuer-wen">Für wen</a>
-      <a href="/#case-studies">Case Studies</a>
+      <a href="/case-studies">Case Studies</a>
       <a href="/#ueber-uns">Über uns</a>
       <a href="/#wissen">Wissen</a>
       <a href="/karriere">Karriere</a>
@@ -102,7 +102,7 @@
       </div>
       <label for="f-name">Name<input id="f-name" name="name" autocomplete="name" placeholder="Vor- und Nachname" required></label>
       <label for="f-tel">Telefon für den Rückruf<input id="f-tel" name="telefon" type="tel" autocomplete="tel" placeholder="+49" required></label>
-      <label class="check"><input type="checkbox" name="datenschutz" required> <span>Ich bin einverstanden, dass Grenz &amp; Co. meine Angaben zur Bearbeitung der Anfrage verwendet. Details in der <a href="https://grenz-co.de/datenschutz" target="_blank" rel="noopener">Datenschutzerklärung</a>.</span></label>
+      <label class="check"><input type="checkbox" name="datenschutz" required> <span>Ich bin einverstanden, dass Grenz &amp; Co. meine Angaben zur Bearbeitung der Anfrage verwendet. Details in der <a href="/datenschutz">Datenschutzerklärung</a>.</span></label>
       <button class="btn b" type="submit">Anfrage senden</button>
       <small>Ihre Angaben bleiben vertraulich. Sebastian Grenz meldet sich innerhalb eines Werktags persönlich.</small>
       <p class="ok" role="status">Vielen Dank. Ihr E-Mail-Programm öffnet sich mit der vorbereiteten Anfrage. Bitte senden Sie diese ab.</p>
@@ -182,13 +182,10 @@
   </div></section>
 
   <section class="sec g" id="case-studies"><div class="in">
-    <div class="cs-head"><div><div class="lb">Case Studies</div><h2>Verkaufte Mehrfamilienhäuser</h2></div></div>
+    <div class="cs-head"><div><div class="lb">Case Studies</div><h2>Verkaufte Mehrfamilienhäuser</h2></div><a class="more" href="/case-studies">Alle Case Studies</a></div>
     <div class="cases">
-      <article><picture><source srcset="/assets/img/mfh-koeln-640.webp 640w, /assets/img/mfh-koeln-1200.webp 1200w" sizes="(max-width:900px) 100vw, 33vw" type="image/webp"><img src="/assets/img/mfh-koeln-640.webp" alt="Mehrfamilienhaus in Köln" width="640" height="427" loading="lazy"></picture><div class="body"><span class="lb">Mehrfamilienhaus · Köln · 18 Einheiten</span><h3>Vier Erben, ein Haus, eine Lösung, die alle mittragen</h3><div class="kpi"><div><b>12</b><span>Wochen bis zur Beurkundung</span></div><div><b>7</b><span>Kaufangebote</span></div><div><b>0</b><span>öffentliche Inserate</span></div></div></div></article>
-      <article><picture><source srcset="/assets/img/mfh-duesseldorf-640.webp 640w, /assets/img/mfh-duesseldorf-1200.webp 1200w" sizes="(max-width:900px) 100vw, 33vw" type="image/webp"><img src="/assets/img/mfh-duesseldorf-640.webp" alt="Gründerzeithaus in Düsseldorf" width="640" height="426" loading="lazy"></picture><div class="body"><span class="lb">Mehrfamilienhaus · Düsseldorf · 12 Einheiten</span><h3>Sanierungsbedarf offen gelegt, Preis trotzdem gehalten</h3><div class="kpi"><div><b>9</b><span>Wochen bis zur Beurkundung</span></div><div><b>5</b><span>Kaufangebote</span></div><div><b>100 %</b><span>Unterlagen im Datenraum</span></div></div></div></article>
-      <article><picture><source srcset="/assets/img/mfh-bergisch-640.webp 640w, /assets/img/mfh-bergisch-1200.webp 1200w" sizes="(max-width:900px) 100vw, 33vw" type="image/webp"><img src="/assets/img/mfh-bergisch-640.webp" alt="Wohnhäuser im Bergischen Land" width="640" height="427" loading="lazy"></picture><div class="body"><span class="lb">Mehrfamilienhaus · Bergisches Land · 9 Einheiten</span><h3>Diskreter Verkauf für einen Arzt als Kapitalanleger</h3><div class="kpi"><div><b>2</b><span>Termine für den Eigentümer</span></div><div><b>4</b><span>Kaufangebote</span></div><div><b>0</b><span>öffentliche Inserate</span></div></div></div></article>
+      <a class="card" href="/case-studies/bilker-allee"><picture><img src="/assets/img/cs/bilker-allee-karte.webp" alt="Mehrfamilienhaus in Düsseldorf-Unterbilk" width="800" height="533" loading="lazy"></picture><div class="body"><span class="tag">Erbengemeinschaft</span><span class="lb">Mehrfamilienhaus · Düsseldorf-Unterbilk · 11 Einheiten</span><h3>Ein Familienhaus nach Jahrzehnten: strategisch verkauft für eine Erbengemeinschaft</h3><div class="kpi"><div><b>11</b><span>Wohnungen</span></div><div><b>672 m²</b><span>Wohnfläche</span></div><div><b>1953</b><span>Baujahr</span></div></div></div></a><a class="card" href="/case-studies/karl-anton-strasse"><picture><img src="/assets/img/cs/karl-anton-strasse-karte.webp" alt="Mehrfamilienhaus in Düsseldorf-Stadtmitte" width="800" height="533" loading="lazy"></picture><div class="body"><span class="tag">Erbengemeinschaft</span><span class="lb">Mehrfamilienhaus · Düsseldorf-Stadtmitte · 8 Einheiten</span><h3>Leerstand als Chance: geplanter Verkauf für eine Erbengemeinschaft in der Innenstadt</h3><div class="kpi"><div><b>8</b><span>Wohnungen</span></div><div><b>555 m²</b><span>Wohnfläche</span></div><div><b>1957</b><span>Baujahr</span></div></div></div></a><a class="card" href="/case-studies/zimmerstrasse"><picture><img src="/assets/img/cs/zimmerstrasse-karte.webp" alt="Mehrfamilienhaus in Düsseldorf-Friedrichstadt" width="800" height="533" loading="lazy"></picture><div class="body"><span class="lb">Mehrfamilienhaus · Düsseldorf-Friedrichstadt · 11 Einheiten</span><h3>Voll vermietetes Zinshaus in Friedrichstadt</h3><div class="kpi"><div><b>11</b><span>Wohnungen</span></div><div><b>637 m²</b><span>Wohnfläche</span></div><div><b>1955</b><span>Baujahr</span></div></div></div></a>
     </div>
-    <p class="note">Vorschau: Beispielinhalte. Vor dem Livegang ersetzen wir sie durch freigegebene Transaktionen.</p>
   </div></section>
 
   <section class="sec"><div class="in">
@@ -231,16 +228,16 @@
 
   <section class="ct" id="kontakt"><div class="in">
     <div><div class="lb w">Kontakt</div><h2>Ein Gespräch ist vertraulich und unverbindlich.</h2><p>Ob Sie über einen Verkauf nachdenken oder Anlageimmobilien suchen: Sie sprechen direkt mit Sebastian Grenz.</p></div>
-    <div class="addr"><a class="tel" href="tel:+4922166964850">+49 221 669 648 50</a><a href="mailto:info@grenz-co.de">info@grenz-co.de</a><span>Grenz &amp; Co. Immobilienberatung · Köln</span><a class="btn w" href="#bewertung">Rückruf vereinbaren</a></div>
+    <div class="addr"><a class="tel" href="tel:+4922166964850">+49 221 669 648 50</a><a href="mailto:info@grenz-co.de">info@grenz-co.de</a><span>Friesenplatz 1 · 50672 Köln</span><a class="btn w" href="#bewertung">Rückruf vereinbaren</a></div>
   </div></section>
 </main>
 
 <footer class="ft"><div class="in">
-  <div><img src="/assets/img/logo-weiss.png" alt="Grenz &amp; Co." width="720" height="206" loading="lazy"><span>Unabhängige Immobilienberatung für Anlageimmobilien in Nordrhein-Westfalen.</span></div>
+  <div><img src="/assets/img/logo-weiss.png" alt="Grenz &amp; Co." width="720" height="206" loading="lazy"><span>Grenz &amp; Co. Immobilienberatungs-GmbH<br>Friesenplatz 1 · 50672 Köln</span></div>
   <div><h4>Leistungen</h4><a href="/#leistungen">Verkauf</a><a href="/#bewertung">Bewertung</a><a href="/#leistungen">Ankauf</a></div>
-  <div><h4>Unternehmen</h4><a href="/#ueber-uns">Über uns</a><a href="/#case-studies">Case Studies</a><a href="/karriere">Karriere</a><a href="/#wissen">Wissen</a></div>
+  <div><h4>Unternehmen</h4><a href="/#ueber-uns">Über uns</a><a href="/case-studies">Case Studies</a><a href="/karriere">Karriere</a><a href="/#wissen">Wissen</a></div>
   <div><h4>Kontakt</h4><a href="tel:+4922166964850">+49 221 669 648 50</a><a href="mailto:info@grenz-co.de">info@grenz-co.de</a></div>
-  <div class="legal"><span>© 2026 Grenz &amp; Co. Immobilienberatung</span><div><a href="https://grenz-co.de/impressum">Impressum</a><a href="https://grenz-co.de/datenschutz">Datenschutz</a></div></div>
+  <div class="legal"><span>© 2026 Grenz &amp; Co. Immobilienberatungs-GmbH</span><div><a href="/impressum">Impressum</a><a href="/datenschutz">Datenschutz</a></div></div>
 </div></footer>
 <script src="/assets/main.js" defer></script>
 </body>
