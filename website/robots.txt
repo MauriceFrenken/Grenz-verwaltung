@@ -1,0 +1,3 @@
+# Vorschau: noch nicht indexieren. Vor dem Livegang auf "Allow: /" umstellen.
+User-agent: *
+Disallow: /
