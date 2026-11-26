@@ -82,6 +82,8 @@ async function recherchieren(
     const antwort = await ki.messages
       .stream({
         model: MODELL,
+        // Websuche liest den wachsenden Verlauf je Suchschritt neu: aus dem Cache kostet das 10 %.
+        cache_control: { type: "ephemeral" },
         max_tokens: 32000,
         system: systemPrompt(seite, profil),
         output_config: { effort: "medium" },

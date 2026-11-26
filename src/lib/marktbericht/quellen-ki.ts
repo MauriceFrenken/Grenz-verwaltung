@@ -84,6 +84,8 @@ export async function berichteSuchen(
     const antwort = await ki.messages
       .stream({
         model: MODELL,
+        // Websuche liest den wachsenden Verlauf je Suchschritt neu: aus dem Cache kostet das 10 %.
+        cache_control: { type: "ephemeral" },
         max_tokens: 16000,
         system: SYSTEM,
         output_config: { effort: "medium" },

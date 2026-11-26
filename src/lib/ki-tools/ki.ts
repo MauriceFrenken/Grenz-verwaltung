@@ -874,6 +874,8 @@ export async function marktpreisRecherche(
       const antwort = await ki.messages
         .stream({
           model: MODELL,
+          // Websuche liest den wachsenden Verlauf je Suchschritt neu: aus dem Cache kostet das 10 %.
+          cache_control: { type: "ephemeral" },
           max_tokens: 32000,
           system: `${ROLLE} Du bist Research-Analyst. Berichte nur, was die Quellen belegen; keine Schätzungen.`,
           output_config: { effort: "medium" },

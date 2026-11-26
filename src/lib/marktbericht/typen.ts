@@ -167,6 +167,8 @@ export type MarktberichtInhalt = {
   texteFaellig?: boolean;
   /** Fassung der KI-Vorgaben, mit der die Texte geschrieben wurden (siehe TEXT_FASSUNG). */
   textFassung?: number;
+  /** Zeitpunkt der letzten automatischen Texte (ISO); neue Vergleichswerte lösen höchstens täglich einen Neuschrieb aus. */
+  texteAm?: string;
 };
 
 /**
@@ -176,6 +178,17 @@ export type MarktberichtInhalt = {
  * schreibt der Cron neu.
  */
 export const TEXT_FASSUNG = 3;
+
+/** Neue Vergleichswerte kommen über den Tag einzeln herein: Texte höchstens alle 24 Stunden neu schreiben. */
+const TEXTE_NEU_NACH_MS = 24 * 3_600_000;
+
+export function texteNeuDran(
+  texteAm: string | undefined,
+  jetzt: Date,
+): boolean {
+  const am = texteAm ? Date.parse(texteAm) : NaN;
+  return !Number.isFinite(am) || jetzt.getTime() - am >= TEXTE_NEU_NACH_MS;
+}
 
 /** Noch keine Texte geschrieben (frisch angelegter Bericht). */
 export function texteLeer(t: MarktberichtTexte): boolean {

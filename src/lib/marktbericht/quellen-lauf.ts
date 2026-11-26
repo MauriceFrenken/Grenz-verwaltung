@@ -145,6 +145,13 @@ function mitSeitenmarken(seiten: string[]): string {
     .slice(0, MAX_TEXT);
 }
 
+/** Genug lesbarer Text, um ohne Seitenbilder auszulesen (kein Scan). */
+export function hatTextschicht(seiten: string[]): boolean {
+  if (!seiten.length) return false;
+  const zeichen = seiten.reduce((s, t) => s + t.length, 0);
+  return zeichen >= 2_000 && zeichen / seiten.length >= 300;
+}
+
 /** Zitate gegen den Originaltext prüfen; belegte Werte gelten als geprüft. */
 export function automatischPruefen(
   werte: Benchmark[],
@@ -164,7 +171,11 @@ export async function pdfAuslesen(
   url?: string,
 ): Promise<{ werte: Benchmark[]; seiten: number }> {
   const seiten = await pdfSeiten(bytes).catch(() => [] as string[]);
+  // Mit Textschicht geht nur der Text an die KI: Als PDF zählt jede Seite zusätzlich als Bild
+  // (etwa drei- bis viermal so viele Tokens). Werte gelten ohnehin nur als geprüft, wenn ihr Zitat
+  // im ausgelesenen Text steht. Scans ohne Text gehen weiter als PDF.
   const inhalt: DokumentInhalt =
+    !hatTextschicht(seiten) &&
     bytes.byteLength <= PDF_DIREKT_BYTES &&
     (seiten.length === 0 || seiten.length <= PDF_DIREKT_SEITEN)
       ? { pdfBase64: Buffer.from(bytes).toString("base64") }
