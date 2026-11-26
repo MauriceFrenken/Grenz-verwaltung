@@ -4,7 +4,7 @@ import { cronSecretOk } from "@/lib/cron-auth";
 import { createServiceRoleClient } from "@/lib/microsoft/supabase-admin";
 
 /**
- * Mehrmals täglich: die nächsten Investoren per KI-Websuche prüfen (Existenz, Insolvenz,
+ * Einmal täglich (07:00 UTC): die nächsten Investoren per KI-Websuche prüfen (Existenz, Insolvenz,
  * Ankaufsprofil 2026) und die Investorenliste danach neu ableiten. `?anzahl=` überschreibt die Paketgröße.
  * `?modus=suchgebiet` recherchiert stattdessen nur Listen-Investoren ohne Suchgebiet (Anreicherung
  * fürs Käufer-Matching) und überspringt Dubletten-Bereinigung und Neuaufbau.
