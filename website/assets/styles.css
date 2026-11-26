@@ -1,14 +1,11 @@
 /* Grenz & Co. Website – Gestaltung nach Konzept V5 (Stil Privatbank) */
-@font-face{font-family:"EB Garamond";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/eb-garamond-latin-400-normal.woff2) format("woff2")}
-@font-face{font-family:"EB Garamond";font-style:italic;font-weight:400;font-display:swap;src:url(fonts/eb-garamond-latin-400-italic.woff2) format("woff2")}
-@font-face{font-family:"EB Garamond";font-style:normal;font-weight:500;font-display:swap;src:url(fonts/eb-garamond-latin-500-normal.woff2) format("woff2")}
 @font-face{font-family:Roboto;font-style:normal;font-weight:300;font-display:swap;src:url(fonts/roboto-latin-300-normal.woff2) format("woff2")}
 @font-face{font-family:Roboto;font-style:normal;font-weight:400;font-display:swap;src:url(fonts/roboto-latin-400-normal.woff2) format("woff2")}
 @font-face{font-family:Roboto;font-style:normal;font-weight:500;font-display:swap;src:url(fonts/roboto-latin-500-normal.woff2) format("woff2")}
 
 :root{
   --b:#163052; --bd:#0e2138; --h:#bcd4e5; --g:#f4f5f7; --gl:#dfe3e8; --t:#1c2c36; --m:#5c6670;
-  --serif:"EB Garamond",Garamond,"Times New Roman",serif;
+  --serif:Roboto,"Helvetica Neue",Arial,sans-serif;
   --sans:Roboto,"Helvetica Neue",Arial,sans-serif;
   color-scheme:light;
 }
@@ -20,6 +17,10 @@ a{color:inherit;text-decoration:none}
 p{margin:0 0 1em}
 h1,h2,h3{hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word}
 h3{hyphens:manual;-webkit-hyphens:manual}
+/* Schrift wie grenz-co.de: Roboto. Große Titel Light, kleinere Titel Regular */
+h1,h2,.intro .big,.quote blockquote,.person q,.facts b,.proc .rn,.ct .addr .tel,.cs-facts b,.cases .kpi b{font-weight:300!important;letter-spacing:-.01em}
+h3,.region .list span,.faq summary,.person .nm,.tl h4{font-weight:400!important;letter-spacing:0}
+.quotes2 p,.m-reg{font-style:normal!important}
 :focus-visible{outline:2px solid var(--h);outline-offset:3px}
 .skip{position:absolute;left:-9999px;top:0;background:#fff;color:var(--b);padding:12px 18px;z-index:100}
 .skip:focus{left:16px;top:16px}
@@ -60,7 +61,7 @@ h2{font:400 clamp(30px,3.6vw,48px)/1.1 var(--serif);color:var(--b);margin:14px 0
 .hero > *:not(picture){position:relative;z-index:1}
 .hero .main{padding-block:clamp(72px,11vw,150px) clamp(56px,8vw,110px);max-width:720px}
 .hero h1{font:400 clamp(42px,5.6vw,76px)/1.02 var(--serif);margin:22px 0 26px;letter-spacing:-.01em}
-.hero h1 em{font-style:italic;color:var(--h);display:block}
+.hero h1 em{font-style:normal;color:var(--h);display:block}
 .hero .main p{font-size:18.5px;color:#d3deea;max-width:48ch;margin:0 0 36px}
 .ctas{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
 .facts{border-top:1px solid rgba(255,255,255,.16);background:rgba(14,33,56,.55)}
@@ -74,7 +75,7 @@ h2{font:400 clamp(30px,3.6vw,48px)/1.1 var(--serif);color:var(--b);margin:14px 0
 .sec{padding-block:clamp(72px,10vw,136px)}
 .sec.g{background:var(--g)}
 .intro{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:clamp(32px,6vw,96px);align-items:end}
-.intro .big{font:400 clamp(26px,2.8vw,36px)/1.32 var(--serif);color:var(--b);margin:18px 0 0}
+.intro .big{font:400 clamp(24px,2.4vw,31px)/1.38 var(--serif);color:var(--b);margin:18px 0 0}
 .intro .sig{font-size:15.5px;color:var(--m)}
 .intro .sig strong{display:block;color:var(--b);font-weight:400;margin-top:18px;font-size:15px}
 
